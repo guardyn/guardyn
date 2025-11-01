@@ -38,10 +38,11 @@ data:
     # Create presence stream for online status
     nats -s nats://nats:4222 stream add PRESENCE \
       --subjects="presence.*" \
-      --storage=memory \
-      --retention=workqueue \
+      --storage=file \
+      --retention=work \
       --max-age=1h \
-      --max-msgs=100000 \
+      --max-msgs=10000 \
+      --max-bytes=100MB \
       --replicas=1 \
       --discard=old \
       --defaults
@@ -50,9 +51,10 @@ data:
     nats -s nats://nats:4222 stream add NOTIFICATIONS \
       --subjects="notify.*" \
       --storage=file \
-      --retention=workqueue \
+      --retention=work \
       --max-age=24h \
-      --max-msgs=100000 \
+      --max-msgs=50000 \
+      --max-bytes=500MB \
       --replicas=1 \
       --discard=old \
       --defaults
@@ -63,8 +65,8 @@ data:
       --storage=file \
       --retention=limits \
       --max-age=30d \
-      --max-msgs=10000 \
-      --max-bytes=10GB \
+      --max-msgs=1000 \
+      --max-bytes=1GB \
       --replicas=1 \
       --discard=old \
       --defaults
