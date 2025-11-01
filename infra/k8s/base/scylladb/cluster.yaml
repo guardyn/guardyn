@@ -1,0 +1,36 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: guardyn-scylla
+  namespace: data
+  labels:
+    guardyn.io/stage: poc
+spec:
+  version: 5.4.8
+  agentVersion: 3.3.0
+  developerMode: true
+  datacenter:
+    name: dc1
+    racks:
+    - name: rack1
+      members: 3
+      storage:
+        capacity: 4Gi
+        storageClassName: local-path
+      resources:
+        requests:
+          cpu: 200m
+          memory: 1Gi
+        limits:
+          cpu: 500m
+          memory: 2Gi
+      placement:
+        tolerations:
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300
+        - key: "node.kubernetes.io/unreachable"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 300

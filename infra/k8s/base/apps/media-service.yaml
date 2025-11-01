@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+  namespace: apps
+  labels:
+    app: media-service
+    guardyn.io/stage: poc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: media-service
+  template:
+    metadata:
+      labels:
+        app: media-service
+        guardyn.io/stage: poc
+    spec:
+      containers:
+      - name: media-service
+        image: guardyn-registry:5000/media-service:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: grpc
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: SCYLLADB_URL
+          value: "guardyn-scylla-dc1-rack1-0.data.svc.cluster.local:9042"
+        - name: NATS_URL
+          value: "nats://nats.messaging.svc.cluster.local:4222"
+        - name: STORAGE_PATH
+          value: "/var/lib/guardyn/media"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /etc/ssl/certs/guardyn
+          readOnly: true
+        - name: media-storage
+          mountPath: /var/lib/guardyn/media
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: guardyn-backend-tls
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-service
+  namespace: apps
+  labels:
+    app: media-service
+    guardyn.io/stage: poc
+spec:
+  selector:
+    app: media-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: grpc
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-storage
+  namespace: apps
+  labels:
+    app: media-service
+    guardyn.io/stage: poc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path

@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nats-jetstream-setup
+  namespace: messaging
+  labels:
+    guardyn.io/stage: poc
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: nats-setup
+        image: natsio/nats-box:latest
+        command: ["/bin/sh"]
+        args: ["/scripts/create-streams.sh"]
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        env:
+        - name: NATS_URL
+          value: "nats://nats:4222"
+      volumes:
+      - name: scripts
+        configMap:
+          name: nats-jetstream-streams
+          defaultMode: 0755
