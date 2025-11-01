@@ -1,0 +1,41 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: guardyn-backend-tls
+  namespace: apps
+  labels:
+    guardyn.io/stage: poc
+spec:
+  secretName: guardyn-backend-tls
+  issuerRef:
+    name: guardyn-selfsigned-issuer
+    kind: ClusterIssuer
+  dnsNames:
+  - auth-service.apps.svc.cluster.local
+  - messaging-service.apps.svc.cluster.local
+  - presence-service.apps.svc.cluster.local
+  - media-service.apps.svc.cluster.local
+  - notification-service.apps.svc.cluster.local
+  - "*.apps.svc.cluster.local"
+  - localhost
+  ipAddresses:
+  - 127.0.0.1
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: guardyn-nats-tls
+  namespace: messaging
+  labels:
+    guardyn.io/stage: poc
+spec:
+  secretName: guardyn-nats-tls
+  issuerRef:
+    name: guardyn-selfsigned-issuer
+    kind: ClusterIssuer
+  dnsNames:
+  - nats.messaging.svc.cluster.local
+  - nats
+  - localhost
+  ipAddresses:
+  - 127.0.0.1

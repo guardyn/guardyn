@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: apps
+  labels:
+    app: notification-service
+    guardyn.io/stage: poc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        guardyn.io/stage: poc
+    spec:
+      containers:
+      - name: notification-service
+        image: guardyn-registry:5000/notification-service:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: grpc
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: NATS_URL
+          value: "nats://nats.messaging.svc.cluster.local:4222"
+        - name: SCYLLADB_URL
+          value: "guardyn-scylla-dc1-rack1-0.data.svc.cluster.local:9042"
+        - name: FCM_KEY_PATH
+          value: "/etc/secrets/fcm-key.json"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /etc/ssl/certs/guardyn
+          readOnly: true
+        - name: fcm-secrets
+          mountPath: /etc/secrets
+          readOnly: true
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: guardyn-backend-tls
+      - name: fcm-secrets
+        secret:
+          secretName: fcm-credentials
+          optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: apps
+  labels:
+    app: notification-service
+    guardyn.io/stage: poc
+spec:
+  selector:
+    app: notification-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: grpc
+    port: 9090
+    targetPort: 9090

@@ -1,0 +1,49 @@
+apiVersion: apps.foundationdb.org/v1beta2
+kind: FoundationDBCluster
+metadata:
+  name: guardyn-fdb
+  namespace: data
+  labels:
+    guardyn.io/stage: poc
+spec:
+  version: 7.1.61
+  databaseConfiguration:
+    redundancy_mode: triple
+    storage_engine: ssd-2
+  processes:
+    general:
+      podTemplate:
+        spec:
+          containers:
+          - name: foundationdb
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          - name: foundationdb-kubernetes-sidecar
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 4Gi
+          storageClassName: local-path
+  processCounts:
+    storage: 3
+    stateless: 1
+    cluster_controller: 1

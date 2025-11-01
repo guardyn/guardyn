@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: apps
+  labels:
+    app: auth-service
+    guardyn.io/stage: poc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        guardyn.io/stage: poc
+    spec:
+      containers:
+      - name: auth-service
+        image: guardyn-registry:5000/auth-service:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: DATABASE_URL
+          value: "foundationdb://guardyn-fdb.data.svc.cluster.local:4500"
+        - name: NATS_URL
+          value: "nats://nats.messaging.svc.cluster.local:4222"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: tls-certs
+          mountPath: /etc/ssl/certs/guardyn
+          readOnly: true
+      volumes:
+      - name: tls-certs
+        secret:
+          secretName: guardyn-backend-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: apps
+  labels:
+    app: auth-service
+    guardyn.io/stage: poc
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: grpc
+    port: 9090
+    targetPort: 9090

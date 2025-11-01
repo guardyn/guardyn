@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-jetstream-streams
+  namespace: messaging
+  labels:
+    guardyn.io/stage: poc
+data:
+  create-streams.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Creating JetStream streams for Guardyn..."
+    
+    # Wait for NATS to be ready
+    echo "Waiting for NATS connection..."
+    for i in {1..30}; do
+      if nats -s nats://nats:4222 server check connection >/dev/null 2>&1; then
+        echo "NATS is ready!"
+        break
+      fi
+      echo "Waiting for NATS... attempt $i/30"
+      sleep 2
+    done
+    
+    # Create messaging streams
+    nats -s nats://nats:4222 stream add MESSAGES \
+      --subjects="msg.*" \
+      --storage=file \
+      --retention=limits \
+      --max-age=7d \
+      --max-msgs=1000000 \
+      --max-bytes=1GB \
+      --replicas=1 \
+      --discard=old \
+      --defaults
+    
+    # Create presence stream for online status
+    nats -s nats://nats:4222 stream add PRESENCE \
+      --subjects="presence.*" \
+      --storage=memory \
+      --retention=workqueue \
+      --max-age=1h \
+      --max-msgs=100000 \
+      --replicas=1 \
+      --discard=old \
+      --defaults
+    
+    # Create notifications stream
+    nats -s nats://nats:4222 stream add NOTIFICATIONS \
+      --subjects="notify.*" \
+      --storage=file \
+      --retention=workqueue \
+      --max-age=24h \
+      --max-msgs=100000 \
+      --replicas=1 \
+      --discard=old \
+      --defaults
+    
+    # Create media stream for file transfers
+    nats -s nats://nats:4222 stream add MEDIA \
+      --subjects="media.*" \
+      --storage=file \
+      --retention=limits \
+      --max-age=30d \
+      --max-msgs=10000 \
+      --max-bytes=10GB \
+      --replicas=1 \
+      --discard=old \
+      --defaults
+    
+    echo "JetStream streams created successfully!"
+    
+    # Show stream info
+    nats -s nats://nats:4222 stream list
