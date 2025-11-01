@@ -4,18 +4,36 @@ nats:
     enabled: true
     fileStore:
       size: 10Gi
-  replicaCount: 3
+      storageClassName: local-path
+    memStore:
+      enabled: true
+      size: 1Gi
+  replicaCount: 1
   tls:
     enabled: false
     allowNonTLS: true
+
+config:
+  jetstream:
+    enabled: true
+    storeDir: /data
+    maxFileStore: 10GB
+    maxMemoryStore: 1GB
+
 cluster:
-  enabled: true
-  replicas: 3
-  noAdvertise: true
-  gateway:
-    enabled: false
+  enabled: false
+  replicas: 1
+
+gateway:
+  enabled: false
+
 exporter:
   enabled: true
   serviceMonitor:
     enabled: true
     namespace: observability
+
+container:
+  image:
+    repository: nats
+    tag: 2.10.9-alpine
