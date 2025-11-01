@@ -1,0 +1,13 @@
+operator:
+  namespace: data
+  image:
+    tag: v1.15.0
+cluster:
+  name: guardyn3-scylla
+  datacenter:
+    name: dc1
+    racks:
+      - name: rack1
+        members: 3
+        storage:
+          capacity: 10Gi

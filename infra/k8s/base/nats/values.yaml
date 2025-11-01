@@ -1,0 +1,21 @@
+nats:
+  image: nats:2.10.9-alpine
+  jetstream:
+    enabled: true
+    fileStore:
+      size: 10Gi
+  replicaCount: 3
+  tls:
+    enabled: false
+    allowNonTLS: true
+cluster:
+  enabled: true
+  replicas: 3
+  noAdvertise: true
+  gateway:
+    enabled: false
+exporter:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: observability

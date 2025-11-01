@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: infra/secrets/.*\.enc\.yaml$
+    encrypted_regex: '^(data|stringData)$'
+    age: ["age-public-key-placeholder"]

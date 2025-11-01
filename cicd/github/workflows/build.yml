@@ -1,0 +1,20 @@
+name: build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Nix
+        uses: cachix/install-nix-action@v23
+        with:
+          nix_path: nixpkgs=channel:nixos-23.11
+      - name: Enter dev shell
+        run: nix develop --command bash -c "rustup show && cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings"
+      - name: Security scanning
+        run: nix develop --command bash -c "cargo audit"

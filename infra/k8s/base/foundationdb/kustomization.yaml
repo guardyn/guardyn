@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: data
+resources:
+  - namespace.yaml
+  - https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/crd/bases/apps.foundationdb.org_foundationdbclusters.yaml
+  - https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/crd/bases/apps.foundationdb.org_foundationdbbackups.yaml
+  - https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/crd/bases/apps.foundationdb.org_foundationdbrestores.yaml
+  - https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/samples/default.yml
