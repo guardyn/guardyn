@@ -1,7 +1,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set dotenv-load := false
 
-CLUSTER_NAME := "guardyn3-poc"
+CLUSTER_NAME := "guardyn-poc"
 K3D_CONFIG := "infra/k3d-config.yaml"
 
 default:

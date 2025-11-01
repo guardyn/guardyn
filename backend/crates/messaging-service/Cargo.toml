@@ -1,0 +1,23 @@
+[package]
+name = "guardyn-messaging-service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+guardyn-common = { path = "../common" }
+guardyn-crypto = { path = "../crypto" }
+
+tokio.workspace = true
+tonic.workspace = true
+prost.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+config.workspace = true
+foundationdb.workspace = true
+scylla.workspace = true
+async-nats.workspace = true

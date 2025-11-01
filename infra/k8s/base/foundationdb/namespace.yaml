@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: data
   labels:
-    guardyn3.io/stage: poc
+    guardyn.io/stage: poc

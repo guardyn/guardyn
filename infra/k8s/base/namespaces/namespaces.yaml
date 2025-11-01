@@ -6,28 +6,28 @@ items:
     metadata:
       name: platform
       labels:
-        guardyn3.io/stage: poc
+        guardyn.io/stage: poc
   - apiVersion: v1
     kind: Namespace
     metadata:
       name: data
       labels:
-        guardyn3.io/stage: poc
+        guardyn.io/stage: poc
   - apiVersion: v1
     kind: Namespace
     metadata:
       name: messaging
       labels:
-        guardyn3.io/stage: poc
+        guardyn.io/stage: poc
   - apiVersion: v1
     kind: Namespace
     metadata:
       name: observability
       labels:
-        guardyn3.io/stage: poc
+        guardyn.io/stage: poc
   - apiVersion: v1
     kind: Namespace
     metadata:
       name: apps
       labels:
-        guardyn3.io/stage: poc
+        guardyn.io/stage: poc

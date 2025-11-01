@@ -3,7 +3,7 @@ operatorDeployment:
   create: true
 clusterCreate:
   create: true
-  name: guardyn3-fdb
+  name: guardyn-fdb
   processes:
     storage:
       count: 3

@@ -1,5 +1,5 @@
 {
-  description = "Guardyn3 MVP reproducible environment";
+  description = "Guardyn MVP reproducible environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
@@ -14,7 +14,7 @@
         pkgs = import nixpkgs { inherit system overlays; };
       in {
         devShells.default = pkgs.mkShell {
-          name = "guardyn3-dev";
+          name = "guardyn-dev";
           nativeBuildInputs = with pkgs; [
             pkg-config
             openssl
