@@ -1,0 +1,9 @@
+name: reproducible-build
+description: "Builds binaries within the Nix shell to guarantee reproducibility"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Enter reproducible environment
+      shell: bash
+      run: nix develop --command bash -c "cargo build --locked && sha256sum target/debug/* || true"

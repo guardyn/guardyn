@@ -1,0 +1,35 @@
+name: integration-tests
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install k3d
+        run: |
+          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Start cluster
+        run: |
+          just kube-create
+          just kube-bootstrap
+      - name: Deploy core services
+        run: |
+          just k8s-deploy nats
+      - name: Smoke test
+        run: |
+          just verify-kube
+      - name: Teardown
+        if: always()
+        run: |
+          just teardown

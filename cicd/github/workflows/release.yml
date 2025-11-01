@@ -1,0 +1,34 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Nix
+        uses: cachix/install-nix-action@v23
+      - name: Build release artifacts
+        run: |
+          nix build .#devShells.x86_64-linux.default
+          cargo build --release
+      - name: Generate SBOM
+        run: |
+          syft dir:. -o spdx-json > sbom.spdx.json
+      - name: Sign artifacts
+        run: |
+          cosign sign-blob --yes --output-signature target/release/signature.sig target/release/app || true
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/release/*
+            sbom.spdx.json

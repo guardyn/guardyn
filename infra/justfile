@@ -1,0 +1,88 @@
+set shell := ["bash", "-euo", "pipefail", "-c"]
+set dotenv-load := false
+
+CLUSTER_NAME := "guardyn3-poc"
+K3D_CONFIG := "infra/k3d-config.yaml"
+
+default:
+	@just --list
+
+kube\:create:
+	@echo "[kube:create] Creating k3d cluster using ${K3D_CONFIG}"
+	k3d cluster create --config "${K3D_CONFIG}"
+
+kube\:delete:
+	@echo "[kube:delete] Deleting k3d cluster ${CLUSTER_NAME}"
+	k3d cluster delete "${CLUSTER_NAME}" || true
+
+kube\:bootstrap:
+	@echo "[kube:bootstrap] Applying base namespaces"
+	kubectl apply -k infra/k8s/base/namespaces
+	@echo "[kube:bootstrap] Installing operators and core addons"
+	kubectl apply -k infra/k8s/base/cert-manager
+	kubectl apply -k infra/k8s/base/cilium
+	kubectl apply -k infra/k8s/base/foundationdb
+	kubectl apply -k infra/k8s/base/scylladb
+	kubectl apply -k infra/k8s/base/monitoring
+
+k8s\:deploy service:
+	case "{{service}}" in \
+		nats)
+			helm repo add nats https://nats-io.github.io/k8s/helm/charts >/dev/null
+			helm repo update >/dev/null
+			helm upgrade --install nats nats/nats \
+				--namespace messaging \
+				--create-namespace \
+				--values infra/k8s/base/nats/values.yaml
+			;;
+		foundationdb)
+			helm repo add foundationdb https://foundationdb.github.io/fdb-kubernetes-operator >/dev/null
+			helm repo update >/dev/null
+			helm upgrade --install fdb-cluster foundationdb/fdb-kubernetes-operator \
+				--namespace data \
+				--create-namespace \
+				--values infra/k8s/base/foundationdb/values.yaml
+			;;
+		scylladb)
+			helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable >/dev/null
+			helm repo update >/dev/null
+			helm upgrade --install scylla-cluster scylla/scylla-operator \
+				--namespace data \
+				--create-namespace \
+				--values infra/k8s/base/scylladb/values.yaml
+			;;
+		monitoring)
+			helm repo add grafana https://grafana.github.io/helm-charts >/dev/null
+			helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null
+			helm repo update >/dev/null
+			helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+				--namespace observability \
+				--create-namespace \
+				--values infra/k8s/base/monitoring/values.yaml
+			helm upgrade --install grafana-loki grafana/loki-distributed \
+				--namespace observability \
+				--values infra/k8s/base/monitoring/loki-values.yaml
+			;;
+		*)
+			echo "Unsupported service '{{service}}'" >&2
+			exit 1
+			;;
+	esac
+
+verify\:kube:
+	@echo "[verify:kube] Checking node status"
+	kubectl get nodes -o wide
+	@echo "[verify:kube] Waiting for system pods to become ready"
+	kubectl wait --for=condition=Ready pods --all --timeout=180s --all-namespaces
+	@echo "[verify:kube] Verifying NATS JetStream"
+	kubectl run nats-smoke --rm -i --restart=Never --namespace messaging --image=natsio/nats-box:latest \
+		-- /bin/sh -c "nats server check jetstream || nats -s nats://nats:4222 sub foo & sleep 2 && nats -s nats://nats:4222 pub foo 'hello'"
+	@echo "[verify:kube] Checking FoundationDB cluster"
+	kubectl -n data exec deploy/fdb-kubernetes-operator-controller-manager -- fdbcli --exec "status minimal"
+	@echo "[verify:kube] Checking ScyllaDB nodes"
+	kubectl -n data run scylla-nodecheck --rm -i --restart=Never --image=scylladb/scylla:5.4 \
+		-- bash -c "nodetool status"
+
+teardown:
+	@echo "[teardown] Destroying cluster and cleaning up"
+	just kube:delete

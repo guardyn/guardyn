@@ -1,0 +1,49 @@
+apiVersion: k3d.io/v1alpha4
+kind: Simple
+metadata:
+  name: guardyn3-poc
+servers: 3
+agents: 2
+kubeAPI:
+  hostPort: "6443"
+image: rancher/k3s:v1.29.4-k3s1
+options:
+  k3s:
+    extraArgs:
+      - arg: "--disable=traefik"
+        nodeFilters:
+          - server:*
+      - arg: "--tls-san=guardyn3.local"
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+  runtime:
+    gpuRequest: ""
+volumeMounts:
+  - volume: k3d-guardyn3-poc-registry
+    target: /var/lib/rancher/k3s/agent/containerd
+registries:
+  create:
+    name: guardyn3-registry
+    host: 0.0.0.0
+    hostPort: "5000"
+  config: |-
+    mirrors:
+      "guardyn3-registry:5000":
+        endpoint:
+          - "http://guardyn3-registry:5000"
+ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+  - port: 4222:4222
+    nodeFilters:
+      - agent:0
+  - port: 4223:4223
+    nodeFilters:
+      - agent:1

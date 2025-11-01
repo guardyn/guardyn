@@ -1,0 +1,7 @@
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+RUN apk add --no-cache bash git curl jq kubectl helm kustomize just k3d cosign trivy syft
+
+ENV RUSTFLAGS="-C opt-level=z"
+
+WORKDIR /workspace
