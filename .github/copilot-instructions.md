@@ -1,8 +1,8 @@
-# Guardyn3 AI Coding Instructions
+# Guardyn AI Coding Instructions
 
 ## Project Overview
 
-Guardyn3 is a privacy-focused secure communication platform (MVP/PoC phase) built with:
+Guardyn is a privacy-focused secure communication platform (MVP/PoC phase) built with:
 - **Security-first**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
 - **Infrastructure**: Kubernetes-native (k3d for local dev), FoundationDB + ScyllaDB for data, NATS JetStream for messaging
 - **Reproducibility**: Nix flakes for deterministic builds, SOPS + Age for secrets, cosign for artifact signing
@@ -105,7 +105,7 @@ This project MUST be **audit-ready** for security review:
 
 ### Key Design Decisions
 - **Kustomize over Helm for base manifests**: Helm only for 3rd-party operators (NATS, FDB, Scylla, Prometheus)
-- **k3d clusters mimic production**: 3 servers + 2 agents with Cilium CNI, registry at `guardyn3-registry:5000`
+- **k3d clusters mimic production**: 3 servers + 2 agents with Cilium CNI, registry at `guardyn-registry:5000`
 - **All secrets encrypted with SOPS**: Age keys in `infra/secrets/age-key.txt` (gitignored), config in `.sops.yaml`
 
 ## Developer Workflows
@@ -154,7 +154,7 @@ All workflows use Nix for reproducible environments.
 - **Scripts idempotent**: `bootstrap.sh`, `deploy.sh`, `verify.sh` safe to re-run
 
 ### Security
-- **All k8s manifests labeled**: `guardyn3.io/stage: poc` for easy filtering
+- **All k8s manifests labeled**: `guardyn.io/stage: poc` for easy filtering
 - **Port mappings explicit in k3d-config.yaml**: HTTP/HTTPS (80/443), NATS (4222/4223) exposed on localhost
 - **Image signatures required in prod**: Use `cosign verify` before deployment
 

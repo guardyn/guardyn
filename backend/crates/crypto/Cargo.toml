@@ -1,0 +1,31 @@
+[package]
+name = "guardyn-crypto"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Workspace dependencies
+guardyn-common = { path = "../common" }
+thiserror.workspace = true
+serde.workspace = true
+
+# Cryptography - Signal Protocol for 1-on-1 E2EE
+libsignal-protocol.workspace = true
+
+# MLS for group chat E2EE
+openmls.workspace = true
+
+# Curve25519 for key exchange
+x25519-dalek.workspace = true
+ed25519-dalek.workspace = true
+
+# Additional crypto primitives
+rand = "0.8"
+sha2 = "0.10"
+hkdf = "0.12"
+aes-gcm = "0.10"
+
+# Post-quantum (placeholder for future Kyber integration)
+# pqc_kyber = "0.8"

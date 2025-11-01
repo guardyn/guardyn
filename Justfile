@@ -7,8 +7,8 @@ kube-create:
 	k3d cluster create --config infra/k3d-config.yaml
 
 kube-delete:
-	@echo "[kube:delete] Deleting k3d cluster guardyn3-poc"
-	k3d cluster delete guardyn3-poc || true
+	@echo "[kube:delete] Deleting k3d cluster guardyn-poc"
+	k3d cluster delete guardyn-poc || true
 
 kube-bootstrap:
 	@echo "[kube:bootstrap] Installing core components"

@@ -1,7 +1,7 @@
 prometheus:
   prometheusSpec:
     retention: 12h
-    retentionSize: "15Gi"
+    retentionSize: "15GB"
     scrapeInterval: "15s"
     resources:
       requests:

@@ -1,0 +1,8 @@
+[package]
+name = "guardyn-media-service"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+guardyn-common = { path = "../common" }
+tokio.workspace = true
