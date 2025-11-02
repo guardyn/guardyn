@@ -314,4 +314,4 @@ Before deploying customizations:
 - Clear browser cache
 - Check for CSS syntax errors
 
-Need help? Open an issue: [github.com/anrysys/guardyn/issues](https://github.com/anrysys/guardyn/issues)
+Need help? Open an issue: [github.com/guardyn/guardyn/issues](https://github.com/guardyn/guardyn/issues)
