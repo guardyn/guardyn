@@ -137,6 +137,160 @@
             padding: 6rem 0;
         }
 
+        /* Hero Logo Container with Cosmic Effects */
+        .hero-logo-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 2rem;
+            perspective: 1000px;
+        }
+
+        .hero-logo-wrapper {
+            position: relative;
+            display: inline-block;
+            animation: float-logo 6s ease-in-out infinite;
+        }
+
+        @keyframes float-logo {
+            0%, 100% { transform: translateY(0px) rotateY(0deg); }
+            50% { transform: translateY(-20px) rotateY(5deg); }
+        }
+
+        .hero-logo-svg {
+            width: 200px;
+            height: 200px;
+            display: block;
+            filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.6))
+                    drop-shadow(0 0 80px rgba(139, 92, 246, 0.4))
+                    drop-shadow(0 20px 60px rgba(99, 102, 241, 0.3));
+            animation: pulse-glow 4s ease-in-out infinite;
+            position: relative;
+            z-index: 3;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.6))
+                        drop-shadow(0 0 80px rgba(139, 92, 246, 0.4))
+                        drop-shadow(0 20px 60px rgba(99, 102, 241, 0.3));
+            }
+            50% {
+                filter: drop-shadow(0 0 60px rgba(99, 102, 241, 0.9))
+                        drop-shadow(0 0 120px rgba(139, 92, 246, 0.6))
+                        drop-shadow(0 30px 90px rgba(99, 102, 241, 0.5));
+            }
+        }
+
+        /* Cosmic Mist Effect */
+        .cosmic-mist {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle at center,
+                rgba(99, 102, 241, 0.3) 0%,
+                rgba(139, 92, 246, 0.2) 30%,
+                rgba(16, 185, 129, 0.1) 50%,
+                transparent 70%);
+            filter: blur(40px);
+            animation: cosmic-breath 8s ease-in-out infinite;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @keyframes cosmic-breath {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.3);
+                opacity: 0.9;
+            }
+        }
+
+        /* Magical Particles around Logo */
+        .magic-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .magic-particle:nth-child(1) {
+            animation: orbit1 10s linear infinite;
+        }
+        .magic-particle:nth-child(2) {
+            animation: orbit2 12s linear infinite;
+        }
+        .magic-particle:nth-child(3) {
+            animation: orbit3 15s linear infinite;
+        }
+        .magic-particle:nth-child(4) {
+            animation: orbit4 18s linear infinite;
+        }
+        .magic-particle:nth-child(5) {
+            animation: orbit5 20s linear infinite;
+        }
+
+        @keyframes orbit1 {
+            0% { transform: rotate(0deg) translateX(120px) rotate(0deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            100% { transform: rotate(360deg) translateX(120px) rotate(-360deg); opacity: 0; }
+        }
+        @keyframes orbit2 {
+            0% { transform: rotate(72deg) translateX(140px) rotate(-72deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            100% { transform: rotate(432deg) translateX(140px) rotate(-432deg); opacity: 0; }
+        }
+        @keyframes orbit3 {
+            0% { transform: rotate(144deg) translateX(100px) rotate(-144deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            100% { transform: rotate(504deg) translateX(100px) rotate(-504deg); opacity: 0; }
+        }
+        @keyframes orbit4 {
+            0% { transform: rotate(216deg) translateX(130px) rotate(-216deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            100% { transform: rotate(576deg) translateX(130px) rotate(-576deg); opacity: 0; }
+        }
+        @keyframes orbit5 {
+            0% { transform: rotate(288deg) translateX(110px) rotate(-288deg); opacity: 0; }
+            10%, 90% { opacity: 1; }
+            100% { transform: rotate(648deg) translateX(110px) rotate(-648deg); opacity: 0; }
+        }
+
+        /* Energy Ring */
+        .energy-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50%;
+            animation: ring-pulse 3s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes ring-pulse {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.3;
+                border-color: rgba(99, 102, 241, 0.3);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 0.6;
+                border-color: rgba(139, 92, 246, 0.6);
+            }
+        }
+
         .hero-logo {
             font-size: 4rem;
             font-weight: 800;
@@ -454,6 +608,20 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
+            <!-- Cosmic Logo with Magic Effects -->
+            <div class="hero-logo-container">
+                <div class="cosmic-mist"></div>
+                <div class="energy-ring"></div>
+                <div class="hero-logo-wrapper">
+                    <img src="/media/logo.svg" alt="Guardyn Shield" class="hero-logo-svg">
+                    <div class="magic-particle"></div>
+                    <div class="magic-particle"></div>
+                    <div class="magic-particle"></div>
+                    <div class="magic-particle"></div>
+                    <div class="magic-particle"></div>
+                </div>
+            </div>
+
             <h1 class="hero-logo">Guardyn</h1>
             <p class="tagline">The Privacy Rebellion Starts Now</p>
             <p class="description">
