@@ -3,387 +3,817 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Guardyn - Secure end-to-end encrypted messenger implementing Signal Protocol. Self-hosted, cross-platform, privacy-first communication.">
-    <meta name="keywords" content="secure messaging, end-to-end encryption, Signal Protocol, privacy, self-hosted, encrypted messenger">
-    <meta property="og:title" content="Guardyn - Secure Messaging. Your Way.">
-    <meta property="og:description" content="End-to-end encrypted messenger with Signal Protocol. Self-hosted. Cross-platform. Open architecture.">
+    <meta name="description" content="Guardyn - Privacy-focused secure communication platform with E2EE messaging, voice/video calls, and live broadcasting. Built with X3DH, Double Ratchet, and OpenMLS.">
+    <meta name="keywords" content="secure messaging, end-to-end encryption, Signal Protocol, OpenMLS, privacy, self-hosted, encrypted messenger, WebRTC, quantum-resistant">
+    <meta property="og:title" content="Guardyn - The Privacy Rebellion Starts Now">
+    <meta property="og:description" content="Cryptographically-verified, audit-ready, quantum-resistant secure communication platform. Built with Rust, Kubernetes, FoundationDB, ScyllaDB, NATS JetStream.">
     <meta property="og:image" content="https://guardyn.co/media/logo.webp">
     <meta property="og:url" content="https://guardyn.co">
     <meta name="twitter:card" content="summary_large_image">
 
-    <title>Guardyn - Secure Messaging. Your Way.</title>
+    <title>Guardyn - Privacy-First Secure Communication Platform</title>
 
     <link rel="icon" type="image/webp" href="/media/logo.webp">
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
-
         * {
-            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .hero-bg {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
-                        url('/media/bg.webp');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #10b981;
         }
 
-        .feature-card {
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--background) 0%, #1e1b4b 100%);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Animated background particles */
+        .particle {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 20s infinite ease-in-out;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(-100vh) translateX(50px); }
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.3)); }
+            50% { filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.6)); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(10px);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 1rem 0;
         }
 
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .gradient-text {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .logo-link img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 6rem 0;
+        }
+
+        .hero-logo {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+
+        .description {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+            line-height: 1.8;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
             transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
         }
 
         .btn-secondary {
-            transition: all 0.3s ease;
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--primary);
         }
 
         .btn-secondary:hover {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: #3b82f6;
+            background: var(--primary);
+            transform: translateY(-2px);
         }
 
-        .tech-badge {
-            backdrop-filter: blur(10px);
+        .cta {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            text-align: center;
             transition: all 0.3s ease;
         }
 
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Features Section */
+        .section {
+            padding: 6rem 0;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 4rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .feature-text {
+            font-size: 1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Tech Stack */
+        .tech-category {
+            margin-bottom: 3rem;
+        }
+
+        .tech-category-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .tech-badge {
+            background: var(--surface);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
         .tech-badge:hover {
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(99, 102, 241, 0.2);
             transform: scale(1.05);
+            border-color: var(--primary);
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
+        /* Footer */
+        footer {
+            background: var(--surface);
+            border-top: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 3rem 0 2rem;
+            margin-top: 6rem;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-section a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(99, 102, 241, 0.2);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .footer-bottom a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .footer-bottom a:hover {
+            text-decoration: underline;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .hero-logo {
+                font-size: 2.5rem;
             }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+
+            .tagline {
+                font-size: 1.2rem;
+            }
+
+            .description {
+                font-size: 1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
-
-        .animate-fade-in-up {
-            animation: fadeInUp 0.8s ease-out forwards;
-        }
-
-        .delay-100 { animation-delay: 0.1s; opacity: 0; }
-        .delay-200 { animation-delay: 0.2s; opacity: 0; }
-        .delay-300 { animation-delay: 0.3s; opacity: 0; }
-        .delay-400 { animation-delay: 0.4s; opacity: 0; }
-    </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body>
+    <!-- Animated particles -->
+    <script>
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+            document.body.appendChild(particle);
+        }
+    </script>
+
     <!-- Navigation -->
-    <nav class="fixed w-full z-50 bg-gray-900/80 backdrop-blur-lg border-b border-white/10">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <img src="/media/logo.webp" alt="Guardyn Logo" class="h-10 w-10">
-                    <span class="text-2xl font-bold">Guardyn</span>
-                </div>
-                <div class="hidden md:flex space-x-8 items-center">
-                    <a href="#features" class="hover:text-blue-400 transition">Features</a>
-                    <a href="#tech" class="hover:text-blue-400 transition">Technology</a>
-                    <a href="#beta" class="hover:text-blue-400 transition">Beta</a>
-                    <a href="https://github.com/guardyn" target="_blank" class="hover:text-blue-400 transition">GitHub</a>
-                    <a href="#beta" class="btn-primary px-6 py-2 rounded-lg font-semibold">Join Beta</a>
-                </div>
-                <!-- Mobile menu button -->
-                <button id="mobile-menu-btn" class="md:hidden text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        <!-- Mobile menu -->
-        <div id="mobile-menu" class="hidden md:hidden bg-gray-900/95 border-t border-white/10">
-            <div class="container mx-auto px-4 py-4 space-y-3">
-                <a href="#features" class="block hover:text-blue-400 transition">Features</a>
-                <a href="#tech" class="block hover:text-blue-400 transition">Technology</a>
-                <a href="#beta" class="block hover:text-blue-400 transition">Beta</a>
-                <a href="https://github.com/guardyn" target="_blank" class="block hover:text-blue-400 transition">GitHub</a>
+    <nav>
+        <div class="container">
+            <div class="nav-container">
+                <a href="/" class="logo-link">
+                    <img src="/media/logo.webp" alt="Guardyn Logo">
+                    <span class="logo-text">Guardyn</span>
+                </a>
+                <ul class="nav-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#tech">Technology</a></li>
+                    <li><a href="#architecture">Architecture</a></li>
+                    <li><a href="https://github.com/anrysys/guardyn" target="_blank">GitHub</a></li>
+                    <li><a href="#beta" class="btn btn-primary">Join Beta</a></li>
+                </ul>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero-bg min-h-screen flex items-center pt-20">
-        <div class="container mx-auto px-4 py-20">
-            <div class="max-w-5xl mx-auto text-center">
-                <div class="mb-8 animate-fade-in-up">
-                    <img src="/media/logo.webp" alt="Guardyn" class="h-32 w-32 mx-auto mb-6">
-                </div>
-                <h1 class="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 animate-fade-in-up delay-100">
-                    Secure Messaging.<br/>
-                    <span class="gradient-text">Your Way.</span>
-                </h1>
-                <p class="text-xl md:text-2xl text-gray-300 mb-12 leading-relaxed max-w-3xl mx-auto animate-fade-in-up delay-200">
-                    End-to-end encrypted messenger with Signal Protocol.<br/>
-                    <span class="text-blue-400 font-semibold">Self-hosted.</span>
-                    <span class="text-purple-400 font-semibold">Cross-platform.</span>
-                    <span class="text-green-400 font-semibold">Open architecture.</span>
-                </p>
+    <section class="hero">
+        <div class="container">
+            <h1 class="hero-logo">Guardyn</h1>
+            <p class="tagline">The Privacy Rebellion Starts Now</p>
+            <p class="description">
+                <strong>"Your conversations are not a product. Your metadata is not for sale. Your privacy is not negotiable."</strong>
+                <br><br>
+                Cryptographically-verified, audit-ready, quantum-resistant secure communication platform.
+                Built with <span class="gradient-text">X3DH, Double Ratchet, and OpenMLS</span> protocols.
+            </p>
 
-                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in-up delay-300">
-                    <a href="#beta" class="btn-primary px-10 py-4 rounded-lg font-semibold text-lg shadow-lg">
-                        🚀 Join Beta Testing
-                    </a>
-                    <a href="https://github.com/guardyn" target="_blank" class="btn-secondary border-2 border-blue-600 hover:bg-blue-900/50 px-10 py-4 rounded-lg font-semibold text-lg">
-                        <span class="inline-flex items-center">
-                            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                            </svg>
-                            View on GitHub
-                        </span>
-                    </a>
-                </div>
+            <div class="cta">
+                <a href="#beta" class="btn btn-primary">🚀 Join Beta Testing</a>
+                <a href="https://github.com/anrysys/guardyn" target="_blank" class="btn btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    View on GitHub
+                </a>
+            </div>
 
-                <!-- Stats -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto animate-fade-in-up delay-400">
-                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-                        <div class="text-3xl font-bold text-blue-400">E2EE</div>
-                        <div class="text-sm text-gray-400 mt-2">Signal Protocol</div>
-                    </div>
-                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-                        <div class="text-3xl font-bold text-purple-400">100%</div>
-                        <div class="text-sm text-gray-400 mt-2">Open Source</div>
-                    </div>
-                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-                        <div class="text-3xl font-bold text-green-400">Self</div>
-                        <div class="text-sm text-gray-400 mt-2">Hosted</div>
-                    </div>
-                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-                        <div class="text-3xl font-bold text-yellow-400">Multi</div>
-                        <div class="text-sm text-gray-400 mt-2">Platform</div>
-                    </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">E2EE</div>
+                    <div class="stat-label">Signal + OpenMLS</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">PQ</div>
+                    <div class="stat-label">Quantum-Resistant</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Open Source</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">K8s</div>
+                    <div class="stat-label">Cloud-Native</div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="py-20 bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">
-                    Why Choose <span class="gradient-text">Guardyn</span>?
-                </h2>
-                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-                    Built with privacy and security at its core, leveraging industry-standard protocols
-                </p>
+    <section id="features" class="section">
+        <div class="container">
+            <h2 class="section-title">Why Choose <span class="gradient-text">Guardyn</span>?</h2>
+            <p class="section-subtitle">
+                Military-grade cryptography meets enterprise-grade infrastructure.
+                Built by security engineers for the privacy-conscious era.
+            </p>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🔐</div>
+                    <h3 class="feature-title">Unbreakable Cryptography</h3>
+                    <p class="feature-text">
+                        X3DH key exchange, Double Ratchet (Signal Protocol), OpenMLS for groups,
+                        and Kyber+ECDH hybrid for quantum resistance. Perfect Forward Secrecy guaranteed.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🛡️</div>
+                    <h3 class="feature-title">Audit-Ready Transparency</h3>
+                    <p class="feature-text">
+                        Reproducible builds with Nix, SBOM generation, artifact signing with Cosign,
+                        TLA+ formal proofs, and independent security audits (Cure53, Symbolic Software).
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🏗️</div>
+                    <h3 class="feature-title">Enterprise Infrastructure</h3>
+                    <p class="feature-text">
+                        Rust backend, FoundationDB for consensus, ScyllaDB for high-throughput storage,
+                        NATS JetStream for messaging, Kubernetes-native with triple redundancy.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">High Performance</h3>
+                    <p class="feature-text">
+                        Message delivery &lt;500ms, call setup &lt;2s, voice latency &lt;150ms,
+                        1080p video at 30fps, 1000+ messages/sec throughput.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">📱</div>
+                    <h3 class="feature-title">True Cross-Platform</h3>
+                    <p class="feature-text">
+                        Flutter-powered clients for iOS, Android, Windows, macOS, Linux, and Web.
+                        One codebase, native performance everywhere.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">📞</div>
+                    <h3 class="feature-title">E2EE Voice & Video</h3>
+                    <p class="feature-text">
+                        WebRTC with SFrame encryption, Opus codec for audio, VP9/AV1 for video.
+                        First platform with E2EE live broadcasting (&lt;2s latency).
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">👥</div>
+                    <h3 class="feature-title">OpenMLS Group Chat</h3>
+                    <p class="feature-text">
+                        IETF-standard Messaging Layer Security for groups up to 1000 members.
+                        Cryptographic guarantees for group confidentiality and integrity.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">Hardware-Backed Keys</h3>
+                    <p class="feature-text">
+                        Secure Enclave (iOS), StrongBox (Android), TPM (desktop) integration.
+                        Private keys never leave secure hardware.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🌐</div>
+                    <h3 class="feature-title">Self-Hosted Option</h3>
+                    <p class="feature-text">
+                        Full data sovereignty with Community Edition (Apache-2.0).
+                        Deploy on your infrastructure with complete control.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Stack Section -->
+    <section id="tech" class="section" style="background: var(--surface);">
+        <div class="container">
+            <h2 class="section-title"><span class="gradient-text">Technology</span> Stack</h2>
+            <p class="section-subtitle">
+                Modern, battle-tested technologies for maximum security and performance
+            </p>
+
+            <div class="tech-category">
+                <h3 class="tech-category-title">🦀 Backend Services (Rust)</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">Rust (Memory-Safe)</span>
+                    <span class="tech-badge">gRPC APIs</span>
+                    <span class="tech-badge">Auth Service</span>
+                    <span class="tech-badge">Messaging Service</span>
+                    <span class="tech-badge">Media Service</span>
+                    <span class="tech-badge">Presence Service</span>
+                    <span class="tech-badge">Notification Service</span>
+                </div>
             </div>
 
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                <!-- Feature 1 -->
-                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
-                    <div class="text-5xl mb-4">🔐</div>
-                    <h3 class="text-2xl font-bold mb-3">Signal Protocol</h3>
-                    <p class="text-gray-400 leading-relaxed">
-                        Industry-standard end-to-end encryption with perfect forward secrecy.
-                        X3DH key agreement and Double Ratchet algorithm ensure maximum security.
+            <div class="tech-category">
+                <h3 class="tech-category-title">💾 Data Layer</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">FoundationDB (Consensus)</span>
+                    <span class="tech-badge">ScyllaDB (High-Throughput)</span>
+                    <span class="tech-badge">NATS JetStream (Messaging)</span>
+                    <span class="tech-badge">Redis (Caching)</span>
+                    <span class="tech-badge">MinIO (Object Storage)</span>
+                </div>
+            </div>
+
+            <div class="tech-category">
+                <h3 class="tech-category-title">🔐 Cryptography</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">Signal Protocol (libsignal)</span>
+                    <span class="tech-badge">OpenMLS (Groups)</span>
+                    <span class="tech-badge">X3DH Key Exchange</span>
+                    <span class="tech-badge">Double Ratchet</span>
+                    <span class="tech-badge">Kyber (Post-Quantum)</span>
+                    <span class="tech-badge">X25519 / Ed25519</span>
+                    <span class="tech-badge">AES-256-GCM</span>
+                    <span class="tech-badge">SFrame (Media E2EE)</span>
+                </div>
+            </div>
+
+            <div class="tech-category">
+                <h3 class="tech-category-title">📱 Client Applications</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">Flutter 3.x</span>
+                    <span class="tech-badge">Dart</span>
+                    <span class="tech-badge">BLoC Pattern</span>
+                    <span class="tech-badge">WebRTC</span>
+                    <span class="tech-badge">Tauri (Desktop)</span>
+                    <span class="tech-badge">WebAssembly</span>
+                </div>
+            </div>
+
+            <div class="tech-category">
+                <h3 class="tech-category-title">☸️ Infrastructure</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">Kubernetes (k3d/k3s)</span>
+                    <span class="tech-badge">Kustomize</span>
+                    <span class="tech-badge">Helm Charts</span>
+                    <span class="tech-badge">Cilium CNI</span>
+                    <span class="tech-badge">cert-manager</span>
+                    <span class="tech-badge">SOPS + Age (Secrets)</span>
+                </div>
+            </div>
+
+            <div class="tech-category">
+                <h3 class="tech-category-title">📊 Observability</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">Prometheus</span>
+                    <span class="tech-badge">Grafana</span>
+                    <span class="tech-badge">Loki (Logging)</span>
+                    <span class="tech-badge">Tempo (Tracing)</span>
+                    <span class="tech-badge">OpenTelemetry</span>
+                </div>
+            </div>
+
+            <div class="tech-category">
+                <h3 class="tech-category-title">🔧 DevOps & Security</h3>
+                <div class="tech-badges">
+                    <span class="tech-badge">Nix Flakes (Reproducible Builds)</span>
+                    <span class="tech-badge">GitHub Actions</span>
+                    <span class="tech-badge">Cosign (Artifact Signing)</span>
+                    <span class="tech-badge">Syft (SBOM)</span>
+                    <span class="tech-badge">cargo-audit</span>
+                    <span class="tech-badge">TLA+ Specifications</span>
+                    <span class="tech-badge">ProVerif (Crypto Proofs)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="section">
+        <div class="container">
+            <h2 class="section-title">Production-Grade <span class="gradient-text">Architecture</span></h2>
+            <p class="section-subtitle">
+                Kubernetes-native design with battle-tested components
+            </p>
+
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Microservices Architecture</h3>
+                    <p class="feature-text">
+                        5 core services (Auth, Messaging, Media, Presence, Notifications)
+                        deployed across namespaces: platform, data, messaging, observability, apps.
                     </p>
                 </div>
 
-                <!-- Feature 2 -->
-                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
-                    <div class="text-5xl mb-4">🏠</div>
-                    <h3 class="text-2xl font-bold mb-3">Self-Hosted</h3>
-                    <p class="text-gray-400 leading-relaxed">
-                        Full control over your data. Deploy backend services and authentication on your own infrastructure
-                        with complete privacy and security.
+                <div class="feature">
+                    <div class="feature-icon">🔄</div>
+                    <h3 class="feature-title">Event-Driven Messaging</h3>
+                    <p class="feature-text">
+                        NATS JetStream streams (MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
+                        with at-least-once delivery and configurable retention.
                     </p>
                 </div>
 
-                <!-- Feature 3 -->
-                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
-                    <div class="text-5xl mb-4">📱</div>
-                    <h3 class="text-2xl font-bold mb-3">Cross-Platform</h3>
-                    <p class="text-gray-400 leading-relaxed">
-                        Flutter-powered application running seamlessly on Android, iOS, Web,
-                        Windows, macOS, and Linux. One codebase, everywhere.
+                <div class="feature">
+                    <div class="feature-icon">💪</div>
+                    <h3 class="feature-title">Triple Redundancy</h3>
+                    <p class="feature-text">
+                        3-node clusters for FoundationDB, ScyllaDB, and NATS.
+                        Fault-tolerant with automatic failover and recovery.
                     </p>
                 </div>
 
-                <!-- Feature 4 -->
-                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
-                    <div class="text-5xl mb-4">🚀</div>
-                    <h3 class="text-2xl font-bold mb-3">High Performance</h3>
-                    <p class="text-gray-400 leading-relaxed">
-                        ScyllaDB for high-throughput message storage, Redis for caching,
-                        WebSocket for real-time communication. Built for scale.
+                <div class="feature">
+                    <div class="feature-icon">📦</div>
+                    <h3 class="feature-title">Kustomize Overlays</h3>
+                    <p class="feature-text">
+                        Environment-specific configs (local, prod) with base manifests.
+                        GitOps-ready for declarative infrastructure management.
                     </p>
                 </div>
 
-                <!-- Feature 5 -->
-                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
-                    <div class="text-5xl mb-4">🎙️</div>
-                    <h3 class="text-2xl font-bold mb-3">Voice & Video</h3>
-                    <p class="text-gray-400 leading-relaxed">
-                        WebRTC-powered encrypted voice and video calls with peer-to-peer
-                        connection and TURN fallback for NAT traversal.
+                <div class="feature">
+                    <div class="feature-icon">🔑</div>
+                    <h3 class="feature-title">Secrets Management</h3>
+                    <p class="feature-text">
+                        Age encryption with SOPS for all sensitive configs.
+                        Zero plaintext secrets in git, vault-backed for production.
                     </p>
                 </div>
 
-                <!-- Feature 6 -->
-                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
-                    <div class="text-5xl mb-4">🤖</div>
-                    <h3 class="text-2xl font-bold mb-3">Bot Platform</h3>
-                    <p class="text-gray-400 leading-relaxed">
-                        Extensible bot platform with webhook support. Automate workflows,
-                        integrate services, and build custom solutions.
+                <div class="feature">
+                    <div class="feature-icon">🚀</div>
+                    <h3 class="feature-title">CI/CD Pipeline</h3>
+                    <p class="feature-text">
+                        Automated builds with Nix, security scans (cargo-audit, clippy),
+                        integration tests on k3d, signed releases with Cosign.
                     </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Technology Stack -->
-    <section id="tech" class="py-20 bg-gradient-to-b from-gray-900 to-gray-800">
-        <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">
-                    <span class="gradient-text">Technology</span> Stack
-                </h2>
-                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
-                    Modern, battle-tested technologies for security and performance
+    <!-- Beta Sign Up Section -->
+    <section id="beta" class="section" style="background: var(--surface);">
+        <div class="container">
+            <div style="max-width: 700px; margin: 0 auto; background: var(--background); padding: 3rem; border-radius: 16px; border: 2px solid var(--primary); box-shadow: 0 20px 60px rgba(99, 102, 241, 0.3);">
+                <h2 class="section-title">Join the Privacy Rebellion</h2>
+                <p class="section-subtitle">
+                    Be among the first to try Guardyn. Get early access and help shape
+                    the future of secure communication.
                 </p>
-            </div>
 
-            <div class="max-w-6xl mx-auto">
-                <!-- Backend -->
-                <div class="mb-12">
-                    <h3 class="text-2xl font-bold mb-6 text-center text-blue-400">Backend Services</h3>
-                    <div class="flex flex-wrap justify-center gap-4">
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Go Microservices</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Node.js</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">PostgreSQL</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">ScyllaDB</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Redis</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">MinIO</span>
+                <form action="https://formspree.io/f/xblzezyv" method="POST" style="margin-top: 2rem;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Your Email:</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="your@email.com"
+                            required
+                            style="width: 100%; padding: 1rem; border-radius: 8px; background: var(--surface); border: 1px solid rgba(99, 102, 241, 0.3); color: var(--text); font-size: 1rem;">
                     </div>
-                </div>
 
-                <!-- Client -->
-                <div class="mb-12">
-                    <h3 class="text-2xl font-bold mb-6 text-center text-purple-400">Client</h3>
-                    <div class="flex flex-wrap justify-center gap-4">
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Flutter 3.x</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Dart</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">BLoC Pattern</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">WebRTC</span>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label for="message" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Your Message (Optional):</label>
+                        <textarea
+                            id="message"
+                            name="message"
+                            rows="4"
+                            placeholder="Tell us about your use case or what features interest you most..."
+                            style="width: 100%; padding: 1rem; border-radius: 8px; background: var(--surface); border: 1px solid rgba(99, 102, 241, 0.3); color: var(--text); font-size: 1rem; resize: vertical;"></textarea>
                     </div>
-                </div>
 
-                <!-- Crypto -->
-                <div class="mb-12">
-                    <h3 class="text-2xl font-bold mb-6 text-center text-green-400">Cryptography</h3>
-                    <div class="flex flex-wrap justify-center gap-4">
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Signal Protocol</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">X25519</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Ed25519</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">AES-256-GCM</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">HKDF-SHA256</span>
-                    </div>
-                </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem;">
+                        🚀 Sign Up for Beta Access
+                    </button>
 
-                <!-- Infrastructure -->
-                <div>
-                    <h3 class="text-2xl font-bold mb-6 text-center text-yellow-400">Infrastructure</h3>
-                    <div class="flex flex-wrap justify-center gap-4">
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Docker</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Kubernetes</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Kong Gateway</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Prometheus</span>
-                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Grafana</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Beta Sign Up -->
-    <section id="beta" class="py-20 bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="max-w-3xl mx-auto bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-lg p-12 rounded-3xl border border-white/10 shadow-2xl">
-                <div class="text-center mb-8">
-                    <h2 class="text-4xl md:text-5xl font-bold mb-4">Join Beta Testing</h2>
-                    <p class="text-xl text-gray-300">
-                        Be among the first to try Guardyn. Get early access and help shape
-                        the future of secure messaging.
-                    </p>
-                </div>
-
-                <form id="beta-form" class="space-y-4" action="https://formspree.io/f/xblzezyv" method="POST">
-                    <div class="space-y-4">
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Your email:</label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                placeholder="your@email.com"
-                                class="w-full px-6 py-4 rounded-lg bg-white/10 border border-white/20 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
-                                required>
-                        </div>
-                        <div>
-                            <label for="message" class="block text-sm font-medium text-gray-300 mb-2">Your message:</label>
-                            <textarea
-                                id="message"
-                                name="message"
-                                rows="4"
-                                placeholder="Tell us about your use case or what features interest you most..."
-                                class="w-full px-6 py-4 rounded-lg bg-white/10 border border-white/20 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition resize-none"></textarea>
-                        </div>
-                        <button
-                            type="submit"
-                            class="w-full btn-primary px-10 py-4 rounded-lg font-semibold text-lg shadow-lg">
-                            🚀 Sign Up for Beta
-                        </button>
-                    </div>
-                    <p class="text-sm text-gray-400 text-center">
+                    <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
                         We respect your privacy. Your email will only be used for beta updates.
                     </p>
                 </form>
 
-                <div class="mt-8 pt-8 border-t border-white/10 text-center">
-                    <p class="text-gray-400 mb-4">Or follow development on:</p>
-                    <div class="flex justify-center gap-6">
-                        <a href="https://github.com/guardyn" target="_blank" class="text-gray-400 hover:text-white transition">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(99, 102, 241, 0.2); text-align: center;">
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">Or follow development on:</p>
+                    <div style="display: flex; justify-content: center; gap: 1.5rem;">
+                        <a href="https://github.com/anrysys/guardyn" target="_blank" style="color: var(--text-muted); transition: color 0.3s ease;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                             </svg>
                         </a>
-                        <a href="https://linkedin.com/company/guardyn" target="_blank" class="text-gray-400 hover:text-white transition">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        <a href="https://twitter.com/guardyn_io" target="_blank" style="color: var(--text-muted); transition: color 0.3s ease;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
                             </svg>
                         </a>
                     </div>
@@ -393,93 +823,70 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gray-950 py-12 border-t border-white/10">
-        <div class="container mx-auto px-4">
-            <div class="grid md:grid-cols-4 gap-8 mb-8">
-                <div>
-                    <div class="flex items-center space-x-3 mb-4">
-                        <img src="/media/logo.webp" alt="Guardyn" class="h-8 w-8">
-                        <span class="text-xl font-bold">Guardyn</span>
-                    </div>
-                    <p class="text-gray-400 text-sm">
-                        Privacy-first secure messaging for everyone.
-                    </p>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-4">Product</h4>
-                    <ul class="space-y-2 text-gray-400 text-sm">
-                        <li><a href="#features" class="hover:text-white transition">Features</a></li>
-                        <li><a href="#tech" class="hover:text-white transition">Technology</a></li>
-                        <li><a href="#beta" class="hover:text-white transition">Beta Program</a></li>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#tech">Technology</a></li>
+                        <li><a href="#architecture">Architecture</a></li>
+                        <li><a href="#beta">Beta Program</a></li>
                     </ul>
                 </div>
 
-                <div>
-                    <h4 class="font-bold mb-4">Resources</h4>
-                    <ul class="space-y-2 text-gray-400 text-sm">
-                        <li><a href="https://github.com/guardyn" target="_blank" class="hover:text-white transition">GitHub</a></li>
-                        <li><a href="https://github.com/anrysys/guardyn/tree/main/docs" target="_blank" class="hover:text-white transition">Documentation</a></li>
-                        <li><a href="https://github.com/anrysys/guardyn/blob/main/docs/api/rest-api.md" target="_blank" class="hover:text-white transition">API</a></li>
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/README.md" target="_blank">README</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/docs/IMPLEMENTATION_PLAN.md" target="_blank">Implementation Plan</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/docs/infra_poc.md" target="_blank">Infrastructure Guide</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/docs/mvp_discovery.md" target="_blank">MVP Discovery</a></li>
                     </ul>
                 </div>
 
-                <div>
-                    <h4 class="font-bold mb-4">Connect</h4>
-                    <ul class="space-y-2 text-gray-400 text-sm">
-                        <li><a href="https://github.com/guardyn" target="_blank" class="hover:text-white transition">GitHub</a></li>
-                        <li><a href="https://linkedin.com/company/guardyn" target="_blank" class="hover:text-white transition">LinkedIn</a></li>
-                        <li><a href="mailto:contact@guardyn.co" class="hover:text-white transition">Contact</a></li>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="https://github.com/anrysys/guardyn" target="_blank">GitHub Repository</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/LICENSE" target="_blank">License</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/issues" target="_blank">Issue Tracker</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://github.com/anrysys/guardyn" target="_blank">GitHub</a></li>
+                        <li><a href="https://twitter.com/guardyn_io" target="_blank">Twitter/X</a></li>
+                        <li><a href="mailto:hello@guardyn.io">Contact</a></li>
                     </ul>
                 </div>
             </div>
 
-            <div class="pt-8 border-t border-white/10 text-center text-gray-400 text-sm">
-                <p>&copy; 2025 Guardyn. Built with privacy and security in mind.</p>
-                <p class="mt-2">
-                    <a href="privacy.html" class="hover:text-white transition">Privacy Policy</a> ·
-                    <a href="terms.html" class="hover:text-white transition">Terms of Service</a>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Guardyn Team. Built with 🔐 by privacy advocates, for privacy advocates.</p>
+                <p style="margin-top: 0.5rem;">
+                    <a href="privacy.html">Privacy Policy</a> •
+                    <a href="terms.html">Terms of Service</a> •
+                    Licensed under <a href="https://github.com/anrysys/guardyn/blob/main/LICENSE" target="_blank">Apache-2.0</a>
                 </p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Mobile menu toggle
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-
-        mobileMenuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-
-        // Smooth scrolling
+        // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    mobileMenu.classList.add('hidden');
                 }
             });
-        });
-
-        // Form submission
-        const betaForm = document.getElementById('beta-form');
-        betaForm.addEventListener('submit', (e) => {
-            // Form will be handled by Formspree or your backend
-            // Add custom handling if needed
-        });
-
-        // Navbar background on scroll
-        const nav = document.querySelector('nav');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                nav.classList.add('bg-gray-900');
-            } else {
-                nav.classList.remove('bg-gray-900');
-            }
         });
     </script>
 </body>
