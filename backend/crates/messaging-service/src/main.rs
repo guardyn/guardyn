@@ -7,7 +7,7 @@
 /// - Delivery guarantees
 /// - Group chat logic
 
-use guardyn_common::{config::ServiceConfig, observability};
+use guardyn_iommon::{config::ServiceConfig, observability};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -504,7 +504,7 @@ By 2030, we envision a world where:
 - 🔗 [Download Apps](https://guardyn.io/download) (iOS, Android, Desktop, Web)
 - 📚 [User Guide](https://docs.guardyn.io/users)
 - 💬 [Community Forum](https://community.guardyn.io)
-- 🐦 [Twitter/X](https://twitter.com/guardyn_io)
+- 🐦 [Twitter/X](https://x.com/guardyn_io)
 
 ### **For Developers:**
 
@@ -605,7 +605,7 @@ Every video call without E2EE is potentially recorded by nation-states.
   <a href="https://guardyn.io">Website</a> •
   <a href="https://docs.guardyn.io">Docs</a> •
   <a href="https://github.com/guardyn/guardyn">GitHub</a> •
-  <a href="https://twitter.com/guardyn_io">Twitter</a> •
+  <a href="https://x.com/guardyn_io">Twitter</a> •
   <a href="mailto:hello@guardyn.io">Contact</a>
 </p>
 
