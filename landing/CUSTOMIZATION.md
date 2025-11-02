@@ -134,7 +134,7 @@ Customize form fields:
 <meta name="keywords" content="your, keywords, here">
 <meta property="og:title" content="Your Page Title">
 <meta property="og:description" content="Social media preview description">
-<meta property="og:image" content="https://guardyn.app/social-preview.png">
+<meta property="og:image" content="https://guardyn.co/social-preview.png">
 ```
 
 **Create social preview image:**
@@ -146,7 +146,7 @@ Customize form fields:
 
 ```xml
 <url>
-    <loc>https://guardyn.app/</loc>
+    <loc>https://guardyn.co/</loc>
     <lastmod>2025-10-21</lastmod> <!-- Update date -->
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
