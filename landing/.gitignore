@@ -1,0 +1,28 @@
+# Node modules (if using build tools later)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+.output/
+.cache/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cloudflare
+.wrangler/
+wrangler.toml

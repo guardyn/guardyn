@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Guardyn - Secure end-to-end encrypted messenger implementing Signal Protocol. Self-hosted, cross-platform, privacy-first communication.">
+    <meta name="keywords" content="secure messaging, end-to-end encryption, Signal Protocol, privacy, self-hosted, encrypted messenger">
+    <meta property="og:title" content="Guardyn - Secure Messaging. Your Way.">
+    <meta property="og:description" content="End-to-end encrypted messenger with Signal Protocol. Self-hosted. Cross-platform. Open architecture.">
+    <meta property="og:image" content="https://guardyn.app/media/logo.webp">
+    <meta property="og:url" content="https://guardyn.app">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <title>Guardyn - Secure Messaging. Your Way.</title>
+
+    <link rel="icon" type="image/webp" href="/media/logo.webp">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hero-bg {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
+                        url('/media/bg.webp');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .feature-card {
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.3);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: #3b82f6;
+        }
+
+        .tech-badge {
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .tech-badge:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: scale(1.05);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        .delay-100 { animation-delay: 0.1s; opacity: 0; }
+        .delay-200 { animation-delay: 0.2s; opacity: 0; }
+        .delay-300 { animation-delay: 0.3s; opacity: 0; }
+        .delay-400 { animation-delay: 0.4s; opacity: 0; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-gray-900/80 backdrop-blur-lg border-b border-white/10">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="/media/logo.webp" alt="Guardyn Logo" class="h-10 w-10">
+                    <span class="text-2xl font-bold">Guardyn</span>
+                </div>
+                <div class="hidden md:flex space-x-8 items-center">
+                    <a href="#features" class="hover:text-blue-400 transition">Features</a>
+                    <a href="#tech" class="hover:text-blue-400 transition">Technology</a>
+                    <a href="#beta" class="hover:text-blue-400 transition">Beta</a>
+                    <a href="https://github.com/guardyn" target="_blank" class="hover:text-blue-400 transition">GitHub</a>
+                    <a href="#beta" class="btn-primary px-6 py-2 rounded-lg font-semibold">Join Beta</a>
+                </div>
+                <!-- Mobile menu button -->
+                <button id="mobile-menu-btn" class="md:hidden text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-gray-900/95 border-t border-white/10">
+            <div class="container mx-auto px-4 py-4 space-y-3">
+                <a href="#features" class="block hover:text-blue-400 transition">Features</a>
+                <a href="#tech" class="block hover:text-blue-400 transition">Technology</a>
+                <a href="#beta" class="block hover:text-blue-400 transition">Beta</a>
+                <a href="https://github.com/guardyn" target="_blank" class="block hover:text-blue-400 transition">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg min-h-screen flex items-center pt-20">
+        <div class="container mx-auto px-4 py-20">
+            <div class="max-w-5xl mx-auto text-center">
+                <div class="mb-8 animate-fade-in-up">
+                    <img src="/media/logo.webp" alt="Guardyn" class="h-32 w-32 mx-auto mb-6">
+                </div>
+                <h1 class="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 animate-fade-in-up delay-100">
+                    Secure Messaging.<br/>
+                    <span class="gradient-text">Your Way.</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 mb-12 leading-relaxed max-w-3xl mx-auto animate-fade-in-up delay-200">
+                    End-to-end encrypted messenger with Signal Protocol.<br/>
+                    <span class="text-blue-400 font-semibold">Self-hosted.</span>
+                    <span class="text-purple-400 font-semibold">Cross-platform.</span>
+                    <span class="text-green-400 font-semibold">Open architecture.</span>
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in-up delay-300">
+                    <a href="#beta" class="btn-primary px-10 py-4 rounded-lg font-semibold text-lg shadow-lg">
+                        🚀 Join Beta Testing
+                    </a>
+                    <a href="https://github.com/guardyn" target="_blank" class="btn-secondary border-2 border-blue-600 hover:bg-blue-900/50 px-10 py-4 rounded-lg font-semibold text-lg">
+                        <span class="inline-flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            View on GitHub
+                        </span>
+                    </a>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto animate-fade-in-up delay-400">
+                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                        <div class="text-3xl font-bold text-blue-400">E2EE</div>
+                        <div class="text-sm text-gray-400 mt-2">Signal Protocol</div>
+                    </div>
+                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                        <div class="text-3xl font-bold text-purple-400">100%</div>
+                        <div class="text-sm text-gray-400 mt-2">Open Source</div>
+                    </div>
+                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                        <div class="text-3xl font-bold text-green-400">Self</div>
+                        <div class="text-sm text-gray-400 mt-2">Hosted</div>
+                    </div>
+                    <div class="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
+                        <div class="text-3xl font-bold text-yellow-400">Multi</div>
+                        <div class="text-sm text-gray-400 mt-2">Platform</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                    Why Choose <span class="gradient-text">Guardyn</span>?
+                </h2>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                    Built with privacy and security at its core, leveraging industry-standard protocols
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                <!-- Feature 1 -->
+                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
+                    <div class="text-5xl mb-4">🔐</div>
+                    <h3 class="text-2xl font-bold mb-3">Signal Protocol</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        Industry-standard end-to-end encryption with perfect forward secrecy.
+                        X3DH key agreement and Double Ratchet algorithm ensure maximum security.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
+                    <div class="text-5xl mb-4">🏠</div>
+                    <h3 class="text-2xl font-bold mb-3">Self-Hosted</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        Full control over your data. Deploy backend services and authentication on your own infrastructure
+                        with complete privacy and security.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
+                    <div class="text-5xl mb-4">📱</div>
+                    <h3 class="text-2xl font-bold mb-3">Cross-Platform</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        Flutter-powered application running seamlessly on Android, iOS, Web,
+                        Windows, macOS, and Linux. One codebase, everywhere.
+                    </p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
+                    <div class="text-5xl mb-4">🚀</div>
+                    <h3 class="text-2xl font-bold mb-3">High Performance</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        ScyllaDB for high-throughput message storage, Redis for caching,
+                        WebSocket for real-time communication. Built for scale.
+                    </p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
+                    <div class="text-5xl mb-4">🎙️</div>
+                    <h3 class="text-2xl font-bold mb-3">Voice & Video</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        WebRTC-powered encrypted voice and video calls with peer-to-peer
+                        connection and TURN fallback for NAT traversal.
+                    </p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="feature-card bg-white/5 border border-white/10 p-8 rounded-2xl">
+                    <div class="text-5xl mb-4">🤖</div>
+                    <h3 class="text-2xl font-bold mb-3">Bot Platform</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        Extensible bot platform with webhook support. Automate workflows,
+                        integrate services, and build custom solutions.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Stack -->
+    <section id="tech" class="py-20 bg-gradient-to-b from-gray-900 to-gray-800">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                    <span class="gradient-text">Technology</span> Stack
+                </h2>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                    Modern, battle-tested technologies for security and performance
+                </p>
+            </div>
+
+            <div class="max-w-6xl mx-auto">
+                <!-- Backend -->
+                <div class="mb-12">
+                    <h3 class="text-2xl font-bold mb-6 text-center text-blue-400">Backend Services</h3>
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Go Microservices</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Node.js</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">PostgreSQL</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">ScyllaDB</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Redis</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">MinIO</span>
+                    </div>
+                </div>
+
+                <!-- Client -->
+                <div class="mb-12">
+                    <h3 class="text-2xl font-bold mb-6 text-center text-purple-400">Client</h3>
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Flutter 3.x</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Dart</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">BLoC Pattern</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">WebRTC</span>
+                    </div>
+                </div>
+
+                <!-- Crypto -->
+                <div class="mb-12">
+                    <h3 class="text-2xl font-bold mb-6 text-center text-green-400">Cryptography</h3>
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Signal Protocol</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">X25519</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Ed25519</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">AES-256-GCM</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">HKDF-SHA256</span>
+                    </div>
+                </div>
+
+                <!-- Infrastructure -->
+                <div>
+                    <h3 class="text-2xl font-bold mb-6 text-center text-yellow-400">Infrastructure</h3>
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Docker</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Kubernetes</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Kong Gateway</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Prometheus</span>
+                        <span class="tech-badge bg-white/5 border border-white/10 px-6 py-3 rounded-lg">Grafana</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Beta Sign Up -->
+    <section id="beta" class="py-20 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-3xl mx-auto bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-lg p-12 rounded-3xl border border-white/10 shadow-2xl">
+                <div class="text-center mb-8">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4">Join Beta Testing</h2>
+                    <p class="text-xl text-gray-300">
+                        Be among the first to try Guardyn. Get early access and help shape
+                        the future of secure messaging.
+                    </p>
+                </div>
+
+                <form id="beta-form" class="space-y-4" action="https://formspree.io/f/xblzezyv" method="POST">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Your email:</label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                placeholder="your@email.com"
+                                class="w-full px-6 py-4 rounded-lg bg-white/10 border border-white/20 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                                required>
+                        </div>
+                        <div>
+                            <label for="message" class="block text-sm font-medium text-gray-300 mb-2">Your message:</label>
+                            <textarea
+                                id="message"
+                                name="message"
+                                rows="4"
+                                placeholder="Tell us about your use case or what features interest you most..."
+                                class="w-full px-6 py-4 rounded-lg bg-white/10 border border-white/20 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition resize-none"></textarea>
+                        </div>
+                        <button
+                            type="submit"
+                            class="w-full btn-primary px-10 py-4 rounded-lg font-semibold text-lg shadow-lg">
+                            🚀 Sign Up for Beta
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-400 text-center">
+                        We respect your privacy. Your email will only be used for beta updates.
+                    </p>
+                </form>
+
+                <div class="mt-8 pt-8 border-t border-white/10 text-center">
+                    <p class="text-gray-400 mb-4">Or follow development on:</p>
+                    <div class="flex justify-center gap-6">
+                        <a href="https://github.com/guardyn" target="_blank" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                        </a>
+                        <a href="https://linkedin.com/company/guardyn" target="_blank" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-950 py-12 border-t border-white/10">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <img src="/media/logo.webp" alt="Guardyn" class="h-8 w-8">
+                        <span class="text-xl font-bold">Guardyn</span>
+                    </div>
+                    <p class="text-gray-400 text-sm">
+                        Privacy-first secure messaging for everyone.
+                    </p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Product</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="#features" class="hover:text-white transition">Features</a></li>
+                        <li><a href="#tech" class="hover:text-white transition">Technology</a></li>
+                        <li><a href="#beta" class="hover:text-white transition">Beta Program</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="https://github.com/guardyn" target="_blank" class="hover:text-white transition">GitHub</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/tree/main/docs" target="_blank" class="hover:text-white transition">Documentation</a></li>
+                        <li><a href="https://github.com/anrysys/guardyn/blob/main/docs/api/rest-api.md" target="_blank" class="hover:text-white transition">API</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Connect</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="https://github.com/guardyn" target="_blank" class="hover:text-white transition">GitHub</a></li>
+                        <li><a href="https://linkedin.com/company/guardyn" target="_blank" class="hover:text-white transition">LinkedIn</a></li>
+                        <li><a href="mailto:contact@guardyn.app" class="hover:text-white transition">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="pt-8 border-t border-white/10 text-center text-gray-400 text-sm">
+                <p>&copy; 2025 Guardyn. Built with privacy and security in mind.</p>
+                <p class="mt-2">
+                    <a href="privacy.html" class="hover:text-white transition">Privacy Policy</a> ·
+                    <a href="terms.html" class="hover:text-white transition">Terms of Service</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Form submission
+        const betaForm = document.getElementById('beta-form');
+        betaForm.addEventListener('submit', (e) => {
+            // Form will be handled by Formspree or your backend
+            // Add custom handling if needed
+        });
+
+        // Navbar background on scroll
+        const nav = document.querySelector('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                nav.classList.add('bg-gray-900');
+            } else {
+                nav.classList.remove('bg-gray-900');
+            }
+        });
+    </script>
+</body>
+</html>

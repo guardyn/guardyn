@@ -1,0 +1,5 @@
+# Redirect www to non-www
+https://www.guardyn.app/* https://guardyn.app/:splat 301!
+
+# SPA fallback (if needed for future React/Vue app)
+# /* /index.html 200
