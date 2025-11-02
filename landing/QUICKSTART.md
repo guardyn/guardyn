@@ -15,7 +15,7 @@ python3 -m http.server 8080
 
 1. Login: [dash.cloudflare.com](https://dash.cloudflare.com)
 2. **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-3. Select repository: `anrysys/guardyn`
+3. Select repository: `guardyn/guardyn`
 4. Settings:
    - Build output: `/landing`
    - Build command: (leave empty)

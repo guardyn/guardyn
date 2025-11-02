@@ -35,7 +35,7 @@ Visit: `http://localhost:8080`
 
    - Click **Create application** → **Pages**
    - Select **Connect to Git**
-   - Choose your GitHub repository: `anrysys/guardyn`
+   - Choose your GitHub repository: `guardyn/guardyn`
 
 3. **Configure Build Settings**
 
@@ -228,8 +228,8 @@ Included:
 
 ## 📞 Support
 
-- GitHub: [github.com/anrysys/guardyn](https://github.com/anrysys/guardyn)
-- Issues: [github.com/anrysys/guardyn/issues](https://github.com/anrysys/guardyn/issues)
+- GitHub: [github.com/guardyn/guardyn](https://github.com/guardyn/guardyn)
+- Issues: [github.com/guardyn/guardyn/issues](https://github.com/guardyn/guardyn/issues)
 
 ---
 
