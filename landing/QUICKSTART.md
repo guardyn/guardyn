@@ -24,7 +24,7 @@ python3 -m http.server 8080
 ### Step 3: Add Custom Domain
 
 1. In Pages project → **Custom domains**
-2. Add: `guardyn.app`
+2. Add: `guardyn.co`
 3. Done! (Automatic if DNS on Cloudflare)
 
 ### Step 4: Setup Beta Form
@@ -43,7 +43,7 @@ python3 -m http.server 8080
 
 ## ✅ Done!
 
-Your landing page is live at: **https://guardyn.app**
+Your landing page is live at: **https://guardyn.co**
 
 **Optional enhancements:**
 - Enable Web Analytics in Cloudflare dashboard
@@ -55,7 +55,7 @@ Your landing page is live at: **https://guardyn.app**
 ## 📱 Preview Links
 
 After deployment:
-- **Production**: https://guardyn.app
+- **Production**: https://guardyn.co
 - **Cloudflare Preview**: https://guardyn-landing.pages.dev
 
 ---

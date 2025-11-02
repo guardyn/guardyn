@@ -165,10 +165,10 @@
          },
          body: JSON.stringify({
            personalizations: [{
-             to: [{ email: 'contact@guardyn.app' }],
+             to: [{ email: 'contact@guardyn.co' }],
              subject: 'New Beta Signup'
            }],
-           from: { email: 'noreply@guardyn.app' },
+           from: { email: 'noreply@guardyn.co' },
            content: [{
              type: 'text/plain',
              value: `New beta signup: ${email}`
@@ -204,7 +204,7 @@
 After setup, test form:
 
 ```bash
-curl -X POST https://guardyn.app \
+curl -X POST https://guardyn.co \
   -d "email=test@example.com"
 ```
 

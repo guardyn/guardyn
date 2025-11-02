@@ -108,6 +108,16 @@ This project MUST be **audit-ready** for security review:
 - **k3d clusters mimic production**: 3 servers + 2 agents with Cilium CNI, registry at `guardyn-registry:5000`
 - **All secrets encrypted with SOPS**: Age keys in `infra/secrets/age-key.txt` (gitignored), config in `.sops.yaml`
 
+### Domain Configuration - SINGLE SOURCE OF TRUTH
+
+**CRITICAL**: The `DOMAIN` variable in `.env` file is the **ONLY** place to configure the project's domain. All services automatically use this value.
+
+```bash
+# .env - Configure domain HERE ONLY
+DOMAIN=guardyn.local  # for local development
+# DOMAIN=yourdomain.com  # for production
+```
+
 ## Developer Workflows
 
 ### Environment Setup

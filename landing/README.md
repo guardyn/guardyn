@@ -55,7 +55,7 @@ Visit: `http://localhost:8080`
 5. **Add Custom Domain**
    - Go to project **Settings** → **Custom domains**
    - Click **Add custom domain**
-   - Enter `guardyn.app`
+   - Enter `guardyn.co`
    - If DNS on Cloudflare: automatic setup ✅
    - If DNS elsewhere: add CNAME record manually
 
@@ -99,7 +99,7 @@ Update links in `index.html`:
 
 - GitHub: `https://github.com/guardyn` (line ~115, ~600)
 - LinkedIn: `https://linkedin.com/company/guardyn` (line ~604)
-- Email: `contact@guardyn.app` (line ~612)
+- Email: `contact@guardyn.co` (line ~612)
 
 ### Add Cloudflare Web Analytics
 
@@ -152,7 +152,7 @@ Add CNAME record:
 
 ```
 Type: CNAME
-Name: @  (or guardyn.app)
+Name: @  (or guardyn.co)
 Value: guardyn-landing.pages.dev
 TTL: Auto
 
@@ -223,7 +223,7 @@ Included:
 **Custom domain not working?**
 
 - Wait 5-10 minutes for DNS propagation
-- Check DNS records with `dig guardyn.app`
+- Check DNS records with `dig guardyn.co`
 - Verify SSL certificate issued
 
 ## 📞 Support

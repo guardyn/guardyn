@@ -216,7 +216,7 @@ scripts/
 1. ✅ Files created and committed
 2. ⏳ Push to GitHub
 3. ⏳ Connect to Cloudflare Pages
-4. ⏳ Add custom domain (guardyn.app)
+4. ⏳ Add custom domain (guardyn.co)
 5. ⏳ Setup beta form (Formspree)
 
 ### Optional Enhancements
