@@ -7,7 +7,7 @@
 /// - Session handling
 /// - JWT token generation
 
-use guardyn_common::{config::ServiceConfig, observability};
+use guardyn_iommon::{config::ServiceConfig, observability};
 use tokio::net::TcpListener;
 use std::convert::Infallible;
 use hyper::{Body, Request, Response, Server, Method, StatusCode};
