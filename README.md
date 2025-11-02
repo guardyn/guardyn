@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="landing/media/logo.webp" alt="Guardyn Logo" width="200"/>
+  <img src="landing/media/logo.svg" alt="Guardyn Logo" width="200"/>
 </p>
 
 <h1 align="center">Guardyn: The Privacy Rebellion Starts Now</h1>

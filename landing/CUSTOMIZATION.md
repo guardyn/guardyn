@@ -263,7 +263,7 @@ if (localStorage.getItem('cookies-accepted')) {
    convert logo.png -quality 85 -strip logo-optimized.png
    
    # Convert to WebP (modern format)
-   convert logo.png -quality 80 logo.webp
+   convert logo.png -quality 80 logo.svg
    ```
 
 2. **Lazy Load Images:**
