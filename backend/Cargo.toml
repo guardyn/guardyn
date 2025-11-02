@@ -15,7 +15,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Guardyn Team"]
 license = "Apache-2.0"
-repository = "https://github.com/anrysys/guardyn"
+repository = "https://github.com/guardyn/guardyn"
 
 [workspace.dependencies]
 # Async runtime

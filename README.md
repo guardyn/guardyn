@@ -277,7 +277,7 @@ https://guardyn.io/signup
 
 ```bash
 # Prerequisites: Docker, kubectl, 16GB RAM
-git clone https://github.com/anrysys/guardyn.git
+git clone https://github.com/guardyn/guardyn.git
 cd guardyn
 
 # Enter reproducible environment (Nix)
@@ -604,7 +604,7 @@ Every video call without E2EE is potentially recorded by nation-states.
   <strong>Made with 🔐 by privacy advocates, for privacy advocates</strong><br>
   <a href="https://guardyn.io">Website</a> •
   <a href="https://docs.guardyn.io">Docs</a> •
-  <a href="https://github.com/anrysys/guardyn">GitHub</a> •
+  <a href="https://github.com/guardyn/guardyn">GitHub</a> •
   <a href="https://twitter.com/guardyn_io">Twitter</a> •
   <a href="mailto:hello@guardyn.io">Contact</a>
 </p>
