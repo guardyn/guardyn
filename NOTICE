@@ -1,0 +1,42 @@
+# Guardyn Licensing
+
+Copyright 2025 Guardyn Team
+
+This project uses a hybrid open-core licensing model.
+
+---
+
+## Community Edition Components (Apache License 2.0)
+
+The core components of Guardyn, including the client applications and core server functionalities, are licensed under the Apache License, Version 2.0. A full copy of this license can be found in the `LICENSE` file.
+
+This includes, but is not limited to:
+
+- Client Applications (iOS, Android, Desktop, Web)
+- Core Backend Services (Authentication, Messaging, Presence, etc.)
+- Cryptographic Libraries
+
+---
+
+## Enterprise Edition Components (Business Source License 1.1)
+
+Advanced features designed for enterprise use are licensed under the Business Source License 1.1 (BSL). This code is source-available and will convert to the GNU Affero General Public License v3.0 (AGPLv3) after a period of 4 years from its release date.
+
+These features are available under a commercial license for production use cases that exceed the "Additional Use Grant" or for providing a competing hosted service.
+
+Enterprise features include:
+
+- LDAP/SAML/SSO Integration
+- Administrative Console
+- Compliance and Audit Logging
+- Advanced Security and Retention Policies
+
+---
+
+## Managed Cloud Service (Proprietary)
+
+The Guardyn Cloud is a fully managed, proprietary SaaS offering. The code and infrastructure specific to the operation of Guardyn Cloud are not open source.
+
+---
+
+For more details on licensing, please contact <legal@guardyn.io>.
