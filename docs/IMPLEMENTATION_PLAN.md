@@ -2,30 +2,25 @@
 
 ## Project Overview
 
-Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
+**Guardyn** is a privacy-focused, end-to-end encrypted (E2EE) messaging platform designed for the modern security landscape. This MVP establishes a foundation for secure, real-time communication with strong cryptographic guarantees.
 
-- **End-to-End Encryption**: X3DH, Double Ratchet, OpenMLS protocols
-- **Full Communication Suite**: Chat, voice/video calls, group chat, media sharing
-- **Cross-Platform**: iOS, Android, Windows, macOS, Linux, Web
-- **Security-First**: Audit-ready architecture with reproducible builds
-- **Infrastructure**: Kubernetes-native with FoundationDB, ScyllaDB, NATS JetStream
+### Key Differentiators
+- **Security-First**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
+- **Infrastructure**: Kubernetes-native with TiKV, ScyllaDB, NATS JetStream
 
 ## 🎯 Current Status (Updated: November 3, 2025)
 
-### ✅ **Infrastructure Complete (Phases 1-3)**
-
-- **Kubernetes Cluster**: k3d cluster (3 servers + 2 agents) ✅
-- **Data Layer**: TiKV + ScyllaDB clusters deployed ✅
-- **Messaging**: NATS JetStream with streams configured ✅
-- **Security**: TLS certificates via cert-manager ✅
-- **Secrets**: Age/SOPS encryption configured ✅
-- **Observability**: Prometheus, Grafana, Loki deployed ✅
+### Completed Work ✅
+- **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace) - **REPLACED FoundationDB**
+- **ScyllaDB cluster** (3 nodes, datacenter `dc1`)
+- **NATS JetStream** (with 4 streams: MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
+- **Cert-manager** (for TLS certificate automation)
 
 ### 🔄 **Backend Services Ready (Phase 4)**
 
 - **Kubernetes Manifests**: All 5 services configured ✅
 - **Service Infrastructure**: Health checks, TLS, secrets ready ✅
-- **Database Connections**: FDB/Scylla connectivity configured ✅
+- **Database Connections**: TiKV/Scylla connectivity configured ✅
 - **Code Implementation**: Service logic pending implementation
 
 ### 🔐 **Cryptography Crate (Phase 6)**
@@ -113,24 +108,18 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 ## Phase 2: Data & Messaging Infrastructure ✅ (Complete)
 
-### 2.1 Database Layer ✅
+#### 2.1 Database Schemas
+- Database schema design for TiKV and ScyllaDB
 
-- [x] Deploy TiKV cluster
+**Tasks**:
+1. ScyllaDB Schema (Message History):
+   - [ ] Create keyspace with replication strategy
+   - [ ] Messages table with partition by user/conversation
+   - [ ] Media metadata table
+   - [ ] Delivery receipts table (denormalized for fast queries)
 
-  - [x] Configure PD (Placement Driver) 
-  - [x] Deploy TiKV storage nodes (v7.5.0)
-  - [x] Verify cluster health and store registration
-  - [ ] Create initial Key-Value schemas
-  - [ ] Set up backup/restore procedures
-
-- [x] Deploy ScyllaDB
-
-  - [x] Configure 3-node cluster
-  - [x] Deploy guardyn-scylla cluster with rack topology
-  - [ ] Define keyspaces and tables
-  - [ ] Set up replication strategy
-
-- [ ] Implement data migration scripts
+2. TiKV Key-Value Schema Design:
+   - [ ] Define TiKV keyspace for users and sessions
 
 ### 2.2 Messaging Infrastructure ✅
 

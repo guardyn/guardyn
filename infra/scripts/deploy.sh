@@ -14,13 +14,10 @@ case "${SERVICE}" in
       --create-namespace \
       --values infra/k8s/base/nats/values.yaml
     ;;
-  foundationdb)
-    echo "Deploying FoundationDB operator..."
-    kubectl apply -f https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/crd/bases/apps.foundationdb.org_foundationdbclusters.yaml
-    kubectl apply -f https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/crd/bases/apps.foundationdb.org_foundationdbbackups.yaml
-    kubectl apply -f https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/crd/bases/apps.foundationdb.org_foundationdbrestores.yaml
-    kubectl apply -f https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/v1.49.0/config/samples/deployment.yaml -n data
-    echo "FoundationDB operator deployed. Create cluster with custom resources."
+  tikv)
+    echo "Deploying TiKV cluster..."
+    kubectl apply -k ../k8s/base/tikv
+    echo "TiKV cluster deployed (PD + storage nodes)."
     ;;
   scylladb)
     kubectl create namespace scylla-operator --dry-run=client -o yaml | kubectl apply -f -

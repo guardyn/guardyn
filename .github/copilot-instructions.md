@@ -4,7 +4,7 @@
 
 Guardyn is a privacy-focused secure communication platform (MVP/PoC phase) built with:
 - **Security-first**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
-- **Infrastructure**: Kubernetes-native (k3d for local dev), FoundationDB + ScyllaDB for data, NATS JetStream for messaging
+- **Infrastructure**: Kubernetes-native (k3d for local dev), TiKV + ScyllaDB for data, NATS JetStream for messaging
 - **Reproducibility**: Nix flakes for deterministic builds, SOPS + Age for secrets, cosign for artifact signing
 
 ## 🌍 Language Policy - CRITICAL
@@ -193,14 +193,14 @@ Access the application at https://yourdomain.com (replace with your configured d
 ### Component Structure
 - `infra/`: Complete Kubernetes stack with kustomize overlays (`local`/`prod`)
   - Namespaces: `platform`, `data`, `messaging`, `observability`, `apps` (see `infra/k8s/base/namespaces/namespaces.yaml`)
-  - Data layer: FoundationDB (consensus), ScyllaDB (high-throughput storage)
+  - Data layer: TiKV (distributed transactional KV), ScyllaDB (high-throughput storage)
   - Messaging: NATS JetStream for event streaming
   - Observability: Prometheus + Loki + Tempo + Grafana stack
 - `cicd/`: GitHub Actions workflows + reproducible-build action
 - `docs/`: `mvp_discovery.md` (product vision), `infra_poc.md` (infrastructure guide)
 
 ### Key Design Decisions
-- **Kustomize over Helm for base manifests**: Helm only for 3rd-party operators (NATS, FDB, Scylla, Prometheus)
+- **Kustomize over Helm for base manifests**: Helm only for 3rd-party operators (NATS, TiKV, Scylla, Prometheus)
 - **k3d clusters mimic production**: 3 servers + 2 agents with Cilium CNI, registry at `guardyn-registry:5000`
 - **All secrets encrypted with SOPS**: Age keys in `infra/secrets/age-key.txt` (gitignored), config in `.sops.yaml`
 - **Domain-agnostic by design**: `DOMAIN` variable is the single source of truth for all services
@@ -217,14 +217,14 @@ Toolchain pinned in `flake.nix` (nixos-23.11, rust-overlay for stable Rust).
 ```bash
 just kube-create       # Creates k3d cluster from infra/k3d-config.yaml (3 servers, 2 agents)
 just kube-bootstrap    # Installs CRDs + namespaces + core operators
-just k8s-deploy <svc>  # Deploys service: nats | foundationdb | scylladb | monitoring
-just verify-kube       # Smoke tests (pod readiness, NATS pub/sub, FDB/Scylla health)
+just k8s-deploy <svc>  # Deploys service: nats | tikv | scylladb | monitoring
+just verify-kube       # Smoke tests (pod readiness, NATS pub/sub, TiKV/Scylla health)
 just teardown          # Destroys cluster
 ```
 
 **Critical**: Always run `kube-bootstrap` before deploying services. Deployment order matters:
 1. Namespaces + cert-manager + Cilium
-2. Data stores (foundationdb, scylladb)
+2. Data stores (tikv, scylladb)
 3. Messaging (nats)
 4. Monitoring last
 
@@ -259,7 +259,7 @@ All workflows use Nix for reproducible environments.
 - Smoke tests in `verify.sh` check:
   - Pod readiness across all namespaces
   - NATS pub/sub with `natsio/nats-box` ephemeral pod
-  - FoundationDB status via `fdbcli --exec "status minimal"`
+  - TiKV status via `pd-ctl -u http://localhost:2379 store`
   - ScyllaDB health via `nodetool status`
 
 ## Common Tasks
@@ -295,7 +295,7 @@ kubectl apply -f <(sops -d secrets.enc.yaml) # Decrypt and apply
 - **SOPS decryption fails**: Ensure `infra/secrets/age-key.txt` exists and matches public key in `.sops.yaml`
 - **Pods stuck in `Pending`**: Check `kubectl get pvc` for storage issues—local-path-provisioner may need initialization
 - **NATS connection refused**: Verify port-forward `kubectl port-forward -n messaging svc/nats 4222:4222`, then test with `nats-box`
-- **FDB operator not responding**: FoundationDB requires 3+ pods for quorum—check node affinity and resource limits
+- **TiKV not responding**: TiKV requires PD + TiKV pods running—check logs and connectivity to PD service
 
 ## Reference Files
 - Product vision: `docs/mvp_discovery.md` (personas, user stories, security requirements)
