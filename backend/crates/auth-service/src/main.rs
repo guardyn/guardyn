@@ -1,70 +1,170 @@
 /// Authentication Service
 ///
 /// Handles:
-/// - User registration
-/// - Login/logout
+/// - User registration with E2EE key bundles
+/// - Login/logout with JWT tokens
 /// - Device management
 /// - Session handling
-/// - JWT token generation
+/// - Token generation and validation
 
-use guardyn_iommon::{config::ServiceConfig, observability};
-use tokio::net::TcpListener;
-use std::convert::Infallible;
-use hyper::{Body, Request, Response, Server, Method, StatusCode};
-use hyper::service::{make_service_fn, service_fn};
+mod handlers;
+mod models;
+mod jwt;
+mod db;
 
-async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let response = match (req.method(), req.uri().path()) {
-        (&Method::GET, "/health") => {
-            Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from("OK"))
-                .unwrap()
-        }
-        (&Method::GET, "/ready") => {
-            Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from("READY"))
-                .unwrap()
-        }
-        _ => {
-            Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::from("Not Found"))
-                .unwrap()
-        }
-    };
-    Ok(response)
+use guardyn_common::{config::ServiceConfig, observability};
+use tonic::{transport::Server, Request, Response, Status};
+use anyhow::Result;
+
+// Import generated protobuf code
+pub mod proto {
+    pub mod common {
+        tonic::include_proto!("guardyn.common");
+    }
+    pub mod auth {
+        tonic::include_proto!("guardyn.auth");
+    }
+}
+
+use proto::auth::{
+    auth_service_server::{AuthService, AuthServiceServer},
+    RegisterRequest, RegisterResponse,
+    LoginRequest, LoginResponse,
+    LogoutRequest, LogoutResponse,
+    RefreshTokenRequest, RefreshTokenResponse,
+    ValidateTokenRequest, ValidateTokenResponse,
+    GetKeyBundleRequest, GetKeyBundleResponse,
+    UploadPreKeysRequest, UploadPreKeysResponse,
+    HealthRequest,
+};
+use proto::common::HealthStatus;
+
+/// Authentication Service Implementation
+pub struct AuthServiceImpl {
+    db: db::DatabaseClient,
+    jwt_secret: String,
+}
+
+impl AuthServiceImpl {
+    pub fn new(db: db::DatabaseClient, jwt_secret: String) -> Self {
+        Self { db, jwt_secret }
+    }
+}
+
+#[tonic::async_trait]
+impl AuthService for AuthServiceImpl {
+    async fn register(
+        &self,
+        request: Request<RegisterRequest>,
+    ) -> Result<Response<RegisterResponse>, Status> {
+        handlers::register::handle(self, request).await
+    }
+
+    async fn login(
+        &self,
+        request: Request<LoginRequest>,
+    ) -> Result<Response<LoginResponse>, Status> {
+        handlers::login::handle(self, request).await
+    }
+
+    async fn logout(
+        &self,
+        request: Request<LogoutRequest>,
+    ) -> Result<Response<LogoutResponse>, Status> {
+        handlers::logout::handle(self, request).await
+    }
+
+    async fn refresh_token(
+        &self,
+        request: Request<RefreshTokenRequest>,
+    ) -> Result<Response<RefreshTokenResponse>, Status> {
+        handlers::refresh_token::handle(self, request).await
+    }
+
+    async fn validate_token(
+        &self,
+        request: Request<ValidateTokenRequest>,
+    ) -> Result<Response<ValidateTokenResponse>, Status> {
+        handlers::validate_token::handle(self, request).await
+    }
+
+    async fn get_key_bundle(
+        &self,
+        request: Request<GetKeyBundleRequest>,
+    ) -> Result<Response<GetKeyBundleResponse>, Status> {
+        handlers::key_bundle::get(self, request).await
+    }
+
+    async fn upload_pre_keys(
+        &self,
+        request: Request<UploadPreKeysRequest>,
+    ) -> Result<Response<UploadPreKeysResponse>, Status> {
+        handlers::key_bundle::upload(self, request).await
+    }
+
+    async fn health(
+        &self,
+        _request: Request<HealthRequest>,
+    ) -> Result<Response<HealthStatus>, Status> {
+        use proto::common::health_status::Status as HealthStatusEnum;
+
+        let status = HealthStatus {
+            status: HealthStatusEnum::Healthy as i32,
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            timestamp: Some(proto::common::Timestamp {
+                seconds: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as i64,
+                nanos: 0,
+            }),
+            components: std::collections::HashMap::from([
+                ("database".to_string(), "healthy".to_string()),
+                ("jwt".to_string(), "healthy".to_string()),
+            ]),
+        };
+
+        Ok(Response::new(status))
+    }
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let config = ServiceConfig::load()?;
     observability::init_tracing(&config.service_name, &config.observability.log_level);
 
-    tracing::info!("Starting authentication service on {}:{}", config.host, config.port);
+    tracing::info!(
+        service = "auth-service",
+        version = env!("CARGO_PKG_VERSION"),
+        "Starting authentication service"
+    );
 
-    // Start HTTP server
-    let addr = format!("{}:{}", config.host, config.port).parse()?;
-    let make_svc = make_service_fn(|_conn| async {
-        Ok::<_, Infallible>(service_fn(handle_request))
-    });
-    let server = Server::bind(&addr).serve(make_svc);
-    
-    tracing::info!("Auth service listening on {}", addr);
-    if let Err(e) = server.await {
-        tracing::error!("Server error: {}", e);
+    // Initialize database connection
+    let db = db::DatabaseClient::new(&config.foundationdb.cluster_file).await?;
+
+    // Load JWT secret from environment or config
+    let jwt_secret = std::env::var("JWT_SECRET")
+        .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
+
+    if jwt_secret == "development-secret-change-in-production" {
+        tracing::warn!("Using default JWT secret - DO NOT USE IN PRODUCTION");
     }
 
-    Ok(())
-}
-    // TODO: Start health check endpoints
+    // Create service instance
+    let auth_service = AuthServiceImpl::new(db, jwt_secret);
 
-    tracing::info!("Authentication service ready");
+    // Build gRPC server
+    let addr = format!("{}:{}", config.host, config.port).parse()?;
 
-    // Keep service running
-    tokio::signal::ctrl_c().await?;
-    tracing::info!("Shutting down authentication service");
+    tracing::info!(
+        address = %addr,
+        "Auth service gRPC server starting"
+    );
+
+    Server::builder()
+        .add_service(AuthServiceServer::new(auth_service))
+        .serve(addr)
+        .await?;
 
     Ok(())
 }
