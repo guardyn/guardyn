@@ -31,10 +31,6 @@ spec:
               limits:
                 cpu: 200m
                 memory: 256Mi
-          volumes:
-          - name: data
-            persistentVolumeClaim:
-              claimName: data
       volumeClaimTemplate:
         spec:
           accessModes:
