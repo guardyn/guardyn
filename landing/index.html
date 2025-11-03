@@ -496,12 +496,151 @@
             border: 1px solid rgba(99, 102, 241, 0.2);
             transition: all 0.3s ease;
             font-weight: 500;
+            cursor: help;
+            position: relative;
         }
 
         .tech-badge:hover {
             background: rgba(99, 102, 241, 0.2);
             transform: scale(1.05);
             border-color: var(--primary);
+        }
+
+        /* Tech Info Modal */
+        .tech-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tech-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tech-modal-content {
+            background: linear-gradient(135deg, var(--surface) 0%, #1a1f3a 100%);
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            padding: 30px;
+            position: relative;
+            animation: slideUp 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .tech-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text);
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .tech-modal-close:hover {
+            background: rgba(239, 68, 68, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .tech-modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            padding-right: 40px;
+        }
+
+        .tech-modal-category {
+            font-size: 14px;
+            color: var(--accent);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tech-modal-description {
+            color: var(--text-muted);
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .tech-modal-example {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .tech-modal-example-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tech-modal-example-text {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .tech-modal-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .tech-modal-tag {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary);
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
         }
 
         /* Footer */
@@ -560,7 +699,7 @@
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .hero-logo {
-                font-size: 2.5rem;
+                font-size: 3rem;
             }
 
             .tagline {
@@ -571,16 +710,21 @@
                 font-size: 1rem;
             }
 
-            .nav-links {
-                display: none;
-            }
-
-            .section-title {
-                font-size: 2rem;
+            .features {
+                grid-template-columns: 1fr;
             }
 
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tech-modal-content {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .tech-modal-title {
+                font-size: 22px;
             }
         }
     </style>
@@ -769,93 +913,106 @@
         <div class="container">
             <h2 class="section-title"><span class="gradient-text">Technology</span> Stack</h2>
             <p class="section-subtitle">
-                Modern, battle-tested technologies for maximum security and performance
+                Modern, battle-tested technologies for maximum security and performance<br>
+                <small style="color: var(--accent); font-size: 0.9rem;">💡 Click on any technology to learn more</small>
             </p>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">🦀 Backend Services (Rust)</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">Rust (Memory-Safe)</span>
-                    <span class="tech-badge">gRPC APIs</span>
-                    <span class="tech-badge">Auth Service</span>
-                    <span class="tech-badge">Messaging Service</span>
-                    <span class="tech-badge">Media Service</span>
-                    <span class="tech-badge">Presence Service</span>
-                    <span class="tech-badge">Notification Service</span>
+                    <span class="tech-badge" data-tech="rust">Rust (Memory-Safe)</span>
+                    <span class="tech-badge" data-tech="grpc">gRPC APIs</span>
+                    <span class="tech-badge" data-tech="auth-service">Auth Service</span>
+                    <span class="tech-badge" data-tech="messaging-service">Messaging Service</span>
+                    <span class="tech-badge" data-tech="media-service">Media Service</span>
+                    <span class="tech-badge" data-tech="presence-service">Presence Service</span>
+                    <span class="tech-badge" data-tech="notification-service">Notification Service</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">💾 Data Layer</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">FoundationDB (Consensus)</span>
-                    <span class="tech-badge">ScyllaDB (High-Throughput)</span>
-                    <span class="tech-badge">NATS JetStream (Messaging)</span>
-                    <span class="tech-badge">Redis (Caching)</span>
-                    <span class="tech-badge">MinIO (Object Storage)</span>
+                    <span class="tech-badge" data-tech="foundationdb">FoundationDB (Consensus)</span>
+                    <span class="tech-badge" data-tech="scylladb">ScyllaDB (High-Throughput)</span>
+                    <span class="tech-badge" data-tech="nats">NATS JetStream (Messaging)</span>
+                    <span class="tech-badge" data-tech="redis">Redis (Caching)</span>
+                    <span class="tech-badge" data-tech="minio">MinIO (Object Storage)</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">🔐 Cryptography</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">Signal Protocol (libsignal)</span>
-                    <span class="tech-badge">OpenMLS (Groups)</span>
-                    <span class="tech-badge">X3DH Key Exchange</span>
-                    <span class="tech-badge">Double Ratchet</span>
-                    <span class="tech-badge">Kyber (Post-Quantum)</span>
-                    <span class="tech-badge">X25519 / Ed25519</span>
-                    <span class="tech-badge">AES-256-GCM</span>
-                    <span class="tech-badge">SFrame (Media E2EE)</span>
+                    <span class="tech-badge" data-tech="signal-protocol">Signal Protocol (libsignal)</span>
+                    <span class="tech-badge" data-tech="openmls">OpenMLS (Groups)</span>
+                    <span class="tech-badge" data-tech="x3dh">X3DH Key Exchange</span>
+                    <span class="tech-badge" data-tech="double-ratchet">Double Ratchet</span>
+                    <span class="tech-badge" data-tech="kyber">Kyber (Post-Quantum)</span>
+                    <span class="tech-badge" data-tech="x25519">X25519 / Ed25519</span>
+                    <span class="tech-badge" data-tech="aes">AES-256-GCM</span>
+                    <span class="tech-badge" data-tech="sframe">SFrame (Media E2EE)</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">📱 Client Applications</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">Flutter 3.x</span>
-                    <span class="tech-badge">Dart</span>
-                    <span class="tech-badge">BLoC Pattern</span>
-                    <span class="tech-badge">WebRTC</span>
-                    <span class="tech-badge">Tauri (Desktop)</span>
-                    <span class="tech-badge">WebAssembly</span>
+                    <span class="tech-badge" data-tech="flutter">Flutter 3.x</span>
+                    <span class="tech-badge" data-tech="dart">Dart</span>
+                    <span class="tech-badge" data-tech="bloc">BLoC Pattern</span>
+                    <span class="tech-badge" data-tech="webrtc">WebRTC</span>
+                    <span class="tech-badge" data-tech="tauri">Tauri (Desktop)</span>
+                    <span class="tech-badge" data-tech="webassembly">WebAssembly</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">☸️ Infrastructure</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">Kubernetes (k3d/k3s)</span>
-                    <span class="tech-badge">Kustomize</span>
-                    <span class="tech-badge">Helm Charts</span>
-                    <span class="tech-badge">Cilium CNI</span>
-                    <span class="tech-badge">cert-manager</span>
-                    <span class="tech-badge">SOPS + Age (Secrets)</span>
+                    <span class="tech-badge" data-tech="kubernetes">Kubernetes (k3d/k3s)</span>
+                    <span class="tech-badge" data-tech="kustomize">Kustomize</span>
+                    <span class="tech-badge" data-tech="helm">Helm Charts</span>
+                    <span class="tech-badge" data-tech="cilium">Cilium CNI</span>
+                    <span class="tech-badge" data-tech="cert-manager">cert-manager</span>
+                    <span class="tech-badge" data-tech="sops">SOPS + Age (Secrets)</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">📊 Observability</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">Prometheus</span>
-                    <span class="tech-badge">Grafana</span>
-                    <span class="tech-badge">Loki (Logging)</span>
-                    <span class="tech-badge">Tempo (Tracing)</span>
-                    <span class="tech-badge">OpenTelemetry</span>
+                    <span class="tech-badge" data-tech="prometheus">Prometheus</span>
+                    <span class="tech-badge" data-tech="grafana">Grafana</span>
+                    <span class="tech-badge" data-tech="loki">Loki (Logging)</span>
+                    <span class="tech-badge" data-tech="tempo">Tempo (Tracing)</span>
+                    <span class="tech-badge" data-tech="opentelemetry">OpenTelemetry</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">🔧 DevOps & Security</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge">Nix Flakes (Reproducible Builds)</span>
-                    <span class="tech-badge">GitHub Actions</span>
-                    <span class="tech-badge">Cosign (Artifact Signing)</span>
-                    <span class="tech-badge">Syft (SBOM)</span>
-                    <span class="tech-badge">cargo-audit</span>
-                    <span class="tech-badge">TLA+ Specifications</span>
-                    <span class="tech-badge">ProVerif (Crypto Proofs)</span>
+                    <span class="tech-badge" data-tech="nix">Nix Flakes (Reproducible Builds)</span>
+                    <span class="tech-badge" data-tech="github-actions">GitHub Actions</span>
+                    <span class="tech-badge" data-tech="cosign">Cosign (Artifact Signing)</span>
+                    <span class="tech-badge" data-tech="syft">Syft (SBOM)</span>
+                    <span class="tech-badge" data-tech="cargo-audit">cargo-audit</span>
+                    <span class="tech-badge" data-tech="tla">TLA+ Specifications</span>
+                    <span class="tech-badge" data-tech="proverif">ProVerif (Crypto Proofs)</span>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tech Info Modal -->
+        <div id="techModal" class="tech-modal">
+            <div class="tech-modal-content">
+                <button class="tech-modal-close" onclick="closeTechModal()">&times;</button>
+                <div class="tech-modal-category" id="modalCategory"></div>
+                <h3 class="tech-modal-title" id="modalTitle"></h3>
+                <p class="tech-modal-description" id="modalDescription"></p>
+                <div class="tech-modal-example" id="modalExample"></div>
+                <div class="tech-modal-tags" id="modalTags"></div>
             </div>
         </div>
     </section>
@@ -1061,6 +1218,527 @@
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Technology explanations database
+        const techInfo = {
+            // Backend Services
+            'rust': {
+                category: 'Backend Services',
+                title: 'Rust Programming Language',
+                description: 'Rust is a modern programming language that guarantees memory safety without a garbage collector. This means your messages are processed lightning-fast without the security vulnerabilities that plague other languages.',
+                example: {
+                    title: '🏠 Real-world analogy',
+                    text: 'Think of Rust like a super-strict building inspector who checks every brick before construction. Unlike other languages where memory bugs can create security holes (like leaving windows unlocked), Rust catches these problems before your code even runs.'
+                },
+                tags: ['Memory Safe', 'High Performance', 'Zero-Cost Abstractions']
+            },
+            'grpc': {
+                category: 'Backend Services',
+                title: 'gRPC APIs',
+                description: 'gRPC is a modern way for our services to talk to each other super efficiently. It\'s like having a private express lane for data instead of regular traffic.',
+                example: {
+                    title: '📞 Real-world analogy',
+                    text: 'Imagine traditional APIs are like sending letters through postal mail. gRPC is like having a dedicated fiber-optic cable - faster, more reliable, and uses less bandwidth.'
+                },
+                tags: ['High Speed', 'Efficient', 'Type-Safe']
+            },
+            'auth-service': {
+                category: 'Backend Services',
+                title: 'Authentication Service',
+                description: 'This service verifies who you are when you log in. It manages your password, two-factor authentication, and ensures nobody can impersonate you.',
+                example: {
+                    title: '🔑 Real-world analogy',
+                    text: 'Like a sophisticated security guard at a building entrance who checks your ID, fingerprint, and access card - but for your digital identity. It remembers all your devices and keeps your account secure.'
+                },
+                tags: ['Security', 'Identity', 'Access Control']
+            },
+            'messaging-service': {
+                category: 'Backend Services',
+                title: 'Messaging Service',
+                description: 'The heart of Guardyn - this service routes your encrypted messages to the right recipients. It handles delivery, ensures messages arrive in order, and manages group conversations.',
+                example: {
+                    title: '📮 Real-world analogy',
+                    text: 'Think of it as a super-secure postal service that can deliver millions of letters per second, knows when someone received their mail, and keeps everything encrypted during transit.'
+                },
+                tags: ['Message Routing', 'Delivery Guarantees', 'Real-time']
+            },
+            'media-service': {
+                category: 'Backend Services',
+                title: 'Media Service',
+                description: 'Handles your photos, videos, and files. It encrypts them, creates thumbnails, and ensures fast delivery without ever being able to see the content.',
+                example: {
+                    title: '🖼️ Real-world analogy',
+                    text: 'Like a photo lab that processes your pictures in sealed envelopes - it can resize and optimize them without ever seeing what\'s inside.'
+                },
+                tags: ['File Handling', 'Encryption', 'Streaming']
+            },
+            'presence-service': {
+                category: 'Backend Services',
+                title: 'Presence Service',
+                description: 'Shows when your friends are online, typing, or have read your messages - all while protecting privacy through minimal data collection.',
+                example: {
+                    title: '👥 Real-world analogy',
+                    text: 'Like seeing a light under someone\'s door to know they\'re home, but without tracking their exact movements inside the room.'
+                },
+                tags: ['Online Status', 'Typing Indicators', 'Read Receipts']
+            },
+            'notification-service': {
+                category: 'Backend Services',
+                title: 'Notification Service',
+                description: 'Sends push notifications to your devices when new messages arrive, even when the app is closed. Does this without revealing message content to Apple or Google.',
+                example: {
+                    title: '🔔 Real-world analogy',
+                    text: 'Like a doorbell that rings when you have a visitor, but doesn\'t tell the doorbell company who\'s visiting or why.'
+                },
+                tags: ['Push Notifications', 'Privacy-Preserving', 'Cross-Platform']
+            },
+
+            // Data Layer
+            'foundationdb': {
+                category: 'Data Layer',
+                title: 'FoundationDB',
+                description: 'An ultra-reliable database that ensures your messages and data are never lost, even if servers crash. Used by Apple for iCloud.',
+                example: {
+                    title: '🏦 Real-world analogy',
+                    text: 'Like a bank vault that simultaneously exists in multiple locations. Even if one location burns down, your data is perfectly safe in the other vaults.'
+                },
+                tags: ['ACID Guarantees', 'Fault-Tolerant', 'Battle-Tested']
+            },
+            'scylladb': {
+                category: 'Data Layer',
+                title: 'ScyllaDB',
+                description: 'A blazing-fast database that can handle millions of operations per second. Stores your message history and media metadata.',
+                example: {
+                    title: '⚡ Real-world analogy',
+                    text: 'Imagine a library where you can find any book among billions in milliseconds, and millions of people can search simultaneously without slowing down.'
+                },
+                tags: ['High Performance', 'Scalable', 'Low Latency']
+            },
+            'nats': {
+                category: 'Data Layer',
+                title: 'NATS JetStream',
+                description: 'A messaging system that ensures every message gets delivered exactly once, in the right order, even during network problems.',
+                example: {
+                    title: '🚀 Real-world analogy',
+                    text: 'Like a conveyor belt system in a factory that never loses packages, always delivers them in order, and can handle millions of items per second.'
+                },
+                tags: ['Message Queue', 'Reliable Delivery', 'At-Least-Once']
+            },
+            'redis': {
+                category: 'Data Layer',
+                title: 'Redis',
+                description: 'An in-memory cache that makes frequently accessed data instantly available. Keeps your recent chats and online friends list super fast.',
+                example: {
+                    title: '⚡ Real-world analogy',
+                    text: 'Like keeping your most-used kitchen items on the counter instead of in the basement - instant access to what you need most.'
+                },
+                tags: ['Caching', 'In-Memory', 'Microsecond Latency']
+            },
+            'minio': {
+                category: 'Data Layer',
+                title: 'MinIO Object Storage',
+                description: 'Stores your encrypted photos, videos, and files. Compatible with Amazon S3 but can run on your own servers for complete privacy.',
+                example: {
+                    title: '📦 Real-world analogy',
+                    text: 'Like a giant encrypted warehouse for your digital stuff, but you hold all the keys. Can store anything from tiny emoji to 4K videos.'
+                },
+                tags: ['Object Storage', 'S3-Compatible', 'Self-Hostable']
+            },
+
+            // Cryptography
+            'signal-protocol': {
+                category: 'Cryptography',
+                title: 'Signal Protocol',
+                description: 'The gold standard for encrypted messaging, used by Signal, WhatsApp, and now Guardyn. Provides perfect forward secrecy and post-compromise security for 1-on-1 chats.',
+                example: {
+                    title: '🔐 Real-world analogy',
+                    text: 'Like having a lock that automatically changes every message, so even if someone steals your key today, they can\'t read yesterday\'s messages or tomorrow\'s messages.'
+                },
+                tags: ['Battle-Tested', 'Forward Secrecy', 'Industry Standard']
+            },
+            'openmls': {
+                category: 'Cryptography',
+                title: 'OpenMLS',
+                description: 'Next-generation group encryption protocol standardized by the Internet Engineering Task Force (IETF). Guardyn\'s secret weapon that beats Signal\'s older group chat encryption.',
+                example: {
+                    title: '👥 Real-world analogy',
+                    text: 'Imagine a group conversation where everyone has their own unique encryption that updates every time someone joins or leaves. Even if one person\'s phone is compromised, past messages stay secret.'
+                },
+                tags: ['IETF Standard', 'Group E2EE', 'Future-Proof']
+            },
+            'x3dh': {
+                category: 'Cryptography',
+                title: 'X3DH Key Exchange',
+                description: 'The protocol that lets you send encrypted messages to someone even when they\'re offline. Establishes secure communication before the first message.',
+                example: {
+                    title: '🤝 Real-world analogy',
+                    text: 'Like leaving a locked box on someone\'s doorstep that only they can open, even though you\'ve never met them in person to exchange keys.'
+                },
+                tags: ['Async Messaging', 'Perfect Forward Secrecy', 'Deniability']
+            },
+            'double-ratchet': {
+                category: 'Cryptography',
+                title: 'Double Ratchet',
+                description: 'The core of Signal Protocol. Automatically rotates encryption keys with every message, providing forward secrecy and self-healing properties.',
+                example: {
+                    title: '🔄 Real-world analogy',
+                    text: 'Like changing the locks on your house after every visitor leaves. If someone steals tomorrow\'s key, they still can\'t get into yesterday\'s house.'
+                },
+                tags: ['Key Rotation', 'Self-Healing', 'Out-of-Order Messages']
+            },
+            'kyber': {
+                category: 'Cryptography',
+                title: 'Kyber (Post-Quantum)',
+                description: 'Quantum-resistant encryption that protects against future quantum computers. NIST-standardized algorithm that ensures your messages stay secret even in 2050.',
+                example: {
+                    title: '🔮 Real-world analogy',
+                    text: 'Like building a vault that\'s strong enough to resist lock-picking tools that haven\'t even been invented yet. Quantum computers will break today\'s encryption - Kyber is ready for that future.'
+                },
+                tags: ['Quantum-Safe', 'NIST Standard', 'Future-Proof']
+            },
+            'x25519': {
+                category: 'Cryptography',
+                title: 'X25519 / Ed25519',
+                description: 'Modern elliptic curve cryptography for key exchange (X25519) and digital signatures (Ed25519). Faster and more secure than older RSA encryption.',
+                example: {
+                    title: '🎯 Real-world analogy',
+                    text: 'Like using a smart, efficient lock instead of an old-fashioned padlock. Does the same job but faster, smaller, and more secure.'
+                },
+                tags: ['Elliptic Curves', 'High Performance', 'NSA-Resistant']
+            },
+            'aes': {
+                category: 'Cryptography',
+                title: 'AES-256-GCM',
+                description: 'Military-grade encryption standard used to encrypt your actual message content. The "256" means there are 2^256 possible keys - more than atoms in the universe.',
+                example: {
+                    title: '🔒 Real-world analogy',
+                    text: 'Imagine a lock with more possible combinations than there are atoms in the observable universe. Even all the world\'s supercomputers working together couldn\'t crack it before the sun burns out.'
+                },
+                tags: ['Military Grade', 'Authenticated Encryption', 'FIPS Approved']
+            },
+            'sframe': {
+                category: 'Cryptography',
+                title: 'SFrame (Media E2EE)',
+                description: 'Encrypts video and audio streams in real-time. Unlike regular video calls, even the server can\'t see or hear your conversation.',
+                example: {
+                    title: '📹 Real-world analogy',
+                    text: 'Like having a soundproof booth for video calls that follows you everywhere. The phone company provides the connection but can\'t eavesdrop on the conversation.'
+                },
+                tags: ['Real-Time', 'Media Encryption', 'WebRTC']
+            },
+
+            // Client Applications
+            'flutter': {
+                category: 'Client Applications',
+                title: 'Flutter 3.x',
+                description: 'Google\'s UI framework that lets us build beautiful, native apps for iOS, Android, Web, and Desktop from a single codebase. Means faster updates and consistent experience across all your devices.',
+                example: {
+                    title: '🎨 Real-world analogy',
+                    text: 'Like having one master blueprint that can build houses, apartments, and offices with the same quality - instead of hiring different architects for each.'
+                },
+                tags: ['Cross-Platform', 'Native Performance', 'Beautiful UI']
+            },
+            'dart': {
+                category: 'Client Applications',
+                title: 'Dart',
+                description: 'The programming language behind Flutter. Combines JavaScript\'s ease of use with the performance of compiled languages.',
+                example: {
+                    title: '⚡ Real-world analogy',
+                    text: 'Like having a sports car that\'s as easy to drive as a regular car but with race car performance.'
+                },
+                tags: ['Type-Safe', 'Fast Compilation', 'Modern Syntax']
+            },
+            'bloc': {
+                category: 'Client Applications',
+                title: 'BLoC Pattern',
+                description: 'A design pattern that keeps app logic organized and testable. Ensures your messages, calls, and media all work reliably together.',
+                example: {
+                    title: '🏗️ Real-world analogy',
+                    text: 'Like having separate departments in a company (Sales, Engineering, Support) that communicate through well-defined channels instead of chaos.'
+                },
+                tags: ['State Management', 'Testable', 'Predictable']
+            },
+            'webrtc': {
+                category: 'Client Applications',
+                title: 'WebRTC',
+                description: 'The technology that makes voice and video calls work directly between devices without going through a server. Enables low-latency, high-quality calls.',
+                example: {
+                    title: '📞 Real-world analogy',
+                    text: 'Like calling someone on a walkie-talkie directly instead of going through a phone company switchboard. Faster, more private, and works peer-to-peer.'
+                },
+                tags: ['P2P', 'Real-Time', 'Browser-Native']
+            },
+            'tauri': {
+                category: 'Client Applications',
+                title: 'Tauri (Desktop)',
+                description: 'A modern framework for building desktop apps that are small, fast, and secure. Uses your operating system\'s web view instead of bundling Chrome.',
+                example: {
+                    title: '💻 Real-world analogy',
+                    text: 'Like building a house with the materials already on-site instead of shipping everything from overseas. Results in apps that are 10x smaller and faster.'
+                },
+                tags: ['Lightweight', 'Rust-Powered', 'Native Integration']
+            },
+            'webassembly': {
+                category: 'Client Applications',
+                title: 'WebAssembly',
+                description: 'Allows our encryption code (written in Rust) to run at near-native speed in your web browser. Same security as desktop app, but in a browser.',
+                example: {
+                    title: '🌐 Real-world analogy',
+                    text: 'Like having a Ferrari engine in a website. Browsers usually run code slowly, but WebAssembly makes encryption math run as fast as a native app.'
+                },
+                tags: ['Near-Native Speed', 'Browser-Based', 'Secure']
+            },
+
+            // Infrastructure
+            'kubernetes': {
+                category: 'Infrastructure',
+                title: 'Kubernetes',
+                description: 'Container orchestration platform that automatically manages our servers. If something crashes, Kubernetes instantly replaces it. Ensures 99.9% uptime.',
+                example: {
+                    title: '🎭 Real-world analogy',
+                    text: 'Like having an orchestra conductor who instantly replaces any musician that gets sick, ensures everyone plays in harmony, and scales up the orchestra when needed.'
+                },
+                tags: ['Auto-Scaling', 'Self-Healing', 'Industry Standard']
+            },
+            'kustomize': {
+                category: 'Infrastructure',
+                title: 'Kustomize',
+                description: 'Tool for customizing Kubernetes configurations without duplicating code. Lets us manage development, staging, and production environments efficiently.',
+                example: {
+                    title: '🎨 Real-world analogy',
+                    text: 'Like having building plans that can be easily adapted for different locations (beach house vs. mountain cabin) without redrawing everything.'
+                },
+                tags: ['Config Management', 'DRY Principle', 'No Templating']
+            },
+            'helm': {
+                category: 'Infrastructure',
+                title: 'Helm Charts',
+                description: 'Package manager for Kubernetes. Makes installing complex services (like databases) as easy as "install this package."',
+                example: {
+                    title: '📦 Real-world analogy',
+                    text: 'Like using IKEA furniture instead of building everything from scratch. Pre-packaged, tested, and easy to install.'
+                },
+                tags: ['Package Manager', 'Reusable', 'Version Control']
+            },
+            'cilium': {
+                category: 'Infrastructure',
+                title: 'Cilium CNI',
+                description: 'Advanced networking for Kubernetes that provides security, load balancing, and observability using eBPF (super fast Linux kernel technology).',
+                example: {
+                    title: '🕸️ Real-world analogy',
+                    text: 'Like having a smart traffic system that not only directs cars but also blocks stolen vehicles, optimizes routes, and provides real-time analytics.'
+                },
+                tags: ['eBPF', 'Network Security', 'High Performance']
+            },
+            'cert-manager': {
+                category: 'Infrastructure',
+                title: 'cert-manager',
+                description: 'Automatically manages SSL/TLS certificates so your connections are always encrypted. Renews certificates before they expire without human intervention.',
+                example: {
+                    title: '🔐 Real-world analogy',
+                    text: 'Like having a service that automatically renews your driver\'s license before it expires and updates it everywhere it\'s needed.'
+                },
+                tags: ['Auto-Renewal', 'TLS', 'Zero-Downtime']
+            },
+            'sops': {
+                category: 'Infrastructure',
+                title: 'SOPS + Age (Secrets)',
+                description: 'Encrypts sensitive configuration (passwords, API keys) so they can be safely stored in version control. Age provides the encryption, SOPS makes it easy to use.',
+                example: {
+                    title: '🗝️ Real-world analogy',
+                    text: 'Like having a safe deposit box where you can store instructions for opening other safes, all encrypted with your master key.'
+                },
+                tags: ['Secrets Management', 'GitOps-Friendly', 'Auditable']
+            },
+
+            // Observability
+            'prometheus': {
+                category: 'Observability',
+                title: 'Prometheus',
+                description: 'Monitoring system that collects metrics from all services every few seconds. Alerts us if something goes wrong before users notice.',
+                example: {
+                    title: '📊 Real-world analogy',
+                    text: 'Like having a health monitoring system that checks your heart rate, blood pressure, and temperature every second and alerts doctors if anything looks abnormal.'
+                },
+                tags: ['Metrics', 'Time-Series', 'Alerting']
+            },
+            'grafana': {
+                category: 'Observability',
+                title: 'Grafana',
+                description: 'Beautiful dashboards that visualize all our metrics. Lets engineers see what\'s happening across thousands of servers at a glance.',
+                example: {
+                    title: '📈 Real-world analogy',
+                    text: 'Like an airplane cockpit with all the important instruments visible at once - speed, altitude, fuel, etc., but for servers.'
+                },
+                tags: ['Visualization', 'Dashboards', 'Alerts']
+            },
+            'loki': {
+                category: 'Observability',
+                title: 'Loki (Logging)',
+                description: 'Aggregates logs from all services into one searchable place. Like having all server diaries in one library where you can instantly search for any event.',
+                example: {
+                    title: '📚 Real-world analogy',
+                    text: 'Imagine every employee in a company writes a diary. Loki is like having all those diaries in one searchable database where you can find "who accessed server X on Tuesday?"'
+                },
+                tags: ['Log Aggregation', 'Full-Text Search', 'Cost-Effective']
+            },
+            'tempo': {
+                category: 'Observability',
+                title: 'Tempo (Tracing)',
+                description: 'Tracks how a single message flows through multiple services. When a message is slow, Tempo shows exactly which service caused the delay.',
+                example: {
+                    title: '🔍 Real-world analogy',
+                    text: 'Like a package tracker that shows every step of delivery (warehouse → truck → sorting center → delivery) with exact timestamps for each step.'
+                },
+                tags: ['Distributed Tracing', 'Performance', 'Debugging']
+            },
+            'opentelemetry': {
+                category: 'Observability',
+                title: 'OpenTelemetry',
+                description: 'Industry standard for collecting metrics, logs, and traces. Ensures all our monitoring tools work together seamlessly.',
+                example: {
+                    title: '🔧 Real-world analogy',
+                    text: 'Like having universal adapters that let all your electronic devices work together regardless of manufacturer.'
+                },
+                tags: ['CNCF Project', 'Vendor-Neutral', 'Standardized']
+            },
+
+            // DevOps & Security
+            'nix': {
+                category: 'DevOps & Security',
+                title: 'Nix Flakes (Reproducible Builds)',
+                description: 'Ensures that building Guardyn produces bit-identical binaries every time. You can verify that the app you download matches our source code exactly.',
+                example: {
+                    title: '🔬 Real-world analogy',
+                    text: 'Like a recipe so precise that every chef following it produces chemically identical cakes. Allows independent security auditors to verify we haven\'t hidden anything malicious in our code.'
+                },
+                tags: ['Reproducible', 'Verifiable', 'Supply Chain Security']
+            },
+            'github-actions': {
+                category: 'DevOps & Security',
+                title: 'GitHub Actions',
+                description: 'Automates our build, test, and deployment pipeline. Every code change runs through hundreds of automated tests before reaching production.',
+                example: {
+                    title: '🏭 Real-world analogy',
+                    text: 'Like having a quality control robot that tests every car coming off the assembly line with hundreds of checks before it reaches customers.'
+                },
+                tags: ['CI/CD', 'Automation', 'Quality Assurance']
+            },
+            'cosign': {
+                category: 'DevOps & Security',
+                title: 'Cosign (Artifact Signing)',
+                description: 'Cryptographically signs all our releases so you can verify they actually came from us and haven\'t been tampered with.',
+                example: {
+                    title: '✍️ Real-world analogy',
+                    text: 'Like a handwritten signature on a legal document, but mathematically impossible to forge. You can verify any download is genuinely from Guardyn.'
+                },
+                tags: ['Code Signing', 'Supply Chain', 'Sigstore']
+            },
+            'syft': {
+                category: 'DevOps & Security',
+                title: 'Syft (SBOM)',
+                description: 'Generates a Software Bill of Materials - a complete list of every component in Guardyn. Essential for security audits and vulnerability tracking.',
+                example: {
+                    title: '📋 Real-world analogy',
+                    text: 'Like an ingredients list on food packaging, but for software. Shows every library, dependency, and version number used in building Guardyn.'
+                },
+                tags: ['Transparency', 'Supply Chain', 'Vulnerability Management']
+            },
+            'cargo-audit': {
+                category: 'DevOps & Security',
+                title: 'cargo-audit',
+                description: 'Automatically checks all our Rust dependencies for known security vulnerabilities. Runs on every code change.',
+                example: {
+                    title: '🛡️ Real-world analogy',
+                    text: 'Like having a security guard who checks the background of every contractor before they enter your building.'
+                },
+                tags: ['Security Scanning', 'Dependency Check', 'Automated']
+            },
+            'tla': {
+                category: 'DevOps & Security',
+                title: 'TLA+ Specifications',
+                description: 'Mathematical specifications that prove our message ordering and delivery guarantees work correctly. Used by Amazon for critical systems.',
+                example: {
+                    title: '🧮 Real-world analogy',
+                    text: 'Like proving a bridge design with mathematics before building it, rather than just hoping it won\'t collapse. TLA+ mathematically proves our systems work correctly.'
+                },
+                tags: ['Formal Methods', 'Correctness', 'Amazon-Approved']
+            },
+            'proverif': {
+                category: 'DevOps & Security',
+                title: 'ProVerif (Crypto Proofs)',
+                description: 'Automated tool that mathematically proves our cryptographic protocols are secure. Catches security flaws that code reviews might miss.',
+                example: {
+                    title: '🔐 Real-world analogy',
+                    text: 'Like having a master locksmith examine your security system with X-ray vision to prove there are no hidden weaknesses.'
+                },
+                tags: ['Cryptographic Verification', 'Protocol Analysis', 'Research-Grade']
+            }
+        };
+
+        // Modal functions
+        function showTechModal(tech) {
+            const modal = document.getElementById('techModal');
+            const info = techInfo[tech];
+
+            if (!info) {
+                console.warn('No info found for:', tech);
+                return;
+            }
+
+            document.getElementById('modalCategory').textContent = info.category;
+            document.getElementById('modalTitle').textContent = info.title;
+            document.getElementById('modalDescription').textContent = info.description;
+
+            // Example section
+            const exampleDiv = document.getElementById('modalExample');
+            exampleDiv.innerHTML = `
+                <div class="tech-modal-example-title">
+                    ${info.example.title}
+                </div>
+                <div class="tech-modal-example-text">
+                    ${info.example.text}
+                </div>
+            `;
+
+            // Tags
+            const tagsDiv = document.getElementById('modalTags');
+            tagsDiv.innerHTML = info.tags.map(tag =>
+                `<span class="tech-modal-tag">${tag}</span>`
+            ).join('');
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeTechModal() {
+            const modal = document.getElementById('techModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Add click handlers to all tech badges
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.tech-badge[data-tech]').forEach(badge => {
+                badge.addEventListener('click', function() {
+                    showTechModal(this.dataset.tech);
+                });
+            });
+
+            // Close modal on background click
+            document.getElementById('techModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeTechModal();
+                }
+            });
+
+            // Close modal on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeTechModal();
                 }
             });
         });
