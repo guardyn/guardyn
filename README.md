@@ -225,7 +225,7 @@ Built by security engineers who got tired of waiting for Big Tech to fix itself.
 
 ```
 🏗️ Rust backend (memory-safe, no buffer overflows)
-🏗️ FoundationDB (ACID guarantees, Jepsen-tested)
+🏗️ TiKV (distributed KV store, ACID transactions, CNCF graduated)
 🏗️ ScyllaDB (Cassandra-compatible, million ops/sec)
 🏗️ NATS JetStream (distributed messaging, at-least-once delivery)
 🏗️ Kubernetes-native (horizontal scaling, triple redundancy)
@@ -269,11 +269,12 @@ Built by security engineers who got tired of waiting for Big Tech to fix itself.
 **Current Phase**: MVP/PoC Infrastructure Complete ✅
 
 - ✅ Kubernetes cluster (k3d) operational
-- ✅ FoundationDB + ScyllaDB deployed
+- ✅ TiKV + ScyllaDB deployed and verified
 - ✅ NATS JetStream messaging configured
 - ✅ Observability stack (Prometheus, Grafana, Loki)
 - ✅ Backend service scaffolds (Rust)
 - ✅ Cryptography crate structure (X3DH, Double Ratchet, MLS)
+- ✅ gRPC API definitions complete (.proto files)
 - 🔄 Database schemas designed (see `docs/DATABASE_SCHEMA.md`)
 - 🔄 Implementing crypto protocols
 - 📋 Next: Authentication service implementation
@@ -310,13 +311,13 @@ nix develop --extra-experimental-features nix-command --extra-experimental-featu
 just kube-create
 just kube-bootstrap
 just k8s-deploy nats
-just k8s-deploy foundationdb
+kubectl apply -k infra/k8s/base/tikv
 just k8s-deploy scylladb
 just k8s-deploy monitoring
 just verify-kube
 
-# Initialize database schemas
-kubectl exec -n data -it guardyn-fdb-0 -- bash /mnt/scripts/fdb-init.sh
+# Verify TiKV cluster
+kubectl exec -n data pd-0 -- /pd-ctl -u http://localhost:2379 store
 kubectl exec -n data -it guardyn-scylla-0 -- cqlsh -f /mnt/scripts/scylla-init.cql
 
 # Access monitoring at http://localhost:3000 (Grafana)
@@ -486,7 +487,7 @@ Additional Use Grant: Free for up to 100 users
 + Reproducible builds: Verify every binary with Nix flakes
 + Formal proofs: TLA+ specifications, not marketing slides
 + Bug bounty: $500-$10,000 for vulnerabilities
-+ Modern stack: Rust, Kubernetes, FoundationDB, NATS
++ Modern stack: Rust, Kubernetes, TiKV, NATS, ScyllaDB
 + API-first: Build on our platform with documented REST/gRPC APIs
 + Community: Join security engineers who got tired of Big Tech lies
 ```

@@ -1,0 +1,83 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pd
+  namespace: data
+  labels:
+    app: pd
+    guardyn.io/stage: poc
+spec:
+  serviceName: pd
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pd
+  template:
+    metadata:
+      labels:
+        app: pd
+    spec:
+      containers:
+      - name: pd
+        image: pingcap/pd:v7.5.0
+        ports:
+        - name: client
+          containerPort: 2379
+        - name: peer
+          containerPort: 2380
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PEER_SERVICE_NAME
+          value: pd
+        - name: SERVICE_NAME
+          value: pd
+        - name: SET_NAME
+          value: pd
+        command:
+        - /bin/sh
+        - -c
+        - |
+          HOSTNAME=$(hostname)
+          ORDINAL=${HOSTNAME##*-}
+          
+          # Generate initial cluster string
+          INITIAL_CLUSTER=""
+          for i in $(seq 0 0); do
+            if [ $i -gt 0 ]; then
+              INITIAL_CLUSTER="${INITIAL_CLUSTER},"
+            fi
+            INITIAL_CLUSTER="${INITIAL_CLUSTER}pd-${i}=http://pd-${i}.pd.${NAMESPACE}.svc.cluster.local:2380"
+          done
+          
+          exec /pd-server \
+            --name="${HOSTNAME}" \
+            --data-dir=/var/lib/pd \
+            --client-urls="http://0.0.0.0:2379" \
+            --advertise-client-urls="http://${HOSTNAME}.pd.${NAMESPACE}.svc.cluster.local:2379" \
+            --peer-urls="http://0.0.0.0:2380" \
+            --advertise-peer-urls="http://${HOSTNAME}.pd.${NAMESPACE}.svc.cluster.local:2380" \
+            --initial-cluster="${INITIAL_CLUSTER}"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/pd
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 1Gi

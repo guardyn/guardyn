@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tikv
+  namespace: data
+  labels:
+    app: tikv
+    guardyn.io/stage: poc
+spec:
+  type: ClusterIP
+  ports:
+  - name: server
+    port: 20160
+    targetPort: 20160
+    protocol: TCP
+  selector:
+    app: tikv
+  clusterIP: None

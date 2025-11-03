@@ -15,7 +15,7 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 ### ✅ **Infrastructure Complete (Phases 1-3)**
 
 - **Kubernetes Cluster**: k3d cluster (3 servers + 2 agents) ✅
-- **Data Layer**: FoundationDB + ScyllaDB clusters deployed ✅
+- **Data Layer**: TiKV + ScyllaDB clusters deployed ✅
 - **Messaging**: NATS JetStream with streams configured ✅
 - **Security**: TLS certificates via cert-manager ✅
 - **Secrets**: Age/SOPS encryption configured ✅
@@ -39,10 +39,10 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 ### ⏳ **Next Priorities**
 
-1. Design database schemas (FoundationDB for users/sessions, ScyllaDB for messages/media)
-2. Implement X3DH key agreement protocol
-3. Implement Double Ratchet encryption/decryption
-4. Add gRPC API definitions (.proto files)
+1. ✅ Database schemas ready (TiKV for users/sessions, ScyllaDB for messages/media)
+2. ✅ gRPC API definitions complete (.proto files)
+3. Implement X3DH key agreement protocol
+4. Implement Double Ratchet encryption/decryption
 5. Implement authentication service business logic
 
 ---
@@ -115,12 +115,13 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 ### 2.1 Database Layer ✅
 
-- [x] Deploy FoundationDB operator
+- [x] Deploy TiKV cluster
 
-  - [x] Configure 3-node cluster for consensus
-  - [x] Deploy guardyn-fdb cluster with triple redundancy
+  - [x] Configure PD (Placement Driver) 
+  - [x] Deploy TiKV storage nodes (v7.5.0)
+  - [x] Verify cluster health and store registration
+  - [ ] Create initial Key-Value schemas
   - [ ] Set up backup/restore procedures
-  - [ ] Create initial database schemas
 
 - [x] Deploy ScyllaDB
 

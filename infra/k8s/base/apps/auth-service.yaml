@@ -26,8 +26,8 @@ spec:
         env:
         - name: RUST_LOG
           value: "info"
-        - name: DATABASE_URL
-          value: "foundationdb://guardyn-fdb.data.svc.cluster.local:4500"
+        - name: TIKV_PD_ENDPOINTS
+          value: "pd.data.svc.cluster.local:2379"
         - name: NATS_URL
           value: "nats://nats.messaging.svc.cluster.local:4222"
         resources:
