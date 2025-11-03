@@ -93,8 +93,11 @@ message PaginationResponse {
 ### Overview
 
 **Package**: `guardyn.auth`  
-**Port**: 50051 (gRPC)  
-**Database**: FoundationDB (users, devices, sessions, keys)
+**Port**: 50051 (gRPC)
+
+### 1.1 Data Storage
+
+**Database**: TiKV (users, devices, sessions, keys)
 
 ### RPCs
 
@@ -212,7 +215,7 @@ message LoginSuccess {
 **Port**: 50052 (gRPC)  
 **Databases**:
 
-- FoundationDB (delivery state, session tracking)
+- TiKV (delivery state, session tracking)
 - ScyllaDB (message history, media metadata)
 - NATS JetStream (real-time message routing)
 
@@ -436,7 +439,7 @@ impl AuthService for MyAuthService {
 ### Authentication
 
 - All RPCs (except `Register`, `Login`, `Health`) require `access_token` in request
-- Tokens validated against FoundationDB sessions
+- Tokens validated against TiKV sessions
 - Short-lived access tokens (15 min) + long-lived refresh tokens (30 days)
 - Session invalidation on logout
 
@@ -445,7 +448,7 @@ impl AuthService for MyAuthService {
 - **Message Content**: Double Ratchet (1-on-1), MLS (groups)
 - **Key Bundles**: X3DH protocol for initial key agreement
 - **Transport**: TLS 1.3 for all gRPC connections
-- **At Rest**: ScyllaDB transparent encryption, FoundationDB encrypted backups
+- **At Rest**: ScyllaDB transparent encryption, TiKV encrypted backups
 
 ### Rate Limiting
 

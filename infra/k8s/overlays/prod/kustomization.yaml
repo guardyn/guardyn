@@ -4,7 +4,7 @@ bases:
   - ../../base/namespaces
   - ../../base/cert-manager
   - ../../base/cilium
-  - ../../base/foundationdb
+  - ../../base/tikv
   - ../../base/scylladb
 resources:
   - ../../base/monitoring

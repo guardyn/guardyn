@@ -65,7 +65,7 @@ Services are configured via environment variables with `GUARDYN_` prefix:
 export GUARDYN_SERVICE_NAME=auth-service
 export GUARDYN_HOST=0.0.0.0
 export GUARDYN_PORT=8080
-export GUARDYN_DATABASE__FOUNDATIONDB_CLUSTER_FILE=/etc/foundationdb/fdb.cluster
+export GUARDYN_DATABASE__TIKV_PD_ENDPOINTS=pd.data.svc.cluster.local:2379
 export GUARDYN_DATABASE__SCYLLADB_NODES=scylla-0.data.svc.cluster.local:9042
 export GUARDYN_MESSAGING__NATS_URL=nats://nats.messaging.svc.cluster.local:4222
 export GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
@@ -89,7 +89,7 @@ export GUARDYN_OBSERVABILITY__LOG_LEVEL=info
 
 ## Database Schema
 
-### FoundationDB
+### TiKV
 
 - User accounts and authentication state
 - Session tokens
