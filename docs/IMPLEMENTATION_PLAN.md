@@ -788,10 +788,10 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
    - [ ] ScyllaDB integration for history
    - [ ] NATS JetStream pub/sub
 
-2. **gRPC API definitions**
+2. **gRPC API definitions** ✅
 
-   - [ ] Define .proto files for all services
-   - [ ] Generate Rust code from protos
+   - [x] Define .proto files for all services (auth, messaging, presence, common)
+   - [x] Generate Rust code from protos (build.rs configured)
    - [ ] Implement API endpoints
 
 3. **Testing infrastructure**

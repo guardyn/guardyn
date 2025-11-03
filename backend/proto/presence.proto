@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package guardyn.presence;
+
+import "common.proto";
+
+// ============================================================================
+// Presence Service - Online status, typing indicators, read receipts
+// ============================================================================
+
+service PresenceService {
+  // Update user's online status
+  rpc UpdateStatus(UpdateStatusRequest) returns (UpdateStatusResponse);
+
+  // Get user's current status
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+
+  // Subscribe to presence updates (streaming)
+  rpc Subscribe(SubscribeRequest) returns (stream PresenceUpdate);
+
+  // Update last seen timestamp
+  rpc UpdateLastSeen(UpdateLastSeenRequest) returns (UpdateLastSeenResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (common.HealthStatus);
+}
+
+// ============================================================================
+// Status Management
+// ============================================================================
+
+message UpdateStatusRequest {
+  string access_token = 1; // Authentication
+  UserStatus status = 2;
+  string custom_status_text = 3; // Optional custom status message (max 100 chars)
+}
+
+enum UserStatus {
+  OFFLINE = 0;
+  ONLINE = 1;
+  AWAY = 2; // Idle for >5 minutes
+  DO_NOT_DISTURB = 3; // Mute notifications
+  INVISIBLE = 4; // Appear offline to others
+}
+
+message UpdateStatusResponse {
+  oneof result {
+    UpdateStatusSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateStatusSuccess {
+  UserStatus status = 1;
+  common.Timestamp updated_at = 2;
+}
+
+message GetStatusRequest {
+  string access_token = 1; // Authentication
+  string user_id = 2; // Target user UUID
+}
+
+message GetStatusResponse {
+  oneof result {
+    GetStatusSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetStatusSuccess {
+  string user_id = 1;
+  UserStatus status = 2;
+  string custom_status_text = 3;
+  common.Timestamp last_seen = 4;
+  bool is_typing = 5; // If currently typing to the requester
+}
+
+// ============================================================================
+// Presence Subscriptions
+// ============================================================================
+
+message SubscribeRequest {
+  string access_token = 1; // Authentication
+  repeated string user_ids = 2; // List of users to subscribe to (max 100)
+}
+
+message PresenceUpdate {
+  string user_id = 1;
+  UserStatus status = 2;
+  string custom_status_text = 3;
+  common.Timestamp last_seen = 4;
+  common.Timestamp updated_at = 5;
+
+  // Typing indicator (only for 1-on-1 conversations)
+  bool is_typing = 6;
+  string typing_in_conversation_with = 7; // User ID if typing
+}
+
+// ============================================================================
+// Last Seen Tracking
+// ============================================================================
+
+message UpdateLastSeenRequest {
+  string access_token = 1;
+}
+
+message UpdateLastSeenResponse {
+  oneof result {
+    UpdateLastSeenSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateLastSeenSuccess {
+  common.Timestamp last_seen = 1;
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+message HealthRequest {}

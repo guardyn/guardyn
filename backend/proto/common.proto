@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package guardyn.common;
+
+// ============================================================================
+// Common Types - Shared across all Guardyn services
+// ============================================================================
+
+// Timestamp with UTC timezone
+message Timestamp {
+  int64 seconds = 1;
+  int32 nanos = 2;
+}
+
+// User identifier
+message UserId {
+  string id = 1; // UUID format
+}
+
+// Device identifier
+message DeviceId {
+  string user_id = 1; // UUID of the owner
+  string device_id = 2; // UUID of the device
+}
+
+// Cryptographic key bundle for E2EE
+message KeyBundle {
+  bytes identity_key = 1; // Ed25519 public key (32 bytes)
+  bytes signed_pre_key = 2; // X25519 public key (32 bytes)
+  bytes signed_pre_key_signature = 3; // Ed25519 signature (64 bytes)
+  repeated bytes one_time_pre_keys = 4; // X25519 public keys (32 bytes each)
+  Timestamp created_at = 5;
+}
+
+// Generic error response
+message ErrorResponse {
+  enum ErrorCode {
+    UNKNOWN = 0;
+    INVALID_REQUEST = 1;
+    UNAUTHORIZED = 2;
+    FORBIDDEN = 3;
+    NOT_FOUND = 4;
+    CONFLICT = 5;
+    INTERNAL_ERROR = 6;
+    SERVICE_UNAVAILABLE = 7;
+    RATE_LIMITED = 8;
+  }
+
+  ErrorCode code = 1;
+  string message = 2;
+  map<string, string> details = 3; // Additional context
+}
+
+// Pagination request
+message PaginationRequest {
+  uint32 page = 1; // Page number (0-indexed)
+  uint32 page_size = 2; // Items per page (max 100)
+}
+
+// Pagination response metadata
+message PaginationResponse {
+  uint32 total_items = 1;
+  uint32 total_pages = 2;
+  uint32 current_page = 3;
+  uint32 page_size = 4;
+}
+
+// Health check response (used by all services)
+message HealthStatus {
+  enum Status {
+    UNKNOWN = 0;
+    HEALTHY = 1;
+    DEGRADED = 2;
+    UNHEALTHY = 3;
+  }
+
+  Status status = 1;
+  string version = 2;
+  Timestamp timestamp = 3;
+  map<string, string> components = 4; // Component -> status
+}

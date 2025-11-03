@@ -21,3 +21,6 @@ config.workspace = true
 foundationdb.workspace = true
 scylla.workspace = true
 async-nats.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
