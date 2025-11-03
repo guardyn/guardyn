@@ -92,6 +92,102 @@ This project MUST be **audit-ready** for security review:
 
 ---
 
+## 🌐 Domain-Agnostic Architecture - CRITICAL
+
+**Guardyn is 100% domain-agnostic** - it works with ANY domain you choose.
+
+### SINGLE SOURCE OF TRUTH for Domain Configuration
+
+**The `DOMAIN` environment variable in the configuration file is the ONLY place to configure the project domain. All services automatically use this value.**
+
+### Mandatory Rules
+
+1. **NEVER hardcode domains in code, manifests, or documentation**
+   - ❌ `https://guardyn.io/api`
+   - ❌ `auth.guardyn.local`
+   - ✅ `https://${DOMAIN}/api`
+   - ✅ `auth.${DOMAIN}`
+
+2. **Use the DOMAIN variable everywhere**
+   - Kubernetes Ingress hosts
+   - TLS certificate SANs
+   - Service URLs
+   - API endpoints
+   - Redirect URIs
+
+3. **Generic examples in documentation**
+   - Use `yourdomain.com` or `example.com` for examples
+   - Never use specific real domains in tutorials
+   - Show how to configure, not pre-configure
+
+4. **Test with any domain**
+   - Your changes MUST work with any domain name
+   - Don't assume domain structure (no hardcoded subdomains)
+   - Don't assume TLD (.com, .io, .local, etc.)
+
+### Domain Configuration - Where to Set It
+
+**Set domain ONLY in ONE place:**
+
+```yaml
+# For local development
+DOMAIN: guardyn.local
+
+# For production
+DOMAIN: yourdomain.com
+```
+
+**All services automatically use this:**
+- Auth service: `auth.${DOMAIN}`
+- API gateway: `api.${DOMAIN}`
+- WebSocket: `ws.${DOMAIN}`
+- Media: `media.${DOMAIN}`
+- Web client: `app.${DOMAIN}`
+
+### Examples
+
+**❌ WRONG - Hardcoded domain:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-ingress
+spec:
+  rules:
+  - host: auth.guardyn.io  # NEVER DO THIS
+```
+
+**✅ CORRECT - Domain variable:**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-ingress
+spec:
+  rules:
+  - host: auth.${DOMAIN}  # Configured via kustomize
+```
+
+**❌ WRONG - Domain in documentation:**
+```markdown
+Access the application at https://guardyn.io
+```
+
+**✅ CORRECT - Generic example:**
+```markdown
+Access the application at https://yourdomain.com (replace with your configured domain)
+```
+
+### Why This Matters
+
+1. **Deployment Flexibility**: Works in any environment (dev, staging, prod, on-prem)
+2. **Multi-Tenancy Ready**: Easy to deploy multiple instances with different domains
+3. **Testing**: Can test with .local, .test, or real domains
+4. **Security Audits**: No hardcoded assumptions that could hide bugs
+5. **Open Source**: Users can deploy with their own domains
+
+---
+
 ## Architecture
 
 ### Component Structure
@@ -107,6 +203,7 @@ This project MUST be **audit-ready** for security review:
 - **Kustomize over Helm for base manifests**: Helm only for 3rd-party operators (NATS, FDB, Scylla, Prometheus)
 - **k3d clusters mimic production**: 3 servers + 2 agents with Cilium CNI, registry at `guardyn-registry:5000`
 - **All secrets encrypted with SOPS**: Age keys in `infra/secrets/age-key.txt` (gitignored), config in `.sops.yaml`
+- **Domain-agnostic by design**: `DOMAIN` variable is the single source of truth for all services
 
 ## Developer Workflows
 
