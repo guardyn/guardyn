@@ -6,7 +6,7 @@
     <meta name="description" content="Guardyn - Privacy-focused secure communication platform with E2EE messaging, voice/video calls, and live broadcasting. Built with X3DH, Double Ratchet, and OpenMLS.">
     <meta name="keywords" content="secure messaging, end-to-end encryption, Signal Protocol, OpenMLS, privacy, self-hosted, encrypted messenger, WebRTC, quantum-resistant">
     <meta property="og:title" content="Guardyn - The Privacy Rebellion Starts Now">
-    <meta property="og:description" content="Cryptographically-verified, audit-ready, quantum-resistant secure communication platform. Built with Rust, Kubernetes, FoundationDB, ScyllaDB, NATS JetStream.">
+    <meta property="og:description" content="Cryptographically-verified, audit-ready, quantum-resistant secure communication platform. Built with Rust, Kubernetes, TiKV, ScyllaDB, NATS JetStream.">
     <meta property="og:image" content="https://guardyn.co/media/logo.svg">
     <meta property="og:url" content="https://guardyn.co">
     <meta name="twitter:card" content="summary_large_image">
@@ -846,7 +846,7 @@
                     <div class="feature-icon">🏗️</div>
                     <h3 class="feature-title">Enterprise Infrastructure</h3>
                     <p class="feature-text">
-                        Rust backend, FoundationDB for consensus, ScyllaDB for high-throughput storage,
+                        Rust backend, TiKV for distributed transactions, ScyllaDB for high-throughput storage,
                         NATS JetStream for messaging, Kubernetes-native with triple redundancy.
                     </p>
                 </div>
@@ -933,7 +933,7 @@
             <div class="tech-category">
                 <h3 class="tech-category-title">💾 Data Layer</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge" data-tech="foundationdb">FoundationDB (Consensus)</span>
+                    <span class="tech-badge" data-tech="tikv">TiKV (Distributed Transactions)</span>
                     <span class="tech-badge" data-tech="scylladb">ScyllaDB (High-Throughput)</span>
                     <span class="tech-badge" data-tech="nats">NATS JetStream (Messaging)</span>
                     <span class="tech-badge" data-tech="redis">Redis (Caching)</span>
@@ -1048,7 +1048,7 @@
                     <div class="feature-icon">💪</div>
                     <h3 class="feature-title">Triple Redundancy</h3>
                     <p class="feature-text">
-                        3-node clusters for FoundationDB, ScyllaDB, and NATS.
+                        3-node clusters for TiKV, ScyllaDB, and NATS.
                         Fault-tolerant with automatic failover and recovery.
                     </p>
                 </div>
@@ -1297,15 +1297,15 @@
             },
 
             // Data Layer
-            'foundationdb': {
+            'tikv': {
                 category: 'Data Layer',
-                title: 'FoundationDB',
-                description: 'An ultra-reliable database that ensures your messages and data are never lost, even if servers crash. Used by Apple for iCloud.',
+                title: 'TiKV',
+                description: 'A cloud-native distributed transactional key-value database that ensures your messages and data are never lost. Built by PingCAP and used globally at scale.',
                 example: {
                     title: '🏦 Real-world analogy',
-                    text: 'Like a bank vault that simultaneously exists in multiple locations. Even if one location burns down, your data is perfectly safe in the other vaults.'
+                    text: 'Like a globally distributed bank vault system that automatically synchronizes across continents. Even if entire data centers go down, your data remains perfectly safe and accessible.'
                 },
-                tags: ['ACID Guarantees', 'Fault-Tolerant', 'Battle-Tested']
+                tags: ['ACID Guarantees', 'Cloud Native', 'CNCF Project']
             },
             'scylladb': {
                 category: 'Data Layer',

@@ -4,10 +4,10 @@
 
 Guardyn uses a dual-database architecture for optimal performance:
 
-- **FoundationDB**: ACID-compliant storage for critical data (users, sessions, device keys)
+- **TiKV**: ACID-compliant distributed key-value storage for critical data (users, sessions, device keys)
 - **ScyllaDB**: High-throughput storage for messages, media metadata, and analytics
 
-## FoundationDB Schema
+## TiKV Schema
 
 ### Design Principles
 
@@ -240,7 +240,7 @@ CREATE MATERIALIZED VIEW guardyn.user_groups AS
 
 ### Phase 1: Schema Creation
 
-1. Deploy FoundationDB schema with `fdbcli`
+1. Deploy TiKV key-value schema (via application code)
 2. Execute ScyllaDB CQL scripts via `cqlsh`
 3. Verify schema integrity
 
@@ -253,8 +253,8 @@ CREATE MATERIALIZED VIEW guardyn.user_groups AS
 ### Phase 3: Migration Scripts
 
 ```bash
-# FoundationDB schema initialization
-infra/scripts/fdb-init.sh
+# TiKV schema initialization (via application bootstrap)
+infra/scripts/verify-tikv.sh
 
 # ScyllaDB schema creation
 infra/scripts/scylla-init.cql
@@ -262,12 +262,12 @@ infra/scripts/scylla-init.cql
 
 ## Performance Considerations
 
-### FoundationDB
+### TiKV
 
 - **Read latency**: < 5ms (p99)
 - **Write latency**: < 10ms (p99)
-- **Transactions**: ACID with serializable isolation
-- **Scaling**: Add storage nodes for capacity
+- **Transactions**: ACID with snapshot isolation
+- **Scaling**: Add TiKV nodes for capacity, PD for cluster management
 
 ### ScyllaDB
 
@@ -278,9 +278,9 @@ infra/scripts/scylla-init.cql
 
 ## Backup & Recovery
 
-### FoundationDB
+### TiKV
 
-- Continuous backup to S3-compatible storage
+- Continuous backup to S3-compatible storage via BR (Backup & Restore)
 - Point-in-time recovery (PITR)
 - Backup retention: 30 days
 
@@ -294,7 +294,7 @@ infra/scripts/scylla-init.cql
 
 ### Encryption at Rest
 
-- FoundationDB: Transparent encryption with LUKS
+- TiKV: Transparent encryption at storage layer
 - ScyllaDB: Encryption with ScyllaDB Enterprise or LUKS
 
 ### Access Control
@@ -307,13 +307,13 @@ infra/scripts/scylla-init.cql
 
 ### Key Metrics
 
-- **FoundationDB**: Transaction rate, commit latency, conflict rate
+- **TiKV**: Transaction rate, commit latency, region count, store capacity
 - **ScyllaDB**: Write/read ops, compaction stats, disk usage
 - **Alerts**: High latency, failed transactions, disk capacity
 
 ## Future Enhancements
 
-- [ ] FoundationDB: Implement tenant isolation
+- [ ] TiKV: Implement tenant isolation via key prefixes
 - [ ] ScyllaDB: Add secondary indexes for analytics
 - [ ] Time-series aggregation for usage statistics
 - [ ] Cross-datacenter replication setup

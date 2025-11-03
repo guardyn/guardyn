@@ -38,7 +38,7 @@ x25519-dalek = "2.0"
 ed25519-dalek = "2.1"
 
 # Database clients
-foundationdb = "0.9"
+tikv-client = "0.3"
 scylla = "0.14"
 
 # NATS messaging

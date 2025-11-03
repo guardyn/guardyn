@@ -16,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting messaging service on {}:{}", config.host, config.port);
 
-    // TODO: Initialize FoundationDB connection
+    // TODO: Initialize TiKV connection
     // TODO: Initialize ScyllaDB connection
     // TODO: Initialize NATS JetStream
     // TODO: Start message processor

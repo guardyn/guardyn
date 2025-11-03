@@ -21,7 +21,7 @@ kube\:bootstrap:
 	@echo "[kube:bootstrap] Installing operators and core addons"
 	kubectl apply -k infra/k8s/base/cert-manager
 	kubectl apply -k infra/k8s/base/cilium
-	kubectl apply -k infra/k8s/base/foundationdb
+	kubectl apply -k infra/k8s/base/tikv
 	kubectl apply -k infra/k8s/base/scylladb
 	kubectl apply -k infra/k8s/base/monitoring
 
@@ -36,12 +36,16 @@ k8s\:deploy service:
 				--values infra/k8s/base/nats/values.yaml
 			;;
 		foundationdb)
-			helm repo add foundationdb https://foundationdb.github.io/fdb-kubernetes-operator >/dev/null
+			echo "[DEPRECATED] FoundationDB replaced with TiKV. Use 'tikv' instead."
+			exit 1
+			;;
+		tikv)
+			helm repo add pingcap https://charts.pingcap.org/ >/dev/null
 			helm repo update >/dev/null
-			helm upgrade --install fdb-cluster foundationdb/fdb-kubernetes-operator \
+			helm upgrade --install tikv-cluster pingcap/tidb-cluster \
 				--namespace data \
 				--create-namespace \
-				--values infra/k8s/base/foundationdb/values.yaml
+				--values infra/k8s/base/tikv/values.yaml
 			;;
 		scylladb)
 			helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable >/dev/null
@@ -77,8 +81,8 @@ verify\:kube:
 	@echo "[verify:kube] Verifying NATS JetStream"
 	kubectl run nats-smoke --rm -i --restart=Never --namespace messaging --image=natsio/nats-box:latest \
 		-- /bin/sh -c "nats server check jetstream || nats -s nats://nats:4222 sub foo & sleep 2 && nats -s nats://nats:4222 pub foo 'hello'"
-	@echo "[verify:kube] Checking FoundationDB cluster"
-	kubectl -n data exec deploy/fdb-kubernetes-operator-controller-manager -- fdbcli --exec "status minimal"
+	@echo "[verify:kube] Checking TiKV cluster (PD)"
+	kubectl -n data exec -it svc/pd -- /pd-ctl -u http://localhost:2379 store
 	@echo "[verify:kube] Checking ScyllaDB nodes"
 	kubectl -n data run scylla-nodecheck --rm -i --restart=Never --image=scylladb/scylla:5.4 \
 		-- bash -c "nodetool status"

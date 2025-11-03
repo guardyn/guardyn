@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy database schemas to running FoundationDB and ScyllaDB clusters
+# Deploy database schemas to running TiKV and ScyllaDB clusters
 
 set -euo pipefail
 
@@ -12,9 +12,9 @@ echo ""
 # Check if clusters are running
 echo "Checking cluster status..."
 
-# Check FoundationDB
-if ! kubectl get pods -n data -l app=guardyn-fdb | grep -q Running; then
-  echo "❌ FoundationDB cluster not running. Deploy it first with: just k8s-deploy foundationdb"
+# Check TiKV
+if ! kubectl get pods -n data -l app=pd | grep -q Running; then
+  echo "❌ TiKV cluster not running. Deploy it first with: just k8s-deploy tikv"
   exit 1
 fi
 
@@ -27,17 +27,15 @@ fi
 echo "✅ Both database clusters are running"
 echo ""
 
-# Deploy FoundationDB schema
-echo "=== Deploying FoundationDB Schema ==="
-FDB_POD=$(kubectl get pods -n data -l app=guardyn-fdb -o jsonpath='{.items[0].metadata.name}')
+# Verify TiKV cluster health
+echo "=== Verifying TiKV Cluster ==="
+PD_POD=$(kubectl get pods -n data -l app=pd -o jsonpath='{.items[0].metadata.name}')
 
-echo "Copying initialization script to pod ${FDB_POD}..."
-kubectl cp "${SCRIPT_DIR}/fdb-init.sh" "data/${FDB_POD}:/tmp/fdb-init.sh"
+echo "Checking TiKV cluster status..."
+kubectl exec -n data "${PD_POD}" -- /pd-ctl -u http://localhost:2379 store
 
-echo "Running FoundationDB initialization..."
-kubectl exec -n data "${FDB_POD}" -- bash /tmp/fdb-init.sh
-
-echo "✅ FoundationDB schema initialized"
+echo "✅ TiKV cluster is healthy"
+echo "Note: TiKV schema is managed by application code (key-value patterns)"
 echo ""
 
 # Deploy ScyllaDB schema
@@ -56,8 +54,8 @@ echo ""
 # Verify schemas
 echo "=== Verification ==="
 
-echo "FoundationDB cluster status:"
-kubectl exec -n data "${FDB_POD}" -- fdbcli --exec "status minimal"
+echo "TiKV cluster status:"
+kubectl exec -n data "${PD_POD}" -- /pd-ctl -u http://localhost:2379 store
 echo ""
 
 echo "ScyllaDB keyspace information:"

@@ -140,7 +140,7 @@ async fn main() -> Result<()> {
     );
 
     // Initialize database connection
-    let db = db::DatabaseClient::new(&config.foundationdb.cluster_file).await?;
+    let db = db::DatabaseClient::new(config.database.tikv_pd_endpoints.clone()).await?;
 
     // Load JWT secret from environment or config
     let jwt_secret = std::env::var("JWT_SECRET")
