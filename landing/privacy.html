@@ -69,7 +69,7 @@
                         <div>
                             <h3 class="text-xl font-bold mb-2">Privacy-First Design</h3>
                             <p class="text-lg leading-relaxed">
-                                At Guardyn, your privacy is our top priority. We use end-to-end encryption (Signal Protocol) to ensure that
+                                At Guardyn, your privacy is our top priority. We use military-grade end-to-end encryption (X3DH + Double Ratchet for 1-on-1, OpenMLS for groups) to ensure that
                                 only you and your intended recipients can read your messages. We cannot access your encrypted content.
                             </p>
                         </div>
@@ -208,21 +208,27 @@
                     <h2 class="text-3xl font-bold mb-4">4. End-to-End Encryption</h2>
                     <div class="prose prose-invert max-w-none">
                         <div class="p-6 bg-blue-900/20 border border-blue-500/30 rounded-xl mb-4">
-                            <h3 class="text-xl font-bold mb-3">🔐 Signal Protocol Implementation</h3>
-                            <p class="text-gray-300 leading-relaxed">
-                                Guardyn uses the industry-standard <strong>Signal Protocol</strong> for end-to-end encryption.
-                                This is the same protocol used by Signal, WhatsApp, and other secure messengers.
+                            <h3 class="text-xl font-bold mb-3">🔐 Military-Grade Encryption Stack</h3>
+                            <p class="text-gray-300 leading-relaxed mb-3">
+                                Guardyn uses industry-standard protocols with enterprise-grade enhancements:
                             </p>
+                            <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
+                                <li><strong>1-on-1 Messaging:</strong> Signal Protocol (X3DH + Double Ratchet) - battle-tested encryption used by Signal and WhatsApp</li>
+                                <li><strong>Group Chat:</strong> OpenMLS (IETF MLS standard) - next-generation group encryption with cryptographic guarantees</li>
+                                <li><strong>Media Encryption:</strong> SFrame for real-time voice/video calls</li>
+                                <li><strong>Post-Quantum Ready:</strong> Kyber + ECDH hybrid key exchange</li>
+                            </ul>
                         </div>
 
                         <p class="text-gray-300 leading-relaxed mb-4">
                             <strong>What is end-to-end encrypted:</strong>
                         </p>
                         <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4 mb-6">
-                            <li>Text messages</li>
+                            <li>Text messages (1-on-1 and groups)</li>
                             <li>Photos and videos</li>
                             <li>Files and documents</li>
-                            <li>Voice and video calls</li>
+                            <li>Voice and video calls (SFrame encryption)</li>
+                            <li>Live broadcasts</li>
                             <li>Profile information</li>
                         </ul>
 
@@ -230,11 +236,12 @@
                             <strong>Technical Details:</strong>
                         </p>
                         <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li><strong>Key Exchange:</strong> X25519 (Curve25519 ECDH)</li>
+                            <li><strong>Key Exchange:</strong> X3DH (X25519 Curve25519 ECDH)</li>
                             <li><strong>Signatures:</strong> Ed25519 (EdDSA)</li>
                             <li><strong>Encryption:</strong> AES-256-GCM (authenticated encryption)</li>
                             <li><strong>Key Derivation:</strong> HKDF-SHA256</li>
-                            <li><strong>Forward Secrecy:</strong> Double Ratchet algorithm</li>
+                            <li><strong>Forward Secrecy:</strong> Double Ratchet algorithm (1-on-1)</li>
+                            <li><strong>Group Security:</strong> OpenMLS with TreeKEM for scalable forward secrecy</li>
                         </ul>
 
                         <p class="text-gray-300 leading-relaxed mt-6">
@@ -353,8 +360,8 @@
 
                         <div class="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
                             <p class="text-blue-300">
-                                <strong>Security Audits:</strong> We plan to conduct independent security audits with Cure53 and Symbolic Software.
-                                Reports will be published publicly.
+                                <strong>Security Audits:</strong> We are committed to regular independent security audits with firms like Cure53 and Symbolic Software.
+                                All audit reports will be published publicly for full transparency.
                             </p>
                         </div>
                     </div>

@@ -108,17 +108,19 @@
                     <h2 class="text-3xl font-bold mb-4">2. Service Description</h2>
                     <div class="prose prose-invert max-w-none">
                         <p class="text-gray-300 leading-relaxed mb-4">
-                            Guardyn is an end-to-end encrypted messaging platform that implements the Signal Protocol. The service includes:
+                            Guardyn is a privacy-focused end-to-end encrypted messaging platform. The service includes:
                         </p>
                         <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Text messaging with end-to-end encryption</li>
-                            <li>Media sharing (photos, videos, files)</li>
-                            <li>Voice and video calls</li>
-                            <li>Bot platform for automation</li>
-                            <li>Self-hosted deployment options</li>
+                            <li>1-on-1 messaging with end-to-end encryption (X3DH + Double Ratchet)</li>
+                            <li>Group chat with OpenMLS encryption (up to 1000 members)</li>
+                            <li>Media sharing (photos, videos, files up to 10GB)</li>
+                            <li>Voice and video calls with SFrame E2EE</li>
+                            <li>Live broadcasting with E2EE streams</li>
+                            <li>Self-hosted deployment options (Community Edition)</li>
+                            <li>Enterprise features (LDAP, SAML, compliance tools - Enterprise Edition)</li>
                         </ul>
                         <p class="text-gray-300 leading-relaxed mt-4">
-                            Guardyn is currently in <strong>beta testing</strong>. Features may change, and service availability is not guaranteed.
+                            Guardyn is currently in <strong>MVP/PoC phase</strong>. Features may change, and service availability is not guaranteed during development.
                         </p>
                     </div>
                 </div>
@@ -222,14 +224,41 @@
                     <h2 class="text-3xl font-bold mb-4">7. Intellectual Property</h2>
                     <div class="prose prose-invert max-w-none">
                         <p class="text-gray-300 leading-relaxed mb-4">
-                            Guardyn is open-source software licensed under AGPL-3.0. You may:
+                            Guardyn uses a dual licensing model:
                         </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Use, modify, and distribute the source code under AGPL-3.0 terms</li>
-                            <li>Self-host your own instance of Guardyn</li>
-                            <li>Contribute to the project on GitHub</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
+                        
+                        <div class="p-6 bg-blue-900/20 border border-blue-500/30 rounded-xl mb-4">
+                            <h4 class="font-bold mb-2 text-blue-400">Community Edition (Apache-2.0)</h4>
+                            <p class="text-gray-300 mb-2">Fully open source and free forever:</p>
+                            <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
+                                <li>Client applications (iOS, Android, Desktop, Web)</li>
+                                <li>Server core (auth, messaging, presence, media services)</li>
+                                <li>Cryptographic libraries (X3DH, Double Ratchet, OpenMLS)</li>
+                                <li>Infrastructure configs (Kubernetes, Terraform)</li>
+                                <li>CI/CD pipelines (GitHub Actions, reproducible builds)</li>
+                            </ul>
+                        </div>
+
+                        <div class="p-6 bg-purple-900/20 border border-purple-500/30 rounded-xl mb-4">
+                            <h4 class="font-bold mb-2 text-purple-400">Enterprise Edition (BSL 1.1 → Apache-2.0 in 4 years)</h4>
+                            <p class="text-gray-300 mb-2">Advanced enterprise features:</p>
+                            <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
+                                <li>LDAP/SAML integration</li>
+                                <li>Admin console (web-based management)</li>
+                                <li>Compliance tools (audit logs, e-discovery)</li>
+                                <li>Advanced analytics (usage metrics, dashboards)</li>
+                                <li>Policy-based retention (GDPR, HIPAA compliance)</li>
+                                <li>HSM integration (FIPS 140-2 Level 3)</li>
+                            </ul>
+                            <p class="text-gray-300 mt-3">
+                                <strong>License:</strong> Business Source License 1.1<br>
+                                <strong>Change Date:</strong> 4 years from release<br>
+                                <strong>Change License:</strong> Apache-2.0<br>
+                                <strong>Additional Use Grant:</strong> Free for up to 100 users
+                            </p>
+                        </div>
+
+                        <p class="text-gray-300 leading-relaxed">
                             The Guardyn name, logo, and branding are trademarks and may not be used without permission.
                         </p>
                         <p class="text-gray-300 leading-relaxed mt-4">
