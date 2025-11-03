@@ -10,22 +10,32 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 - **Security-First**: Audit-ready architecture with reproducible builds
 - **Infrastructure**: Kubernetes-native with FoundationDB, ScyllaDB, NATS JetStream
 
-## 🎯 Current Status (Updated: November 3, 2025)
+## 🎯 Current Status (Updated: November 3, 2025 - 14:20 UTC)
 
 ### ✅ **Infrastructure Complete (Phases 1-3)**
 
 - **Kubernetes Cluster**: k3d cluster (3 servers + 2 agents) ✅
-- **Data Layer**: FoundationDB + ScyllaDB clusters deployed ✅
+- **Data Layer**: ScyllaDB cluster deployed and initialized ✅
 - **Messaging**: NATS JetStream with streams configured ✅
 - **Security**: TLS certificates via cert-manager ✅
 - **Secrets**: Age/SOPS encryption configured ✅
 - **Observability**: Prometheus, Grafana, Loki deployed ✅
 
+### ✅ **Database Schemas Deployed (Phase 2)**
+
+- **ScyllaDB Production Ready**: ✅
+  - Keyspace `guardyn` created (RF=2)
+  - 9 tables: messages, group_messages, media_metadata, presence, call_history, groups, group_members, notifications, analytics_events
+  - 3 materialized views for efficient queries
+  - All indexes configured
+- **FoundationDB**: ⚠️ Postponed for MVP (k3s compatibility issues)
+
 ### 🔄 **Backend Services Ready (Phase 4)**
 
 - **Kubernetes Manifests**: All 5 services configured ✅
 - **Service Infrastructure**: Health checks, TLS, secrets ready ✅
-- **Database Connections**: FDB/Scylla connectivity configured ✅
+- **Database Connections**: ScyllaDB connectivity configured ✅
+- **gRPC Protocols**: Complete protocol definitions (common, auth, messaging, presence) ✅
 - **Code Implementation**: Service logic pending implementation
 
 ### 🔐 **Cryptography Crate (Phase 6)**
@@ -39,11 +49,12 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 ### ⏳ **Next Priorities**
 
-1. Design database schemas (FoundationDB for users/sessions, ScyllaDB for messages/media)
-2. Implement X3DH key agreement protocol
-3. Implement Double Ratchet encryption/decryption
-4. Add gRPC API definitions (.proto files)
-5. Implement authentication service business logic
+1. ✅ ~~Design database schemas~~ **DONE**
+2. ✅ ~~Deploy database clusters~~ **DONE (ScyllaDB)**
+3. ⏳ Generate gRPC code from .proto files (requires Nix environment)
+4. ⏳ Implement Auth Service Register RPC
+5. ⏳ Implement X3DH key agreement protocol
+6. ⏳ Implement Double Ratchet encryption/decryption
 
 ---
 
@@ -116,20 +127,17 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 ### 2.1 Database Layer ✅
 
 - [x] Deploy FoundationDB operator
-
-  - [x] Configure 3-node cluster for consensus
-  - [x] Deploy guardyn-fdb cluster with triple redundancy
-  - [ ] Set up backup/restore procedures
-  - [ ] Create initial database schemas
-
+  - [x] Install FDB operator CRDs
+  - [x] Create FDB cluster manifest
+  - [ ] Fix k3s compatibility (postponed for MVP)
+  - [x] Create initial database schemas (using ScyllaDB instead)
 - [x] Deploy ScyllaDB
-
-  - [x] Configure 3-node cluster
-  - [x] Deploy guardyn-scylla cluster with rack topology
-  - [ ] Define keyspaces and tables
-  - [ ] Set up replication strategy
-
-- [ ] Implement data migration scripts
+  - [x] Install Scylla operator via Helm
+  - [x] Create ScyllaDB cluster (2 nodes, RF=2)
+  - [x] Initialize keyspace `guardyn`
+  - [x] Create 9 production tables
+- [x] Set up replication strategy
+- [x] Implement data migration scripts
 
 ### 2.2 Messaging Infrastructure ✅
 
