@@ -83,6 +83,10 @@ verify\:kube:
 	kubectl -n data run scylla-nodecheck --rm -i --restart=Never --image=scylladb/scylla:5.4 \
 		-- bash -c "nodetool status"
 
+db\:deploy-schemas:
+	@echo "[db:deploy-schemas] Deploying database schemas"
+	bash infra/scripts/deploy-schemas.sh
+
 teardown:
 	@echo "[teardown] Destroying cluster and cleaning up"
 	just kube:delete

@@ -10,7 +10,7 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 - **Security-First**: Audit-ready architecture with reproducible builds
 - **Infrastructure**: Kubernetes-native with FoundationDB, ScyllaDB, NATS JetStream
 
-## 🎯 Current Status (Updated: November 1, 2025)
+## 🎯 Current Status (Updated: November 3, 2025)
 
 ### ✅ **Infrastructure Complete (Phases 1-3)**
 
@@ -28,12 +28,22 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 - **Database Connections**: FDB/Scylla connectivity configured ✅
 - **Code Implementation**: Service logic pending implementation
 
+### 🔐 **Cryptography Crate (Phase 6)**
+
+- **Crate Structure**: Module organization complete ✅
+- **Dependencies**: libsignal-protocol, OpenMLS, x25519-dalek, ed25519-dalek configured ✅
+- **X3DH Scaffold**: Key bundle structure defined, implementation pending
+- **Double Ratchet Scaffold**: Interface defined, implementation pending
+- **MLS Scaffold**: Group manager structure defined, implementation pending
+- **Key Storage**: Basic interface defined, secure storage pending
+
 ### ⏳ **Next Priorities**
 
-1. Fix Rust dependency issues in crypto crate
-2. Implement service business logic
-3. Add gRPC API definitions
-4. Deploy and test service interactions
+1. Design database schemas (FoundationDB for users/sessions, ScyllaDB for messages/media)
+2. Implement X3DH key agreement protocol
+3. Implement Double Ratchet encryption/decryption
+4. Add gRPC API definitions (.proto files)
+5. Implement authentication service business logic
 
 ---
 
@@ -338,6 +348,8 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 - [x] Create crypto crate structure
 
+- [x] Add X3DH key bundle structure
+
 - [ ] Implement X3DH protocol (initial key agreement)
 
 - [ ] Identity key generation
@@ -352,6 +364,8 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 - [x] Add libsignal-protocol dependency
 
+- [x] Create Double Ratchet module structure
+
 - [ ] Double Ratchet implementation (libsignal)
 
 - [ ] Message encryption/decryption
@@ -365,6 +379,8 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 ### 6.3 Group Chat Encryption
 
 - [x] Add OpenMLS dependency
+
+- [x] Create MLS module structure
 
 - [ ] MLS (OpenMLS) integration
 
@@ -725,11 +741,13 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 - **Observability stack (Prometheus, Grafana, Loki)**
 - **Rust workspace structure for backend services**
 - **Cryptography crate scaffold with libsignal and OpenMLS**
+- **X3DH, Double Ratchet, and MLS module structures created**
 
 ### 🔄 In Progress
 
 - Backend service implementation (auth, messaging, presence, media, notification)
 - Cryptography protocol implementation (X3DH, Double Ratchet, MLS)
+- Database schema design for FoundationDB and ScyllaDB
 
 ### 🚨 Immediate Blockers
 
@@ -747,7 +765,11 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 2. **Cryptography implementation**
 
-   - [ ] Complete X3DH key agreement
+   - [x] Complete crypto crate structure
+   - [x] Add X3DH key bundle structure
+   - [x] Add Double Ratchet module
+   - [x] Add MLS module
+   - [ ] Implement X3DH key agreement
    - [ ] Implement Double Ratchet encryption
    - [ ] Write comprehensive crypto tests
 
@@ -759,33 +781,33 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 #### High Priority (Next Week)
 
-4. **Messaging service core**
+1. **Messaging service core**
 
    - [ ] Message routing logic
    - [ ] FoundationDB integration for delivery state
    - [ ] ScyllaDB integration for history
    - [ ] NATS JetStream pub/sub
 
-5. **gRPC API definitions**
+2. **gRPC API definitions**
 
    - [ ] Define .proto files for all services
    - [ ] Generate Rust code from protos
    - [ ] Implement API endpoints
 
-6. **Testing infrastructure**
+3. **Testing infrastructure**
    - [ ] Unit tests for crypto primitives
    - [ ] Integration tests for services
    - [ ] Load testing setup (k6)
 
 #### Medium Priority (This Month)
 
-7. **Observability integration**
+1. **Observability integration**
 
    - [ ] Add OpenTelemetry tracing to services
    - [ ] Create Grafana dashboards
    - [ ] Set up alerting rules
 
-8. **Security hardening**
+2. **Security hardening**
    - [ ] TLS/mTLS for all service communication
    - [ ] Secrets management with SOPS
    - [ ] Rate limiting and DDoS protection
@@ -956,6 +978,6 @@ Guardyn is a privacy-focused, secure communication platform (MVP/PoC) with:
 
 ---
 
-**Last Updated**: 2025-11-01  
-**Plan Version**: 1.0  
-**Status**: Infrastructure setup phase (blocked on k3d cluster)
+**Last Updated**: 2025-11-03  
+**Plan Version**: 1.1  
+**Status**: Infrastructure operational, cryptography scaffolding complete, implementing core protocols

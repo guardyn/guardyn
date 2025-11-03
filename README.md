@@ -261,7 +261,23 @@ Built by security engineers who got tired of waiting for Big Tech to fix itself.
 
 ## 🚀 **Getting Started in 60 Seconds**
 
+### **Development Status**
+
+**Current Phase**: MVP/PoC Infrastructure Complete ✅
+
+- ✅ Kubernetes cluster (k3d) operational
+- ✅ FoundationDB + ScyllaDB deployed
+- ✅ NATS JetStream messaging configured
+- ✅ Observability stack (Prometheus, Grafana, Loki)
+- ✅ Backend service scaffolds (Rust)
+- ✅ Cryptography crate structure (X3DH, Double Ratchet, MLS)
+- 🔄 Database schemas designed (see `docs/DATABASE_SCHEMA.md`)
+- 🔄 Implementing crypto protocols
+- 📋 Next: Authentication service implementation
+
 ### **Try Guardyn Cloud (Managed SaaS)**
+
+**Coming Q2 2025** - Currently in development
 
 ```bash
 # No setup required - just sign up
@@ -275,13 +291,17 @@ https://guardyn.io/signup
 
 ### **Self-Host (Community Edition - 100% Free)**
 
+**Status**: Infrastructure ready, services in development
+
 ```bash
-# Prerequisites: Docker, kubectl, 16GB RAM
-git clone https://github.com/guardyn/guardyn.git
+# Prerequisites: Nix package manager, 16GB RAM
+# Full setup guide: docs/infra_poc.md
+
+git clone https://github.com/anrysys/guardyn3.git
 cd guardyn
 
 # Enter reproducible environment (Nix)
-nix develop
+nix develop --extra-experimental-features nix-command --extra-experimental-features flakes
 
 # Deploy to local Kubernetes (k3d)
 just kube-create
@@ -289,10 +309,22 @@ just kube-bootstrap
 just k8s-deploy nats
 just k8s-deploy foundationdb
 just k8s-deploy scylladb
+just k8s-deploy monitoring
 just verify-kube
 
-# Access at https://localhost
+# Initialize database schemas
+kubectl exec -n data -it guardyn-fdb-0 -- bash /mnt/scripts/fdb-init.sh
+kubectl exec -n data -it guardyn-scylla-0 -- cqlsh -f /mnt/scripts/scylla-init.cql
+
+# Access monitoring at http://localhost:3000 (Grafana)
+# Default credentials: admin/admin
 ```
+
+**Current Limitations**:
+- Backend services are scaffolds (no business logic yet)
+- Cryptography protocols not implemented
+- No client applications yet
+- For development and testing only
 
 ### **Verify Reproducible Build**
 
