@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package guardyn.auth;
+
+import "common.proto";
+
+// ============================================================================
+// Authentication Service - User registration, login, session management
+// ============================================================================
+
+service AuthService {
+  // User registration with E2EE key bundle
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // User login (device authentication)
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // User logout (invalidate session)
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // Refresh access token using refresh token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+  // Validate JWT token (internal service-to-service)
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Get user's key bundle for E2EE initiation
+  rpc GetKeyBundle(GetKeyBundleRequest) returns (GetKeyBundleResponse);
+
+  // Upload new pre-keys (key rotation)
+  rpc UploadPreKeys(UploadPreKeysRequest) returns (UploadPreKeysResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (common.HealthStatus);
+}
+
+// ============================================================================
+// Registration
+// ============================================================================
+
+message RegisterRequest {
+  string username = 1; // Unique username (3-32 chars, alphanumeric + underscore)
+  string password = 2; // Password (min 12 chars, will be hashed with Argon2id)
+  string email = 3; // Email for recovery (optional in MVP)
+
+  // Device information
+  string device_name = 4; // e.g., "iPhone 15 Pro", "Desktop Chrome"
+  string device_type = 5; // "ios", "android", "web", "desktop"
+
+  // E2EE key bundle for this device
+  common.KeyBundle key_bundle = 6;
+}
+
+message RegisterResponse {
+  oneof result {
+    RegisterSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RegisterSuccess {
+  string user_id = 1; // UUID
+  string device_id = 2; // UUID
+  string access_token = 3; // JWT (15 min expiry)
+  string refresh_token = 4; // JWT (30 days expiry)
+  common.Timestamp created_at = 5;
+}
+
+// ============================================================================
+// Login
+// ============================================================================
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+
+  // Device information (new or existing)
+  string device_id = 3; // UUID (optional, if returning device)
+  string device_name = 4; // e.g., "iPhone 15 Pro"
+  string device_type = 5; // "ios", "android", "web", "desktop"
+
+  // E2EE key bundle for this device (required if new device)
+  common.KeyBundle key_bundle = 6;
+}
+
+message LoginResponse {
+  oneof result {
+    LoginSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message LoginSuccess {
+  string user_id = 1; // UUID
+  string device_id = 2; // UUID
+  string access_token = 3; // JWT (15 min expiry)
+  string refresh_token = 4; // JWT (30 days expiry)
+
+  // User profile
+  UserProfile profile = 5;
+
+  // All user's devices
+  repeated DeviceInfo devices = 6;
+}
+
+message UserProfile {
+  string user_id = 1;
+  string username = 2;
+  string email = 3;
+  common.Timestamp created_at = 4;
+  common.Timestamp last_seen = 5;
+}
+
+message DeviceInfo {
+  string device_id = 1;
+  string device_name = 2;
+  string device_type = 3;
+  common.Timestamp created_at = 4;
+  common.Timestamp last_seen = 5;
+  bool is_current = 6; // True for the device making the request
+}
+
+// ============================================================================
+// Logout
+// ============================================================================
+
+message LogoutRequest {
+  string access_token = 1; // JWT to invalidate
+  bool all_devices = 2; // If true, logout from all devices
+}
+
+message LogoutResponse {
+  oneof result {
+    LogoutSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message LogoutSuccess {
+  uint32 sessions_invalidated = 1; // Number of sessions logged out
+}
+
+// ============================================================================
+// Token Refresh
+// ============================================================================
+
+message RefreshTokenRequest {
+  string refresh_token = 1; // JWT refresh token
+}
+
+message RefreshTokenResponse {
+  oneof result {
+    RefreshTokenSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RefreshTokenSuccess {
+  string access_token = 1; // New JWT (15 min expiry)
+  string refresh_token = 2; // New refresh token (30 days expiry)
+}
+
+// ============================================================================
+// Token Validation (Internal)
+// ============================================================================
+
+message ValidateTokenRequest {
+  string access_token = 1; // JWT to validate
+}
+
+message ValidateTokenResponse {
+  oneof result {
+    ValidateTokenSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ValidateTokenSuccess {
+  string user_id = 1; // UUID
+  string device_id = 2; // UUID
+  common.Timestamp expires_at = 3;
+  repeated string permissions = 4; // User permissions/roles
+}
+
+// ============================================================================
+// Key Bundle Management
+// ============================================================================
+
+message GetKeyBundleRequest {
+  string user_id = 1; // Target user
+  string device_id = 2; // Target device (optional, if not set returns any device)
+}
+
+message GetKeyBundleResponse {
+  oneof result {
+    GetKeyBundleSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetKeyBundleSuccess {
+  string user_id = 1;
+  string device_id = 2;
+  common.KeyBundle key_bundle = 3;
+}
+
+message UploadPreKeysRequest {
+  string access_token = 1; // Authentication
+  repeated bytes one_time_pre_keys = 2; // New X25519 pre-keys
+}
+
+message UploadPreKeysResponse {
+  oneof result {
+    UploadPreKeysSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UploadPreKeysSuccess {
+  uint32 keys_uploaded = 1;
+  uint32 total_keys_available = 2;
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+message HealthRequest {}

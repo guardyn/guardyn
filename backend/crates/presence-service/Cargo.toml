@@ -6,3 +6,13 @@ edition.workspace = true
 [dependencies]
 guardyn-common = { path = "../common" }
 tokio.workspace = true
+tonic.workspace = true
+prost.workspace = true
+serde.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+scylla.workspace = true
+async-nats.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true

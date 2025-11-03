@@ -28,5 +28,11 @@ async-nats.workspace = true
 
 # JWT for session tokens
 jsonwebtoken = "9.3"
+
+# Password hashing
+argon2 = "0.5"
+
+[build-dependencies]
+tonic-build.workspace = true
 # Password hashing
 argon2 = "0.5"
