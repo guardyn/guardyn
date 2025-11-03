@@ -1,11 +1,11 @@
 -- ScyllaDB schema initialization script
 -- Run with: cqlsh -f scylla-init.cql
 
--- Create keyspace with replication factor 3
+-- Create keyspace with replication factor 2 (for 2-node cluster)
 CREATE KEYSPACE IF NOT EXISTS guardyn
   WITH replication = {
     'class': 'NetworkTopologyStrategy',
-    'datacenter1': 3
+    'dc1': 2
   }
   AND durable_writes = true;
 
