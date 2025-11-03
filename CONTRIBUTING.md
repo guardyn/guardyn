@@ -2,15 +2,6 @@
 
 Thank you for your interest in contributing to Guardyn! This document provides guidelines and best practices for contributing to the project.
 
-## Domain-Agnostic Architecture
-
-**Guardyn is 100% domain-agnostic** - it works with any domain you choose:
-
-- ✅ **Never hardcode domains** - Always use the `DOMAIN` environment variable
-- ✅ **Single source of truth** - Configure domain only in `.env` file
-- ✅ **Use generic examples** - In documentation, use `yourdomain.com` not specific domains
-- ✅ **Test with any domain** - Your changes should work regardless of domain name
-
 ## Getting Started
 
 Please refer to the main [README.md](README.md) for setup instructions and project overview.
