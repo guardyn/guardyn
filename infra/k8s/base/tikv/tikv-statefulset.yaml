@@ -1,0 +1,70 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tikv
+  namespace: data
+  labels:
+    app: tikv
+    guardyn.io/stage: poc
+spec:
+  serviceName: tikv
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tikv
+  template:
+    metadata:
+      labels:
+        app: tikv
+    spec:
+      containers:
+      - name: tikv
+        image: pingcap/tikv:v7.5.0
+        ports:
+        - name: server
+          containerPort: 20160
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SERVICE_NAME
+          value: tikv
+        - name: SET_NAME
+          value: tikv
+        - name: PD_ADDR
+          value: "pd-0.pd.$(NAMESPACE).svc.cluster.local:2379"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          HOSTNAME=$(hostname)
+          
+          exec /tikv-server \
+            --addr="0.0.0.0:20160" \
+            --advertise-addr="${HOSTNAME}.tikv.${NAMESPACE}.svc.cluster.local:20160" \
+            --data-dir=/var/lib/tikv \
+            --pd="${PD_ADDR}" \
+            --capacity=0 \
+            --log-file=""
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/tikv
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 4Gi
