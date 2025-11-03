@@ -11,7 +11,7 @@
 ## 🎯 Current Status (Updated: November 3, 2025)
 
 ### Completed Work ✅
-- **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace) - **REPLACED FoundationDB**
+- **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace)
 - **ScyllaDB cluster** (3 nodes, datacenter `dc1`)
 - **NATS JetStream** (with 4 streams: MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
 - **Cert-manager** (for TLS certificate automation)
@@ -726,7 +726,7 @@
 - CI/CD workflow skeletons
 - **k3d cluster creation and bootstrapping**
 - **NATS JetStream deployment**
-- **TiKV cluster deployment** (replaced FoundationDB)
+- **TiKV cluster deployment**
 - **ScyllaDB operator deployment**
 - **Observability stack (Prometheus, Grafana, Loki)**
 - **Rust workspace structure for backend services**

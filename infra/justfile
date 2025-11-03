@@ -35,10 +35,6 @@ k8s\:deploy service:
 				--create-namespace \
 				--values infra/k8s/base/nats/values.yaml
 			;;
-		foundationdb)
-			echo "[DEPRECATED] FoundationDB replaced with TiKV. Use 'tikv' instead."
-			exit 1
-			;;
 		tikv)
 			helm repo add pingcap https://charts.pingcap.org/ >/dev/null
 			helm repo update >/dev/null
