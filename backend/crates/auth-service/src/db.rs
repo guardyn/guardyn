@@ -1,4 +1,4 @@
-/// Database client for FoundationDB
+/// Database client for TiKV
 ///
 /// Handles all database operations for the auth service:
 /// - User profile storage
@@ -7,11 +7,11 @@
 /// - Key bundle storage
 
 use anyhow::{Result, Context};
-use foundationdb::{Database, FdbError};
+use tikv_client::{RawClient, Error as TikvError};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// User profile stored in FoundationDB
+/// User profile stored in TiKV
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
     pub user_id: String,
@@ -56,28 +56,24 @@ pub struct KeyBundle {
 /// Database client
 #[derive(Clone)]
 pub struct DatabaseClient {
-    db: Arc<Database>,
+    client: Arc<RawClient>,
 }
 
 impl DatabaseClient {
     /// Create new database client
-    pub async fn new(cluster_file: &str) -> Result<Self> {
-        let network = unsafe {
-            foundationdb::boot().context("Failed to initialize FoundationDB")?
-        };
-        
-        let db = Database::new(Some(cluster_file))
-            .context("Failed to open FoundationDB")?;
+    pub async fn new(pd_endpoints: Vec<String>) -> Result<Self> {
+        let client = RawClient::new(pd_endpoints)
+            .await
+            .context("Failed to connect to TiKV")?;
         
         Ok(Self {
-            db: Arc::new(db),
+            client: Arc::new(client),
         })
     }
 
     /// Check if username exists
     pub async fn username_exists(&self, username: &str) -> Result<bool> {
-        let trx = self.db.create_trx()?;
-        let key = format!("/users/username/{}", username);
+        let key = format!("/users/username/{}", username).into_bytes();
         
         match trx.get(key.as_bytes(), false).await {
             Ok(Some(_)) => Ok(true),

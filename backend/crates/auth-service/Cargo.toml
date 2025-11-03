@@ -23,7 +23,7 @@ thiserror.workspace = true
 tracing.workspace = true
 config.workspace = true
 hyper = { version = "0.14", features = ["full"] }
-foundationdb.workspace = true
+tikv-client.workspace = true
 async-nats.workspace = true
 
 # JWT for session tokens

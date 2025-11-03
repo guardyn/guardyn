@@ -228,7 +228,7 @@
 
 - [ ] Delivery guarantees
 
-- [ ] Message persistence (FoundationDB)
+- [ ] Message persistence (TiKV)
 
 - [ ] Message history (ScyllaDB)
 
@@ -726,7 +726,7 @@
 - CI/CD workflow skeletons
 - **k3d cluster creation and bootstrapping**
 - **NATS JetStream deployment**
-- **FoundationDB operator deployment**
+- **TiKV cluster deployment** (replaced FoundationDB)
 - **ScyllaDB operator deployment**
 - **Observability stack (Prometheus, Grafana, Loki)**
 - **Rust workspace structure for backend services**
@@ -737,7 +737,7 @@
 
 - Backend service implementation (auth, messaging, presence, media, notification)
 - Cryptography protocol implementation (X3DH, Double Ratchet, MLS)
-- Database schema design for FoundationDB and ScyllaDB
+- Database schema design for TiKV and ScyllaDB
 
 ### 🚨 Immediate Blockers
 
@@ -749,7 +749,7 @@
 
 1. **Database schema design**
 
-   - [ ] Define FoundationDB keyspace for users and sessions
+   - [ ] Define TiKV keyspace for users and sessions
    - [ ] Define ScyllaDB schema for messages and media
    - [ ] Create migration scripts
 
@@ -774,7 +774,7 @@
 1. **Messaging service core**
 
    - [ ] Message routing logic
-   - [ ] FoundationDB integration for delivery state
+   - [ ] TiKV integration for delivery state
    - [ ] ScyllaDB integration for history
    - [ ] NATS JetStream pub/sub
 
@@ -822,7 +822,7 @@
 
 - **Messaging/Auth Services**: Core service implementation
 - **DevOps Engineer**: Kubernetes, CI/CD, infrastructure automation
-- **Database Administrator**: FoundationDB, ScyllaDB optimization
+- **Database Administrator**: TiKV, ScyllaDB optimization
 
 ### RTC/Media Team
 
@@ -865,7 +865,7 @@
 
 ### Objective 1: Establish Secure Infrastructure
 
-- **KR1**: Local k3d PoC operational with all core services (NATS, FDB, Scylla)
+- **KR1**: Local k3d PoC operational with all core services (NATS, TiKV, Scylla)
 - **KR2**: 99.9% uptime for messaging service in local environment
 - **KR3**: Complete observability stack with <5min mean-time-to-detect
 

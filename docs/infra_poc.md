@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Objective: stand up a reproducible local environment mirroring production topology — Kubernetes control plane, data layer (FoundationDB + ScyllaDB), messaging fabric (NATS JetStream), observability stack, and CI/CD pipeline providing deterministic builds and security checks.
+Objective: stand up a reproducible local environment mirroring production topology — Kubernetes control plane, data layer (TiKV + ScyllaDB), messaging fabric (NATS JetStream), observability stack, and CI/CD pipeline providing deterministic builds and security checks.
 
 ## 2. Prerequisites
 
@@ -27,7 +27,7 @@ Objective: stand up a reproducible local environment mirroring production topolo
 │   │   │   ├── cert-manager
 │   │   │   ├── cilium
 │   │   │   ├── nats
-│   │   │   ├── foundationdb
+│   │   │   ├── tikv
 │   │   │   ├── scylladb
 │   │   │   └── monitoring
 │   │   └── overlays
@@ -71,7 +71,9 @@ just kube:bootstrap
 
 Steps executed:
 
-1. Install CRDs: cert-manager, Cilium, FoundationDB operator, Scylla operator, NATS JetStream operator.
+#### Step 2: Deploy core services
+
+1. Install CRDs: cert-manager, Cilium, TiKV StatefulSets, Scylla operator, NATS JetStream operator.
 2. Apply namespaces: `platform`, `data`, `messaging`, `observability`, `apps`.
 3. Configure storage class using `local-path-provisioner` for PoC, placeholder for Ceph/Rook in prod.
 
@@ -88,11 +90,11 @@ just k8s:deploy nats
 ### 4.4 Deploy Data Stores
 
 ```bash
-just k8s:deploy foundationdb
+just k8s:deploy tikv
 just k8s:deploy scylladb
 ```
 
-- FoundationDB: 3 storage pods, 3 stateless pods, fault domain simulated via node labels.
+- TiKV: PD (Placement Driver) + TiKV storage pods, distributed transactional KV store.
 - ScyllaDB: 3-node rack-aware setup.
 - Seed secrets created with `sops` encrypted manifests (`infra/secrets/data.yaml`).
 
@@ -108,10 +110,10 @@ just k8s:deploy observability
 ### 4.6 Smoke Tests
 
 ```bash
-just verify:kube
+just verify:infra
 ```
 
-- Validates Pod readiness, runs `kubectl port-forward` to run NATS publish/subscribe tests, FoundationDB status check (`fdbcli --exec status minimal`), Scylla health via `nodetool status`.
+- Validates Pod readiness, runs `kubectl port-forward` to run NATS publish/subscribe tests, TiKV status check (`pd-ctl store`), Scylla health via `nodetool status`.
 
 ## 5. Secrets and Configuration Management
 
@@ -122,7 +124,9 @@ just verify:kube
   ```
 
 - Export public key to `.sops.yaml` for encrypted manifests.
-- Store CI secrets in Vault (dev mode for PoC) with dynamic lease for FoundationDB/Scylla credentials.
+- #### Secret Management
+
+- Store CI secrets in Vault (dev mode for PoC) with dynamic lease for TiKV/Scylla credentials.
 - Direnv loads `.envrc` with development credentials, referencing `age` key securely (never committed).
 
 ## 6. Reproducible Build Environment
@@ -161,7 +165,7 @@ packages.default = pkgs.mkShell {
 
 - Trigger: push to `main`.
 - Integration tests with ephemeral `k3d` cluster (spun up via `actions-runner-controller` self-hosted runner).
-- Runs end-to-end tests hitting NATS + FoundationDB (using `kubectl port-forward`).
+- Runs end-to-end tests hitting NATS + TiKV (using `kubectl port-forward`).
 
 **`release.yml`**
 

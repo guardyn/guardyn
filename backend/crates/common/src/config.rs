@@ -12,7 +12,7 @@ pub struct ServiceConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct DatabaseConfig {
-    pub foundationdb_cluster_file: String,
+    pub tikv_pd_endpoints: Vec<String>,
     pub scylladb_nodes: Vec<String>,
 }
 
