@@ -32,7 +32,8 @@ jsonwebtoken = "9.3"
 # Password hashing
 argon2 = "0.5"
 
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
 [build-dependencies]
 tonic-build.workspace = true
-# Password hashing
-argon2 = "0.5"
