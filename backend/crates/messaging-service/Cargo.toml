@@ -10,6 +10,7 @@ guardyn-common = { path = "../common" }
 guardyn-crypto = { path = "../crypto" }
 
 tokio.workspace = true
+tokio-stream = "0.1"
 tonic.workspace = true
 prost.workspace = true
 serde.workspace = true
@@ -21,6 +22,8 @@ config.workspace = true
 tikv-client.workspace = true
 scylla.workspace = true
 async-nats.workspace = true
+uuid = { version = "1.11", features = ["v4", "serde"] }
+chrono = "0.4"
 
 [build-dependencies]
 tonic-build.workspace = true

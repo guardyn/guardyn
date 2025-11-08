@@ -5,12 +5,14 @@
 **Guardyn** is a privacy-focused, end-to-end encrypted (E2EE) messaging platform designed for the modern security landscape. This MVP establishes a foundation for secure, real-time communication with strong cryptographic guarantees.
 
 ### Key Differentiators
+
 - **Security-First**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
 - **Infrastructure**: Kubernetes-native with TiKV, ScyllaDB, NATS JetStream
 
 ## 🎯 Current Status (Updated: November 3, 2025)
 
 ### Completed Work ✅
+
 - **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace)
 - **ScyllaDB cluster** (3 nodes, datacenter `dc1`)
 - **NATS JetStream** (with 4 streams: MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
@@ -109,10 +111,13 @@
 ## Phase 2: Data & Messaging Infrastructure ✅ (Complete)
 
 #### 2.1 Database Schemas
+
 - Database schema design for TiKV and ScyllaDB
 
 **Tasks**:
+
 1. ScyllaDB Schema (Message History):
+
    - [ ] Create keyspace with replication strategy
    - [ ] Messages table with partition by user/conversation
    - [ ] Media metadata table
@@ -192,9 +197,9 @@
 
 ---
 
-## Phase 4: Backend Services (Rust) 🔄 (In Progress - 60% Complete)
+## Phase 4: Backend Services (Rust) 🔄 (In Progress - 80% Complete)
 
-### 4.1 Authentication Service 🔄 (Implementation Complete)
+### 4.1 Authentication Service ✅ (Implementation Complete)
 
 - [x] Create service scaffold
 
@@ -220,7 +225,7 @@
 
 - [x] **Integration tests** ✅ (Nov 8, 2025)
 
-### 4.2 Messaging Service ✅
+### 4.2 Messaging Service 🔄 (In Progress - 70% Complete)
 
 - [x] Create service scaffold
 
@@ -228,17 +233,29 @@
 
 - [x] Configure database connections
 
+- [x] **TiKV + ScyllaDB integration** ✅ (Nov 8, 2025)
+
+- [x] **NATS JetStream client** ✅ (Nov 8, 2025)
+
+- [x] **SendMessage handler** ✅ (Nov 8, 2025)
+
+- [x] **GetMessages handler** ✅ (Nov 8, 2025)
+
+- [x] **MarkAsRead handler** ✅ (Nov 8, 2025)
+
+- [x] **DeleteMessage handler** ✅ (Nov 8, 2025)
+
+- [ ] ReceiveMessages streaming
+
 - [ ] Message routing logic
 
 - [ ] Delivery guarantees
 
-- [ ] Message persistence (TiKV)
-
-- [ ] Message history (ScyllaDB)
-
 - [ ] Offline message queuing
 
-- [ ] Group chat logic
+- [ ] Group chat logic (CreateGroup, AddMember, RemoveMe mber, SendGroupMessage)
+
+- [ ] Integration tests
 
 ### 4.3 Presence Service ✅
 
