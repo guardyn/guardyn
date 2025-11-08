@@ -16,7 +16,7 @@ case "${SERVICE}" in
     ;;
   tikv)
     echo "Deploying TiKV cluster..."
-    kubectl apply -k ../k8s/base/tikv
+    kubectl apply -k infra/k8s/base/tikv
     echo "TiKV cluster deployed (PD + storage nodes)."
     ;;
   scylladb)
