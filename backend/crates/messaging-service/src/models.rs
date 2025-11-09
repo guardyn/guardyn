@@ -23,6 +23,7 @@ pub struct StoredMessage {
 pub struct DeliveryState {
     pub message_id: String,
     pub sender_user_id: String,
+    pub sender_device_id: String,
     pub recipient_user_id: String,
     pub recipient_device_id: Option<String>,
     pub status: DeliveryStatus,

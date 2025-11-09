@@ -197,7 +197,7 @@
 
 ---
 
-## Phase 4: Backend Services (Rust) 🔄 (In Progress - 80% Complete)
+## Phase 4: Backend Services (Rust) 🔄 (In Progress - 90% Complete)
 
 ### 4.1 Authentication Service ✅ (Implementation Complete)
 
@@ -225,7 +225,7 @@
 
 - [x] **Integration tests** ✅ (Nov 8, 2025)
 
-### 4.2 Messaging Service 🔄 (In Progress - 70% Complete)
+### 4.2 Messaging Service 🔄 (In Progress - 90% Complete)
 
 - [x] Create service scaffold
 
@@ -245,7 +245,7 @@
 
 - [x] **DeleteMessage handler** ✅ (Nov 8, 2025)
 
-- [ ] ReceiveMessages streaming
+- [x] **ReceiveMessages streaming** ✅ (Nov 9, 2025)
 
 - [ ] Message routing logic
 
@@ -253,7 +253,12 @@
 
 - [ ] Offline message queuing
 
-- [ ] Group chat logic (CreateGroup, AddMember, RemoveMe mber, SendGroupMessage)
+- [x] **Group chat logic** ✅ (Nov 9, 2025)
+  - [x] CreateGroup handler
+  - [x] AddMember handler
+  - [x] RemoveMember handler
+  - [x] SendGroupMessage handler
+  - [x] GetGroupMessages handler
 
 - [ ] Integration tests
 

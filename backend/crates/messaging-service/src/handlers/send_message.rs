@@ -15,16 +15,22 @@ pub async fn send_message(
     db: Arc<DatabaseClient>,
     nats: Arc<NatsClient>,
 ) -> Result<Response<SendMessageResponse>, Status> {
-    // Validate token (simplified - in production, verify JWT)
-    if request.access_token.is_empty() {
-        return Ok(Response::new(SendMessageResponse {
-            result: Some(send_message_response::Result::Error(ErrorResponse {
-                code: 16, // UNAUTHENTICATED
-                message: "Invalid access token".to_string(),
-                details: Default::default(),
-            })),
-        }));
-    }
+    // Validate JWT token and extract user_id + device_id
+    let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
+        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    
+    let (sender_user_id, sender_device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+        Ok((user_id, device_id)) => (user_id, device_id),
+        Err(_) => {
+            return Ok(Response::new(SendMessageResponse {
+                result: Some(send_message_response::Result::Error(ErrorResponse {
+                    code: 16, // UNAUTHENTICATED
+                    message: "Invalid or expired access token".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
 
     // Validate recipient
     if request.recipient_user_id.is_empty() {
@@ -54,7 +60,7 @@ pub async fn send_message(
 
     // Generate conversation ID (deterministic based on participants)
     let conversation_id = generate_conversation_id(
-        &extract_user_id_from_token(&request.access_token),
+        &sender_user_id,
         &request.recipient_user_id,
     );
 
@@ -62,8 +68,8 @@ pub async fn send_message(
     let stored_msg = StoredMessage {
         message_id: message_id.clone(),
         conversation_id: conversation_id.clone(),
-        sender_user_id: extract_user_id_from_token(&request.access_token),
-        sender_device_id: "device-id-placeholder".to_string(), // TODO: Extract from token
+        sender_user_id: sender_user_id.clone(),
+        sender_device_id: sender_device_id.clone(),
         recipient_user_id: request.recipient_user_id.clone(),
         recipient_device_id: if request.recipient_device_id.is_empty() {
             None
@@ -97,7 +103,8 @@ pub async fn send_message(
     // Create delivery state in TiKV
     let delivery_state = DeliveryState {
         message_id: message_id.clone(),
-        sender_user_id: stored_msg.sender_user_id.clone(),
+        sender_user_id: sender_user_id.clone(),
+        sender_device_id: sender_device_id.clone(),
         recipient_user_id: request.recipient_user_id.clone(),
         recipient_device_id: stored_msg.recipient_device_id.clone(),
         status: DeliveryStatus::Pending,
@@ -113,7 +120,7 @@ pub async fn send_message(
     // Publish to NATS for real-time delivery
     let envelope = MessageEnvelope {
         message_id: message_id.clone(),
-        sender_user_id: stored_msg.sender_user_id.clone(),
+        sender_user_id: sender_user_id.clone(),
         recipient_user_id: request.recipient_user_id.clone(),
         encrypted_content: request.encrypted_content,
         timestamp: server_timestamp,
@@ -149,11 +156,4 @@ fn generate_conversation_id(user1: &str, user2: &str) -> String {
     let namespace = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let data = format!("{}:{}", users[0], users[1]);
     Uuid::new_v5(&namespace, data.as_bytes()).to_string()
-}
-
-/// Extract user ID from JWT token (simplified)
-fn extract_user_id_from_token(token: &str) -> String {
-    // TODO: Properly decode JWT and extract 'sub' claim
-    // For now, return placeholder
-    "user-id-placeholder".to_string()
 }

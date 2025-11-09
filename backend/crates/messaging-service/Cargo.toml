@@ -24,6 +24,7 @@ scylla.workspace = true
 async-nats.workspace = true
 uuid = { version = "1.11", features = ["v4", "serde"] }
 chrono = "0.4"
+jsonwebtoken = "9.3"
 
 [build-dependencies]
 tonic-build.workspace = true

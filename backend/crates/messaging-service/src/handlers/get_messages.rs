@@ -11,16 +11,22 @@ pub async fn get_messages(
     request: GetMessagesRequest,
     db: Arc<DatabaseClient>,
 ) -> Result<Response<GetMessagesResponse>, Status> {
-    // Validate token
-    if request.access_token.is_empty() {
-        return Ok(Response::new(GetMessagesResponse {
-            result: Some(get_messages_response::Result::Error(ErrorResponse {
-                code: 16, // UNAUTHENTICATED
-                message: "Invalid access token".to_string(),
-                details: Default::default(),
-            })),
-        }));
-    }
+    // Validate JWT token and extract user_id
+    let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
+        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    
+    let (_user_id, _device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+        Ok(ids) => ids,
+        Err(_) => {
+            return Ok(Response::new(GetMessagesResponse {
+                result: Some(get_messages_response::Result::Error(ErrorResponse {
+                    code: 16, // UNAUTHENTICATED
+                    message: "Invalid or expired access token".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
 
     // Validate conversation ID
     if request.conversation_id.is_empty() {
