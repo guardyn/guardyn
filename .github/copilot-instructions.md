@@ -92,6 +92,147 @@ This project MUST be **audit-ready** for security review:
 
 ---
 
+## 📝 Naming Conventions - CRITICAL
+
+**Consistent naming across Protocol Buffers and Rust code is mandatory.**
+
+### Protocol Buffers Style Guide
+
+Follow official [Protocol Buffers Style Guide](https://protobuf.dev/programming-guides/style/):
+
+1. **Messages**: PascalCase
+   ```protobuf
+   message RegisterRequest { }
+   message ErrorResponse { }
+   ```
+
+2. **Fields**: snake_case
+   ```protobuf
+   string user_id = 1;
+   int32 retry_count = 2;
+   ```
+
+3. **Enums**: PascalCase for type, SCREAMING_SNAKE_CASE for values
+   ```protobuf
+   enum ErrorCode {
+     UNKNOWN = 0;
+     INVALID_REQUEST = 1;
+     UNAUTHORIZED = 2;
+     NOT_FOUND = 3;
+     INTERNAL_ERROR = 4;
+   }
+   ```
+
+4. **Services**: PascalCase
+   ```protobuf
+   service AuthService { }
+   ```
+
+5. **RPC methods**: PascalCase
+   ```protobuf
+   rpc RegisterUser(RegisterRequest) returns (RegisterResponse);
+   ```
+
+### Rust Code Generation from Proto
+
+**Prost** (Protocol Buffers for Rust) automatically converts proto naming to Rust conventions:
+
+1. **Proto enums → Rust enums**: SCREAMING_SNAKE_CASE → PascalCase
+   ```rust
+   // Proto: INTERNAL_ERROR
+   ErrorCode::InternalError
+
+   // Proto: UNAUTHORIZED
+   ErrorCode::Unauthorized
+
+   // Proto: NOT_FOUND
+   ErrorCode::NotFound
+
+   // Proto: INVALID_REQUEST
+   ErrorCode::InvalidRequest
+   ```
+
+2. **Proto messages → Rust structs**: Already PascalCase (unchanged)
+   ```rust
+   RegisterRequest
+   ErrorResponse
+   ```
+
+3. **Proto fields → Rust fields**: Already snake_case (unchanged)
+   ```rust
+   user_id
+   retry_count
+   ```
+
+### Mandatory Rules
+
+1. **NEVER use custom enum variants in Rust code**
+   - ❌ `ErrorCode::Internal` (doesn't exist in proto)
+   - ✅ `ErrorCode::InternalError` (matches proto `INTERNAL_ERROR`)
+
+2. **ALWAYS reference proto definitions when coding**
+   - Check `backend/proto/*.proto` files for exact enum values
+   - Use generated code from `src/generated/` as source of truth
+
+3. **Proto files are the canonical source**
+   - Update proto first, then regenerate Rust code
+   - Never modify generated `*.rs` files manually
+
+4. **Use full enum paths in error handling**
+   ```rust
+   use proto::common::error_response::ErrorCode;
+
+   ErrorCode::InternalError as i32  // Correct
+   ErrorCode::Unauthorized as i32   // Correct
+   ErrorCode::NotFound as i32       // Correct
+   ```
+
+### Code Review Checklist
+
+Before committing code that uses proto-generated types:
+
+- [ ] All enum variants match proto definitions (with PascalCase conversion)
+- [ ] No custom/invented enum variants
+- [ ] Struct field names match proto snake_case
+- [ ] Build succeeds with `cargo build --release`
+- [ ] No warnings about missing enum variants
+
+### Common Mistakes to Avoid
+
+| ❌ Wrong (Custom Name) | ✅ Correct (Proto-Generated) | Proto Definition |
+|------------------------|------------------------------|------------------|
+| `ErrorCode::Internal` | `ErrorCode::InternalError` | `INTERNAL_ERROR` |
+| `ErrorCode::Unauthenticated` | `ErrorCode::Unauthorized` | `UNAUTHORIZED` |
+| `ErrorCode::InvalidInput` | `ErrorCode::InvalidRequest` | `INVALID_REQUEST` |
+| `ErrorCode::AlreadyExists` | `ErrorCode::Conflict` | `CONFLICT` |
+
+### Verification
+
+When adding new proto definitions:
+
+1. Define in proto with SCREAMING_SNAKE_CASE:
+   ```protobuf
+   enum Status {
+     STATUS_UNKNOWN = 0;
+     STATUS_PENDING = 1;
+     STATUS_COMPLETED = 2;
+   }
+   ```
+
+2. Generated Rust will use PascalCase:
+   ```rust
+   Status::StatusUnknown
+   Status::StatusPending
+   Status::StatusCompleted
+   ```
+
+3. Test compilation:
+   ```bash
+   cargo build --release -p <service-name>
+   ```
+
+---
+
 ## 🌐 Domain-Agnostic Architecture - CRITICAL
 
 **Guardyn is 100% domain-agnostic** - it works with ANY domain you choose.

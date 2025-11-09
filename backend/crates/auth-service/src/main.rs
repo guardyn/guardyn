@@ -19,10 +19,10 @@ use anyhow::Result;
 // Import generated protobuf code
 pub mod proto {
     pub mod common {
-        tonic::include_proto!("guardyn.common");
+        include!("generated/guardyn.common.rs");
     }
     pub mod auth {
-        tonic::include_proto!("guardyn.auth");
+        include!("generated/guardyn.auth.rs");
     }
 }
 

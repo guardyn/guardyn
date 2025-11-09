@@ -15,7 +15,7 @@ pub async fn handle(
         Ok(c) => c,
         Err(_) => {
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Unauthenticated as i32,
+                code: error_response::ErrorCode::Unauthorized as i32,
                 message: "Invalid or expired token".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -28,7 +28,7 @@ pub async fn handle(
     // Check if it's an access token
     if claims.token_type != Some("access".to_string()) {
         let error = ErrorResponse {
-            code: error_response::ErrorCode::Unauthenticated as i32,
+            code: error_response::ErrorCode::Unauthorized as i32,
             message: "Invalid token type".to_string(),
             details: std::collections::HashMap::new(),
         };
@@ -41,6 +41,10 @@ pub async fn handle(
     let success = ValidateTokenSuccess {
         user_id: claims.sub,
         device_id: claims.device_id,
+        expires_at: Some(crate::proto::common::Timestamp {
+            seconds: claims.exp,
+            nanos: 0,
+        }),
         permissions: claims.permissions,
     };
     

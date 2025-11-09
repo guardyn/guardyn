@@ -31,9 +31,10 @@ tonic-build = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Cryptography (placeholders - will be updated)
-libsignal-protocol = "0.1"
-openmls = "0.5"
+# Cryptography (temporarily disabled for MVP deployment)
+# Will be implemented in Phase 6: Cryptography
+# libsignal-rust = "0.1"  # TODO: Implement Signal Protocol
+# openmls = "0.5"  # TODO: Implement MLS
 x25519-dalek = "2.0"
 ed25519-dalek = "2.1"
 

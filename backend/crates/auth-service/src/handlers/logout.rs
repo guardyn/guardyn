@@ -14,7 +14,7 @@ pub async fn handle(
         Ok(c) => c,
         Err(_) => {
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Unauthenticated as i32,
+                code: error_response::ErrorCode::Unauthorized as i32,
                 message: "Invalid or expired token".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -38,7 +38,7 @@ pub async fn handle(
     
     Ok(Response::new(LogoutResponse {
         result: Some(logout_response::Result::Success(LogoutSuccess {
-            message: "Logged out successfully".to_string(),
+            sessions_invalidated: 1,
         })),
     }))
 }
