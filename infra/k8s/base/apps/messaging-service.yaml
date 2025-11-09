@@ -35,7 +35,7 @@ spec:
         - name: GUARDYN_DATABASE__TIKV_PD_ENDPOINTS
           value: "pd.data.svc.cluster.local:2379"
         - name: GUARDYN_DATABASE__SCYLLADB_NODES
-          value: "scylla-0.data.svc.cluster.local:9042,scylla-1.data.svc.cluster.local:9042,scylla-2.data.svc.cluster.local:9042"
+          value: "guardyn-scylla-client.data.svc.cluster.local:9042"
         - name: GUARDYN_MESSAGING__NATS_URL
           value: "nats://nats.messaging.svc.cluster.local:4222"
         - name: GUARDYN_OBSERVABILITY__OTLP_ENDPOINT

@@ -9,21 +9,34 @@
 - **Security-First**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
 - **Infrastructure**: Kubernetes-native with TiKV, ScyllaDB, NATS JetStream
 
-## 🎯 Current Status (Updated: November 3, 2025)
+## 🎯 Current Status (Updated: November 9, 2025 - Evening)
 
 ### Completed Work ✅
 
 - **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace)
-- **ScyllaDB cluster** (3 nodes, datacenter `dc1`)
+- **ScyllaDB cluster operational** (1 node, datacenter `dc1`, 4/4 containers running)
 - **NATS JetStream** (with 4 streams: MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
 - **Cert-manager** (for TLS certificate automation)
+- **Auth Service** - Fully deployed (2 replicas, all handlers operational)
+- **Messaging Service** - Fully deployed (3 replicas, all handlers operational)
+- **System Configuration** - inotify limits increased for ScyllaDB compatibility
 
-### 🔄 **Backend Services Ready (Phase 4)**
+### 🎉 **Backend Services Deployed (Phase 4)**
 
-- **Kubernetes Manifests**: All 5 services configured ✅
-- **Service Infrastructure**: Health checks, TLS, secrets ready ✅
-- **Database Connections**: TiKV/Scylla connectivity configured ✅
-- **Code Implementation**: Service logic pending implementation
+- **Auth Service**: ✅ FULLY OPERATIONAL (2/2 replicas Running)
+  - User registration/login/logout ✅
+  - Device management ✅
+  - JWT token generation/validation ✅
+  - TiKV integration ✅
+  - Kubernetes deployment complete ✅
+
+- **Messaging Service**: ✅ FULLY OPERATIONAL (3/3 replicas Running)
+  - 1-on-1 messaging ✅
+  - Group chat ✅
+  - Message persistence (ScyllaDB) ✅
+  - Real-time delivery (NATS) ✅
+  - Offline message queuing (TiKV) ✅
+  - Kubernetes deployment complete ✅
 
 ### 🔐 **Cryptography Crate (Phase 6)**
 
@@ -38,9 +51,11 @@
 
 1. ✅ Database schemas ready (TiKV for users/sessions, ScyllaDB for messages/media)
 2. ✅ gRPC API definitions complete (.proto files)
-3. Implement X3DH key agreement protocol
-4. Implement Double Ratchet encryption/decryption
-5. Implement authentication service business logic
+3. ✅ Auth Service deployed and operational
+4. ✅ Messaging Service deployed and operational
+5. Implement X3DH key agreement protocol
+6. Implement Double Ratchet encryption/decryption
+7. End-to-end testing of Auth + Messaging flow
 
 ---
 
@@ -256,73 +271,20 @@
 
 - [x] **Integration tests** ✅ (Nov 9, 2025)
 
-- [ ] **Kubernetes Deployment** ⏸️ (Blocked by proto field mismatches)
-
-- [x] **MarkAsRead handler** ✅ (Nov 8, 2025)
-
-- [x] **DeleteMessage handler** ✅ (Nov 8, 2025)
-
-- [x] **ReceiveMessages streaming** ✅ (Nov 9, 2025)
-
-- [x] **Message routing logic** ✅ (Nov 9, 2025)
-
-- [x] **Delivery guarantees** ✅ (NATS + TiKV delivery state)
-
-- [x] **Offline message queuing** ✅ (TiKV pending messages)
-
-- [x] **Group chat logic** ✅ (Nov 9, 2025)
-
-  - [x] CreateGroup handler
-  - [x] AddMember handler
-  - [x] RemoveMember handler
-  - [x] SendGroupMessage handler (with ScyllaDB persistence)
-  - [x] GetGroupMessages handler (with ScyllaDB retrieval)
-  - [x] NATS fanout for group message delivery
-
-- [x] **Group message persistence** ✅ (Nov 9, 2025)
-
-  - [x] ScyllaDB schema (group_messages table)
-  - [x] Storage implementation (store_group_message)
-  - [x] Retrieval implementation (get_group_messages)
-
-- [x] **Integration tests** ✅ (Nov 9, 2025)
-
-  - [x] Docker Compose setup with auth + messaging services
-  - [x] 1-on-1 messaging tests (send, receive, mark as read, delete)
-  - [x] Offline message delivery test
-  - [x] Group chat flow test (create, send, retrieve)
-
-- [x] **Kubernetes Deployment** ✅ (Nov 9, 2025)
+- [x] **Kubernetes Deployment** ✅ (Nov 9, 2025 - Evening)
 
   - [x] Multi-stage Dockerfile created
   - [x] Deployment/Service manifests updated
-  - [x] Secrets configured
-  - [ ] Running pods (blocked by image rebuild)
-
-- [x] **Delivery guarantees** ✅ (NATS + TiKV delivery state)
-
-- [x] **Offline message queuing** ✅ (TiKV pending messages)
-
-- [x] **Group chat logic** ✅ (Nov 9, 2025)
-
-  - [x] CreateGroup handler
-  - [x] AddMember handler
-  - [x] RemoveMember handler
-  - [x] SendGroupMessage handler (with ScyllaDB persistence)
-  - [x] GetGroupMessages handler (with ScyllaDB retrieval)
-  - [x] NATS fanout for group message delivery
-
-- [x] **Group message persistence** ✅ (Nov 9, 2025)
-
-  - [x] ScyllaDB schema (group_messages table)
-  - [x] Storage implementation (store_group_message)
-  - [x] Retrieval implementation (get_group_messages)
-
-- [x] **Integration tests** ✅ (Nov 9, 2025)
-  - [x] Docker Compose setup with auth + messaging services
-  - [x] 1-on-1 messaging tests (send, receive, mark as read, delete)
-  - [x] Offline message delivery test
-  - [x] Group chat flow test (create, send, retrieve)
+  - [x] ScyllaDB endpoint fixed (guardyn-scylla-client)
+  - [x] System inotify limits increased (fs.inotify.max_user_instances=8192)
+  - [x] **ScyllaDB cluster fully operational (4/4 containers)** ✅
+  - [x] **Docker image built and imported to k3d cluster** ✅
+  - [x] **Pods running successfully (3 replicas)** ✅
+  - [x] **Health probes (TCP) passing** ✅
+  - [x] **TiKV connectivity verified** ✅
+  - [x] **ScyllaDB connectivity verified** ✅
+  - [x] **NATS JetStream connectivity verified** ✅
+  - [x] **Service ClusterIP accessible** ✅
 
 ### 4.3 Presence Service ✅
 
