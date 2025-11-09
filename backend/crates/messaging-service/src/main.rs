@@ -135,9 +135,16 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         _request: Request<HealthRequest>,
     ) -> Result<Response<HealthStatus>, Status> {
+        use crate::proto::common::health_status::Status as HealthStatusEnum;
+
         Ok(Response::new(HealthStatus {
-            status: "healthy".to_string(),
-            checks: vec![],
+            status: HealthStatusEnum::Healthy as i32,
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            timestamp: Some(crate::proto::common::Timestamp {
+                seconds: chrono::Utc::now().timestamp(),
+                nanos: 0,
+            }),
+            components: std::collections::HashMap::new(),
         }))
     }
 }
@@ -150,8 +157,8 @@ async fn main() -> Result<()> {
     tracing::info!("Starting messaging service on {}:{}", config.host, config.port);
 
     // Initialize database connections
-    let tikv_endpoints = vec![config.database.tikv_pd_endpoints.clone()];
-    let scylla_nodes = vec![config.database.scylladb_nodes.clone()];
+    let tikv_endpoints = config.database.tikv_pd_endpoints.clone();
+    let scylla_nodes = config.database.scylladb_nodes.clone();
 
     let db = db::DatabaseClient::new(tikv_endpoints, scylla_nodes)
         .await

@@ -18,7 +18,7 @@ pub async fn send_group_message(
     // Validate JWT token and extract user_id (sender)
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
-    
+
     let (sender_user_id, sender_device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
         Ok(ids) => ids,
         Err(_) => {
@@ -127,7 +127,7 @@ pub async fn send_group_message(
     };
 
     // Publish message to NATS for each group member (fanout)
-    for member in members {
+    for member in &members {
         // Skip sender - they already have the message
         if member.user_id == sender_user_id {
             continue;
@@ -135,18 +135,19 @@ pub async fn send_group_message(
 
         // Subject pattern: messages.{user_id}.{message_id}
         let subject = format!("messages.{}.{}", member.user_id, message_id);
-        
+
         // Create message envelope
         let envelope = crate::nats::MessageEnvelope {
             message_id: message_id.clone(),
             sender_user_id: sender_user_id.clone(),
             sender_device_id: sender_device_id.clone(),
+            recipient_user_id: member.user_id.clone(),
             encrypted_content: request.encrypted_content.clone(),
             timestamp: server_timestamp,
         };
 
         // Publish to NATS
-        if let Err(e) = nats.publish_message(&subject, &envelope).await {
+        if let Err(e) = nats.publish_message_to_subject(&subject, &envelope).await {
             tracing::error!(
                 "Failed to publish group message {} to member {}: {}",
                 message_id,

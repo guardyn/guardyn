@@ -1,6 +1,7 @@
 /// NATS JetStream client for real-time message routing
 use anyhow::{Context, Result};
 use async_nats::jetstream::{self, consumer::PullConsumer, stream::Stream};
+use futures::StreamExt; // For .next() on async streams
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -9,6 +10,7 @@ use std::sync::Arc;
 pub struct MessageEnvelope {
     pub message_id: String,
     pub sender_user_id: String,
+    pub sender_device_id: String,
     pub recipient_user_id: String,
     pub encrypted_content: Vec<u8>,
     pub timestamp: i64,
@@ -52,8 +54,8 @@ impl NatsClient {
 
     /// Publish message to NATS
     pub async fn publish_message(&self, envelope: &MessageEnvelope) -> Result<()> {
-        let subject = format!("messages.{}.{}", 
-            envelope.recipient_user_id, 
+        let subject = format!("messages.{}.{}",
+            envelope.recipient_user_id,
             envelope.message_id
         );
 
@@ -71,6 +73,22 @@ impl NatsClient {
             envelope.message_id,
             envelope.recipient_user_id
         );
+
+        Ok(())
+    }
+
+    /// Publish message to NATS with custom subject (for group messages)
+    pub async fn publish_message_to_subject(&self, subject: &str, envelope: &MessageEnvelope) -> Result<()> {
+        let payload = serde_json::to_vec(envelope)?;
+
+        self.context
+            .publish(subject.to_string(), payload.into())
+            .await
+            .context("Failed to publish message to NATS")?
+            .await
+            .context("Failed to confirm message publication")?;
+
+        tracing::debug!("Published message {} to subject {}", envelope.message_id, subject);
 
         Ok(())
     }
