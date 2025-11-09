@@ -12,10 +12,10 @@ thiserror.workspace = true
 serde.workspace = true
 
 # Cryptography - Signal Protocol for 1-on-1 E2EE
-libsignal-protocol.workspace = true
+# libsignal-protocol.workspace = true  # DISABLED: yanked aes v0.3.2 dependency
 
 # MLS for group chat E2EE
-openmls.workspace = true
+# openmls.workspace = true  # DISABLED: depends on libsignal-protocol
 
 # Curve25519 for key exchange
 x25519-dalek.workspace = true
