@@ -222,7 +222,11 @@
   - [x] Multi-stage Dockerfile created
   - [x] Deployment/Service manifests updated (gRPC ports, env vars)
   - [x] Secrets configured (JWT)
-  - [ ] Running pods (blocked by image rebuild - old Go images)
+  - [x] **Docker image built and imported to k3d cluster** ✅
+  - [x] **Pods running successfully (2 replicas)** ✅
+  - [x] **Health probes (TCP) passing** ✅
+  - [x] **TiKV connectivity verified** ✅
+  - [x] **Service ClusterIP accessible** ✅
 
 - [ ] Integration with Secure Enclave/HSM
 
@@ -237,6 +241,22 @@
 - [x] **SendMessage handler** ✅ (Nov 8, 2025)
 
 - [x] **GetMessages handler** ✅ (Nov 8, 2025)
+
+- [x] **MarkAsRead handler** ✅ (Nov 8, 2025)
+
+- [x] **DeleteMessage handler** ✅ (Nov 9, 2025)
+
+- [x] **ReceiveMessages (streaming)** ✅ (Nov 9, 2025)
+
+- [x] **JWT validation** ✅ (Nov 9, 2025)
+
+- [x] **Group chat handlers** ✅ (Nov 9, 2025)
+
+- [x] **Group message persistence** ✅ (Nov 9, 2025)
+
+- [x] **Integration tests** ✅ (Nov 9, 2025)
+
+- [ ] **Kubernetes Deployment** ⏸️ (Blocked by proto field mismatches)
 
 - [x] **MarkAsRead handler** ✅ (Nov 8, 2025)
 
