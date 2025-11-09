@@ -15,9 +15,11 @@ WORKDIR /app
 # Copy workspace manifest
 COPY Cargo.toml Cargo.lock ./
 
+# Copy proto files FIRST (needed for build.rs)
+COPY proto/ ./proto/
+
 # Copy all crates (needed for workspace build)
 COPY crates/ ./crates/
-COPY proto/ ./proto/
 
 # Build the messaging-service binary (release mode)
 RUN cargo build --release -p guardyn-messaging-service
