@@ -36,11 +36,11 @@ RUN apt-get update && apt-get install -y \
 # Create non-root user
 RUN useradd -m -u 1000 -s /bin/bash guardyn
 
-# Copy binary from builder
-COPY --from=builder /app/target/release/guardyn-auth-service /usr/local/bin/guardyn-auth-service
+# Copy binary from builder (binary name is "auth-service", not "guardyn-auth-service")
+COPY --from=builder /app/target/release/auth-service /usr/local/bin/auth-service
 
 # Set ownership
-RUN chown guardyn:guardyn /usr/local/bin/guardyn-auth-service
+RUN chown guardyn:guardyn /usr/local/bin/auth-service
 
 # Switch to non-root user
 USER guardyn
@@ -50,7 +50,7 @@ EXPOSE 50051
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD ["/usr/local/bin/guardyn-auth-service", "--health-check"]
+    CMD ["/usr/local/bin/auth-service", "--health-check"]
 
 # Run the service
-ENTRYPOINT ["/usr/local/bin/guardyn-auth-service"]
+ENTRYPOINT ["/usr/local/bin/auth-service"]
