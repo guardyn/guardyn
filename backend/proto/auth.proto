@@ -62,8 +62,10 @@ message RegisterSuccess {
   string user_id = 1; // UUID
   string device_id = 2; // UUID
   string access_token = 3; // JWT (15 min expiry)
-  string refresh_token = 4; // JWT (30 days expiry)
-  common.Timestamp created_at = 5;
+  uint32 access_token_expires_in = 4; // Expiry time in seconds (e.g., 900 for 15 min)
+  string refresh_token = 5; // JWT (30 days expiry)
+  uint32 refresh_token_expires_in = 6; // Expiry time in seconds (e.g., 2592000 for 30 days)
+  common.Timestamp created_at = 7;
 }
 
 // ============================================================================
@@ -94,13 +96,15 @@ message LoginSuccess {
   string user_id = 1; // UUID
   string device_id = 2; // UUID
   string access_token = 3; // JWT (15 min expiry)
-  string refresh_token = 4; // JWT (30 days expiry)
+  uint32 access_token_expires_in = 4; // Expiry time in seconds (e.g., 900 for 15 min)
+  string refresh_token = 5; // JWT (30 days expiry)
+  uint32 refresh_token_expires_in = 6; // Expiry time in seconds (e.g., 2592000 for 30 days)
 
   // User profile
-  UserProfile profile = 5;
+  UserProfile profile = 7;
 
   // All user's devices
-  repeated DeviceInfo devices = 6;
+  repeated DeviceInfo devices = 8;
 }
 
 message UserProfile {
@@ -157,7 +161,8 @@ message RefreshTokenResponse {
 
 message RefreshTokenSuccess {
   string access_token = 1; // New JWT (15 min expiry)
-  string refresh_token = 2; // New refresh token (30 days expiry)
+  uint32 access_token_expires_in = 2; // Expiry time in seconds (e.g., 900 for 15 min)
+  string refresh_token = 3; // New refresh token (30 days expiry)
 }
 
 // ============================================================================

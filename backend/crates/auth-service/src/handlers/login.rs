@@ -39,7 +39,7 @@ pub async fn handle(
         Err(e) => {
             tracing::error!("Database error: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Internal server error".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -52,7 +52,7 @@ pub async fn handle(
     // Verify password
     if !verify_password(&req.password, &user.password_hash) {
         let error = ErrorResponse {
-            code: error_response::ErrorCode::Unauthenticated as i32,
+            code: error_response::ErrorCode::Unauthorized as i32,
             message: "Invalid username or password".to_string(),
             details: std::collections::HashMap::new(),
         };
@@ -104,7 +104,7 @@ pub async fn handle(
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Failed to generate tokens".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -119,7 +119,7 @@ pub async fn handle(
         Err(e) => {
             tracing::error!("Failed to generate refresh token: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Failed to generate tokens".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -148,20 +148,42 @@ pub async fn handle(
             device_id: device_id.clone(),
             device_name: req.device_name.clone(),
             device_type: req.device_type.clone(),
+            created_at: Some(Timestamp {
+                seconds: now,
+                nanos: 0,
+            }),
             last_seen: Some(Timestamp {
                 seconds: now,
                 nanos: 0,
             }),
+            is_current: true,
         }
     ];
+    
+    // User profile
+    let profile = Some(UserProfile {
+        user_id: user.user_id.clone(),
+        username: user.username.clone(),
+        email: user.email.clone().unwrap_or_default(),
+        created_at: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
+        last_seen: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
+    });
     
     // Return success response
     let success = LoginSuccess {
         user_id: user.user_id,
+        device_id,
         access_token,
         access_token_expires_in: 15 * 60, // 15 minutes in seconds
         refresh_token,
         refresh_token_expires_in: 30 * 24 * 60 * 60, // 30 days in seconds
+        profile,
         devices,
     };
     

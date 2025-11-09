@@ -1,6 +1,6 @@
 # Multi-stage build for guardyn-auth-service
 # Stage 1: Builder
-FROM rust:1.84-slim-bookworm AS builder
+FROM rust:1.91-slim-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -15,9 +15,11 @@ WORKDIR /app
 # Copy workspace manifest
 COPY Cargo.toml Cargo.lock ./
 
+# Copy proto files FIRST (needed for build.rs)
+COPY proto/ ./proto/
+
 # Copy all crates (needed for workspace build)
 COPY crates/ ./crates/
-COPY proto/ ./proto/
 
 # Build the auth-service binary (release mode)
 RUN cargo build --release -p guardyn-auth-service

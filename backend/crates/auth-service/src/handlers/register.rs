@@ -26,11 +26,11 @@ pub async fn handle(
     request: Request<RegisterRequest>,
 ) -> Result<Response<RegisterResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate username
     if !validate_username(&req.username) {
         let error = ErrorResponse {
-            code: error_response::ErrorCode::InvalidInput as i32,
+            code: error_response::ErrorCode::InvalidRequest as i32,
             message: "Username must be 3-32 characters, alphanumeric and underscore only".to_string(),
             details: std::collections::HashMap::new(),
         };
@@ -38,11 +38,11 @@ pub async fn handle(
             result: Some(register_response::Result::Error(error)),
         }));
     }
-    
+
     // Validate password
     if req.password.len() < 12 {
         let error = ErrorResponse {
-            code: error_response::ErrorCode::InvalidInput as i32,
+            code: error_response::ErrorCode::InvalidRequest as i32,
             message: "Password must be at least 12 characters".to_string(),
             details: std::collections::HashMap::new(),
         };
@@ -50,12 +50,12 @@ pub async fn handle(
             result: Some(register_response::Result::Error(error)),
         }));
     }
-    
+
     // Check if username exists
     match service.db.username_exists(&req.username).await {
         Ok(true) => {
             let error = ErrorResponse {
-                code: error_response::ErrorCode::AlreadyExists as i32,
+                code: error_response::ErrorCode::Conflict as i32,
                 message: "Username already taken".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -67,7 +67,7 @@ pub async fn handle(
         Err(e) => {
             tracing::error!("Database error checking username: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Internal server error".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -76,14 +76,14 @@ pub async fn handle(
             }));
         }
     }
-    
+
     // Hash password with Argon2id
     let password_hash = match hash_password(&req.password) {
         Ok(hash) => hash,
         Err(e) => {
             tracing::error!("Password hashing error: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Internal server error".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -92,14 +92,14 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Generate user_id
     let user_id = Uuid::new_v4().to_string();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs() as i64;
-    
+
     // Create user profile
     let profile = UserProfile {
         user_id: user_id.clone(),
@@ -109,12 +109,12 @@ pub async fn handle(
         created_at: now,
         last_seen: now,
     };
-    
+
     // Store user in database
     if let Err(e) = service.db.create_user(&profile).await {
         tracing::error!("Failed to create user: {}", e);
         let error = ErrorResponse {
-            code: error_response::ErrorCode::Internal as i32,
+            code: error_response::ErrorCode::InternalError as i32,
             message: "Failed to create user".to_string(),
             details: std::collections::HashMap::new(),
         };
@@ -122,9 +122,11 @@ pub async fn handle(
             result: Some(register_response::Result::Error(error)),
         }));
     }
+
+    // Generate device ID
+    let device_id = uuid::Uuid::new_v4().to_string();
     
     // Create device entry
-    let device_id = req.device_id.clone();
     let device = Device {
         device_id: device_id.clone(),
         user_id: user_id.clone(),
@@ -133,11 +135,11 @@ pub async fn handle(
         created_at: now,
         last_seen: now,
     };
-    
+
     if let Err(e) = service.db.create_device(&device).await {
         tracing::error!("Failed to create device: {}", e);
     }
-    
+
     // Store key bundle if provided
     if let Some(key_bundle) = req.key_bundle {
         let db_key_bundle = DbKeyBundle {
@@ -147,19 +149,19 @@ pub async fn handle(
             one_time_pre_keys: key_bundle.one_time_pre_keys,
             created_at: now,
         };
-        
+
         if let Err(e) = service.db.store_key_bundle(&user_id, &device_id, &db_key_bundle).await {
             tracing::error!("Failed to store key bundle: {}", e);
         }
     }
-    
+
     // Generate JWT tokens
     let access_token = match jwt::generate_access_token(&user_id, &device_id, &service.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Failed to generate tokens".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -168,13 +170,13 @@ pub async fn handle(
             }));
         }
     };
-    
+
     let refresh_token = match jwt::generate_refresh_token(&user_id, &device_id, &service.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate refresh token: {}", e);
             let error = ErrorResponse {
-                code: error_response::ErrorCode::Internal as i32,
+                code: error_response::ErrorCode::InternalError as i32,
                 message: "Failed to generate tokens".to_string(),
                 details: std::collections::HashMap::new(),
             };
@@ -183,7 +185,7 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Create session
     let session = Session {
         session_token: refresh_token.clone(),
@@ -192,14 +194,15 @@ pub async fn handle(
         created_at: now,
         expires_at: now + 30 * 24 * 60 * 60, // 30 days
     };
-    
+
     if let Err(e) = service.db.create_session(&session).await {
         tracing::error!("Failed to create session: {}", e);
     }
-    
+
     // Return success response
     let success = RegisterSuccess {
         user_id,
+        device_id,
         access_token,
         access_token_expires_in: 15 * 60, // 15 minutes in seconds
         refresh_token,
@@ -209,7 +212,7 @@ pub async fn handle(
             nanos: 0,
         }),
     };
-    
+
     Ok(Response::new(RegisterResponse {
         result: Some(register_response::Result::Success(success)),
     }))
@@ -220,7 +223,7 @@ fn validate_username(username: &str) -> bool {
     if username.len() < 3 || username.len() > 32 {
         return false;
     }
-    
+
     username.chars().all(|c| c.is_alphanumeric() || c == '_')
 }
 
@@ -235,13 +238,13 @@ fn hash_password(password: &str) -> Result<String, argon2::password_hash::Error>
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_validate_username() {
         assert!(validate_username("user123"));
         assert!(validate_username("john_doe"));
         assert!(validate_username("abc"));
-        
+
         assert!(!validate_username("ab")); // too short
         assert!(!validate_username("a".repeat(33).as_str())); // too long
         assert!(!validate_username("user@domain")); // invalid chars
