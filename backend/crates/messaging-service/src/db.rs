@@ -44,7 +44,7 @@ impl DatabaseClient {
     async fn init_scylla_schema(session: &Session) -> Result<()> {
         // Create keyspace if not exists
         session
-            .query(
+            .query_unpaged(
                 "CREATE KEYSPACE IF NOT EXISTS guardyn 
                  WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3}",
                 &[],
@@ -54,7 +54,7 @@ impl DatabaseClient {
 
         // Create messages table (1-on-1 conversations)
         session
-            .query(
+            .query_unpaged(
                 "CREATE TABLE IF NOT EXISTS guardyn.messages (
                     conversation_id UUID,
                     message_id UUID,
@@ -77,7 +77,7 @@ impl DatabaseClient {
 
         // Create group_messages table (group conversations)
         session
-            .query(
+            .query_unpaged(
                 "CREATE TABLE IF NOT EXISTS guardyn.group_messages (
                     group_id UUID,
                     message_id UUID,
@@ -155,8 +155,8 @@ impl DatabaseClient {
         let keys = self.tikv.scan(prefix.into_bytes().., 1000).await?;
 
         let mut states = Vec::new();
-        for (_key, value) in keys {
-            if let Ok(state) = serde_json::from_slice::<DeliveryState>(&value) {
+        for kv_pair in keys {
+            if let Ok(state) = serde_json::from_slice::<DeliveryState>(&kv_pair.1) {
                 if state.status == DeliveryStatus::Pending {
                     states.push(state);
                 }
@@ -183,7 +183,7 @@ impl DatabaseClient {
         let message_uuid = uuid::Uuid::parse_str(&msg.message_id)?;
 
         self.scylla
-            .query(
+            .query_unpaged(
                 query,
                 (
                     conversation_uuid,
@@ -220,7 +220,7 @@ impl DatabaseClient {
 
         let rows = self
             .scylla
-            .query(query, (conversation_uuid, limit))
+            .query_unpaged(query, (conversation_uuid, limit))
             .await
             .context("Failed to fetch messages from ScyllaDB")?;
 
@@ -260,7 +260,7 @@ impl DatabaseClient {
         let message_uuid = uuid::Uuid::parse_str(message_id)?;
 
         self.scylla
-            .query(query, (conversation_uuid, message_uuid))
+            .query_unpaged(query, (conversation_uuid, message_uuid))
             .await
             .context("Failed to delete message")?;
 
@@ -307,8 +307,8 @@ impl DatabaseClient {
         let keys = self.tikv.scan(prefix.into_bytes().., 1000).await?;
 
         let mut members = Vec::new();
-        for (_key, value) in keys {
-            if let Ok(member) = serde_json::from_slice::<GroupMember>(&value) {
+        for kv_pair in keys {
+            if let Ok(member) = serde_json::from_slice::<GroupMember>(&kv_pair.1) {
                 members.push(member);
             }
         }
@@ -332,7 +332,7 @@ impl DatabaseClient {
         let message_uuid = uuid::Uuid::parse_str(&msg.message_id)?;
 
         self.scylla
-            .query(
+            .query_unpaged(
                 query,
                 (
                     group_uuid,
@@ -366,7 +366,7 @@ impl DatabaseClient {
 
         let rows = self
             .scylla
-            .query(query, (group_uuid, limit))
+            .query_unpaged(query, (group_uuid, limit))
             .await
             .context("Failed to fetch group messages from ScyllaDB")?;
 
@@ -402,7 +402,7 @@ impl DatabaseClient {
         let message_uuid = uuid::Uuid::parse_str(message_id)?;
 
         self.scylla
-            .query(query, (group_uuid, message_uuid))
+            .query_unpaged(query, (group_uuid, message_uuid))
             .await
             .context("Failed to delete group message")?;
 

@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: messaging-service
-        image: guardyn-message-service:latest
+        image: guardyn-messaging-service:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 50052
@@ -44,7 +44,7 @@ spec:
           value: "info"
         - name: RUST_LOG
           value: "info,guardyn_messaging_service=debug"
-        - name: JWT_SECRET
+        - name: GUARDYN_JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: guardyn-backend-secrets
@@ -57,18 +57,14 @@ spec:
             cpu: 1000m
             memory: 1Gi
         livenessProbe:
-          exec:
-            command:
-            - /usr/local/bin/guardyn-messaging-service
-            - --health-check
+          tcpSocket:
+            port: 50052
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
-          exec:
-            command:
-            - /usr/local/bin/guardyn-messaging-service
-            - --health-check
+          tcpSocket:
+            port: 50052
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3

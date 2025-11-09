@@ -18,7 +18,7 @@ pub async fn send_message(
     // Validate JWT token and extract user_id + device_id
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
-    
+
     let (sender_user_id, sender_device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
         Ok((user_id, device_id)) => (user_id, device_id),
         Err(_) => {
@@ -121,6 +121,7 @@ pub async fn send_message(
     let envelope = MessageEnvelope {
         message_id: message_id.clone(),
         sender_user_id: sender_user_id.clone(),
+        sender_device_id: sender_device_id.clone(),
         recipient_user_id: request.recipient_user_id.clone(),
         encrypted_content: request.encrypted_content,
         timestamp: server_timestamp,
@@ -151,7 +152,7 @@ fn generate_conversation_id(user1: &str, user2: &str) -> String {
     // Sort user IDs to ensure consistency regardless of sender/recipient order
     let mut users = vec![user1, user2];
     users.sort();
-    
+
     // Use namespace UUID v5 to generate deterministic conversation ID
     let namespace = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let data = format!("{}:{}", users[0], users[1]);

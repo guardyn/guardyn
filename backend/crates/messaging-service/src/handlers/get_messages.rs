@@ -73,6 +73,7 @@ pub async fn get_messages(
             recipient_device_id: m.recipient_device_id.unwrap_or_default(),
             encrypted_content: m.encrypted_content,
             message_type: m.message_type,
+            client_message_id: String::new(), // Not stored in current schema
             server_timestamp: Some(Timestamp {
                 seconds: m.server_timestamp,
                 nanos: 0,
@@ -91,6 +92,7 @@ pub async fn get_messages(
         result: Some(get_messages_response::Result::Success(
             GetMessagesSuccess {
                 messages,
+                pagination: None, // TODO: Implement pagination
                 has_more: false, // TODO: Implement pagination
             },
         )),

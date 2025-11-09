@@ -31,7 +31,7 @@ pub async fn receive_messages(
     // Validate access token and extract user_id + device_id
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
-    
+
     let (user_id, device_id) = crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
 
     tracing::info!("User {} ({}) connected to message stream", user_id, device_id);
@@ -71,11 +71,11 @@ async fn stream_messages(
     // Step 1: Send offline/pending messages first if requested
     if include_history {
         tracing::info!("Fetching pending messages for user {}", user_id);
-        
+
         match db.get_pending_messages(&user_id).await {
             Ok(pending_messages) => {
                 tracing::info!("Found {} pending messages", pending_messages.len());
-                
+
                 for delivery_state in pending_messages {
                     // Convert delivery state to Message
                     let message = Message {
@@ -84,7 +84,7 @@ async fn stream_messages(
                         sender_device_id: delivery_state.sender_device_id.clone(),
                         recipient_user_id: user_id.clone(),
                         recipient_device_id: device_id.clone(),
-                        encrypted_content: delivery_state.encrypted_content.clone(),
+                        encrypted_content: vec![], // TODO: Fetch from ScyllaDB
                         message_type: MessageType::Text as i32,
                         client_message_id: "".to_string(),
                         client_timestamp: None,
@@ -93,6 +93,7 @@ async fn stream_messages(
                             nanos: ((delivery_state.created_at % 1000) * 1_000_000) as i32,
                         }),
                         delivery_status: convert_delivery_status(&delivery_state.status),
+                        is_deleted: false,
                         media_id: "".to_string(),
                     };
 
@@ -177,7 +178,7 @@ async fn poll_nats_messages(
         let message = Message {
             message_id: envelope.message_id.clone(),
             sender_user_id: envelope.sender_user_id.clone(),
-            sender_device_id: "".to_string(), // TODO: Add to envelope
+            sender_device_id: envelope.sender_device_id.clone(),
             recipient_user_id: user_id.to_string(),
             recipient_device_id: device_id.to_string(),
             encrypted_content: envelope.encrypted_content.clone(),
@@ -189,6 +190,7 @@ async fn poll_nats_messages(
                 nanos: ((envelope.timestamp % 1000) * 1_000_000) as i32,
             }),
             delivery_status: DeliveryStatus::Delivered as i32,
+            is_deleted: false,
             media_id: "".to_string(),
         };
 

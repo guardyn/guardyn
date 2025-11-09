@@ -128,6 +128,9 @@ message Message {
 
   // Media reference
   string media_id = 12;
+
+  // Deletion flag
+  bool is_deleted = 13;
 }
 
 // ============================================================================
@@ -137,9 +140,11 @@ message Message {
 message GetMessagesRequest {
   string access_token = 1;
   string conversation_user_id = 2; // User ID of the conversation partner
+  string conversation_id = 6; // Conversation ID (alternative to conversation_user_id)
 
   // Pagination
   common.PaginationRequest pagination = 3;
+  int32 limit = 7; // Simple limit (alternative to pagination)
 
   // Time range filtering
   common.Timestamp start_time = 4;
@@ -156,6 +161,7 @@ message GetMessagesResponse {
 message GetMessagesSuccess {
   repeated Message messages = 1;
   common.PaginationResponse pagination = 2;
+  bool has_more = 3; // True if there are more messages available
 }
 
 // ============================================================================
@@ -176,6 +182,8 @@ message MarkAsReadResponse {
 
 message MarkAsReadSuccess {
   uint32 messages_marked = 1;
+  int32 marked_count = 2; // Number of messages marked (alternative field name)
+  common.Timestamp timestamp = 3; // Server timestamp of operation
 }
 
 // ============================================================================
@@ -185,6 +193,7 @@ message MarkAsReadSuccess {
 message DeleteMessageRequest {
   string access_token = 1;
   string message_id = 2; // UUID
+  string conversation_id = 4; // Conversation ID (required for ScyllaDB deletion)
   bool delete_for_everyone = 3; // If true, deletes for all participants
 }
 
@@ -197,6 +206,8 @@ message DeleteMessageResponse {
 
 message DeleteMessageSuccess {
   bool deleted = 1;
+  string message_id = 2; // Echo back the message ID
+  common.Timestamp timestamp = 3; // Server timestamp of deletion
 }
 
 // ============================================================================
@@ -315,6 +326,7 @@ message GetGroupMessagesRequest {
   string access_token = 1;
   string group_id = 2;
   common.PaginationRequest pagination = 3;
+  int32 limit = 6; // Simple limit (alternative to pagination)
   common.Timestamp start_time = 4;
   common.Timestamp end_time = 5;
 }
@@ -345,6 +357,7 @@ message GroupMessage {
   common.Timestamp server_timestamp = 9;
 
   string media_id = 10;
+  bool is_deleted = 11; // Soft deletion flag
 }
 
 // ============================================================================

@@ -16,7 +16,7 @@ pub async fn create_group(
     // Validate JWT token and extract user_id (group creator)
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
-    
+
     let (creator_user_id, _device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
         Ok(ids) => ids,
         Err(_) => {
@@ -53,17 +53,17 @@ pub async fn create_group(
     }
 
     // Generate group ID
-    let group_id = Uuid::new_v4().to_string();
+    let group_id = uuid::Uuid::new_v4().to_string();
     let timestamp = chrono::Utc::now().timestamp();
 
     // Create group metadata
     let group_metadata = GroupMetadata {
         group_id: group_id.clone(),
-        name: request.group_name.clone(),
+        group_name: request.group_name.clone(),
         creator_user_id: creator_user_id.clone(),
         created_at: timestamp,
-        updated_at: timestamp,
-        mls_group_state: request.mls_group_state.clone(),
+        mls_group_id: request.mls_group_state.clone(),
+        mls_epoch: 0, // Initial epoch
     };
 
     // Store group in TiKV

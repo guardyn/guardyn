@@ -67,6 +67,7 @@ pub async fn delete_message(
     Ok(Response::new(DeleteMessageResponse {
         result: Some(delete_message_response::Result::Success(
             DeleteMessageSuccess {
+                deleted: true,
                 message_id: request.message_id,
                 timestamp: Some(Timestamp {
                     seconds: timestamp,

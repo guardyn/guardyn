@@ -15,7 +15,7 @@ pub async fn get_group_messages(
     // Validate JWT token and extract user_id
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
-    
+
     let (requester_user_id, _device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
         Ok(ids) => ids,
         Err(_) => {
@@ -109,6 +109,7 @@ pub async fn get_group_messages(
             sender_device_id: msg.sender_device_id,
             encrypted_content: msg.encrypted_content,
             message_type: msg.message_type,
+            client_message_id: String::new(), // Not stored in current schema
             server_timestamp: Some(crate::proto::common::Timestamp {
                 seconds: msg.server_timestamp,
                 nanos: 0,
@@ -117,6 +118,7 @@ pub async fn get_group_messages(
                 seconds: msg.client_timestamp,
                 nanos: 0,
             }),
+            media_id: String::new(), // Not stored in current schema
             is_deleted: msg.is_deleted,
         })
         .collect();
