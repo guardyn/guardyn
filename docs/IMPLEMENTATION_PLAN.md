@@ -225,7 +225,7 @@
 
 - [x] **Integration tests** ✅ (Nov 8, 2025)
 
-### 4.2 Messaging Service 🔄 (In Progress - 90% Complete)
+### 4.2 Messaging Service ✅ (Implementation Complete - Nov 9, 2025)
 
 - [x] Create service scaffold
 
@@ -247,20 +247,30 @@
 
 - [x] **ReceiveMessages streaming** ✅ (Nov 9, 2025)
 
-- [ ] Message routing logic
+- [x] **Message routing logic** ✅ (Nov 9, 2025)
 
-- [ ] Delivery guarantees
+- [x] **Delivery guarantees** ✅ (NATS + TiKV delivery state)
 
-- [ ] Offline message queuing
+- [x] **Offline message queuing** ✅ (TiKV pending messages)
 
 - [x] **Group chat logic** ✅ (Nov 9, 2025)
   - [x] CreateGroup handler
   - [x] AddMember handler
   - [x] RemoveMember handler
-  - [x] SendGroupMessage handler
-  - [x] GetGroupMessages handler
+  - [x] SendGroupMessage handler (with ScyllaDB persistence)
+  - [x] GetGroupMessages handler (with ScyllaDB retrieval)
+  - [x] NATS fanout for group message delivery
 
-- [ ] Integration tests
+- [x] **Group message persistence** ✅ (Nov 9, 2025)
+  - [x] ScyllaDB schema (group_messages table)
+  - [x] Storage implementation (store_group_message)
+  - [x] Retrieval implementation (get_group_messages)
+
+- [x] **Integration tests** ✅ (Nov 9, 2025)
+  - [x] Docker Compose setup with auth + messaging services
+  - [x] 1-on-1 messaging tests (send, receive, mark as read, delete)
+  - [x] Offline message delivery test
+  - [x] Group chat flow test (create, send, retrieve)
 
 ### 4.3 Presence Service ✅
 

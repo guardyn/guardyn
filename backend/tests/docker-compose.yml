@@ -56,6 +56,64 @@ services:
     volumes:
       - scylla-data:/var/lib/scylla
 
+  # Auth Service (for integration tests)
+  auth-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: auth-service
+    ports:
+      - "50051:50051"
+    environment:
+      - GUARDYN_SERVICE_NAME=auth-service
+      - GUARDYN_HOST=0.0.0.0
+      - GUARDYN_PORT=50051
+      - GUARDYN_DATABASE__TIKV_PD_ENDPOINTS=pd:2379
+      - GUARDYN_JWT_SECRET=test-jwt-secret-for-integration-tests
+      - GUARDYN_OBSERVABILITY__LOG_LEVEL=info
+      - RUST_LOG=info
+    depends_on:
+      - pd
+      - tikv
+    networks:
+      - guardyn-test
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50051/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Messaging Service (for integration tests)
+  messaging-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: messaging-service
+    ports:
+      - "50052:50052"
+    environment:
+      - GUARDYN_SERVICE_NAME=messaging-service
+      - GUARDYN_HOST=0.0.0.0
+      - GUARDYN_PORT=50052
+      - GUARDYN_DATABASE__TIKV_PD_ENDPOINTS=pd:2379
+      - GUARDYN_DATABASE__SCYLLADB_NODES=scylla:9042
+      - GUARDYN_MESSAGING__NATS_URL=nats://nats:4222
+      - GUARDYN_JWT_SECRET=test-jwt-secret-for-integration-tests
+      - GUARDYN_OBSERVABILITY__LOG_LEVEL=info
+      - RUST_LOG=info
+    depends_on:
+      - pd
+      - tikv
+      - scylla
+      - nats
+    networks:
+      - guardyn-test
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50052/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pd-data:
   tikv-data:

@@ -75,14 +75,58 @@ pub async fn get_group_messages(
         request.group_id
     );
 
-    // TODO: Fetch group messages from ScyllaDB
-    // For MVP, return empty list
-    tracing::warn!(
-        "Group message retrieval from ScyllaDB not yet implemented - would fetch messages for group {}",
-        request.group_id
-    );
+    // Determine limit (default 50, max 100)
+    let limit = if request.limit > 0 && request.limit <= 100 {
+        request.limit
+    } else if request.limit > 100 {
+        100
+    } else {
+        50
+    };
 
-    let messages: Vec<GroupMessage> = vec![];
+    // Fetch group messages from ScyllaDB
+    let stored_messages = match db.get_group_messages(&request.group_id, limit).await {
+        Ok(msgs) => msgs,
+        Err(e) => {
+            tracing::error!("Failed to fetch group messages: {}", e);
+            return Ok(Response::new(GetGroupMessagesResponse {
+                result: Some(get_group_messages_response::Result::Error(ErrorResponse {
+                    code: 13, // INTERNAL
+                    message: "Failed to fetch messages".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
+
+    // Convert to protobuf format
+    let messages: Vec<GroupMessage> = stored_messages
+        .into_iter()
+        .map(|msg| GroupMessage {
+            message_id: msg.message_id,
+            group_id: msg.group_id,
+            sender_user_id: msg.sender_user_id,
+            sender_device_id: msg.sender_device_id,
+            encrypted_content: msg.encrypted_content,
+            message_type: msg.message_type,
+            server_timestamp: Some(crate::proto::common::Timestamp {
+                seconds: msg.server_timestamp,
+                nanos: 0,
+            }),
+            client_timestamp: Some(crate::proto::common::Timestamp {
+                seconds: msg.client_timestamp,
+                nanos: 0,
+            }),
+            is_deleted: msg.is_deleted,
+        })
+        .collect();
+
+    tracing::info!(
+        "Retrieved {} group messages for group {} (requested by {})",
+        messages.len(),
+        request.group_id,
+        requester_user_id
+    );
 
     Ok(Response::new(GetGroupMessagesResponse {
         result: Some(get_group_messages_response::Result::Success(
