@@ -57,18 +57,14 @@ spec:
             cpu: 500m
             memory: 512Mi
         livenessProbe:
-          exec:
-            command:
-            - /usr/local/bin/auth-service
-            - --health-check
+          tcpSocket:
+            port: 50051
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
-          exec:
-            command:
-            - /usr/local/bin/auth-service
-            - --health-check
+          tcpSocket:
+            port: 50051
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
