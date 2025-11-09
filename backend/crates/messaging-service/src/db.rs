@@ -52,7 +52,7 @@ impl DatabaseClient {
             .await
             .context("Failed to create keyspace")?;
 
-        // Create messages table
+        // Create messages table (1-on-1 conversations)
         session
             .query(
                 "CREATE TABLE IF NOT EXISTS guardyn.messages (
@@ -75,7 +75,27 @@ impl DatabaseClient {
             .await
             .context("Failed to create messages table")?;
 
-        tracing::info!("ScyllaDB schema initialized");
+        // Create group_messages table (group conversations)
+        session
+            .query(
+                "CREATE TABLE IF NOT EXISTS guardyn.group_messages (
+                    group_id UUID,
+                    message_id UUID,
+                    sender_user_id TEXT,
+                    sender_device_id TEXT,
+                    encrypted_content BLOB,
+                    message_type INT,
+                    server_timestamp BIGINT,
+                    client_timestamp BIGINT,
+                    is_deleted BOOLEAN,
+                    PRIMARY KEY (group_id, message_id)
+                ) WITH CLUSTERING ORDER BY (message_id DESC)",
+                &[],
+            )
+            .await
+            .context("Failed to create group_messages table")?;
+
+        tracing::info!("ScyllaDB schema initialized (messages + group_messages)");
         Ok(())
     }
 
@@ -294,5 +314,98 @@ impl DatabaseClient {
         }
 
         Ok(members)
+    }
+
+    // ========================================================================
+    // Group Message Operations (ScyllaDB)
+    // ========================================================================
+
+    /// Store group message in ScyllaDB
+    pub async fn store_group_message(&self, msg: &GroupMessage) -> Result<()> {
+        let query = "INSERT INTO guardyn.group_messages (
+            group_id, message_id, sender_user_id, sender_device_id,
+            encrypted_content, message_type, server_timestamp, 
+            client_timestamp, is_deleted
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        let group_uuid = uuid::Uuid::parse_str(&msg.group_id)?;
+        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)?;
+
+        self.scylla
+            .query(
+                query,
+                (
+                    group_uuid,
+                    message_uuid,
+                    &msg.sender_user_id,
+                    &msg.sender_device_id,
+                    &msg.encrypted_content,
+                    msg.message_type,
+                    msg.server_timestamp,
+                    msg.client_timestamp,
+                    msg.is_deleted,
+                ),
+            )
+            .await
+            .context("Failed to store group message in ScyllaDB")?;
+
+        Ok(())
+    }
+
+    /// Get group message history
+    pub async fn get_group_messages(
+        &self,
+        group_id: &str,
+        limit: i32,
+    ) -> Result<Vec<GroupMessage>> {
+        let query = "SELECT * FROM guardyn.group_messages 
+                     WHERE group_id = ? 
+                     LIMIT ?";
+
+        let group_uuid = uuid::Uuid::parse_str(group_id)?;
+
+        let rows = self
+            .scylla
+            .query(query, (group_uuid, limit))
+            .await
+            .context("Failed to fetch group messages from ScyllaDB")?;
+
+        let mut messages = Vec::new();
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                // Parse row into GroupMessage
+                let msg = GroupMessage {
+                    message_id: row.columns[1].as_ref().unwrap().as_uuid().unwrap().to_string(),
+                    group_id: group_id.to_string(),
+                    sender_user_id: row.columns[2].as_ref().unwrap().as_text().unwrap().to_string(),
+                    sender_device_id: row.columns[3].as_ref().unwrap().as_text().unwrap().to_string(),
+                    encrypted_content: row.columns[4].as_ref().unwrap().as_blob().unwrap().to_vec(),
+                    message_type: row.columns[5].as_ref().unwrap().as_int().unwrap(),
+                    server_timestamp: row.columns[6].as_ref().unwrap().as_bigint().unwrap(),
+                    client_timestamp: row.columns[7].as_ref().unwrap().as_bigint().unwrap(),
+                    is_deleted: row.columns[8].as_ref().unwrap().as_boolean().unwrap(),
+                };
+                messages.push(msg);
+            }
+        }
+
+        Ok(messages)
+    }
+
+    /// Mark group message as deleted
+    pub async fn delete_group_message(&self, group_id: &str, message_id: &str) -> Result<()> {
+        let query = "UPDATE guardyn.group_messages 
+                     SET is_deleted = true 
+                     WHERE group_id = ? AND message_id = ?";
+
+        let group_uuid = uuid::Uuid::parse_str(group_id)?;
+        let message_uuid = uuid::Uuid::parse_str(message_id)?;
+
+        self.scylla
+            .query(query, (group_uuid, message_uuid))
+            .await
+            .context("Failed to delete group message")?;
+
+        Ok(())
     }
 }

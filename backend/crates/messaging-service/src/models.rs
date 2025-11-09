@@ -107,3 +107,17 @@ impl GroupRole {
         }
     }
 }
+
+/// Group message stored in ScyllaDB
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupMessage {
+    pub message_id: String,
+    pub group_id: String,
+    pub sender_user_id: String,
+    pub sender_device_id: String,
+    pub encrypted_content: Vec<u8>,
+    pub message_type: i32,
+    pub server_timestamp: i64,
+    pub client_timestamp: i64,
+    pub is_deleted: bool,
+}

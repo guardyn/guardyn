@@ -87,42 +87,89 @@ pub async fn send_group_message(
     let message_id = Uuid::new_v4().to_string();
     let server_timestamp = chrono::Utc::now().timestamp();
 
-    // TODO: Store group message in ScyllaDB
-    // For MVP, we just publish to NATS without persistence
-    tracing::warn!(
-        "Group message storage in ScyllaDB not yet implemented - message {} would be stored",
-        message_id
-    );
+    // Store group message in ScyllaDB
+    let group_message = crate::models::GroupMessage {
+        message_id: message_id.clone(),
+        group_id: request.group_id.clone(),
+        sender_user_id: sender_user_id.clone(),
+        sender_device_id: sender_device_id.clone(),
+        encrypted_content: request.encrypted_content.clone(),
+        message_type: request.message_type,
+        server_timestamp,
+        client_timestamp: request.client_timestamp.map(|t| t.seconds).unwrap_or(0),
+        is_deleted: false,
+    };
 
-    // Publish message to NATS for fanout to all group members
-    // Subject pattern: group_messages.{group_id}.{message_id}
-    let subject = format!("group_messages.{}.{}", request.group_id, message_id);
-    
-    // Create message envelope (simplified - would need proper GroupMessage structure)
-    let envelope = serde_json::json!({
-        "message_id": message_id,
-        "group_id": request.group_id,
-        "sender_user_id": sender_user_id,
-        "sender_device_id": sender_device_id,
-        "encrypted_content": base64::encode(&request.encrypted_content),
-        "message_type": request.message_type,
-        "timestamp": server_timestamp,
-    });
+    if let Err(e) = db.store_group_message(&group_message).await {
+        tracing::error!("Failed to store group message: {}", e);
+        return Ok(Response::new(SendGroupMessageResponse {
+            result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                code: 13, // INTERNAL
+                message: "Failed to store message".to_string(),
+                details: Default::default(),
+            })),
+        }));
+    }
 
-    // TODO: Publish to NATS using proper NatsClient method
-    // For MVP, we skip NATS publishing for group messages
-    tracing::warn!(
-        "Group message NATS publishing not yet implemented - message {} to group {} would be published on subject {}",
-        message_id,
-        request.group_id,
-        subject
-    );
+    // Get all group members for NATS fanout
+    let members = match db.get_group_members(&request.group_id).await {
+        Ok(members) => members,
+        Err(e) => {
+            tracing::error!("Failed to fetch group members: {}", e);
+            return Ok(Response::new(SendGroupMessageResponse {
+                result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                    code: 13, // INTERNAL
+                    message: "Failed to fetch group members".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
+
+    // Publish message to NATS for each group member (fanout)
+    for member in members {
+        // Skip sender - they already have the message
+        if member.user_id == sender_user_id {
+            continue;
+        }
+
+        // Subject pattern: messages.{user_id}.{message_id}
+        let subject = format!("messages.{}.{}", member.user_id, message_id);
+        
+        // Create message envelope
+        let envelope = crate::nats::MessageEnvelope {
+            message_id: message_id.clone(),
+            sender_user_id: sender_user_id.clone(),
+            sender_device_id: sender_device_id.clone(),
+            encrypted_content: request.encrypted_content.clone(),
+            timestamp: server_timestamp,
+        };
+
+        // Publish to NATS
+        if let Err(e) = nats.publish_message(&subject, &envelope).await {
+            tracing::error!(
+                "Failed to publish group message {} to member {}: {}",
+                message_id,
+                member.user_id,
+                e
+            );
+            // Don't fail the entire operation if one member's delivery fails
+            continue;
+        }
+
+        tracing::debug!(
+            "Published group message {} to member {}",
+            message_id,
+            member.user_id
+        );
+    }
 
     tracing::info!(
-        "Group message {} sent to group {} by {}",
+        "Group message {} sent to group {} by {} ({} members)",
         message_id,
         request.group_id,
-        sender_user_id
+        sender_user_id,
+        members.len()
     );
 
     Ok(Response::new(SendGroupMessageResponse {
