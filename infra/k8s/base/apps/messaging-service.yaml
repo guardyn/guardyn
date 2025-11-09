@@ -19,21 +19,36 @@ spec:
     spec:
       containers:
       - name: messaging-service
-        image: guardyn-registry:5000/messaging-service:latest
+        image: guardyn-message-service:latest
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 9090
+        - containerPort: 50052
           name: grpc
+          protocol: TCP
         env:
-        - name: RUST_LOG
-          value: "info"
-        - name: TIKV_PD_ENDPOINTS
+        - name: GUARDYN_SERVICE_NAME
+          value: "messaging-service"
+        - name: GUARDYN_HOST
+          value: "0.0.0.0"
+        - name: GUARDYN_PORT
+          value: "50052"
+        - name: GUARDYN_DATABASE__TIKV_PD_ENDPOINTS
           value: "pd.data.svc.cluster.local:2379"
-        - name: SCYLLADB_URL
-          value: "guardyn-scylla-dc1-rack1-0.data.svc.cluster.local:9042"
-        - name: NATS_URL
+        - name: GUARDYN_DATABASE__SCYLLADB_NODES
+          value: "scylla-0.data.svc.cluster.local:9042,scylla-1.data.svc.cluster.local:9042,scylla-2.data.svc.cluster.local:9042"
+        - name: GUARDYN_MESSAGING__NATS_URL
           value: "nats://nats.messaging.svc.cluster.local:4222"
+        - name: GUARDYN_OBSERVABILITY__OTLP_ENDPOINT
+          value: "http://tempo.observability.svc.cluster.local:4317"
+        - name: GUARDYN_OBSERVABILITY__LOG_LEVEL
+          value: "info"
+        - name: RUST_LOG
+          value: "info,guardyn_messaging_service=debug"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: guardyn-backend-secrets
+              key: jwt-secret
         resources:
           requests:
             cpu: 200m
@@ -42,17 +57,21 @@ spec:
             cpu: 1000m
             memory: 1Gi
         livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
+          exec:
+            command:
+            - /usr/local/bin/guardyn-messaging-service
+            - --health-check
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
+          exec:
+            command:
+            - /usr/local/bin/guardyn-messaging-service
+            - --health-check
+          initialDelaySeconds: 10
           periodSeconds: 5
+          timeoutSeconds: 3
         volumeMounts:
         - name: tls-certs
           mountPath: /etc/ssl/certs/guardyn
@@ -61,6 +80,7 @@ spec:
       - name: tls-certs
         secret:
           secretName: guardyn-backend-tls
+          optional: true
 ---
 apiVersion: v1
 kind: Service
@@ -74,9 +94,8 @@ spec:
   selector:
     app: messaging-service
   ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
   - name: grpc
-    port: 9090
-    targetPort: 9090
+    port: 50052
+    targetPort: 50052
+    protocol: TCP
+  type: ClusterIP

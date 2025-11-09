@@ -197,17 +197,11 @@
 
 ---
 
-## Phase 4: Backend Services (Rust) 🔄 (In Progress - 90% Complete)
+## Phase 4: Backend Services (Rust) 🔄 (In Progress - 92% Complete)
 
 ### 4.1 Authentication Service ✅ (Implementation Complete)
 
 - [x] Create service scaffold
-
-- [x] Deploy Kubernetes manifests
-
-- [x] Configure TLS certificates
-
-- [x] Connect to secrets management
 
 - [x] **Implement user registration** ✅ (Nov 8, 2025)
 
@@ -221,17 +215,20 @@
 
 - [x] **TiKV database integration** ✅ (Nov 8, 2025)
 
-- [ ] Integration with Secure Enclave/HSM
-
 - [x] **Integration tests** ✅ (Nov 8, 2025)
+
+- [x] **Kubernetes Deployment** ✅ (Nov 9, 2025)
+
+  - [x] Multi-stage Dockerfile created
+  - [x] Deployment/Service manifests updated (gRPC ports, env vars)
+  - [x] Secrets configured (JWT)
+  - [ ] Running pods (blocked by image rebuild - old Go images)
+
+- [ ] Integration with Secure Enclave/HSM
 
 ### 4.2 Messaging Service ✅ (Implementation Complete - Nov 9, 2025)
 
 - [x] Create service scaffold
-
-- [x] Deploy Kubernetes manifests
-
-- [x] Configure database connections
 
 - [x] **TiKV + ScyllaDB integration** ✅ (Nov 8, 2025)
 
@@ -254,6 +251,7 @@
 - [x] **Offline message queuing** ✅ (TiKV pending messages)
 
 - [x] **Group chat logic** ✅ (Nov 9, 2025)
+
   - [x] CreateGroup handler
   - [x] AddMember handler
   - [x] RemoveMember handler
@@ -262,6 +260,40 @@
   - [x] NATS fanout for group message delivery
 
 - [x] **Group message persistence** ✅ (Nov 9, 2025)
+
+  - [x] ScyllaDB schema (group_messages table)
+  - [x] Storage implementation (store_group_message)
+  - [x] Retrieval implementation (get_group_messages)
+
+- [x] **Integration tests** ✅ (Nov 9, 2025)
+
+  - [x] Docker Compose setup with auth + messaging services
+  - [x] 1-on-1 messaging tests (send, receive, mark as read, delete)
+  - [x] Offline message delivery test
+  - [x] Group chat flow test (create, send, retrieve)
+
+- [x] **Kubernetes Deployment** ✅ (Nov 9, 2025)
+
+  - [x] Multi-stage Dockerfile created
+  - [x] Deployment/Service manifests updated
+  - [x] Secrets configured
+  - [ ] Running pods (blocked by image rebuild)
+
+- [x] **Delivery guarantees** ✅ (NATS + TiKV delivery state)
+
+- [x] **Offline message queuing** ✅ (TiKV pending messages)
+
+- [x] **Group chat logic** ✅ (Nov 9, 2025)
+
+  - [x] CreateGroup handler
+  - [x] AddMember handler
+  - [x] RemoveMember handler
+  - [x] SendGroupMessage handler (with ScyllaDB persistence)
+  - [x] GetGroupMessages handler (with ScyllaDB retrieval)
+  - [x] NATS fanout for group message delivery
+
+- [x] **Group message persistence** ✅ (Nov 9, 2025)
+
   - [x] ScyllaDB schema (group_messages table)
   - [x] Storage implementation (store_group_message)
   - [x] Retrieval implementation (get_group_messages)

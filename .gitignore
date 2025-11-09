@@ -1,1 +1,6 @@
 _local/
+# Rust
+backend/target/
+**/target/
+**/*.rs.bk
+*.pdb

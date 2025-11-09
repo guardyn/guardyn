@@ -1,19 +1,22 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Compile Protocol Buffers for Messaging Service
+    let proto_dir = std::path::Path::new("../../proto");
+    
     tonic_build::configure()
         .build_server(true)
         .build_client(true)
         .out_dir("src/generated")
         .compile(
             &[
-                "../proto/common.proto",
-                "../proto/messaging.proto",
+                "../../proto/common.proto",
+                "../../proto/messaging.proto",
             ],
-            &["../proto"],
+            &[proto_dir],
         )?;
 
-    println!("cargo:rerun-if-changed=../proto/common.proto");
-    println!("cargo:rerun-if-changed=../proto/messaging.proto");
+    println!("cargo:rerun-if-changed=../../proto/common.proto");
+    println!("cargo:rerun-if-changed=../../proto/messaging.proto");
+    println!("cargo:rerun-if-changed=../../proto");
 
     Ok(())
 }
