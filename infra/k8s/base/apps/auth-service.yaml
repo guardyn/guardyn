@@ -59,7 +59,7 @@ spec:
         livenessProbe:
           exec:
             command:
-            - /usr/local/bin/guardyn-auth-service
+            - /usr/local/bin/auth-service
             - --health-check
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -67,7 +67,7 @@ spec:
         readinessProbe:
           exec:
             command:
-            - /usr/local/bin/guardyn-auth-service
+            - /usr/local/bin/auth-service
             - --health-check
           initialDelaySeconds: 10
           periodSeconds: 5
