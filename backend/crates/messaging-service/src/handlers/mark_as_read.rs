@@ -12,12 +12,15 @@ pub async fn mark_as_read(
     request: MarkAsReadRequest,
     db: Arc<DatabaseClient>,
 ) -> Result<Response<MarkAsReadResponse>, Status> {
-    // Validate token
-    if request.access_token.is_empty() {
+    // Validate JWT token
+    let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
+        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    
+    if crate::jwt::validate_and_extract(&request.access_token, &jwt_secret).is_err() {
         return Ok(Response::new(MarkAsReadResponse {
             result: Some(mark_as_read_response::Result::Error(ErrorResponse {
                 code: 16, // UNAUTHENTICATED
-                message: "Invalid access token".to_string(),
+                message: "Invalid or expired access token".to_string(),
                 details: Default::default(),
             })),
         }));

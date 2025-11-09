@@ -11,6 +11,7 @@ mod handlers;
 mod models;
 mod db;
 mod nats;
+mod jwt;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
@@ -62,10 +63,9 @@ impl MessagingService for MessagingServiceImpl {
 
     async fn receive_messages(
         &self,
-        _request: Request<ReceiveMessagesRequest>,
+        request: Request<ReceiveMessagesRequest>,
     ) -> Result<Response<Self::ReceiveMessagesStream>, Status> {
-        // TODO: Implement streaming message delivery
-        Err(Status::unimplemented("ReceiveMessages not yet implemented"))
+        handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone()).await
     }
 
     async fn get_messages(
@@ -98,37 +98,37 @@ impl MessagingService for MessagingServiceImpl {
 
     async fn create_group(
         &self,
-        _request: Request<CreateGroupRequest>,
+        request: Request<CreateGroupRequest>,
     ) -> Result<Response<CreateGroupResponse>, Status> {
-        Err(Status::unimplemented("CreateGroup not yet implemented"))
+        handlers::create_group(request.into_inner(), self.db.clone()).await
     }
 
     async fn add_group_member(
         &self,
-        _request: Request<AddGroupMemberRequest>,
+        request: Request<AddGroupMemberRequest>,
     ) -> Result<Response<AddGroupMemberResponse>, Status> {
-        Err(Status::unimplemented("AddGroupMember not yet implemented"))
+        handlers::add_group_member(request.into_inner(), self.db.clone()).await
     }
 
     async fn remove_group_member(
         &self,
-        _request: Request<RemoveGroupMemberRequest>,
+        request: Request<RemoveGroupMemberRequest>,
     ) -> Result<Response<RemoveGroupMemberResponse>, Status> {
-        Err(Status::unimplemented("RemoveGroupMember not yet implemented"))
+        handlers::remove_group_member(request.into_inner(), self.db.clone()).await
     }
 
     async fn send_group_message(
         &self,
-        _request: Request<SendGroupMessageRequest>,
+        request: Request<SendGroupMessageRequest>,
     ) -> Result<Response<SendGroupMessageResponse>, Status> {
-        Err(Status::unimplemented("SendGroupMessage not yet implemented"))
+        handlers::send_group_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
     }
 
     async fn get_group_messages(
         &self,
-        _request: Request<GetGroupMessagesRequest>,
+        request: Request<GetGroupMessagesRequest>,
     ) -> Result<Response<GetGroupMessagesResponse>, Status> {
-        Err(Status::unimplemented("GetGroupMessages not yet implemented"))
+        handlers::get_group_messages(request.into_inner(), self.db.clone()).await
     }
 
     async fn health(
