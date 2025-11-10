@@ -179,10 +179,22 @@ impl DatabaseClient {
             delivery_status, is_deleted
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        let conversation_uuid = uuid::Uuid::parse_str(&msg.conversation_id)?;
-        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)?;
+        tracing::debug!("Parsing conversation_id: {}", msg.conversation_id);
+        let conversation_uuid = uuid::Uuid::parse_str(&msg.conversation_id)
+            .map_err(|e| {
+                tracing::error!("Failed to parse conversation_id '{}': {:?}", msg.conversation_id, e);
+                e
+            })?;
 
-        self.scylla
+        tracing::debug!("Parsing message_id: {}", msg.message_id);
+        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)
+            .map_err(|e| {
+                tracing::error!("Failed to parse message_id '{}': {:?}", msg.message_id, e);
+                e
+            })?;
+
+        tracing::debug!("Executing ScyllaDB query with {} params", 12);
+        let result = self.scylla
             .query_unpaged(
                 query,
                 (
@@ -200,10 +212,18 @@ impl DatabaseClient {
                     msg.is_deleted,
                 ),
             )
-            .await
-            .context("Failed to store message in ScyllaDB")?;
+            .await;
 
-        Ok(())
+        match result {
+            Ok(_) => {
+                tracing::debug!("Message stored successfully");
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("ScyllaDB query failed: {:?}", e);
+                Err(anyhow::anyhow!("Failed to store message in ScyllaDB: {}", e))
+            }
+        }
     }
 
     /// Get message history for a conversation

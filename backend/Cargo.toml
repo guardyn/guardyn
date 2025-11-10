@@ -8,6 +8,7 @@ members = [
     "crates/notification-service",
     "crates/common",
     "crates/crypto",
+    "crates/e2e-tests",
 ]
 
 [workspace.package]
@@ -60,6 +61,7 @@ config = "0.14"
 
 # Testing
 mockall = "0.13"
+uuid = { version = "1.11", features = ["v4", "v5", "serde"] }
 
 [profile.release]
 opt-level = 3

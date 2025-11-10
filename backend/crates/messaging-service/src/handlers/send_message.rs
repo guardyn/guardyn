@@ -88,13 +88,22 @@ pub async fn send_message(
         is_deleted: false,
     };
 
+    // Debug: log stored message before saving
+    tracing::debug!("Attempting to store message: conversation_id={}, message_id={}, sender={}, recipient={}", 
+        stored_msg.conversation_id, stored_msg.message_id, 
+        stored_msg.sender_user_id, stored_msg.recipient_user_id);
+
     // Store message in ScyllaDB
     if let Err(e) = db.store_message(&stored_msg).await {
-        tracing::error!("Failed to store message in ScyllaDB: {}", e);
+        tracing::error!("Failed to store message in ScyllaDB: {:?}", e);
+        tracing::error!("Detailed error: {}", e);
+        if let Some(source) = e.source() {
+            tracing::error!("Error source: {:?}", source);
+        }
         return Ok(Response::new(SendMessageResponse {
             result: Some(send_message_response::Result::Error(ErrorResponse {
                 code: 13, // INTERNAL
-                message: "Failed to store message".to_string(),
+                message: format!("Failed to store message: {}", e),
                 details: Default::default(),
             })),
         }));
