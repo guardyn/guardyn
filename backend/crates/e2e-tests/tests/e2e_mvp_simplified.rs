@@ -1,14 +1,14 @@
 //! Simplified E2E Tests for Auth + Messaging Services (MVP - Without Cryptography)
-//! 
+//!
 //! This is a simplified version without X3DH/Double Ratchet/MLS cryptography.
 //! Tests basic auth and messaging flow with mock key bundles.
-//! 
+//!
 //! Prerequisites:
 //! - k3d cluster running (guardyn-poc)
 //! - Port-forwarding active:
 //!   kubectl port-forward -n apps svc/auth-service 50051:50051 &
 //!   kubectl port-forward -n apps svc/messaging-service 50052:50052 &
-//! 
+//!
 //! Run tests with:
 //! ```bash
 //! cd /home/anry/projects/guardyn/guardyn
@@ -124,7 +124,7 @@ impl TestUser {
 
     async fn register(&mut self, env: &TestEnv) -> Result<(), Box<dyn std::error::Error>> {
         let mut client = env.auth_client().await?;
-        
+
         let request = Request::new(RegisterRequest {
             username: self.username.clone(),
             password: self.password.clone(),
@@ -135,13 +135,13 @@ impl TestUser {
         });
 
         let response = client.register(request).await?.into_inner();
-        
+
         match response.result {
             Some(proto::auth::register_response::Result::Success(success)) => {
                 self.user_id = Some(success.user_id.clone());
                 self.device_id = Some(success.device_id.clone());
                 self.access_token = Some(success.access_token.clone());
-                println!("✅ User '{}' registered (user_id: {}, device_id: {})", 
+                println!("✅ User '{}' registered (user_id: {}, device_id: {})",
                     self.username, success.user_id, success.device_id);
                 Ok(())
             }
@@ -171,6 +171,15 @@ impl TestUser {
     }
 }
 
+/// Generate deterministic conversation ID from two user IDs (same logic as messaging service)
+fn generate_conversation_id(user1: &str, user2: &str) -> String {
+    let mut users = vec![user1, user2];
+    users.sort();
+    let namespace = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    let data = format!("{}:{}", users[0], users[1]);
+    Uuid::new_v5(&namespace, data.as_bytes()).to_string()
+}
+
 //
 // TEST SUITE
 //
@@ -179,7 +188,7 @@ impl TestUser {
 async fn test_00_service_health_check() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🧪 Test 0: Service Health Check");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
+
     let env = TestEnv::new();
 
     // Check Auth Service
@@ -201,7 +210,7 @@ async fn test_00_service_health_check() -> Result<(), Box<dyn std::error::Error>
 async fn test_01_user_registration() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🧪 Test 1: User Registration");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
+
     let env = TestEnv::new();
     // Remove hyphens from UUID to pass username validation (alphanumeric + underscore only)
     let user1_id = Uuid::new_v4().to_string().replace("-", "");
@@ -227,7 +236,7 @@ async fn test_01_user_registration() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🧪 Test 2: Send and Receive 1-on-1 Message");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
+
     let env = TestEnv::new();
     let user1_id = Uuid::new_v4().to_string().replace("-", "");
     let user2_id = Uuid::new_v4().to_string().replace("-", "");
@@ -240,7 +249,7 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
 
     // User 1 sends message to User 2
     let mut messaging_client = env.messaging_client().await?;
-    
+
     let message_content = b"Hello from MVP E2E test!".to_vec();
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)?
@@ -261,7 +270,7 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
     });
 
     let send_response = messaging_client.send_message(send_request).await?.into_inner();
-    
+
     let message_id = match send_response.result {
         Some(proto::messaging::send_message_response::Result::Success(success)) => {
             println!("✅ Message sent: {}", success.message_id);
@@ -276,30 +285,37 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
     // Wait for message propagation
     sleep(Duration::from_secs(2)).await;
 
+    // Generate conversation ID (same as server-side logic)
+    let conversation_id = generate_conversation_id(&user1.user_id()?, &user2.user_id()?);
+    println!("🔍 Generated conversation_id: {}", conversation_id);
+    println!("🔍 Requesting messages for user2 ({})", user2.user_id()?);
+
     // User 2 retrieves messages
-    let mut get_request = Request::new(GetMessagesRequest {
+    let get_request = Request::new(GetMessagesRequest {
         access_token: user2.token()?,
-        conversation_user_id: user1.user_id()?,
-        conversation_id: String::new(),
+        conversation_user_id: String::new(), // Leave empty when using conversation_id
+        conversation_id: conversation_id.clone(), // Use generated conversation_id
         start_time: None,
         end_time: None,
         pagination: None,
         limit: 10,
     });
 
+    println!("🔍 Calling GetMessages...");
     let get_response = messaging_client.get_messages(get_request).await?.into_inner();
+    println!("✅ GetMessages response received");
 
     match get_response.result {
         Some(proto::messaging::get_messages_response::Result::Success(success)) => {
             assert!(!success.messages.is_empty(), "Should have at least one message");
-            
+
             let received_msg = success.messages.iter()
                 .find(|m| m.message_id == message_id)
                 .expect("Should find the sent message");
-            
+
             assert_eq!(received_msg.encrypted_content, message_content, "Message content should match");
             assert_eq!(received_msg.sender_user_id, user1.user_id()?, "Sender should match");
-            
+
             println!("✅ Message retrieved successfully by recipient");
         }
         Some(proto::messaging::get_messages_response::Result::Error(error)) => {

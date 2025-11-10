@@ -248,14 +248,18 @@ impl DatabaseClient {
         if let Some(rows) = rows.rows {
             for row in rows {
                 // Parse row into StoredMessage
-                // Note: This is simplified - production code would use proper row parsing
+                // Column order matches table definition:
+                // 0: conversation_id, 1: message_id, 2: sender_user_id, 3: sender_device_id,
+                // 4: recipient_user_id, 5: recipient_device_id (nullable), 6: encrypted_content,
+                // 7: message_type, 8: server_timestamp, 9: client_timestamp,
+                // 10: delivery_status, 11: is_deleted
                 let msg = StoredMessage {
+                    conversation_id: row.columns[0].as_ref().unwrap().as_uuid().unwrap().to_string(),
                     message_id: row.columns[1].as_ref().unwrap().as_uuid().unwrap().to_string(),
-                    conversation_id: conversation_id.to_string(),
                     sender_user_id: row.columns[2].as_ref().unwrap().as_text().unwrap().to_string(),
                     sender_device_id: row.columns[3].as_ref().unwrap().as_text().unwrap().to_string(),
                     recipient_user_id: row.columns[4].as_ref().unwrap().as_text().unwrap().to_string(),
-                    recipient_device_id: row.columns[5].as_ref().and_then(|c| c.as_text()).map(|s| s.to_string()),
+                    recipient_device_id: row.columns[5].as_ref().and_then(|c| c.as_text()).map(|s| s.to_string()), // Nullable field
                     encrypted_content: row.columns[6].as_ref().unwrap().as_blob().unwrap().to_vec(),
                     message_type: row.columns[7].as_ref().unwrap().as_int().unwrap(),
                     server_timestamp: row.columns[8].as_ref().unwrap().as_bigint().unwrap(),
