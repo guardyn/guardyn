@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: messaging-service
-        image: guardyn-registry:5000/guardyn-messaging-service:latest
-        imagePullPolicy: IfNotPresent
+        image: guardyn-messaging-service:latest
+        imagePullPolicy: Never  # Use locally imported image
         ports:
         - containerPort: 50052
           name: grpc
