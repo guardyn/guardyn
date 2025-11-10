@@ -5,10 +5,9 @@ use crate::proto::messaging::{
     send_group_message_response, SendGroupMessageRequest, SendGroupMessageResponse,
     SendGroupMessageSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp};
+use crate::proto::common::ErrorResponse;
 use std::sync::Arc;
 use tonic::{Response, Status};
-use uuid::Uuid;
 
 pub async fn send_group_message(
     request: SendGroupMessageRequest,
@@ -85,9 +84,14 @@ pub async fn send_group_message(
 
     tracing::info!("Generating message_id for group message");
 
-    // TEMPORARY: Use UUID v4 instead of v1 for debugging
-    // TODO: Switch back to v1 (timeuuid) for proper chronological ordering
-    let message_id = uuid::Uuid::new_v4().to_string();
+    // Use UUID v1 (timeuuid) for ScyllaDB TIMEUUID compatibility
+    use uuid::v1::{Context, Timestamp};
+    let context = Context::new(42); // Use consistent node ID for MVP
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    let uuid_timestamp = Timestamp::from_unix(&context, now.as_secs(), now.subsec_nanos());
+    let message_id = uuid::Uuid::new_v1(uuid_timestamp, &[1, 2, 3, 4, 5, 6]).to_string();
     let server_timestamp_millis = chrono::Utc::now().timestamp_millis();
 
     tracing::info!("Generated message_id={}, timestamp={}", message_id, server_timestamp_millis);
@@ -190,8 +194,8 @@ pub async fn send_group_message(
         result: Some(send_group_message_response::Result::Success(
             SendGroupMessageSuccess {
                 message_id,
-                server_timestamp: Some(Timestamp {
-                    seconds: server_timestamp_millis / 1000,
+                server_timestamp: Some(crate::proto::common::Timestamp {
+                    seconds: (server_timestamp_millis / 1000) as i64,
                     nanos: ((server_timestamp_millis % 1000) * 1_000_000) as i32,
                 }),
             },

@@ -97,15 +97,17 @@ pub async fn remove_group_member(
         request.group_id
     );
 
-    // Remove member from group (implemented as tombstone/soft delete in production)
-    // For MVP, we don't implement actual removal in TiKV, just log it
-    // TODO: Implement db.remove_group_member() in DatabaseClient
-
-    tracing::warn!(
-        "Group member removal not yet implemented in DB layer - member {} would be removed from group {}",
-        request.member_user_id,
-        request.group_id
-    );
+    // Remove member from group in TiKV
+    if let Err(e) = db.remove_group_member(&request.group_id, &request.member_user_id).await {
+        tracing::error!("Failed to remove group member: {}", e);
+        return Ok(Response::new(RemoveGroupMemberResponse {
+            result: Some(remove_group_member_response::Result::Error(ErrorResponse {
+                code: 13, // INTERNAL
+                message: "Failed to remove member".to_string(),
+                details: Default::default(),
+            })),
+        }));
+    }
 
     // TODO: Update MLS group state in TiKV
 

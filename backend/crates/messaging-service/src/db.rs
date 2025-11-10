@@ -397,6 +397,14 @@ impl DatabaseClient {
         Ok(())
     }
 
+    /// Remove group member
+    pub async fn remove_group_member(&self, group_id: &str, user_id: &str) -> Result<()> {
+        let key = format!("/groups/{}/members/{}", group_id, user_id);
+        self.tikv.delete(key.into_bytes()).await?;
+        tracing::info!("Removed member {} from group {}", user_id, group_id);
+        Ok(())
+    }
+
     /// Get group members
     pub async fn get_group_members(&self, group_id: &str) -> Result<Vec<GroupMember>> {
         let prefix = format!("/groups/{}/members/", group_id);
@@ -430,8 +438,12 @@ impl DatabaseClient {
         let message_uuid = uuid::Uuid::parse_str(&msg.message_id)
             .context("Failed to parse message_id as UUID")?;
         
-        // Convert sent_at (millis) to CqlTimestamp
+        // Convert message_id to CqlTimeuuid (required for TIMEUUID type in ScyllaDB)
         use scylla::frame::response::result::CqlValue;
+        use scylla::frame::value::CqlTimeuuid;
+        let message_timeuuid = CqlValue::Timeuuid(CqlTimeuuid::from(message_uuid));
+        
+        // Convert sent_at (millis) to CqlTimestamp
         let sent_at_timestamp = CqlValue::Timestamp(scylla::frame::value::CqlTimestamp(msg.sent_at));
 
         // Convert HashMap to CqlValue::Map
@@ -451,7 +463,7 @@ impl DatabaseClient {
                 query,
                 (
                     group_uuid,
-                    message_uuid,
+                    message_timeuuid,
                     &msg.sender_user_id,
                     &msg.sender_device_id,
                     &msg.encrypted_content,
@@ -500,10 +512,17 @@ impl DatabaseClient {
                 // Column order: 0: group_id, 1: message_id, 2: sender_user_id, 3: sender_device_id,
                 // 4: encrypted_content, 5: mls_epoch, 6: sent_at, 7: metadata
 
+                // message_id is TIMEUUID in ScyllaDB
+                use scylla::frame::response::result::CqlValue;
                 let message_id = row.columns.get(1)
                     .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_uuid())
-                    .map(|u| u.to_string())
+                    .and_then(|c| match c {
+                        CqlValue::Timeuuid(tu) => {
+                            let uuid: uuid::Uuid = (*tu).into();
+                            Some(uuid.to_string())
+                        },
+                        _ => None,
+                    })
                     .ok_or_else(|| anyhow::anyhow!("Missing message_id"))?;
 
                 let sender_user_id = row.columns.get(2)
