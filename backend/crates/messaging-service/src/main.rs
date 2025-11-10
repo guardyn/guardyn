@@ -121,6 +121,7 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SendGroupMessageRequest>,
     ) -> Result<Response<SendGroupMessageResponse>, Status> {
+        tracing::info!("MAIN: Received SendGroupMessageRequest for group_id={}", request.get_ref().group_id);
         handlers::send_group_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
     }
 

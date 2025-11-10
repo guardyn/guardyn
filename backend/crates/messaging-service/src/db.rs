@@ -418,16 +418,35 @@ impl DatabaseClient {
 
     /// Store group message in ScyllaDB
     pub async fn store_group_message(&self, msg: &GroupMessage) -> Result<()> {
+        // Schema: (group_id uuid, message_id timeuuid, sender_user_id text, sender_device_id text,
+        //          encrypted_content blob, mls_epoch bigint, sent_at timestamp, metadata map<text,text>)
         let query = "INSERT INTO guardyn.group_messages (
             group_id, message_id, sender_user_id, sender_device_id,
-            encrypted_content, message_type, server_timestamp, 
-            client_timestamp, is_deleted
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            encrypted_content, mls_epoch, sent_at, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        let group_uuid = uuid::Uuid::parse_str(&msg.group_id)?;
-        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)?;
+        let group_uuid = uuid::Uuid::parse_str(&msg.group_id)
+            .context("Failed to parse group_id as UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)
+            .context("Failed to parse message_id as UUID")?;
+        
+        // Convert sent_at (millis) to CqlTimestamp
+        use scylla::frame::response::result::CqlValue;
+        let sent_at_timestamp = CqlValue::Timestamp(scylla::frame::value::CqlTimestamp(msg.sent_at));
 
-        self.scylla
+        // Convert HashMap to CqlValue::Map
+        let metadata_map: Vec<(CqlValue, CqlValue)> = msg.metadata
+            .iter()
+            .map(|(k, v)| (CqlValue::Text(k.clone()), CqlValue::Text(v.clone())))
+            .collect();
+        let metadata_cql = CqlValue::Map(metadata_map);
+
+        tracing::info!(
+            "STORE_GROUP_MESSAGE: group_id={}, message_id={}, sender={}, mls_epoch={}, metadata_size={}",
+            group_uuid, message_uuid, msg.sender_user_id, msg.mls_epoch, msg.metadata.len()
+        );
+
+        let result = self.scylla
             .query_unpaged(
                 query,
                 (
@@ -436,27 +455,32 @@ impl DatabaseClient {
                     &msg.sender_user_id,
                     &msg.sender_device_id,
                     &msg.encrypted_content,
-                    msg.message_type,
-                    msg.server_timestamp,
-                    msg.client_timestamp,
-                    msg.is_deleted,
+                    msg.mls_epoch,
+                    sent_at_timestamp,
+                    metadata_cql,
                 ),
             )
-            .await
-            .context("Failed to store group message in ScyllaDB")?;
+            .await;
+
+        if let Err(ref e) = result {
+            tracing::error!(
+                "ScyllaDB error details: {:?}, query: {}, params: group_id={}, message_id={}",
+                e, query, group_uuid, message_uuid
+            );
+        }
+
+        result.context("Failed to store group message in ScyllaDB")?;
 
         Ok(())
-    }
-
-    /// Get group message history
+    }    /// Get group message history
     pub async fn get_group_messages(
         &self,
         group_id: &str,
         limit: i32,
     ) -> Result<Vec<GroupMessage>> {
+        // Explicit column order matching schema
         let query = "SELECT group_id, message_id, sender_user_id, sender_device_id, \
-                            encrypted_content, message_type, server_timestamp, \
-                            client_timestamp, is_deleted \
+                            encrypted_content, mls_epoch, sent_at, metadata \
                      FROM guardyn.group_messages 
                      WHERE group_id = ? 
                      LIMIT ?";
@@ -474,8 +498,7 @@ impl DatabaseClient {
             for row in rows {
                 // Parse row into GroupMessage
                 // Column order: 0: group_id, 1: message_id, 2: sender_user_id, 3: sender_device_id,
-                // 4: encrypted_content, 5: message_type, 6: server_timestamp, 7: client_timestamp,
-                // 8: is_deleted
+                // 4: encrypted_content, 5: mls_epoch, 6: sent_at, 7: metadata
 
                 let message_id = row.columns.get(1)
                     .and_then(|c| c.as_ref())
@@ -501,25 +524,32 @@ impl DatabaseClient {
                     .map(|b| b.to_vec())
                     .ok_or_else(|| anyhow::anyhow!("Missing encrypted_content"))?;
 
-                let message_type = row.columns.get(5)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_int())
-                    .ok_or_else(|| anyhow::anyhow!("Missing message_type"))?;
-
-                let server_timestamp = row.columns.get(6)
+                let mls_epoch = row.columns.get(5)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_bigint())
-                    .ok_or_else(|| anyhow::anyhow!("Missing server_timestamp"))?;
+                    .ok_or_else(|| anyhow::anyhow!("Missing mls_epoch"))?;
 
-                let client_timestamp = row.columns.get(7)
+                let sent_at_timestamp = row.columns.get(6)
                     .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_bigint())
-                    .ok_or_else(|| anyhow::anyhow!("Missing client_timestamp"))?;
+                    .and_then(|c| c.as_cql_timestamp())
+                    .ok_or_else(|| anyhow::anyhow!("Missing sent_at"))?;
+                
+                // CqlTimestamp is in milliseconds
+                let sent_at = sent_at_timestamp.0;
 
-                let is_deleted = row.columns.get(8)
+                let metadata = row.columns.get(7)
                     .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_boolean())
-                    .ok_or_else(|| anyhow::anyhow!("Missing is_deleted"))?;
+                    .and_then(|c| c.as_map())
+                    .map(|map| {
+                        let mut result = std::collections::HashMap::new();
+                        for (k, v) in map.iter() {
+                            if let (Some(key_str), Some(val_str)) = (k.as_text(), v.as_text()) {
+                                result.insert(key_str.to_string(), val_str.to_string());
+                            }
+                        }
+                        result
+                    })
+                    .unwrap_or_default();
 
                 let msg = GroupMessage {
                     message_id,
@@ -527,32 +557,14 @@ impl DatabaseClient {
                     sender_user_id,
                     sender_device_id,
                     encrypted_content,
-                    message_type,
-                    server_timestamp,
-                    client_timestamp,
-                    is_deleted,
+                    mls_epoch,
+                    sent_at,
+                    metadata,
                 };
                 messages.push(msg);
             }
         }
 
         Ok(messages)
-    }
-
-    /// Mark group message as deleted
-    pub async fn delete_group_message(&self, group_id: &str, message_id: &str) -> Result<()> {
-        let query = "UPDATE guardyn.group_messages 
-                     SET is_deleted = true 
-                     WHERE group_id = ? AND message_id = ?";
-
-        let group_uuid = uuid::Uuid::parse_str(group_id)?;
-        let message_uuid = uuid::Uuid::parse_str(message_id)?;
-
-        self.scylla
-            .query_unpaged(query, (group_uuid, message_uuid))
-            .await
-            .context("Failed to delete group message")?;
-
-        Ok(())
     }
 }

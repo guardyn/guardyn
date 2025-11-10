@@ -102,24 +102,32 @@ pub async fn get_group_messages(
     // Convert to protobuf format
     let messages: Vec<GroupMessage> = stored_messages
         .into_iter()
-        .map(|msg| GroupMessage {
-            message_id: msg.message_id,
-            group_id: msg.group_id,
-            sender_user_id: msg.sender_user_id,
-            sender_device_id: msg.sender_device_id,
-            encrypted_content: msg.encrypted_content,
-            message_type: msg.message_type,
-            client_message_id: String::new(), // Not stored in current schema
-            server_timestamp: Some(crate::proto::common::Timestamp {
-                seconds: msg.server_timestamp,
-                nanos: 0,
-            }),
-            client_timestamp: Some(crate::proto::common::Timestamp {
-                seconds: msg.client_timestamp,
-                nanos: 0,
-            }),
-            media_id: String::new(), // Not stored in current schema
-            is_deleted: msg.is_deleted,
+        .map(|msg| {
+            // Extract message_type from metadata (default to 0 if not found)
+            let message_type = msg.metadata
+                .get("message_type")
+                .and_then(|s| s.parse::<i32>().ok())
+                .unwrap_or(0);
+            
+            GroupMessage {
+                message_id: msg.message_id,
+                group_id: msg.group_id,
+                sender_user_id: msg.sender_user_id,
+                sender_device_id: msg.sender_device_id,
+                encrypted_content: msg.encrypted_content,
+                message_type,
+                client_message_id: String::new(), // Not stored in current schema
+                server_timestamp: Some(crate::proto::common::Timestamp {
+                    seconds: msg.sent_at / 1000,
+                    nanos: ((msg.sent_at % 1000) * 1_000_000) as i32,
+                }),
+                client_timestamp: Some(crate::proto::common::Timestamp {
+                    seconds: msg.sent_at / 1000, // Use sent_at for both (no separate client timestamp)
+                    nanos: 0,
+                }),
+                media_id: String::new(), // Not stored in current schema
+                is_deleted: false, // New schema doesn't support soft delete
+            }
         })
         .collect();
 
