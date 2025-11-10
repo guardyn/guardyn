@@ -228,28 +228,30 @@ Load tests using k6 to validate performance under load:
 
 ### Running Performance Tests
 
-**Quick Start**:
+**Quick Start** (uses Nix wrapper):
 
 ```bash
-./run-performance-tests.sh
+./k6-test.sh
 ```
 
 **Auth Service Only**:
 
 ```bash
-./run-performance-tests.sh auth
+./k6-test.sh auth
 ```
 
 **Messaging Service Only**:
 
 ```bash
-./run-performance-tests.sh messaging
+./k6-test.sh messaging
 ```
 
-**Combined Test (Default)**:
+**Alternative** (if already in Nix environment):
 
 ```bash
-./run-performance-tests.sh combined
+./run-performance-tests.sh           # Combined
+./run-performance-tests.sh auth      # Auth only
+./run-performance-tests.sh messaging # Messaging only
 ```
 
 ### Test Scripts

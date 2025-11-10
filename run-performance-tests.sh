@@ -15,8 +15,15 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 
 # Check if k6 is available
 if ! command -v k6 &> /dev/null; then
-    echo -e "${RED}❌ k6 not found. Please install k6 or use Nix environment.${NC}"
-    echo -e "${YELLOW}Run: nix --extra-experimental-features 'nix-command flakes' develop${NC}"
+    echo -e "${RED}❌ k6 not found in PATH${NC}"
+    echo -e "${YELLOW}💡 Solution: Use the wrapper script instead:${NC}"
+    echo -e "${GREEN}   ./k6-test.sh${NC}           # Combined test"
+    echo -e "${GREEN}   ./k6-test.sh auth${NC}      # Auth service only"
+    echo -e "${GREEN}   ./k6-test.sh messaging${NC} # Messaging service only"
+    echo -e ""
+    echo -e "${YELLOW}Or enter Nix environment manually:${NC}"
+    echo -e "${GREEN}   nix --extra-experimental-features 'nix-command flakes' develop${NC}"
+    echo -e "${GREEN}   ./run-performance-tests.sh${NC}"
     exit 1
 fi
 

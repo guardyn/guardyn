@@ -35,14 +35,15 @@ Performance testing suite for Guardyn MVP using k6 load testing framework.
 
 ### Quick Start (Recommended)
 
-Run combined auth + messaging load test:
+Run combined auth + messaging load test using the wrapper script:
 
 ```bash
-./run-performance-tests.sh
+./k6-test.sh
 ```
 
-This script automatically:
+This automatically:
 
+- Enters Nix environment (if needed)
 - Sets up port-forwarding to services
 - Runs combined load test
 - Cleans up port-forwards on exit
@@ -52,13 +53,31 @@ This script automatically:
 **Auth Service only**:
 
 ```bash
-./run-performance-tests.sh auth
+./k6-test.sh auth
 ```
 
 **Messaging Service only**:
 
 ```bash
-./run-performance-tests.sh messaging
+./k6-test.sh messaging
+```
+
+### Alternative: Direct Script (Requires Nix Shell)
+
+If you're already in Nix environment:
+
+```bash
+./run-performance-tests.sh           # Combined
+./run-performance-tests.sh auth      # Auth only
+./run-performance-tests.sh messaging # Messaging only
+```
+
+Or enter Nix shell first:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' develop
+./run-performance-tests.sh
+exit
 ```
 
 ### Manual Execution
