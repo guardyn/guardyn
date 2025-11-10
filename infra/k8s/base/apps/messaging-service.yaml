@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: messaging-service
-        image: guardyn-messaging-service:latest
+        image: guardyn-registry:5000/guardyn-messaging-service:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 50052

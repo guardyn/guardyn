@@ -15,14 +15,17 @@ USE guardyn;
 -- Messages table for 1-on-1 conversations
 CREATE TABLE IF NOT EXISTS messages (
   conversation_id UUID,
-  message_id TIMEUUID,
+  message_id UUID,
   sender_user_id TEXT,
   sender_device_id TEXT,
   recipient_user_id TEXT,
+  recipient_device_id TEXT,
   encrypted_content BLOB,
-  content_type TEXT,
-  sent_at TIMESTAMP,
-  metadata MAP<TEXT, TEXT>,
+  message_type INT,
+  server_timestamp BIGINT,
+  client_timestamp BIGINT,
+  delivery_status INT,
+  is_deleted BOOLEAN,
   PRIMARY KEY (conversation_id, message_id)
 ) WITH CLUSTERING ORDER BY (message_id DESC)
   AND comment = '1-on-1 encrypted messages'

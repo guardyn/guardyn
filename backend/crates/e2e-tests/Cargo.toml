@@ -1,0 +1,23 @@
+[package]
+name = "guardyn-e2e-tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["full", "test-util"] }
+tonic = { workspace = true }
+prost = { workspace = true }
+uuid = { version = "1.11", features = ["v4", "v5", "serde"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }
+
+[[test]]
+name = "e2e_mvp_simplified"
+path = "tests/e2e_mvp_simplified.rs"
+harness = true

@@ -965,6 +965,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "guardyn-e2e-tests"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "prost 0.13.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic 0.12.3",
+ "tonic-build",
+ "uuid",
+]
+
+[[package]]
 name = "guardyn-media-service"
 version = "0.1.0"
 dependencies = [
