@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-messaging
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+    guardyn.io/stage: poc
+data:
+  messaging-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Guardyn Messaging Service",
+        "tags": ["guardyn", "messaging", "mvp"],
+        "timezone": "browser",
+        "schemaVersion": 27,
+        "version": 1,
+        "refresh": "10s",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Pod Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "kube_pod_status_phase{namespace=\"apps\", pod=~\"messaging-service.*\", phase=\"Running\"}",
+                "legendFormat": "Running Pods",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+          },
+          {
+            "id": 4,
+            "title": "Application Logs",
+            "type": "logs",
+            "targets": [
+              {
+                "expr": "{namespace=\"apps\", app=\"messaging-service\"}",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"x": 0, "y": 4, "w": 24, "h": 8}
+          }
+        ]
+      },
+      "overwrite": true
+    }

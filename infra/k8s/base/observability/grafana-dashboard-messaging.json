@@ -1,0 +1,246 @@
+{
+  "dashboard": {
+    "title": "Guardyn Messaging Service",
+    "tags": ["guardyn", "messaging", "mvp"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pod Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kube_pod_status_phase{namespace=\"apps\", pod=~\"messaging-service.*\", phase=\"Running\"}",
+            "legendFormat": "Running Pods",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "red"},
+                {"value": 2, "color": "yellow"},
+                {"value": 3, "color": "green"}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{namespace=\"apps\", pod=~\"messaging-service.*\", container!=\"\"}[5m])",
+            "legendFormat": "{{pod}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 9, "h": 4},
+        "yaxes": [
+          {"format": "percentunit", "label": "CPU"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "container_memory_working_set_bytes{namespace=\"apps\", pod=~\"messaging-service.*\", container!=\"\"}",
+            "legendFormat": "{{pod}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 15, "y": 0, "w": 9, "h": 4},
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Log Levels",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{namespace=\"apps\", app=\"messaging-service\"}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate({namespace=\"apps\", app=\"messaging-service\"} |~ \"ERROR\" [5m]))",
+            "legendFormat": "Errors per second",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 4},
+        "alert": {
+          "name": "High Error Rate",
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ]
+        },
+        "yaxes": [
+          {"format": "short", "label": "Errors/s"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Message Operations",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{namespace=\"apps\", app=\"messaging-service\"} |~ \"SendMessage|GetMessages|MarkAsRead|DeleteMessage|CreateGroup|SendGroupMessage\"",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": true,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Network I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_network_receive_bytes_total{namespace=\"apps\", pod=~\"messaging-service.*\"}[5m])",
+            "legendFormat": "{{pod}} RX",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(container_network_transmit_bytes_total{namespace=\"apps\", pod=~\"messaging-service.*\"}[5m])",
+            "legendFormat": "{{pod}} TX",
+            "refId": "B"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 4},
+        "yaxes": [
+          {"format": "Bps", "label": "Bytes/s"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Pod Restarts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kube_pod_container_status_restarts_total{namespace=\"apps\", pod=~\"messaging-service.*\"}",
+            "legendFormat": "{{pod}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 4},
+        "yaxes": [
+          {"format": "short", "label": "Restarts"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 9,
+        "title": "ScyllaDB Connection Status",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{namespace=\"apps\", app=\"messaging-service\"} |~ \"ScyllaDB|scylla\"",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 4},
+        "options": {
+          "showTime": true,
+          "wrapLogMessage": true
+        }
+      },
+      {
+        "id": 10,
+        "title": "TiKV Connection Status",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{namespace=\"apps\", app=\"messaging-service\"} |~ \"TiKV|tikv\"",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 4},
+        "options": {
+          "showTime": true,
+          "wrapLogMessage": true
+        }
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+    }
+  },
+  "overwrite": true
+}

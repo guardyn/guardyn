@@ -37,6 +37,7 @@
             cosign
             trivy
             syft
+            k6
           ];
           RUSTFLAGS = "-C opt-level=z";
         };
