@@ -116,8 +116,7 @@ pub struct GroupMessage {
     pub sender_user_id: String,
     pub sender_device_id: String,
     pub encrypted_content: Vec<u8>,
-    pub message_type: i32,
-    pub server_timestamp: i64,
-    pub client_timestamp: i64,
-    pub is_deleted: bool,
+    pub mls_epoch: i64,
+    pub sent_at: i64, // Unix timestamp in milliseconds
+    pub metadata: std::collections::HashMap<String, String>, // Additional metadata
 }

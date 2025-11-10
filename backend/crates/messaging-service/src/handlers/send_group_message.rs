@@ -83,15 +83,18 @@ pub async fn send_group_message(
     // TODO: Verify sender is a member of the group
     // For MVP, we skip this check
 
-    // Generate message ID (timeuuid - UUID v1 based on timestamp)
-    // ScyllaDB expects timeuuid (v1) for message_id
-    let now = chrono::Utc::now();
-    let ts_secs = now.timestamp() as u64;
-    let ts_subsec_nanos = now.timestamp_subsec_nanos();
-    
-    let uuid_timestamp = uuid::timestamp::Timestamp::from_unix(uuid::timestamp::context::Context::new(0), ts_secs, ts_subsec_nanos);
-    let message_id = uuid::Uuid::new_v1(uuid_timestamp, &[0, 1, 2, 3, 4, 5]).to_string();
-    let server_timestamp = now.timestamp();
+    tracing::info!("Generating message_id for group message");
+
+    // TEMPORARY: Use UUID v4 instead of v1 for debugging
+    // TODO: Switch back to v1 (timeuuid) for proper chronological ordering
+    let message_id = uuid::Uuid::new_v4().to_string();
+    let server_timestamp_millis = chrono::Utc::now().timestamp_millis();
+
+    tracing::info!("Generated message_id={}, timestamp={}", message_id, server_timestamp_millis);
+
+    // Prepare metadata (empty for MVP)
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("message_type".to_string(), request.message_type.to_string());
 
     // Store group message in ScyllaDB
     let group_message = crate::models::GroupMessage {
@@ -100,14 +103,18 @@ pub async fn send_group_message(
         sender_user_id: sender_user_id.clone(),
         sender_device_id: sender_device_id.clone(),
         encrypted_content: request.encrypted_content.clone(),
-        message_type: request.message_type,
-        server_timestamp,
-        client_timestamp: request.client_timestamp.map(|t| t.seconds).unwrap_or(0),
-        is_deleted: false,
+        mls_epoch: 0, // TODO: Implement MLS epoch tracking
+        sent_at: server_timestamp_millis,
+        metadata,
     };
 
+    tracing::info!(
+        "HANDLER: About to store group message: message_id={}, group_id={}, sender={}",
+        message_id, request.group_id, sender_user_id
+    );
+
     if let Err(e) = db.store_group_message(&group_message).await {
-        tracing::error!("Failed to store group message: {}", e);
+        tracing::error!("Failed to store group message: {} (details: {:?})", e, e);
         return Ok(Response::new(SendGroupMessageResponse {
             result: Some(send_group_message_response::Result::Error(ErrorResponse {
                 code: 13, // INTERNAL
@@ -149,7 +156,7 @@ pub async fn send_group_message(
             sender_device_id: sender_device_id.clone(),
             recipient_user_id: member.user_id.clone(),
             encrypted_content: request.encrypted_content.clone(),
-            timestamp: server_timestamp,
+            timestamp: server_timestamp_millis / 1000, // Convert millis to seconds for NATS
         };
 
         // Publish to NATS
@@ -184,8 +191,8 @@ pub async fn send_group_message(
             SendGroupMessageSuccess {
                 message_id,
                 server_timestamp: Some(Timestamp {
-                    seconds: server_timestamp,
-                    nanos: 0,
+                    seconds: server_timestamp_millis / 1000,
+                    nanos: ((server_timestamp_millis % 1000) * 1_000_000) as i32,
                 }),
             },
         )),
