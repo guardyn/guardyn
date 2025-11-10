@@ -23,7 +23,7 @@ config.workspace = true
 tikv-client.workspace = true
 scylla.workspace = true
 async-nats.workspace = true
-uuid = { version = "1.11", features = ["v4", "v5", "serde"] }
+uuid = { version = "1.11", features = ["v1", "v4", "v5", "serde"] }
 chrono = "0.4"
 jsonwebtoken = "9.3"
 

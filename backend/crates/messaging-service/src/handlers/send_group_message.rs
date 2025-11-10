@@ -83,9 +83,15 @@ pub async fn send_group_message(
     // TODO: Verify sender is a member of the group
     // For MVP, we skip this check
 
-    // Generate message ID
-    let message_id = Uuid::new_v4().to_string();
-    let server_timestamp = chrono::Utc::now().timestamp();
+    // Generate message ID (timeuuid - UUID v1 based on timestamp)
+    // ScyllaDB expects timeuuid (v1) for message_id
+    let now = chrono::Utc::now();
+    let ts_secs = now.timestamp() as u64;
+    let ts_subsec_nanos = now.timestamp_subsec_nanos();
+    
+    let uuid_timestamp = uuid::timestamp::Timestamp::from_unix(uuid::timestamp::context::Context::new(0), ts_secs, ts_subsec_nanos);
+    let message_id = uuid::Uuid::new_v1(uuid_timestamp, &[0, 1, 2, 3, 4, 5]).to_string();
+    let server_timestamp = now.timestamp();
 
     // Store group message in ScyllaDB
     let group_message = crate::models::GroupMessage {
