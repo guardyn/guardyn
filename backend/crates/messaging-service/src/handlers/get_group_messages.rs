@@ -66,8 +66,37 @@ pub async fn get_group_messages(
         }
     }
 
-    // TODO: Verify requester is a member of the group
-    // For MVP, we skip this check
+    // Verify requester is a member of the group
+    let members = match db.get_group_members(&request.group_id).await {
+        Ok(members) => members,
+        Err(e) => {
+            tracing::error!("Failed to fetch group members: {}", e);
+            return Ok(Response::new(GetGroupMessagesResponse {
+                result: Some(get_group_messages_response::Result::Error(ErrorResponse {
+                    code: 13, // INTERNAL
+                    message: "Failed to verify membership".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
+
+    // Check if requester is in the members list
+    let is_member = members.iter().any(|m| m.user_id == requester_user_id);
+    if !is_member {
+        tracing::warn!(
+            "User {} attempted to access group {} messages without membership",
+            requester_user_id,
+            request.group_id
+        );
+        return Ok(Response::new(GetGroupMessagesResponse {
+            result: Some(get_group_messages_response::Result::Error(ErrorResponse {
+                code: 7, // PERMISSION_DENIED
+                message: "Not a member of this group".to_string(),
+                details: Default::default(),
+            })),
+        }));
+    }
 
     tracing::debug!(
         "User {} fetching messages for group {}",
