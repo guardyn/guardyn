@@ -232,7 +232,11 @@ impl DatabaseClient {
         conversation_id: &str,
         limit: i32,
     ) -> Result<Vec<StoredMessage>> {
-        let query = "SELECT * FROM guardyn.messages 
+        let query = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
+                            recipient_user_id, recipient_device_id, encrypted_content, \
+                            message_type, server_timestamp, client_timestamp, \
+                            delivery_status, is_deleted \
+                     FROM guardyn.messages 
                      WHERE conversation_id = ? 
                      LIMIT ?";
 
@@ -253,19 +257,87 @@ impl DatabaseClient {
                 // 4: recipient_user_id, 5: recipient_device_id (nullable), 6: encrypted_content,
                 // 7: message_type, 8: server_timestamp, 9: client_timestamp,
                 // 10: delivery_status, 11: is_deleted
+
+                // Safe extraction with error context
+                let conversation_id = row.columns.get(0)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing conversation_id"))?;
+
+                let message_id = row.columns.get(1)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing message_id"))?;
+
+                let sender_user_id = row.columns.get(2)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing sender_user_id"))?;
+
+                let sender_device_id = row.columns.get(3)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing sender_device_id"))?;
+
+                let recipient_user_id = row.columns.get(4)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing recipient_user_id"))?;
+
+                let recipient_device_id = row.columns.get(5)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string()); // Nullable field - no error
+
+                let encrypted_content = row.columns.get(6)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_blob())
+                    .map(|b| b.to_vec())
+                    .ok_or_else(|| anyhow::anyhow!("Missing encrypted_content"))?;
+
+                let message_type = row.columns.get(7)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_int())
+                    .ok_or_else(|| anyhow::anyhow!("Missing message_type"))?;
+
+                let server_timestamp = row.columns.get(8)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_bigint())
+                    .ok_or_else(|| anyhow::anyhow!("Missing server_timestamp"))?;
+
+                let client_timestamp = row.columns.get(9)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_bigint())
+                    .ok_or_else(|| anyhow::anyhow!("Missing client_timestamp"))?;
+
+                let delivery_status = row.columns.get(10)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_int())
+                    .ok_or_else(|| anyhow::anyhow!("Missing delivery_status"))?;
+
+                let is_deleted = row.columns.get(11)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_boolean())
+                    .ok_or_else(|| anyhow::anyhow!("Missing is_deleted"))?;
+
                 let msg = StoredMessage {
-                    conversation_id: row.columns[0].as_ref().unwrap().as_uuid().unwrap().to_string(),
-                    message_id: row.columns[1].as_ref().unwrap().as_uuid().unwrap().to_string(),
-                    sender_user_id: row.columns[2].as_ref().unwrap().as_text().unwrap().to_string(),
-                    sender_device_id: row.columns[3].as_ref().unwrap().as_text().unwrap().to_string(),
-                    recipient_user_id: row.columns[4].as_ref().unwrap().as_text().unwrap().to_string(),
-                    recipient_device_id: row.columns[5].as_ref().and_then(|c| c.as_text()).map(|s| s.to_string()), // Nullable field
-                    encrypted_content: row.columns[6].as_ref().unwrap().as_blob().unwrap().to_vec(),
-                    message_type: row.columns[7].as_ref().unwrap().as_int().unwrap(),
-                    server_timestamp: row.columns[8].as_ref().unwrap().as_bigint().unwrap(),
-                    client_timestamp: row.columns[9].as_ref().unwrap().as_bigint().unwrap(),
-                    delivery_status: row.columns[10].as_ref().unwrap().as_int().unwrap(),
-                    is_deleted: row.columns[11].as_ref().unwrap().as_boolean().unwrap(),
+                    conversation_id,
+                    message_id,
+                    sender_user_id,
+                    sender_device_id,
+                    recipient_user_id,
+                    recipient_device_id,
+                    encrypted_content,
+                    message_type,
+                    server_timestamp,
+                    client_timestamp,
+                    delivery_status,
+                    is_deleted,
                 };
                 messages.push(msg);
             }
@@ -382,7 +454,10 @@ impl DatabaseClient {
         group_id: &str,
         limit: i32,
     ) -> Result<Vec<GroupMessage>> {
-        let query = "SELECT * FROM guardyn.group_messages 
+        let query = "SELECT group_id, message_id, sender_user_id, sender_device_id, \
+                            encrypted_content, message_type, server_timestamp, \
+                            client_timestamp, is_deleted \
+                     FROM guardyn.group_messages 
                      WHERE group_id = ? 
                      LIMIT ?";
 
@@ -398,16 +473,64 @@ impl DatabaseClient {
         if let Some(rows) = rows.rows {
             for row in rows {
                 // Parse row into GroupMessage
+                // Column order: 0: group_id, 1: message_id, 2: sender_user_id, 3: sender_device_id,
+                // 4: encrypted_content, 5: message_type, 6: server_timestamp, 7: client_timestamp,
+                // 8: is_deleted
+
+                let message_id = row.columns.get(1)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing message_id"))?;
+
+                let sender_user_id = row.columns.get(2)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing sender_user_id"))?;
+
+                let sender_device_id = row.columns.get(3)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| anyhow::anyhow!("Missing sender_device_id"))?;
+
+                let encrypted_content = row.columns.get(4)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_blob())
+                    .map(|b| b.to_vec())
+                    .ok_or_else(|| anyhow::anyhow!("Missing encrypted_content"))?;
+
+                let message_type = row.columns.get(5)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_int())
+                    .ok_or_else(|| anyhow::anyhow!("Missing message_type"))?;
+
+                let server_timestamp = row.columns.get(6)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_bigint())
+                    .ok_or_else(|| anyhow::anyhow!("Missing server_timestamp"))?;
+
+                let client_timestamp = row.columns.get(7)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_bigint())
+                    .ok_or_else(|| anyhow::anyhow!("Missing client_timestamp"))?;
+
+                let is_deleted = row.columns.get(8)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_boolean())
+                    .ok_or_else(|| anyhow::anyhow!("Missing is_deleted"))?;
+
                 let msg = GroupMessage {
-                    message_id: row.columns[1].as_ref().unwrap().as_uuid().unwrap().to_string(),
+                    message_id,
                     group_id: group_id.to_string(),
-                    sender_user_id: row.columns[2].as_ref().unwrap().as_text().unwrap().to_string(),
-                    sender_device_id: row.columns[3].as_ref().unwrap().as_text().unwrap().to_string(),
-                    encrypted_content: row.columns[4].as_ref().unwrap().as_blob().unwrap().to_vec(),
-                    message_type: row.columns[5].as_ref().unwrap().as_int().unwrap(),
-                    server_timestamp: row.columns[6].as_ref().unwrap().as_bigint().unwrap(),
-                    client_timestamp: row.columns[7].as_ref().unwrap().as_bigint().unwrap(),
-                    is_deleted: row.columns[8].as_ref().unwrap().as_boolean().unwrap(),
+                    sender_user_id,
+                    sender_device_id,
+                    encrypted_content,
+                    message_type,
+                    server_timestamp,
+                    client_timestamp,
+                    is_deleted,
                 };
                 messages.push(msg);
             }

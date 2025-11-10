@@ -15,8 +15,12 @@ echo "🚀 Pushing to registry..."
 docker tag guardyn-messaging-service:latest localhost:5000/guardyn-messaging-service:latest
 docker push localhost:5000/guardyn-messaging-service:latest
 
+echo "📥 Importing to k3d cluster..."
+k3d image import guardyn-messaging-service:latest -c guardyn-poc
+
 echo "♻️  Redeploying pods..."
-kubectl delete pods -n apps -l app=messaging-service
+kubectl set image deployment/messaging-service -n apps messaging-service=guardyn-messaging-service:latest --record=false
+kubectl rollout restart deployment/messaging-service -n apps
 
 echo "✅ Done! Waiting for pods to be ready..."
 kubectl wait --for=condition=Ready pods -l app=messaging-service -n apps --timeout=60s
