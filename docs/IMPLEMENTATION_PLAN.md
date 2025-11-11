@@ -577,16 +577,25 @@ All core MVP features plus comprehensive cryptography are implemented, tested, a
 - ✅ Error handling (invalid ciphertext, invalid key package)
 
 **Known Limitations**:
+- ⚠️ **CRITICAL BLOCKER**: OpenMLS API incompatibility - compilation fails with 16 errors
+  * OpenMLS 0.5 API is incompatible with current implementation
+  * Git dependency added for `openmls_basic_credential` but API signatures don't match
+  * Resolution: Upgrade to OpenMLS 0.7 (recommended) - 6-8 hours estimated
 - ⚠️ OpenMLS v0.5 doesn't provide state deserialization (requires in-memory managers or custom serialization)
-- ⚠️ gRPC client for auth-service key package fetch needs implementation in messaging-service
+- ⚠️ gRPC client implementation complete but blocked by compilation failure
 
-**Status**: ✅ **CORE IMPLEMENTATION COMPLETE** - MLS protocol fully implemented, needs gRPC wiring for member addition
+**Status**: ⚠️ **COMPILATION BLOCKED** - MLS protocol design complete (85%), needs OpenMLS 0.7 migration
 
 **Next Steps**:
-1. Implement gRPC client in messaging-service to fetch key packages from auth-service
-2. Solve OpenMLS state deserialization (consider upgrading OpenMLS or implement state caching)
-3. Add integration tests with database fixtures
-4. Implement member removal handler (remove_group_member_mls.rs)
+1. 🔴 **CRITICAL**: Migrate to OpenMLS 0.7 to resolve compilation issues (~6-8 hours)
+   - Replace `OpenMlsRustCrypto` with `RustCrypto` backend
+   - Update all API calls to match OpenMLS 0.7 signatures
+   - Fix message type handling in `process_message()`
+   - Update test suite to match new APIs
+2. ⏳ Verify compilation succeeds and run 15 unit tests
+3. ⏳ Solve OpenMLS state deserialization (consider state caching)
+4. ⏳ Add integration tests with database fixtures
+5. ⏳ Implement member removal handler (remove_group_member_mls.rs)
 
 ### 6.4 Post-Quantum Cryptography
 

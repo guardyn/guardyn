@@ -40,6 +40,7 @@ pub struct MlsGroupManager {
     mls_group: MlsGroup,
     crypto_backend: OpenMlsRustCrypto,
     credential_bundle: CredentialWithKey,
+    signature_keypair: SignatureKeyPair,  // Store the keypair for signing operations
 }
 
 impl MlsGroupManager {
@@ -48,17 +49,27 @@ impl MlsGroupManager {
     /// # Arguments
     /// * `group_id` - Unique group identifier
     /// * `creator_identity` - Creator's identity (user_id:device_id)
-    /// * `credential_bundle` - Creator's credential with signing key
+    /// * `signature_keypair` - Creator's signature keypair for signing operations
     /// 
     /// # Returns
     /// New MlsGroupManager instance with initialized group
     pub fn create_group(
         group_id: &str,
         creator_identity: &[u8],
-        credential_bundle: CredentialWithKey,
+        signature_keypair: SignatureKeyPair,
     ) -> Result<Self> {
         let crypto_backend = OpenMlsRustCrypto::default();
         let group_id_bytes = group_id.as_bytes().to_vec();
+
+        // Create credential
+        let credential = Credential::new(creator_identity.to_vec(), CredentialType::Basic)
+            .map_err(|e| CryptoError::Protocol(format!("Failed to create credential: {:?}", e)))?;
+
+        // Create credential bundle
+        let credential_bundle = CredentialWithKey {
+            credential: credential.clone(),
+            signature_key: signature_keypair.public().into(),
+        };
 
         // Configure MLS group
         let group_config = MlsGroupCreateConfig::builder()
@@ -79,6 +90,7 @@ impl MlsGroupManager {
             mls_group,
             crypto_backend,
             credential_bundle,
+            signature_keypair,
         })
     }
 
@@ -86,21 +98,33 @@ impl MlsGroupManager {
     /// 
     /// # Arguments
     /// * `welcome_bytes` - Serialized Welcome message from group admin
-    /// * `credential_bundle` - Member's credential with signing key
+    /// * `signature_keypair` - Member's signature keypair for signing operations
     /// * `key_package` - Member's key package used in the Welcome
     /// 
     /// # Returns
     /// New MlsGroupManager instance for the joined group
     pub fn join_group(
         welcome_bytes: &[u8],
-        credential_bundle: CredentialWithKey,
+        signature_keypair: SignatureKeyPair,
         key_package: KeyPackage,
     ) -> Result<Self> {
         let crypto_backend = OpenMlsRustCrypto::default();
 
+        // Get identity from key package credential
+        let credential = key_package.leaf_node().credential();
+        
+        // Create credential bundle
+        let credential_bundle = CredentialWithKey {
+            credential: credential.clone(),
+            signature_key: signature_keypair.public().into(),
+        };
+
         // Deserialize Welcome message
         let welcome = MlsMessageIn::tls_deserialize(&mut welcome_bytes.as_ref())
             .map_err(|e| CryptoError::Protocol(format!("Failed to deserialize Welcome: {:?}", e)))?;
+
+        // Configure MLS group (needed for joining)
+        let group_config = MlsGroupJoinConfig::default();
 
         // Process Welcome and join group
         let mls_group = MlsGroup::new_from_welcome(
@@ -117,6 +141,7 @@ impl MlsGroupManager {
             mls_group,
             crypto_backend,
             credential_bundle,
+            signature_keypair,
         })
     }
 
@@ -152,7 +177,7 @@ impl MlsGroupManager {
             .build(
                 MLS_CIPHERSUITE,
                 &crypto_backend,
-                &credential_bundle.signature_key,
+                &signature_keypair,
                 credential_bundle.credential.clone(),
             )
             .map_err(|e| CryptoError::Protocol(format!("Failed to build key package: {:?}", e)))?;
@@ -196,7 +221,7 @@ impl MlsGroupManager {
         // Propose adding the member
         let (commit, welcome, _group_info) = self
             .mls_group
-            .add_members(&self.crypto_backend, &self.credential_bundle.signature_key, &[key_package])
+            .add_members(&self.crypto_backend, &self.signature_keypair, &[key_package])
             .map_err(|e| CryptoError::Protocol(format!("Failed to add member: {:?}", e)))?;
 
         // Merge commit (apply changes to local state)
@@ -231,7 +256,7 @@ impl MlsGroupManager {
         // Propose removing the member
         let (commit, _welcome, _group_info) = self
             .mls_group
-            .remove_members(&self.crypto_backend, &self.credential_bundle.signature_key, &[member_index])
+            .remove_members(&self.crypto_backend, &self.signature_keypair, &[member_index])
             .map_err(|e| CryptoError::Protocol(format!("Failed to remove member: {:?}", e)))?;
 
         // Merge commit (apply changes to local state)
@@ -282,7 +307,7 @@ impl MlsGroupManager {
         // Create application message
         let message = self
             .mls_group
-            .create_message(&self.crypto_backend, &self.credential_bundle.signature_key, plaintext)
+            .create_message(&self.crypto_backend, &self.signature_keypair, plaintext)
             .map_err(|e| CryptoError::Encryption(format!("Failed to create message: {:?}", e)))?;
 
         // Serialize message
@@ -367,43 +392,30 @@ impl MlsGroupManager {
 /// Create a test credential (helper for testing and initial development)
 ///
 /// **SECURITY WARNING**: This is for testing only. In production, credentials
+/// Test helper to create a signature keypair for testing
+/// 
+/// ⚠️ WARNING: This is for testing only! In production, signature keypairs
 /// should be generated securely and stored with proper key management.
-pub fn create_test_credential(identity: &str) -> Result<CredentialWithKey> {
-    let identity_bytes = identity.as_bytes().to_vec();
-    let credential = Credential::new(identity_bytes, CredentialType::Basic)
-        .map_err(|e| CryptoError::Protocol(format!("Failed to create credential: {:?}", e)))?;
-
+pub fn create_test_keypair() -> Result<SignatureKeyPair> {
     let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
         .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
-
-    Ok(CredentialWithKey {
-        credential,
-        signature_key: signature_keypair.into(),
-    })
+    Ok(signature_keypair)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn create_test_credential(identity: &str) -> Result<CredentialWithKey> {
-        let identity_bytes = identity.as_bytes().to_vec();
-        let credential = Credential::new(identity_bytes, CredentialType::Basic)
-            .map_err(|e| CryptoError::Protocol(format!("Failed to create credential: {:?}", e)))?;
-
+    fn create_test_keypair() -> Result<SignatureKeyPair> {
         let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
             .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
-
-        Ok(CredentialWithKey {
-            credential,
-            signature_key: signature_keypair.into(),
-        })
+        Ok(signature_keypair)
     }
 
     #[test]
     fn test_mls_group_creation() {
-        let alice_cred = create_test_credential("alice:device1").unwrap();
-        let group = MlsGroupManager::create_group("test_group", b"alice:device1", alice_cred);
+        let alice_keypair = create_test_keypair().unwrap();
+        let group = MlsGroupManager::create_group("test_group", b"alice:device1", alice_keypair);
         assert!(group.is_ok());
 
         let group = group.unwrap();
@@ -425,9 +437,9 @@ mod tests {
     #[test]
     fn test_add_member_to_group() {
         // Create group with Alice
-        let alice_cred = create_test_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group", b"alice:device1", alice_cred).unwrap();
+            MlsGroupManager::create_group("test_group", b"alice:device1", alice_keypair).unwrap();
 
         // Generate key package for Bob
         let bob_key_package = MlsGroupManager::generate_key_package(b"bob:device1").unwrap();
@@ -446,15 +458,14 @@ mod tests {
     #[test]
     fn test_encrypt_decrypt_message() {
         // Create group with Alice
-        let alice_cred = create_test_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group", b"alice:device1", alice_cred.clone())
+            MlsGroupManager::create_group("test_group", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Encrypt message
         let plaintext = b"Hello, MLS group!";
-        let aad = b"metadata";
-        let ciphertext = alice_group.encrypt_message(plaintext, aad);
+        let ciphertext = alice_group.encrypt_message(plaintext);
         assert!(ciphertext.is_ok());
 
         // Decrypt message (same member)
@@ -462,15 +473,15 @@ mod tests {
         let result = alice_group.decrypt_message(&ciphertext);
         assert!(result.is_ok());
 
-        let (decrypted, _aad) = result.unwrap();
+        let decrypted = result.unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
     #[test]
     fn test_serialize_group_state() {
-        let alice_cred = create_test_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let alice_group =
-            MlsGroupManager::create_group("test_group", b"alice:device1", alice_cred).unwrap();
+            MlsGroupManager::create_group("test_group", b"alice:device1", alice_keypair).unwrap();
 
         let state = alice_group.serialize_state();
         assert!(state.is_ok());
