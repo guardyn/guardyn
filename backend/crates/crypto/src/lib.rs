@@ -10,6 +10,9 @@ pub mod double_ratchet;
 pub mod mls;
 pub mod key_storage;
 
+#[cfg(test)]
+mod mls_tests;
+
 pub use x3dh::{X3DHKeyBundle, X3DHProtocol};
 pub use double_ratchet::DoubleRatchet;
 pub use mls::MLSGroupManager;

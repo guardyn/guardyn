@@ -30,6 +30,12 @@ service AuthService {
   // Upload new pre-keys (key rotation)
   rpc UploadPreKeys(UploadPreKeysRequest) returns (UploadPreKeysResponse);
 
+  // Upload MLS key package for group chat (MLS Protocol)
+  rpc UploadMlsKeyPackage(UploadMlsKeyPackageRequest) returns (UploadMlsKeyPackageResponse);
+
+  // Get MLS key package for a user (used when adding to group)
+  rpc GetMlsKeyPackage(GetMlsKeyPackageRequest) returns (GetMlsKeyPackageResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -224,6 +230,46 @@ message UploadPreKeysResponse {
 message UploadPreKeysSuccess {
   uint32 keys_uploaded = 1;
   uint32 total_keys_available = 2;
+}
+
+// ============================================================================
+// MLS Key Package Management (for Group Chat)
+// ============================================================================
+
+message UploadMlsKeyPackageRequest {
+  string access_token = 1; // Authentication
+  bytes key_package = 2; // Serialized MLS KeyPackage
+}
+
+message UploadMlsKeyPackageResponse {
+  oneof result {
+    UploadMlsKeyPackageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UploadMlsKeyPackageSuccess {
+  string package_id = 1; // Unique ID for this key package
+  common.Timestamp uploaded_at = 2;
+}
+
+message GetMlsKeyPackageRequest {
+  string user_id = 1; // Target user
+  string device_id = 2; // Target device (optional)
+}
+
+message GetMlsKeyPackageResponse {
+  oneof result {
+    GetMlsKeyPackageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetMlsKeyPackageSuccess {
+  string user_id = 1;
+  string device_id = 2;
+  bytes key_package = 3; // Serialized MLS KeyPackage
+  string package_id = 4;
 }
 
 // ============================================================================

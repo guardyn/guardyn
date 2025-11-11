@@ -13,6 +13,7 @@ mod db;
 mod nats;
 mod jwt;
 mod crypto;
+mod mls_manager;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};

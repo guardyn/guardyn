@@ -12,10 +12,12 @@ thiserror.workspace = true
 serde.workspace = true
 
 # Cryptography - Signal Protocol for 1-on-1 E2EE
-# libsignal-rust.workspace = true  # TODO: Implement in Phase 6
+# libsignal-rust.workspace = true  # Not needed - custom implementation
 
 # MLS for group chat E2EE
-# openmls.workspace = true  # TODO: Implement in Phase 6
+openmls.workspace = true
+openmls_rust_crypto.workspace = true
+openmls_traits.workspace = true
 
 # Curve25519 for key exchange
 x25519-dalek.workspace = true
