@@ -314,6 +314,74 @@ pub struct UploadPreKeysSuccess {
     #[prost(uint32, tag = "2")]
     pub total_keys_available: u32,
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UploadMlsKeyPackageRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Serialized MLS KeyPackage
+    #[prost(bytes = "vec", tag = "2")]
+    pub key_package: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UploadMlsKeyPackageResponse {
+    #[prost(oneof = "upload_mls_key_package_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<upload_mls_key_package_response::Result>,
+}
+/// Nested message and enum types in `UploadMlsKeyPackageResponse`.
+pub mod upload_mls_key_package_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::UploadMlsKeyPackageSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UploadMlsKeyPackageSuccess {
+    /// Unique ID for this key package
+    #[prost(string, tag = "1")]
+    pub package_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub uploaded_at: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMlsKeyPackageRequest {
+    /// Target user
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Target device (optional)
+    #[prost(string, tag = "2")]
+    pub device_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMlsKeyPackageResponse {
+    #[prost(oneof = "get_mls_key_package_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<get_mls_key_package_response::Result>,
+}
+/// Nested message and enum types in `GetMlsKeyPackageResponse`.
+pub mod get_mls_key_package_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::GetMlsKeyPackageSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMlsKeyPackageSuccess {
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub device_id: ::prost::alloc::string::String,
+    /// Serialized MLS KeyPackage
+    #[prost(bytes = "vec", tag = "3")]
+    pub key_package: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag = "4")]
+    pub package_id: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct HealthRequest {}
 /// Generated client implementations.
@@ -576,6 +644,58 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "UploadPreKeys"));
             self.inner.unary(req, path, codec).await
         }
+        /// Upload MLS key package for group chat (MLS Protocol)
+        pub async fn upload_mls_key_package(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UploadMlsKeyPackageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UploadMlsKeyPackageResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/UploadMlsKeyPackage",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.auth.AuthService", "UploadMlsKeyPackage"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Get MLS key package for a user (used when adding to group)
+        pub async fn get_mls_key_package(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetMlsKeyPackageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMlsKeyPackageResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/GetMlsKeyPackage",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetMlsKeyPackage"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Health check
         pub async fn health(
             &mut self,
@@ -664,6 +784,22 @@ pub mod auth_service_server {
             request: tonic::Request<super::UploadPreKeysRequest>,
         ) -> std::result::Result<
             tonic::Response<super::UploadPreKeysResponse>,
+            tonic::Status,
+        >;
+        /// Upload MLS key package for group chat (MLS Protocol)
+        async fn upload_mls_key_package(
+            &self,
+            request: tonic::Request<super::UploadMlsKeyPackageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UploadMlsKeyPackageResponse>,
+            tonic::Status,
+        >;
+        /// Get MLS key package for a user (used when adding to group)
+        async fn get_mls_key_package(
+            &self,
+            request: tonic::Request<super::GetMlsKeyPackageRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMlsKeyPackageResponse>,
             tonic::Status,
         >;
         /// Health check
@@ -1049,6 +1185,98 @@ pub mod auth_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UploadPreKeysSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/UploadMlsKeyPackage" => {
+                    #[allow(non_camel_case_types)]
+                    struct UploadMlsKeyPackageSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::UploadMlsKeyPackageRequest>
+                    for UploadMlsKeyPackageSvc<T> {
+                        type Response = super::UploadMlsKeyPackageResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UploadMlsKeyPackageRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::upload_mls_key_package(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UploadMlsKeyPackageSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/GetMlsKeyPackage" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetMlsKeyPackageSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::GetMlsKeyPackageRequest>
+                    for GetMlsKeyPackageSvc<T> {
+                        type Response = super::GetMlsKeyPackageResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetMlsKeyPackageRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::get_mls_key_package(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetMlsKeyPackageSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

@@ -6,7 +6,8 @@
 
 use crate::{CryptoError, Result};
 use openmls::prelude::*;
-use openmls_rust_crypto::RustCrypto;
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +38,7 @@ pub struct MlsGroupState {
 /// Each instance represents a single MLS group from one member's perspective.
 pub struct MlsGroupManager {
     mls_group: MlsGroup,
-    crypto_backend: RustCrypto,
+    crypto_backend: OpenMlsRustCrypto,
     credential_bundle: CredentialWithKey,
 }
 
@@ -56,7 +57,7 @@ impl MlsGroupManager {
         creator_identity: &[u8],
         credential_bundle: CredentialWithKey,
     ) -> Result<Self> {
-        let crypto_backend = RustCrypto::default();
+        let crypto_backend = OpenMlsRustCrypto::default();
         let group_id_bytes = group_id.as_bytes().to_vec();
 
         // Configure MLS group
@@ -95,7 +96,7 @@ impl MlsGroupManager {
         credential_bundle: CredentialWithKey,
         key_package: KeyPackage,
     ) -> Result<Self> {
-        let crypto_backend = RustCrypto::default();
+        let crypto_backend = OpenMlsRustCrypto::default();
 
         // Deserialize Welcome message
         let welcome = MlsMessageIn::tls_deserialize(&mut welcome_bytes.as_ref())
@@ -130,7 +131,7 @@ impl MlsGroupManager {
     /// # Returns
     /// MlsKeyPackage with serialized key package and metadata
     pub fn generate_key_package(identity: &[u8]) -> Result<MlsKeyPackage> {
-        let crypto_backend = RustCrypto::default();
+        let crypto_backend = OpenMlsRustCrypto::default();
 
         // Create credential
         let credential = Credential::new(identity.to_vec(), CredentialType::Basic)
@@ -272,15 +273,16 @@ impl MlsGroupManager {
     /// 
     /// # Arguments
     /// * `plaintext` - Message plaintext bytes
-    /// * `aad` - Additional authenticated data (metadata)
     /// 
     /// # Returns
     /// Serialized encrypted MLS message
-    pub fn encrypt_message(&mut self, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
+    /// 
+    /// Note: OpenMLS 0.5 removed AAD parameter from create_message
+    pub fn encrypt_message(&mut self, plaintext: &[u8]) -> Result<Vec<u8>> {
         // Create application message
         let message = self
             .mls_group
-            .create_message(&self.crypto_backend, &self.credential_bundle.signature_key, plaintext, aad)
+            .create_message(&self.crypto_backend, &self.credential_bundle.signature_key, plaintext)
             .map_err(|e| CryptoError::Encryption(format!("Failed to create message: {:?}", e)))?;
 
         // Serialize message
