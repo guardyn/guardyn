@@ -38,7 +38,7 @@ E2E tests validate complete user workflows:
 **Quick Start**:
 
 ```bash
-./run-e2e-tests.sh
+backend/crates/e2e-tests/scripts/run-e2e-tests.sh
 ```
 
 **Manual Execution**:
@@ -51,7 +51,7 @@ cargo test --package guardyn-e2e-tests --test e2e_mvp_simplified
 **With Nix**:
 
 ```bash
-nix --extra-experimental-features 'nix-command flakes' develop --command bash -c './run-e2e-tests.sh'
+nix --extra-experimental-features 'nix-command flakes' develop --command bash -c 'backend/crates/e2e-tests/scripts/run-e2e-tests.sh'
 ```
 
 ### Test Scenarios

@@ -38,7 +38,7 @@ Performance testing suite for Guardyn MVP using k6 load testing framework.
 Run combined auth + messaging load test using the wrapper script:
 
 ```bash
-./k6-test.sh
+backend/crates/e2e-tests/scripts/k6-test.sh
 ```
 
 This automatically:
@@ -53,13 +53,13 @@ This automatically:
 **Auth Service only**:
 
 ```bash
-./k6-test.sh auth
+backend/crates/e2e-tests/scripts/k6-test.sh auth
 ```
 
 **Messaging Service only**:
 
 ```bash
-./k6-test.sh messaging
+backend/crates/e2e-tests/scripts/k6-test.sh messaging
 ```
 
 ### Alternative: Direct Script (Requires Nix Shell)
@@ -67,16 +67,16 @@ This automatically:
 If you're already in Nix environment:
 
 ```bash
-./run-performance-tests.sh           # Combined
-./run-performance-tests.sh auth      # Auth only
-./run-performance-tests.sh messaging # Messaging only
+backend/crates/e2e-tests/scripts/run-performance-tests.sh           # Combined
+backend/crates/e2e-tests/scripts/run-performance-tests.sh auth      # Auth only
+backend/crates/e2e-tests/scripts/run-performance-tests.sh messaging # Messaging only
 ```
 
 Or enter Nix shell first:
 
 ```bash
 nix --extra-experimental-features 'nix-command flakes' develop
-./run-performance-tests.sh
+backend/crates/e2e-tests/scripts/run-performance-tests.sh
 exit
 ```
 
