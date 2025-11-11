@@ -27,7 +27,7 @@ impl CryptoManager {
     }
 
     /// Initialize Double Ratchet session as sender (Alice)
-    /// 
+    ///
     /// Steps:
     /// 1. Fetch recipient's key bundle from auth-service
     /// 2. Perform X3DH key agreement
@@ -144,7 +144,7 @@ impl CryptoManager {
     }
 
     /// Initialize Double Ratchet session as receiver (Bob)
-    /// 
+    ///
     /// Steps:
     /// 1. Use received X3DH key agreement data
     /// 2. Perform X3DH key agreement (responder side)
@@ -182,7 +182,7 @@ impl CryptoManager {
     ) -> Result<Vec<u8>> {
         let encrypted_msg = ratchet.encrypt(plaintext, associated_data)
             .context("Failed to encrypt message with Double Ratchet")?;
-        
+
         Ok(encrypted_msg.to_bytes())
     }
 
@@ -196,10 +196,10 @@ impl CryptoManager {
 
         let encrypted_msg = EncryptedMessage::from_bytes(ciphertext)
             .context("Failed to parse encrypted message")?;
-        
+
         let plaintext = ratchet.decrypt(&encrypted_msg, associated_data)
             .context("Failed to decrypt message with Double Ratchet")?;
-        
+
         Ok(plaintext)
     }
 }
@@ -299,7 +299,7 @@ mod tests {
 
         let id1 = RatchetSession::session_id("user1", "dev1", "user2", "dev2");
         let id2 = RatchetSession::session_id("user2", "dev2", "user1", "dev1");
-        
+
         // Session IDs should be identical regardless of order (canonical form)
         assert_eq!(id1, id2);
         assert_eq!(id1, "user1:dev1:user2:dev2");

@@ -400,7 +400,7 @@ impl DoubleRatchet {
     }
 
     /// Serialize Double Ratchet state for persistent storage
-    /// 
+    ///
     /// Format (all little-endian):
     /// - dh_self (32 bytes)
     /// - dh_remote_present (1 byte: 0 or 1)
