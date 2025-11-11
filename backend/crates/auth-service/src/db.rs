@@ -264,4 +264,13 @@ impl DatabaseClient {
                 .as_secs() as i64,
         }))
     }
+
+    /// Health check - verify TiKV connectivity
+    pub async fn health_check(&self) -> Result<()> {
+        // Try to perform a simple operation to verify connectivity
+        let test_key = b"/__health_check__";
+        self.client.get(test_key.to_vec()).await
+            .context("TiKV health check failed")?;
+        Ok(())
+    }
 }

@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed to find workspace root");
 
     // Try multiple potential proto locations
-    let proto_paths = vec![
+    let proto_paths = [
         workspace_root.join("proto"),           // backend/proto/ (most common)
         std::path::PathBuf::from("./proto"),    // Docker: /app/proto/
         std::path::PathBuf::from("../../proto"), // Fallback
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::configure()
         .build_server(true)
         .build_client(true)
-        .compile(
+        .compile_protos(
             &[common_proto.to_str().unwrap(), messaging_proto.to_str().unwrap()],
             &[proto_dir.to_str().unwrap()],
         )?;

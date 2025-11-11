@@ -5,7 +5,6 @@
 /// - Double Ratchet for 1-on-1 messaging
 /// - MLS (Messaging Layer Security) for group chat
 /// - Key derivation and storage
-
 pub mod x3dh;
 pub mod double_ratchet;
 pub mod mls;

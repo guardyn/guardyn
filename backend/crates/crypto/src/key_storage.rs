@@ -1,5 +1,4 @@
-/// Secure key storage and management
-
+//! Secure key storage and management
 use crate::Result;
 
 pub struct KeyStorage;

@@ -586,4 +586,18 @@ impl DatabaseClient {
 
         Ok(messages)
     }
+
+    /// Health check - verify TiKV connectivity
+    pub async fn tikv_health_check(&self) -> anyhow::Result<()> {
+        let test_key = b"/__health_check__";
+        self.tikv.get(test_key.to_vec()).await?;
+        Ok(())
+    }
+
+    /// Health check - verify ScyllaDB connectivity
+    pub async fn scylladb_health_check(&self) -> anyhow::Result<()> {
+        // Execute a simple query to verify connectivity
+        self.scylla.query("SELECT now() FROM system.local", ()).await?;
+        Ok(())
+    }
 }
