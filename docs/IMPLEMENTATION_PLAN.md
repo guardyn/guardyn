@@ -406,7 +406,7 @@ All core MVP features are implemented, tested, and documented:
 
 ---
 
-## Phase 6: Cryptography Implementation ✅ (X3DH Complete - Nov 11, 2025)
+## Phase 6: Cryptography Implementation ✅ (X3DH + Double Ratchet Complete - Nov 11, 2025)
 
 ### 6.1 Key Exchange & Session Setup ✅ **COMPLETE**
 
@@ -432,21 +432,40 @@ All core MVP features are implemented, tested, and documented:
 
 **Note**: Ed25519 → Curve25519 conversion needs production implementation (currently using temporary workaround).
 
-### 6.2 Message Encryption (1-on-1)
+### 6.2 Message Encryption (1-on-1) ✅ **COMPLETE**
 
-- [x] Add libsignal-protocol dependency
+- [x] ~~Add libsignal-protocol dependency~~ (implemented from scratch using crypto primitives)
 
 - [x] Create Double Ratchet module structure
 
-- [ ] Double Ratchet implementation (libsignal)
+- [x] **Double Ratchet implementation** ✅ (symmetric + DH ratchet)
 
-- [ ] Message encryption/decryption
+- [x] **Symmetric ratchet (HKDF chain)** ✅ (ChainKey → MessageKey derivation)
 
-- [ ] Key rotation logic
+- [x] **Diffie-Hellman ratchet** ✅ (key rotation on new DH keys)
 
-- [ ] Out-of-order message handling
+- [x] **Message key derivation** ✅ (encryption/MAC keys from chain keys)
 
-- [ ] Forward secrecy guarantees
+- [x] **Message encryption/decryption** ✅ (AES-256-GCM with associated data)
+
+- [x] **Ratchet state management** ✅ (sending/receiving chains, counters)
+
+- [x] **Key rotation logic** ✅ (automatic DH ratchet on new public keys)
+
+- [x] **Out-of-order message handling** ✅ (skipped message keys cache, max 1000)
+
+- [x] **Forward secrecy guarantees** ✅ (keys derived and deleted per message)
+
+- [x] **Comprehensive test suite** ✅ (11 tests covering all functionality)
+
+**Implementation Details**:
+
+- **File**: `backend/crates/crypto/src/double_ratchet.rs` (~600 lines)
+- **Algorithm**: Signal Protocol Double Ratchet (from specification)
+- **Encryption**: AES-256-GCM for message content
+- **Key Derivation**: HKDF-SHA256 for all key material
+- **DH**: X25519 for Diffie-Hellman operations
+- **Tests**: Basic exchange, multiple messages, out-of-order, key rotation
 
 ### 6.3 Group Chat Encryption
 
