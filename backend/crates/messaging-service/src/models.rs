@@ -120,3 +120,53 @@ pub struct GroupMessage {
     pub sent_at: i64, // Unix timestamp in milliseconds
     pub metadata: std::collections::HashMap<String, String>, // Additional metadata
 }
+
+// ============================================================================
+// E2EE Double Ratchet Session State
+// ============================================================================
+
+/// Double Ratchet session state stored in TiKV
+/// Each conversation has a unique session per device pair
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RatchetSession {
+    /// Session identifier: "{user1_id}:{device1_id}:{user2_id}:{device2_id}"
+    pub session_id: String,
+    
+    /// Local user and device
+    pub local_user_id: String,
+    pub local_device_id: String,
+    
+    /// Remote user and device
+    pub remote_user_id: String,
+    pub remote_device_id: String,
+    
+    /// Serialized Double Ratchet state
+    /// Contains: DH keys, root key, chain keys, message counters, skipped keys
+    pub ratchet_state: Vec<u8>,
+    
+    /// Last updated timestamp
+    pub updated_at: i64,
+    
+    /// Session creation timestamp
+    pub created_at: i64,
+    
+    /// Is this session initiated by local user?
+    pub is_initiator: bool,
+}
+
+impl RatchetSession {
+    /// Generate session ID from device pair
+    pub fn session_id(
+        user1_id: &str,
+        device1_id: &str,
+        user2_id: &str,
+        device2_id: &str,
+    ) -> String {
+        // Canonical ordering: lexicographically smaller user first
+        if user1_id < user2_id || (user1_id == user2_id && device1_id < device2_id) {
+            format!("{}:{}:{}:{}", user1_id, device1_id, user2_id, device2_id)
+        } else {
+            format!("{}:{}:{}:{}", user2_id, device2_id, user1_id, device1_id)
+        }
+    }
+}

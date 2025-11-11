@@ -12,6 +12,7 @@ mod models;
 mod db;
 mod nats;
 mod jwt;
+mod crypto;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
