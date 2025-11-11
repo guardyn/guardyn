@@ -131,25 +131,25 @@ pub struct GroupMessage {
 pub struct RatchetSession {
     /// Session identifier: "{user1_id}:{device1_id}:{user2_id}:{device2_id}"
     pub session_id: String,
-    
+
     /// Local user and device
     pub local_user_id: String,
     pub local_device_id: String,
-    
+
     /// Remote user and device
     pub remote_user_id: String,
     pub remote_device_id: String,
-    
+
     /// Serialized Double Ratchet state
     /// Contains: DH keys, root key, chain keys, message counters, skipped keys
     pub ratchet_state: Vec<u8>,
-    
+
     /// Last updated timestamp
     pub updated_at: i64,
-    
+
     /// Session creation timestamp
     pub created_at: i64,
-    
+
     /// Is this session initiated by local user?
     pub is_initiator: bool,
 }
