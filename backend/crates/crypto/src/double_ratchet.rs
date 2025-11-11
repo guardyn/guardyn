@@ -398,6 +398,194 @@ impl DoubleRatchet {
     pub fn skipped_messages_count(&self) -> usize {
         self.skipped_message_keys.len()
     }
+
+    /// Serialize Double Ratchet state for persistent storage
+    /// 
+    /// Format (all little-endian):
+    /// - dh_self (32 bytes)
+    /// - dh_remote_present (1 byte: 0 or 1)
+    /// - dh_remote (32 bytes, if present)
+    /// - root_key (32 bytes)
+    /// - sending_chain_key_present (1 byte)
+    /// - sending_chain_key (32 bytes, if present)
+    /// - sending_message_number (4 bytes)
+    /// - receiving_chain_key_present (1 byte)
+    /// - receiving_chain_key (32 bytes, if present)
+    /// - receiving_message_number (4 bytes)
+    /// - previous_chain_length (4 bytes)
+    /// - skipped_keys_count (4 bytes)
+    /// - skipped_keys [(dh_key, msg_num, key) repeated]
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        // Serialize DH self (secret key)
+        bytes.extend_from_slice(&self.dh_self.to_bytes());
+
+        // Serialize DH remote (optional public key)
+        if let Some(remote) = self.dh_remote {
+            bytes.push(1); // present
+            bytes.extend_from_slice(remote.as_bytes());
+        } else {
+            bytes.push(0); // not present
+            bytes.extend_from_slice(&[0u8; 32]); // padding
+        }
+
+        // Serialize root key
+        bytes.extend_from_slice(&self.root_key.key);
+
+        // Serialize sending chain
+        if let Some(ref chain_key) = self.sending_chain_key {
+            bytes.push(1);
+            bytes.extend_from_slice(&chain_key.key);
+        } else {
+            bytes.push(0);
+            bytes.extend_from_slice(&[0u8; 32]);
+        }
+        bytes.extend_from_slice(&self.sending_message_number.to_le_bytes());
+
+        // Serialize receiving chain
+        if let Some(ref chain_key) = self.receiving_chain_key {
+            bytes.push(1);
+            bytes.extend_from_slice(&chain_key.key);
+        } else {
+            bytes.push(0);
+            bytes.extend_from_slice(&[0u8; 32]);
+        }
+        bytes.extend_from_slice(&self.receiving_message_number.to_le_bytes());
+
+        // Serialize previous chain length
+        bytes.extend_from_slice(&self.previous_chain_length.to_le_bytes());
+
+        // Serialize skipped message keys
+        let skipped_count = self.skipped_message_keys.len() as u32;
+        bytes.extend_from_slice(&skipped_count.to_le_bytes());
+
+        for ((dh_key, msg_num), message_key) in &self.skipped_message_keys {
+            bytes.extend_from_slice(dh_key.as_bytes()); // 32 bytes
+            bytes.extend_from_slice(&msg_num.to_le_bytes()); // 4 bytes
+            bytes.extend_from_slice(&message_key.key); // 32 bytes
+        }
+
+        bytes
+    }
+
+    /// Deserialize Double Ratchet state from bytes
+    pub fn deserialize(bytes: &[u8]) -> Result<Self> {
+        let min_size = 32 + 1 + 32 + 32 + 1 + 32 + 4 + 1 + 32 + 4 + 4 + 4;
+        if bytes.len() < min_size {
+            return Err(CryptoError::Protocol(
+                format!("Serialized data too short: {} bytes (need at least {})", bytes.len(), min_size)
+            ));
+        }
+
+        let mut offset = 0;
+
+        // Deserialize DH self
+        let mut dh_self_bytes = [0u8; 32];
+        dh_self_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+        let dh_self = StaticSecret::from(dh_self_bytes);
+        offset += 32;
+
+        // Deserialize DH remote
+        let dh_remote_present = bytes[offset] != 0;
+        offset += 1;
+        let mut dh_remote_bytes = [0u8; 32];
+        dh_remote_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+        let dh_remote = if dh_remote_present {
+            Some(X25519PublicKey::from(dh_remote_bytes))
+        } else {
+            None
+        };
+        offset += 32;
+
+        // Deserialize root key
+        let mut root_key_bytes = [0u8; 32];
+        root_key_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+        let root_key = RootKey::new(root_key_bytes);
+        offset += 32;
+
+        // Deserialize sending chain
+        let sending_present = bytes[offset] != 0;
+        offset += 1;
+        let mut sending_key_bytes = [0u8; 32];
+        sending_key_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+        let sending_chain_key = if sending_present {
+            Some(ChainKey::new(sending_key_bytes))
+        } else {
+            None
+        };
+        offset += 32;
+
+        let mut sending_num_bytes = [0u8; 4];
+        sending_num_bytes.copy_from_slice(&bytes[offset..offset + 4]);
+        let sending_message_number = u32::from_le_bytes(sending_num_bytes);
+        offset += 4;
+
+        // Deserialize receiving chain
+        let receiving_present = bytes[offset] != 0;
+        offset += 1;
+        let mut receiving_key_bytes = [0u8; 32];
+        receiving_key_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+        let receiving_chain_key = if receiving_present {
+            Some(ChainKey::new(receiving_key_bytes))
+        } else {
+            None
+        };
+        offset += 32;
+
+        let mut receiving_num_bytes = [0u8; 4];
+        receiving_num_bytes.copy_from_slice(&bytes[offset..offset + 4]);
+        let receiving_message_number = u32::from_le_bytes(receiving_num_bytes);
+        offset += 4;
+
+        // Deserialize previous chain length
+        let mut prev_chain_bytes = [0u8; 4];
+        prev_chain_bytes.copy_from_slice(&bytes[offset..offset + 4]);
+        let previous_chain_length = u32::from_le_bytes(prev_chain_bytes);
+        offset += 4;
+
+        // Deserialize skipped message keys
+        let mut skipped_count_bytes = [0u8; 4];
+        skipped_count_bytes.copy_from_slice(&bytes[offset..offset + 4]);
+        let skipped_count = u32::from_le_bytes(skipped_count_bytes);
+        offset += 4;
+
+        let mut skipped_message_keys = HashMap::new();
+        for _ in 0..skipped_count {
+            if offset + 68 > bytes.len() {
+                return Err(CryptoError::Protocol("Truncated skipped keys data".to_string()));
+            }
+
+            let mut dh_key_bytes = [0u8; 32];
+            dh_key_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+            let dh_key = X25519PublicKey::from(dh_key_bytes);
+            offset += 32;
+
+            let mut msg_num_bytes = [0u8; 4];
+            msg_num_bytes.copy_from_slice(&bytes[offset..offset + 4]);
+            let msg_num = u32::from_le_bytes(msg_num_bytes);
+            offset += 4;
+
+            let mut msg_key_bytes = [0u8; 32];
+            msg_key_bytes.copy_from_slice(&bytes[offset..offset + 32]);
+            let msg_key = MessageKey::new(msg_key_bytes);
+            offset += 32;
+
+            skipped_message_keys.insert((dh_key, msg_num), msg_key);
+        }
+
+        Ok(Self {
+            dh_self,
+            dh_remote,
+            root_key,
+            sending_chain_key,
+            sending_message_number,
+            receiving_chain_key,
+            receiving_message_number,
+            previous_chain_length,
+            skipped_message_keys,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -604,4 +792,44 @@ mod tests {
             assert_eq!(reply.as_bytes(), &decrypted_reply[..]);
         }
     }
+
+    #[test]
+    fn test_double_ratchet_serialization() {
+        let shared_secret = [42u8; 32];
+        let bob_dh = StaticSecret::random_from_rng(OsRng);
+        let bob_public = X25519PublicKey::from(&bob_dh);
+
+        let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
+        let mut bob = DoubleRatchet::init_bob(&shared_secret).unwrap();
+
+        // Exchange some messages to build state
+        let msg1 = alice.encrypt(b"Test message 1", b"ad1").unwrap();
+        bob.decrypt(&msg1, b"ad1").unwrap();
+
+        let msg2 = alice.encrypt(b"Test message 2", b"ad2").unwrap();
+        let msg3 = alice.encrypt(b"Test message 3", b"ad3").unwrap();
+
+        // Decrypt out of order to create skipped keys
+        bob.decrypt(&msg3, b"ad3").unwrap();
+        bob.decrypt(&msg2, b"ad2").unwrap();
+
+        // Serialize Bob's state
+        let serialized = bob.serialize();
+        assert!(serialized.len() > 0);
+
+        // Deserialize into new instance
+        let mut bob_restored = DoubleRatchet::deserialize(&serialized)
+            .expect("Failed to deserialize ratchet");
+
+        // Verify state by continuing conversation
+        let msg4 = alice.encrypt(b"After restore", b"ad4").unwrap();
+        let decrypted = bob_restored.decrypt(&msg4, b"ad4").unwrap();
+        assert_eq!(b"After restore", &decrypted[..]);
+
+        // Bob can also send
+        let reply = bob_restored.encrypt(b"Reply after restore", b"ad5").unwrap();
+        let decrypted_reply = alice.decrypt(&reply, b"ad5").unwrap();
+        assert_eq!(b"Reply after restore", &decrypted_reply[..]);
+    }
 }
+

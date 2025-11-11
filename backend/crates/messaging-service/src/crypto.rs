@@ -10,6 +10,12 @@ use guardyn_crypto::{
 use crate::models::RatchetSession;
 use std::sync::Arc;
 
+// Import generated proto types
+use crate::proto::auth::{
+    auth_service_client::AuthServiceClient,
+    GetKeyBundleRequest,
+};
+
 /// Crypto manager for E2EE operations
 pub struct CryptoManager {
     auth_service_url: String,
@@ -34,9 +40,107 @@ impl CryptoManager {
         remote_device_id: &str,
         local_identity_key: &[u8],
     ) -> Result<(DoubleRatchet, Vec<u8>)> {
-        // TODO: Fetch remote key bundle from auth-service via gRPC
-        // For now, return error indicating implementation needed
-        Err(anyhow!("Key bundle fetch not yet implemented - need to call auth-service GetKeyBundle RPC"))
+        // Fetch remote key bundle from auth-service
+        let key_bundle = self.fetch_key_bundle(remote_user_id, remote_device_id).await
+            .context("Failed to fetch recipient's key bundle")?;
+
+        // Parse key bundle into X3DH types
+        let x3dh_bundle = self.parse_key_bundle(&key_bundle)?;
+
+        // Initialize X3DH protocol with local identity key
+        // TODO: This needs proper identity key management - for now using placeholder
+        let local_x3dh = X3DHProtocol::generate()
+            .context("Failed to generate local X3DH keys")?;
+
+        // Perform X3DH key agreement (Alice side)
+        let (shared_secret, ephemeral_public) = local_x3dh.initiate(&x3dh_bundle)
+            .context("X3DH key agreement failed")?;
+
+        // Initialize Double Ratchet with shared secret
+        let remote_signed_prekey_pub = x25519_dalek::PublicKey::from(
+            <[u8; 32]>::try_from(key_bundle.signed_pre_key.as_slice())
+                .context("Invalid signed pre-key length")?
+        );
+
+        let ratchet = DoubleRatchet::init_alice(&shared_secret, remote_signed_prekey_pub)
+            .context("Failed to initialize Double Ratchet")?;
+
+        // Return ratchet and ephemeral key for initial message
+        Ok((ratchet, ephemeral_public.to_bytes().to_vec()))
+    }
+
+    /// Fetch key bundle from auth-service via gRPC
+    async fn fetch_key_bundle(
+        &self,
+        user_id: &str,
+        device_id: &str,
+    ) -> Result<crate::proto::common::KeyBundle> {
+        let mut client = AuthServiceClient::connect(self.auth_service_url.clone())
+            .await
+            .context("Failed to connect to auth-service")?;
+
+        let request = tonic::Request::new(GetKeyBundleRequest {
+            user_id: user_id.to_string(),
+            device_id: device_id.to_string(),
+        });
+
+        let response = client.get_key_bundle(request)
+            .await
+            .context("GetKeyBundle RPC failed")?
+            .into_inner();
+
+        match response.result {
+            Some(crate::proto::auth::get_key_bundle_response::Result::Success(success)) => {
+                success.key_bundle.ok_or_else(|| anyhow!("Key bundle missing in response"))
+            }
+            Some(crate::proto::auth::get_key_bundle_response::Result::Error(err)) => {
+                Err(anyhow!("Auth service error: {} (code: {:?})", err.message, err.code))
+            }
+            None => Err(anyhow!("Empty response from auth-service"))
+        }
+    }
+
+    /// Parse proto KeyBundle into X3DH KeyBundle
+    fn parse_key_bundle(&self, bundle: &crate::proto::common::KeyBundle) -> Result<X3DHKeyBundle> {
+        use ed25519_dalek::VerifyingKey;
+        use x25519_dalek::PublicKey as X25519PublicKey;
+
+        // Parse identity key (Ed25519)
+        let identity_key = VerifyingKey::from_bytes(
+            <&[u8; 32]>::try_from(bundle.identity_key.as_slice())
+                .context("Invalid identity key length")?
+        ).context("Invalid Ed25519 identity key")?;
+
+        // Parse signed pre-key (X25519)
+        let signed_pre_key = X25519PublicKey::from(
+            <[u8; 32]>::try_from(bundle.signed_pre_key.as_slice())
+                .context("Invalid signed pre-key length")?
+        );
+
+        // Parse signature
+        let signature = ed25519_dalek::Signature::from_bytes(
+            <&[u8; 64]>::try_from(bundle.signed_pre_key_signature.as_slice())
+                .context("Invalid signature length")?
+        );
+
+        // Parse one-time pre-keys
+        let one_time_keys: Result<Vec<X25519PublicKey>> = bundle.one_time_pre_keys
+            .iter()
+            .map(|key_bytes| {
+                let key_array: [u8; 32] = key_bytes.as_slice().try_into()
+                    .context("Invalid one-time key length")?;
+                Ok(X25519PublicKey::from(key_array))
+            })
+            .collect();
+
+        let one_time_pre_key = one_time_keys?.first().cloned();
+
+        Ok(X3DHKeyBundle {
+            identity_key,
+            signed_pre_key,
+            signed_pre_key_signature: signature,
+            one_time_pre_key,
+        })
     }
 
     /// Initialize Double Ratchet session as receiver (Bob)
@@ -61,16 +165,13 @@ impl CryptoManager {
 
     /// Serialize Double Ratchet state for storage
     pub fn serialize_ratchet(ratchet: &DoubleRatchet) -> Result<Vec<u8>> {
-        // TODO: Implement serialization
-        // For now, return placeholder
-        Err(anyhow!("Ratchet serialization not yet implemented"))
+        Ok(ratchet.serialize())
     }
 
     /// Deserialize Double Ratchet state from storage
     pub fn deserialize_ratchet(data: &[u8]) -> Result<DoubleRatchet> {
-        // TODO: Implement deserialization
-        // For now, return error
-        Err(anyhow!("Ratchet deserialization not yet implemented"))
+        DoubleRatchet::deserialize(data)
+            .map_err(|e| anyhow!("Failed to deserialize ratchet: {}", e))
     }
 
     /// Encrypt message with Double Ratchet
