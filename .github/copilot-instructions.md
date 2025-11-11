@@ -329,6 +329,212 @@ Access the application at https://yourdomain.com (replace with your configured d
 
 ---
 
+## 📁 File Organization and Naming Standards - CRITICAL
+
+**Consistent file placement and naming conventions are mandatory for maintainability.**
+
+### Directory Structure Standards
+
+```
+guardyn/
+├── backend/              # Backend services (Rust)
+│   ├── crates/          # Rust workspace crates (snake_case names)
+│   │   ├── auth-service/
+│   │   ├── messaging-service/
+│   │   ├── media-service/
+│   │   ├── presence-service/
+│   │   ├── notification-service/
+│   │   ├── e2e-tests/
+│   │   │   ├── scripts/      # Test runner scripts
+│   │   │   ├── performance/  # k6 performance tests
+│   │   │   └── tests/        # E2E test code
+│   │   ├── common/          # Shared code
+│   │   └── crypto/          # Cryptography primitives
+│   ├── proto/               # Protocol Buffers definitions
+│   └── build-local.sh       # Local build script
+├── client/                  # Client applications (Flutter)
+├── docs/                    # ALL project documentation
+│   ├── *.md                # Technical documentation
+│   └── guides/             # User guides (if needed)
+├── infra/                   # Infrastructure as Code
+│   ├── k8s/                # Kubernetes manifests
+│   │   ├── base/          # Base Kustomize manifests
+│   │   └── overlays/      # Environment-specific overlays
+│   ├── scripts/            # Infrastructure scripts
+│   │   ├── bootstrap.sh
+│   │   ├── deploy.sh
+│   │   ├── verify.sh
+│   │   ├── build-and-deploy-services.sh
+│   │   └── redeploy-messaging.sh
+│   └── secrets/            # SOPS-encrypted secrets
+├── cicd/                    # CI/CD configurations
+│   ├── github/
+│   │   ├── actions/       # Custom GitHub Actions
+│   │   └── workflows/     # Workflow definitions
+│   └── docker/            # CI-specific Dockerfiles
+├── landing/                 # Landing page
+└── _local/                  # Local artifacts (MUST BE GITIGNORED)
+```
+
+### File Placement Rules
+
+#### 1. Documentation Files → `docs/`
+
+**ALL documentation MUST be in `docs/` directory:**
+
+- ✅ `docs/TESTING_GUIDE.md` - Testing documentation
+- ✅ `docs/QUICKSTART_TESTING.md` - Quick testing reference
+- ✅ `docs/GRPC_API.md` - API documentation
+- ✅ `docs/DATABASE_SCHEMA.md` - Database schema
+- ✅ `docs/OBSERVABILITY_GUIDE.md` - Monitoring and logging
+- ✅ `docs/IMPLEMENTATION_PLAN.md` - Implementation roadmap
+- ✅ `docs/mvp_discovery.md` - Product vision
+- ✅ `docs/infra_poc.md` - Infrastructure guide
+
+**Exceptions (files allowed in project root):**
+- `README.md` - Main project README
+- `CONTRIBUTING.md` - Contribution guidelines
+- `LICENSE` - License file
+- `NOTICE` - Legal notices
+
+**NEVER place documentation in:**
+- ❌ Project root (except exceptions above)
+- ❌ Service directories (except service-specific READMEs)
+- ❌ `_local/` directory
+
+#### 2. Infrastructure Scripts → `infra/scripts/`
+
+**ALL infrastructure and deployment scripts:**
+
+- ✅ `infra/scripts/bootstrap.sh` - Cluster bootstrap
+- ✅ `infra/scripts/deploy.sh` - Service deployment
+- ✅ `infra/scripts/verify.sh` - Smoke tests
+- ✅ `infra/scripts/build-and-deploy-services.sh` - Build and deploy
+- ✅ `infra/scripts/redeploy-messaging.sh` - Messaging redeployment
+- ✅ `infra/scripts/deploy-schemas.sh` - Database schema deployment
+- ✅ `infra/scripts/verify-tikv.sh` - TiKV verification
+
+#### 3. Test Scripts → `backend/crates/e2e-tests/scripts/`
+
+**ALL test runner scripts:**
+
+- ✅ `backend/crates/e2e-tests/scripts/run-e2e-tests.sh` - E2E test runner
+- ✅ `backend/crates/e2e-tests/scripts/run-performance-tests.sh` - Performance tests
+- ✅ `backend/crates/e2e-tests/scripts/k6-test.sh` - k6 wrapper with Nix
+
+**Test code organization:**
+- E2E tests: `backend/crates/e2e-tests/tests/*.rs`
+- Performance tests: `backend/crates/e2e-tests/performance/*.js`
+- Test fixtures: `backend/crates/e2e-tests/fixtures/`
+
+#### 4. Build Scripts
+
+**Service-specific build scripts:**
+- ✅ `backend/crates/<service>/build.rs` - Cargo build script
+- ✅ `backend/build-local.sh` - Local development build
+
+**NEVER place build scripts in:**
+- ❌ Project root
+- ❌ `infra/scripts/` (unless deploying infrastructure)
+
+#### 5. Configuration Files
+
+**Infrastructure configuration → `infra/`:**
+- `infra/k8s/base/` - Kubernetes base manifests
+- `infra/k8s/overlays/` - Environment-specific overlays
+- `infra/k3d-config.yaml` - k3d cluster configuration
+- `infra/secrets/*.enc.yaml` - SOPS-encrypted secrets
+
+**Project root configuration:**
+- `flake.nix`, `flake.lock` - Nix configuration
+- `Justfile` - Task runner configuration
+- `.gitignore`, `.gitattributes` - Git configuration
+- `.sops.yaml` - SOPS encryption configuration
+- `Cargo.toml` - Rust workspace configuration
+
+#### 6. Temporary/Local Files → `_local/`
+
+**ALL temporary and work-in-progress files:**
+
+- ✅ `_local/progress-report-*.md` - Progress reports
+- ✅ `_local/notes.md` - Personal notes
+- ✅ `_local/test-data/` - Local test artifacts
+- ✅ `_local/*.md` - Any work-in-progress documents
+
+**CRITICAL:**
+- `_local/` MUST be in `.gitignore`
+- NEVER commit `_local/` contents to repository
+- Use for local development only
+
+### Naming Conventions
+
+#### File Names
+
+**Documentation Files:**
+- Main docs: `SCREAMING_SNAKE_CASE.md`
+  - Examples: `README.md`, `CONTRIBUTING.md`, `TESTING_GUIDE.md`
+- Specific guides: `kebab-case.md`
+  - Examples: `mvp-discovery.md`, `infra-poc.md`, `quick-start.md`
+
+**Script Files:**
+- Format: `kebab-case.sh`
+- Examples: `run-e2e-tests.sh`, `build-and-deploy-services.sh`
+- Must be executable: `chmod +x script.sh`
+- Must have shebang: `#!/usr/bin/env bash`
+
+**Source Code:**
+- Rust: `snake_case.rs`
+  - Examples: `auth_service.rs`, `message_store.rs`, `crypto_utils.rs`
+- Proto: `snake_case.proto`
+  - Examples: `auth.proto`, `messaging.proto`, `common.proto`
+- Dart/Flutter: `snake_case.dart`
+  - Examples: `login_screen.dart`, `message_widget.dart`
+
+**Configuration:**
+- YAML: `kebab-case.yaml` or `kebab-case.yml`
+  - Examples: `k3d-config.yaml`, `app-secrets.yaml`
+- TOML: Standard names
+  - Examples: `Cargo.toml`, `pyproject.toml`
+- JSON: `camelCase.json` or `kebab-case.json`
+
+#### Directory Names
+
+**Standard:** Use `kebab-case` for directories:
+- ✅ `auth-service/`, `e2e-tests/`, `messaging-service/`
+- ❌ `AuthService/`, `e2e_tests/`, `MessagingService/`
+
+**Exceptions (industry standards):**
+- `crates/` - Rust convention
+- `k8s/` - Kubernetes abbreviation
+- `proto/` - gRPC convention
+- `cicd/` - CI/CD abbreviation
+
+### File Organization Checklist
+
+When adding new files, verify:
+
+- [ ] Documentation files are in `docs/`
+- [ ] Infrastructure scripts are in `infra/scripts/`
+- [ ] Test scripts are in `backend/crates/e2e-tests/scripts/`
+- [ ] Configuration files are in appropriate directories
+- [ ] Temporary files are in `_local/` (and gitignored)
+- [ ] File names follow naming conventions
+- [ ] Scripts have correct permissions and shebang
+- [ ] No documentation in project root (except exceptions)
+
+### Common Mistakes to Avoid
+
+| ❌ Wrong | ✅ Correct | Reason |
+|---------|-----------|---------|
+| `ROOT/test-guide.md` | `docs/TESTING_GUIDE.md` | Documentation in root |
+| `ROOT/deploy.sh` | `infra/scripts/deploy.sh` | Scripts in wrong location |
+| `backend/run-tests.sh` | `backend/crates/e2e-tests/scripts/run-e2e-tests.sh` | Test scripts misplaced |
+| `AuthService/` | `auth-service/` | Wrong directory naming |
+| `run_tests.sh` | `run-tests.sh` | Wrong file naming |
+| `notes.md` | `_local/notes.md` | Temporary files not in _local/ |
+
+---
+
 ## Architecture
 
 ### Component Structure
