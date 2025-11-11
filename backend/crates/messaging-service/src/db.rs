@@ -600,4 +600,125 @@ impl DatabaseClient {
         self.scylla.query("SELECT now() FROM system.local", ()).await?;
         Ok(())
     }
+
+    // ========================================================================
+    // Double Ratchet Session Management (TiKV)
+    // ========================================================================
+
+    /// Store Double Ratchet session state
+    pub async fn store_ratchet_session(&self, session: &RatchetSession) -> Result<()> {
+        let key = format!("/ratchet_sessions/{}", session.session_id);
+        let value = serde_json::to_vec(session)?;
+        self.tikv.put(key.into_bytes(), value).await?;
+
+        // Also index by user+device for quick lookup
+        let user_key = format!(
+            "/ratchet_sessions/user/{}/{}/{}:{}",
+            session.local_user_id,
+            session.local_device_id,
+            session.remote_user_id,
+            session.remote_device_id
+        );
+        self.tikv.put(user_key.into_bytes(), session.session_id.as_bytes().to_vec()).await?;
+
+        tracing::info!("Stored ratchet session: {}", session.session_id);
+        Ok(())
+    }
+
+    /// Get Double Ratchet session by session ID
+    pub async fn get_ratchet_session(&self, session_id: &str) -> Result<Option<RatchetSession>> {
+        let key = format!("/ratchet_sessions/{}", session_id);
+        let value = self.tikv.get(key.into_bytes()).await?;
+
+        match value {
+            Some(bytes) => {
+                let session = serde_json::from_slice(&bytes)?;
+                Ok(Some(session))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Get Double Ratchet session by device pair
+    pub async fn get_ratchet_session_by_devices(
+        &self,
+        local_user_id: &str,
+        local_device_id: &str,
+        remote_user_id: &str,
+        remote_device_id: &str,
+    ) -> Result<Option<RatchetSession>> {
+        let session_id = RatchetSession::session_id(
+            local_user_id,
+            local_device_id,
+            remote_user_id,
+            remote_device_id,
+        );
+        self.get_ratchet_session(&session_id).await
+    }
+
+    /// Update Double Ratchet session state (for message encryption/decryption)
+    pub async fn update_ratchet_session_state(
+        &self,
+        session_id: &str,
+        new_state: Vec<u8>,
+    ) -> Result<()> {
+        let mut session = self
+            .get_ratchet_session(session_id)
+            .await?
+            .context("Ratchet session not found")?;
+
+        session.ratchet_state = new_state;
+        session.updated_at = chrono::Utc::now().timestamp();
+
+        self.store_ratchet_session(&session).await?;
+        Ok(())
+    }
+
+    /// Delete Double Ratchet session (e.g., user logout, session reset)
+    pub async fn delete_ratchet_session(&self, session_id: &str) -> Result<()> {
+        // Get session to find user index
+        let session = self.get_ratchet_session(session_id).await?;
+
+        // Delete main session
+        let key = format!("/ratchet_sessions/{}", session_id);
+        self.tikv.delete(key.into_bytes()).await?;
+
+        // Delete user index if session exists
+        if let Some(sess) = session {
+            let user_key = format!(
+                "/ratchet_sessions/user/{}/{}/{}:{}",
+                sess.local_user_id,
+                sess.local_device_id,
+                sess.remote_user_id,
+                sess.remote_device_id
+            );
+            self.tikv.delete(user_key.into_bytes()).await?;
+        }
+
+        tracing::info!("Deleted ratchet session: {}", session_id);
+        Ok(())
+    }
+
+    /// List all sessions for a user+device
+    pub async fn list_ratchet_sessions_for_device(
+        &self,
+        user_id: &str,
+        device_id: &str,
+    ) -> Result<Vec<RatchetSession>> {
+        let prefix = format!("/ratchet_sessions/user/{}/{}/", user_id, device_id);
+        let keys = self.tikv.scan(prefix.into_bytes().., 1000).await?;
+
+        let mut sessions = Vec::new();
+        for kv_pair in keys {
+            // Value is session_id, need to fetch full session
+            if let Ok(session_id) = String::from_utf8(kv_pair.1) {
+                if let Ok(Some(session)) = self.get_ratchet_session(&session_id).await {
+                    sessions.push(session);
+                }
+            }
+        }
+
+        Ok(sessions)
+    }
 }
+
