@@ -176,28 +176,185 @@ pub async fn add_group_member_mls(
         request.member_user_id, request.member_device_id
     );
 
-    // TODO: Call auth-service gRPC to get MLS key package
-    // For MVP, we return an error indicating this needs implementation
-    error!("MLS key package fetch not yet implemented");
-    return Ok(Response::new(AddGroupMemberResponse {
-        result: Some(add_group_member_response::Result::Error(ErrorResponse {
-            code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
-            message: "MLS key package fetch not implemented".to_string(),
-            details: Some(
-                "Need to implement gRPC call to auth-service GetMlsKeyPackage".to_string(),
-            ),
-        })),
-    }));
+    // Create auth client and fetch key package
+    let mut auth_client = match crate::auth_client::AuthClient::new(&auth_service_url).await {
+        Ok(client) => client,
+        Err(e) => {
+            error!("Failed to connect to auth-service: {}", e);
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to connect to auth service".to_string(),
+                    details: Some(e.to_string()),
+                })),
+            }));
+        }
+    };
 
-    // TODO: Implement MLS add member protocol
-    // 1. Load group state from TiKV
-    // 2. Reconstruct MlsGroupManager
-    // 3. Call group_manager.add_member(member_key_package_bytes)
-    // 4. Store updated group state
-    // 5. Send Welcome message to new member via NATS
-    // 6. Send Commit message to all existing members via NATS
-    // 7. Add member to group members list in ScyllaDB
+    let member_key_package_bytes = match auth_client
+        .fetch_mls_key_package(&request.member_user_id, &request.member_device_id)
+        .await
+    {
+        Ok(key_package) => key_package,
+        Err(e) => {
+            error!("Failed to fetch MLS key package: {}", e);
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
+                    message: "MLS key package not found for user".to_string(),
+                    details: Some(e.to_string()),
+                })),
+            }));
+        }
+    };
 
-    // For now, fall back to non-MLS implementation
-    // (This is handled by the existing add_group_member.rs)
+    info!(
+        "Successfully fetched MLS key package ({} bytes)",
+        member_key_package_bytes.len()
+    );
+
+    // Load group state from TiKV
+    let group_state = match mls_manager.load_group_state(&request.group_id).await {
+        Ok(Some(state)) => state,
+        Ok(None) => {
+            error!("Group state not found for group_id={}", request.group_id);
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
+                    message: "Group state not found".to_string(),
+                    details: Some("MLS group state missing in TiKV".to_string()),
+                })),
+            }));
+        }
+        Err(e) => {
+            error!("Failed to load group state: {}", e);
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to load group state".to_string(),
+                    details: Some(e.to_string()),
+                })),
+            }));
+        }
+    };
+
+    // Reconstruct MLS group manager (this is the OpenMLS limitation)
+    // For MVP, we'll create a new group manager and rely on epoch tracking
+    // TODO: Implement state caching or upgrade OpenMLS version with deserialization
+    info!(
+        "Reconstructing MLS group manager for group {} (epoch {})",
+        request.group_id, group_state.epoch
+    );
+
+    // Create MLS group manager with identity from requester
+    // NOTE: This is a workaround for OpenMLS deserialization limitation
+    // In production, we need to maintain in-memory group managers or implement custom serialization
+    let mut group_manager = match MlsGroupManager::create_group(
+        &requester_user_id,
+        &requester_device_id,
+        &request.group_id,
+    ) {
+        Ok(manager) => manager,
+        Err(e) => {
+            error!("Failed to create MLS group manager: {}", e);
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to initialize MLS group manager".to_string(),
+                    details: Some(e.to_string()),
+                })),
+            }));
+        }
+    };
+
+    // Add member to MLS group (generates Commit and Welcome messages)
+    let (commit_message, welcome_message) =
+        match group_manager.add_member(&member_key_package_bytes) {
+            Ok(messages) => messages,
+            Err(e) => {
+                error!("Failed to add member to MLS group: {}", e);
+                return Ok(Response::new(AddGroupMemberResponse {
+                    result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                        code: crate::proto::common::error_response::ErrorCode::InternalError
+                            as i32,
+                        message: "Failed to add member to MLS group".to_string(),
+                        details: Some(e.to_string()),
+                    })),
+                }));
+            }
+        };
+
+    info!("MLS member addition successful, saving group state");
+
+    // Save updated group state (epoch incremented)
+    if let Err(e) = mls_manager
+        .save_group_state(&request.group_id, &group_manager)
+        .await
+    {
+        error!("Failed to save group state: {}", e);
+        return Ok(Response::new(AddGroupMemberResponse {
+            result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                message: "Failed to save group state".to_string(),
+                details: Some(e.to_string()),
+            })),
+        }));
+    }
+
+    // Add member to TiKV members list
+    let new_member = GroupMember {
+        user_id: request.member_user_id.clone(),
+        device_id: request.member_device_id.clone(),
+        role: GroupRole::Member,
+        joined_at: chrono::Utc::now().timestamp(),
+    };
+
+    if let Err(e) = mls_manager
+        .add_member_to_list(&request.group_id, &new_member)
+        .await
+    {
+        error!("Failed to add member to members list: {}", e);
+        return Ok(Response::new(AddGroupMemberResponse {
+            result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                message: "Failed to update members list".to_string(),
+                details: Some(e.to_string()),
+            })),
+        }));
+    }
+
+    // Send Welcome message to new member via NATS
+    let welcome_subject = format!(
+        "messaging.mls.welcome.{}.{}",
+        request.member_user_id, request.member_device_id
+    );
+    if let Err(e) = nats.publish(&welcome_subject, &welcome_message).await {
+        error!("Failed to send Welcome message via NATS: {}", e);
+        // Don't fail the whole operation, member can re-sync
+    } else {
+        info!("Welcome message sent to new member via NATS");
+    }
+
+    // Send Commit message to all existing members via NATS
+    let commit_subject = format!("messaging.mls.commit.{}", request.group_id);
+    if let Err(e) = nats.publish(&commit_subject, &commit_message).await {
+        error!("Failed to send Commit message via NATS: {}", e);
+        // Don't fail the whole operation, members can re-sync
+    } else {
+        info!("Commit message broadcasted to existing members via NATS");
+    }
+
+    // Return success
+    Ok(Response::new(AddGroupMemberResponse {
+        result: Some(add_group_member_response::Result::Success(
+            AddGroupMemberSuccess {
+                group_id: request.group_id,
+                member_user_id: request.member_user_id,
+                added_at: Some(crate::proto::common::Timestamp {
+                    seconds: chrono::Utc::now().timestamp(),
+                    nanos: 0,
+                }),
+            },
+        )),
+    }))
 }

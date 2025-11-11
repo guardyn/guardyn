@@ -37,6 +37,7 @@ serde_json = "1.0"
 openmls = "0.5"  # MLS for group chat encryption
 openmls_rust_crypto = "0.2"  # Cryptographic backend for OpenMLS
 openmls_traits = "0.2"  # Traits for OpenMLS
+openmls_basic_credential = "0.2"  # Basic credential support for OpenMLS
 x25519-dalek = "2.0"
 ed25519-dalek = "2.1"
 
