@@ -108,8 +108,23 @@ impl AuthService for AuthServiceImpl {
     ) -> Result<Response<HealthStatus>, Status> {
         use proto::common::health_status::Status as HealthStatusEnum;
 
+        // Check TiKV connectivity
+        let db_status = match self.db.health_check().await {
+            Ok(_) => "healthy",
+            Err(e) => {
+                tracing::warn!("TiKV health check failed: {}", e);
+                "unhealthy"
+            }
+        };
+
+        let overall_status = if db_status == "healthy" {
+            HealthStatusEnum::Healthy
+        } else {
+            HealthStatusEnum::Unhealthy
+        };
+
         let status = HealthStatus {
-            status: HealthStatusEnum::Healthy as i32,
+            status: overall_status as i32,
             version: env!("CARGO_PKG_VERSION").to_string(),
             timestamp: Some(proto::common::Timestamp {
                 seconds: std::time::SystemTime::now()
@@ -119,7 +134,7 @@ impl AuthService for AuthServiceImpl {
                 nanos: 0,
             }),
             components: std::collections::HashMap::from([
-                ("database".to_string(), "healthy".to_string()),
+                ("tikv".to_string(), db_status.to_string()),
                 ("jwt".to_string(), "healthy".to_string()),
             ]),
         };

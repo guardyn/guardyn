@@ -29,7 +29,7 @@ pub struct ObservabilityConfig {
 
 impl ServiceConfig {
     pub fn load() -> Result<Self, config::ConfigError> {
-        let mut cfg = config::Config::builder()
+        let _cfg = config::Config::builder()
             .add_source(config::Environment::with_prefix("GUARDYN").separator("__"))
             .build()?;
         

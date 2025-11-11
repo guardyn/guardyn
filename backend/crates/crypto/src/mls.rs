@@ -1,7 +1,6 @@
 /// MLS (Messaging Layer Security) for group chat
 /// 
 /// Using OpenMLS library
-
 use crate::{CryptoError, Result};
 
 pub struct MLSGroupManager {
@@ -42,8 +41,6 @@ impl MLSGroupManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    
     #[test]
     fn test_mls_group() {
         // TODO: Add tests

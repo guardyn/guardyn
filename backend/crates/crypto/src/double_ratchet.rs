@@ -1,7 +1,6 @@
 /// Double Ratchet algorithm for forward-secret E2EE messaging
 /// 
 /// Based on Signal Protocol specification
-
 use crate::{CryptoError, Result};
 
 pub struct DoubleRatchet {
@@ -30,8 +29,6 @@ impl DoubleRatchet {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    
     #[test]
     fn test_double_ratchet() {
         // TODO: Add tests

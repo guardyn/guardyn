@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(true)
         .build_client(true)
         .out_dir(&out_dir)
-        .compile(
+        .compile_protos(
             &[
                 common_proto.to_str().unwrap(),
                 auth_proto.to_str().unwrap(),

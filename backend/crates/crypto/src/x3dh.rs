@@ -1,7 +1,6 @@
 /// X3DH (Extended Triple Diffie-Hellman) key agreement protocol
 ///
 /// Used for initial key exchange in 1-on-1 messaging
-
 use crate::{CryptoError, Result};
 use serde::{Deserialize, Serialize};
 
@@ -43,8 +42,6 @@ impl X3DHProtocol {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_key_bundle_generation() {
         // TODO: Add tests

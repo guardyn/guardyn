@@ -138,14 +138,58 @@ impl MessagingService for MessagingServiceImpl {
     ) -> Result<Response<HealthStatus>, Status> {
         use crate::proto::common::health_status::Status as HealthStatusEnum;
 
+        let mut components = std::collections::HashMap::new();
+        let mut overall_healthy = true;
+
+        // Check TiKV connectivity
+        match self.db.tikv_health_check().await {
+            Ok(_) => {
+                components.insert("tikv".to_string(), "healthy".to_string());
+            }
+            Err(e) => {
+                tracing::warn!("TiKV health check failed: {}", e);
+                components.insert("tikv".to_string(), "unhealthy".to_string());
+                overall_healthy = false;
+            }
+        }
+
+        // Check ScyllaDB connectivity
+        match self.db.scylladb_health_check().await {
+            Ok(_) => {
+                components.insert("scylladb".to_string(), "healthy".to_string());
+            }
+            Err(e) => {
+                tracing::warn!("ScyllaDB health check failed: {}", e);
+                components.insert("scylladb".to_string(), "unhealthy".to_string());
+                overall_healthy = false;
+            }
+        }
+
+        // Check NATS connectivity
+        match self.nats_client.connection_state() {
+            async_nats::connection::State::Connected => {
+                components.insert("nats".to_string(), "healthy".to_string());
+            }
+            _ => {
+                components.insert("nats".to_string(), "unhealthy".to_string());
+                overall_healthy = false;
+            }
+        }
+
+        let status = if overall_healthy {
+            HealthStatusEnum::Healthy
+        } else {
+            HealthStatusEnum::Unhealthy
+        };
+
         Ok(Response::new(HealthStatus {
-            status: HealthStatusEnum::Healthy as i32,
+            status: status as i32,
             version: env!("CARGO_PKG_VERSION").to_string(),
             timestamp: Some(crate::proto::common::Timestamp {
                 seconds: chrono::Utc::now().timestamp(),
                 nanos: 0,
             }),
-            components: std::collections::HashMap::new(),
+            components,
         }))
     }
 }
