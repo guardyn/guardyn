@@ -13,12 +13,16 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${GREEN}🚀 Guardyn Performance Tests (Nix)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Check if we're already in Nix environment
 if command -v k6 &> /dev/null; then
     echo -e "${GREEN}✅ k6 found, running tests directly${NC}"
-    exec ./run-performance-tests.sh "$@"
+    exec "${SCRIPT_DIR}/run-performance-tests.sh" "$@"
 fi
 
 # Not in Nix environment, enter it
 echo -e "${YELLOW}⚙️  Entering Nix environment...${NC}"
-exec nix --extra-experimental-features 'nix-command flakes' develop --command bash -c "./run-performance-tests.sh $*"
+cd "${SCRIPT_DIR}/../../../../" # Go to project root
+exec nix --extra-experimental-features 'nix-command flakes' develop --command bash -c "cd ${SCRIPT_DIR} && ./run-performance-tests.sh $*"
