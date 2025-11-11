@@ -3,7 +3,7 @@
 /// Used for initial key exchange in 1-on-1 messaging
 use crate::{CryptoError, Result};
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use x25519_dalek::{PublicKey as X25519PublicKey, EphemeralSecret, ReusableSecret, SharedSecret};
+use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret, SharedSecret};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use hkdf::Hkdf;
@@ -21,7 +21,7 @@ impl IdentityKeyPair {
     pub fn generate() -> Result<Self> {
         let secret = SigningKey::from_bytes(&rand::random::<[u8; 32]>());
         let public = secret.verifying_key();
-        
+
         Ok(Self {
             public,
             secret,
@@ -40,15 +40,15 @@ impl IdentityKeyPair {
             public_key.try_into()
                 .map_err(|_| CryptoError::InvalidKey("Invalid Ed25519 public key length".into()))?
         ).map_err(|e| CryptoError::InvalidKey(format!("Invalid Ed25519 public key: {}", e)))?;
-        
+
         let sig = Signature::from_bytes(
             signature.try_into()
                 .map_err(|_| CryptoError::InvalidSignature("Invalid signature length".into()))?
         );
-        
+
         public.verify(data, &sig)
             .map_err(|e| CryptoError::InvalidSignature(format!("Signature verification failed: {}", e)))?;
-        
+
         Ok(())
     }
 
@@ -63,7 +63,7 @@ impl IdentityKeyPair {
 pub struct SignedPreKey {
     pub key_id: u32,
     pub public: X25519PublicKey,
-    secret: X25519Secret,
+    secret: StaticSecret,
     pub signature: Vec<u8>,
     pub timestamp: i64,
 }
@@ -71,17 +71,17 @@ pub struct SignedPreKey {
 impl SignedPreKey {
     /// Generate a new signed pre-key
     pub fn generate(key_id: u32, identity_key: &IdentityKeyPair) -> Result<Self> {
-        let secret = X25519Secret::new(OsRng);
+        let secret = StaticSecret::random_from_rng(OsRng);
         let public = X25519PublicKey::from(&secret);
-        
+
         // Sign the public key with identity key
         let signature = identity_key.sign(public.as_bytes())?;
-        
+
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64;
-        
+
         Ok(Self {
             key_id,
             public,
@@ -108,15 +108,15 @@ impl SignedPreKey {
 pub struct OneTimePreKey {
     pub key_id: u32,
     pub public: X25519PublicKey,
-    secret: X25519Secret,
+    secret: StaticSecret,
 }
 
 impl OneTimePreKey {
     /// Generate a new one-time pre-key
     pub fn generate(key_id: u32) -> Self {
-        let secret = X25519Secret::new(OsRng);
+        let secret = StaticSecret::random_from_rng(OsRng);
         let public = X25519PublicKey::from(&secret);
-        
+
         Self {
             key_id,
             public,
@@ -164,12 +164,12 @@ impl X3DHKeyMaterial {
     pub fn generate(num_one_time_keys: usize) -> Result<Self> {
         let identity_key = IdentityKeyPair::generate()?;
         let signed_pre_key = SignedPreKey::generate(1, &identity_key)?;
-        
+
         let mut one_time_pre_keys = Vec::with_capacity(num_one_time_keys);
         for i in 0..num_one_time_keys {
             one_time_pre_keys.push(OneTimePreKey::generate(i as u32));
         }
-        
+
         Ok(Self {
             identity_key,
             signed_pre_key,
@@ -214,7 +214,7 @@ impl X3DHProtocol {
     /// 
     /// Returns: 32-byte shared secret
     pub fn initiate_key_agreement(
-        local_identity_secret: &X25519Secret,
+        local_identity_secret: &StaticSecret,
         peer_bundle: &X3DHKeyBundle,
         use_one_time_key: bool,
     ) -> Result<(Vec<u8>, X25519PublicKey)> {
@@ -230,26 +230,24 @@ impl X3DHProtocol {
         )?;
         
         // Generate ephemeral key for this exchange
-        let ephemeral_secret = X25519Secret::new(OsRng);
-        let ephemeral_public = X25519PublicKey::from(&ephemeral_secret);
-        
-        // Perform 4-DH:
+        let ephemeral_secret = StaticSecret::random_from_rng(OsRng);
+        let ephemeral_public = X25519PublicKey::from(&ephemeral_secret);        // Perform 4-DH:
         // DH1 = DH(IK_A, SPK_B)
         let dh1 = local_identity_secret.diffie_hellman(&peer_signed_pre_key);
-        
+
         // DH2 = DH(EK_A, IK_B)
         let dh2 = ephemeral_secret.diffie_hellman(&peer_identity);
-        
+
         // DH3 = DH(EK_A, SPK_B)
         let dh3 = ephemeral_secret.diffie_hellman(&peer_signed_pre_key);
-        
+
         // Optional DH4 = DH(EK_A, OPK_B)
         let mut dh_outputs = vec![
             dh1.as_bytes(),
             dh2.as_bytes(),
             dh3.as_bytes(),
         ];
-        
+
         if use_one_time_key && !peer_bundle.one_time_pre_keys.is_empty() {
             let peer_one_time_key = x25519_public_from_bytes(
                 &peer_bundle.one_time_pre_keys[0].public_key
@@ -257,21 +255,21 @@ impl X3DHProtocol {
             let dh4 = ephemeral_secret.diffie_hellman(&peer_one_time_key);
             dh_outputs.push(dh4.as_bytes());
         }
-        
+
         // Derive shared secret using HKDF-SHA256
         let shared_secret = derive_shared_secret(&dh_outputs)?;
-        
+
         Ok((shared_secret, ephemeral_public))
     }
 
     /// Perform 4-DH key agreement as responder (Bob)
-    /// 
+    ///
     /// Inputs:
     /// - key_material: Bob's key material (identity, signed pre-key, one-time keys)
     /// - peer_identity_public: Alice's identity public key
     /// - peer_ephemeral_public: Alice's ephemeral public key
     /// - one_time_key_id: Which one-time key was used (if any)
-    /// 
+    ///
     /// Returns: 32-byte shared secret
     pub fn respond_key_agreement(
         key_material: &X3DHKeyMaterial,
@@ -281,27 +279,27 @@ impl X3DHProtocol {
     ) -> Result<Vec<u8>> {
         let peer_identity = x25519_public_from_bytes(peer_identity_bytes)?;
         let peer_ephemeral = x25519_public_from_bytes(peer_ephemeral_bytes)?;
-        
+
         // Perform 4-DH (same as initiator):
         // DH1 = DH(SPK_B, IK_A)
         let dh1 = key_material.signed_pre_key.dh(&peer_identity);
-        
+
         // DH2 = DH(IK_B, EK_A) - need to convert identity key to X25519
         // Note: In real implementation, identity keys should be X25519, not Ed25519
         // For now, we assume conversion or separate X25519 identity key
         // This is a simplification - in production, use proper key conversion
-        let identity_x25519_secret = X25519Secret::new(OsRng); // TODO: Derive from Ed25519
+        let identity_x25519_secret = StaticSecret::random_from_rng(OsRng); // TODO: Derive from Ed25519
         let dh2_bytes = identity_x25519_secret.diffie_hellman(&peer_ephemeral).as_bytes().to_vec();
-        
+
         // DH3 = DH(SPK_B, EK_A)
         let dh3 = key_material.signed_pre_key.dh(&peer_ephemeral);
-        
+
         let mut dh_outputs = vec![
             dh1.as_slice(),
             dh2_bytes.as_slice(),
             dh3.as_slice(),
         ];
-        
+
         // Optional DH4 with one-time key
         if let Some(key_id) = one_time_key_id {
             if let Some(otk) = key_material.one_time_pre_keys.iter().find(|k| k.key_id == key_id) {
@@ -309,7 +307,7 @@ impl X3DHProtocol {
                 dh_outputs.push(dh4.as_slice());
             }
         }
-        
+
         derive_shared_secret(&dh_outputs)
     }
 }
@@ -331,13 +329,13 @@ fn derive_shared_secret(dh_outputs: &[&[u8]]) -> Result<Vec<u8>> {
     for output in dh_outputs {
         concat.extend_from_slice(output);
     }
-    
+
     // Use HKDF-SHA256 to derive 32-byte shared secret
     let hk = Hkdf::<Sha256>::new(None, &concat);
     let mut okm = [0u8; 32];
     hk.expand(b"X3DH", &mut okm)
         .map_err(|e| CryptoError::Protocol(format!("HKDF expansion failed: {}", e)))?;
-    
+
     Ok(okm.to_vec())
 }
 
@@ -355,7 +353,7 @@ mod tests {
     fn test_signed_pre_key_generation() {
         let identity = IdentityKeyPair::generate().unwrap();
         let spk = SignedPreKey::generate(1, &identity).unwrap();
-        
+
         assert_eq!(spk.key_id, 1);
         assert_eq!(spk.public_bytes().len(), 32);
         assert!(!spk.signature.is_empty());
@@ -371,7 +369,7 @@ mod tests {
     #[test]
     fn test_key_bundle_generation() {
         let bundle = X3DHProtocol::generate_key_bundle().unwrap();
-        
+
         assert_eq!(bundle.identity_key.len(), 32);
         assert_eq!(bundle.signed_pre_key.len(), 32);
         assert!(!bundle.signed_pre_key_signature.is_empty());
@@ -382,10 +380,10 @@ mod tests {
     fn test_signature_verification() {
         let identity = IdentityKeyPair::generate().unwrap();
         let data = b"test data";
-        
+
         let signature = identity.sign(data).unwrap();
         let result = IdentityKeyPair::verify(&identity.public_bytes(), data, &signature);
-        
+
         assert!(result.is_ok());
     }
 
@@ -396,7 +394,7 @@ mod tests {
         let bob_bundle = bob_material.export_bundle();
         
         // Alice initiates key agreement
-        let alice_identity_secret = X25519Secret::new(OsRng);
+        let alice_identity_secret = StaticSecret::random_from_rng(OsRng);
         let (alice_shared_secret, _alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
             &alice_identity_secret,
             &bob_bundle,
@@ -409,4 +407,3 @@ mod tests {
         // This is a basic test of the initiator side
     }
 }
-
