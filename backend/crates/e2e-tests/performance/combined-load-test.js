@@ -4,6 +4,7 @@
 // Run: k6 run --vus 50 --duration 5m combined-load-test.js
 
 import { check, sleep } from 'k6';
+import encoding from 'k6/encoding';
 import { Counter, Rate, Trend } from 'k6/metrics';
 import grpc from 'k6/net/grpc';
 
@@ -43,8 +44,8 @@ export const options = {
 const authClient = new grpc.Client();
 const messagingClient = new grpc.Client();
 
-authClient.load(['../../proto'], 'auth.proto');
-messagingClient.load(['../../proto'], 'messaging.proto');
+authClient.load(['../../../../backend/proto'], 'auth.proto');
+messagingClient.load(['../../../../backend/proto'], 'messaging.proto');
 
 export function setup() {
   console.log('🚀 Guardyn Combined Load Test');
@@ -59,7 +60,7 @@ export function setup() {
   console.log('   Target P95 latency: < 200ms');
   console.log('   Target success rate: > 95%');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  
+
   // Create a shared receiver user for all VUs to send messages to
   const authUrl = 'localhost:50051';
   authClient.connect(authUrl, { plaintext: true });
@@ -75,16 +76,18 @@ export function setup() {
 
   authClient.close();
 
-  if (regReceiver.status !== grpc.StatusOK) {
+  if (regReceiver.status !== grpc.StatusOK || !regReceiver.message.success) {
+    console.error('Failed to create shared receiver in setup');
+    console.error('Response:', JSON.stringify(regReceiver));
     throw new Error('Failed to create shared receiver in setup');
   }
 
-  console.log(`✅ Shared receiver created: ${regReceiver.message.user_id}`);
-  
+  console.log(`✅ Shared receiver created: ${regReceiver.message.success.userId}`);
+
   return {
     authUrl: 'localhost:50051',
     messagingUrl: 'localhost:50052',
-    receiverUserId: regReceiver.message.user_id,
+    receiverUserId: regReceiver.message.success.userId,
   };
 }
 
@@ -92,7 +95,7 @@ export default function (data) {
   const authUrl = data.authUrl;
   const messagingUrl = data.messagingUrl;
   const receiverUserId = data.receiverUserId;
-  
+
   // Unique user for this VU and iteration
   const username = `loadtest_${__VU}_${__ITER}_${Date.now()}`;
   const password = 'LoadTest123!';
@@ -101,7 +104,7 @@ export default function (data) {
   // ============================
   // AUTH FLOW
   // ============================
-  
+
   authClient.connect(authUrl, { plaintext: true });
 
   // Step 1: Register
@@ -112,16 +115,17 @@ export default function (data) {
     device_name: deviceName,
   });
   const regDuration = Date.now() - regStart;
-  
+
   registrationLatency.add(regDuration);
   totalRequests.add(1);
-  
+
   const regOk = check(regResponse, {
     'registration successful': (r) => r && r.status === grpc.StatusOK,
-    'got user_id': (r) => r && r.message && r.message.user_id && r.message.user_id.length > 0,
-    'got access_token': (r) => r && r.message && r.message.access_token && r.message.access_token.length > 0,
+    'got success response': (r) => r && r.message && r.message.success,
+    'got user_id': (r) => r && r.message && r.message.success && r.message.success.userId && r.message.success.userId.length > 0,
+    'got access_token': (r) => r && r.message && r.message.success && r.message.success.accessToken && r.message.success.accessToken.length > 0,
   });
-  
+
   registrationSuccess.add(regOk);
 
   if (!regOk) {
@@ -132,8 +136,8 @@ export default function (data) {
     return;
   }
 
-  const userId = regResponse.message.user_id;
-  const accessToken = regResponse.message.access_token;
+  const userId = regResponse.message.success.userId;
+  const accessToken = regResponse.message.success.accessToken;
 
   sleep(0.2); // Brief pause
 
@@ -145,15 +149,16 @@ export default function (data) {
     device_name: deviceName,
   });
   const loginDuration = Date.now() - loginStart;
-  
+
   loginLatency.add(loginDuration);
   totalRequests.add(1);
-  
+
   const loginOk = check(loginResponse, {
     'login successful': (r) => r && r.status === grpc.StatusOK,
-    'user_id matches': (r) => r && r.message && r.message.user_id === userId,
+    'got success response': (r) => r && r.message && r.message.success,
+    'user_id matches': (r) => r && r.message && r.message.success && r.message.success.userId === userId,
   });
-  
+
   loginSuccess.add(loginOk);
 
   if (!loginOk) {
@@ -167,32 +172,39 @@ export default function (data) {
   // ============================
   // MESSAGING FLOW
   // ============================
-  
+
   messagingClient.connect(messagingUrl, { plaintext: true });
 
   const messageContent = `Load test message from VU ${__VU} iteration ${__ITER}`;
 
+  // Encode message content to base64 (required for bytes field)
+  const encodedContent = encoding.b64encode(messageContent);
+
   // Step 3: Send Message
   const sendStart = Date.now();
   const sendResponse = messagingClient.invoke('guardyn.messaging.MessagingService/SendMessage', {
+    access_token: accessToken,
     recipient_user_id: receiverUserId,
-    encrypted_content: messageContent,
-    content_type: 'text/plain',
-  }, {
-    metadata: {
-      'authorization': `Bearer ${accessToken}`,
+    recipient_device_id: '',  // Empty = all devices
+    encrypted_content: encodedContent,
+    message_type: 0,  // TEXT
+    client_message_id: `${__VU}-${__ITER}-${Date.now()}`,
+    client_timestamp: {
+      seconds: Math.floor(Date.now() / 1000),
+      nanos: (Date.now() % 1000) * 1000000,
     },
+    media_id: '',  // No media
   });
   const sendDuration = Date.now() - sendStart;
-  
+
   sendMessageLatency.add(sendDuration);
   totalRequests.add(1);
-  
+
   const sendOk = check(sendResponse, {
     'send message successful': (r) => r && r.status === grpc.StatusOK,
     'got message_id': (r) => r && r.message && r.message.message_id && r.message.message_id.length > 0,
   });
-  
+
   sendMessageSuccess.add(sendOk);
 
   if (!sendOk) {
@@ -205,23 +217,20 @@ export default function (data) {
   // Step 4: Get Messages (check own messages)
   const getStart = Date.now();
   const getResponse = messagingClient.invoke('guardyn.messaging.MessagingService/GetMessages', {
-    other_user_id: receiverUserId,
+    access_token: accessToken,
+    conversation_user_id: receiverUserId,
     limit: 10,
-  }, {
-    metadata: {
-      'authorization': `Bearer ${accessToken}`,
-    },
   });
   const getDuration = Date.now() - getStart;
-  
+
   getMessagesLatency.add(getDuration);
   totalRequests.add(1);
-  
+
   const getOk = check(getResponse, {
     'get messages successful': (r) => r && r.status === grpc.StatusOK,
     'got messages array': (r) => r && r.message && r.message.messages && Array.isArray(r.message.messages),
   });
-  
+
   getMessagesSuccess.add(getOk);
 
   if (!getOk) {

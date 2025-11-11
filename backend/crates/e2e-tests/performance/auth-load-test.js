@@ -28,7 +28,7 @@ export const options = {
 
 // gRPC client setup
 const client = new grpc.Client();
-client.load(['../../proto'], 'auth.proto');
+client.load(['../../../../backend/proto'], 'auth.proto');
 
 export function setup() {
   // Port-forward auth service: kubectl port-forward -n apps svc/auth-service 50051:50051
@@ -38,7 +38,7 @@ export function setup() {
 
 export default function (data) {
   const authUrl = data.authUrl;
-  
+
   // Connect to auth service
   client.connect(authUrl, {
     plaintext: true,
@@ -56,17 +56,18 @@ export default function (data) {
     device_name: deviceName,
   });
   const regDuration = Date.now() - regStart;
-  
+
   registrationLatency.add(regDuration);
   totalRequests.add(1);
-  
+
   const regOk = check(regResponse, {
     'registration successful': (r) => r && r.status === grpc.StatusOK,
-    'got user_id': (r) => r && r.message && r.message.user_id && r.message.user_id.length > 0,
-    'got device_id': (r) => r && r.message && r.message.device_id && r.message.device_id.length > 0,
-    'got access_token': (r) => r && r.message && r.message.access_token && r.message.access_token.length > 0,
+    'got success response': (r) => r && r.message && r.message.success,
+    'got user_id': (r) => r && r.message && r.message.success && r.message.success.userId && r.message.success.userId.length > 0,
+    'got device_id': (r) => r && r.message && r.message.success && r.message.success.deviceId && r.message.success.deviceId.length > 0,
+    'got access_token': (r) => r && r.message && r.message.success && r.message.success.accessToken && r.message.success.accessToken.length > 0,
   });
-  
+
   registrationSuccess.add(regOk);
 
   if (!regOk) {
@@ -76,8 +77,8 @@ export default function (data) {
     return;
   }
 
-  const userId = regResponse.message.user_id;
-  const deviceId = regResponse.message.device_id;
+  const userId = regResponse.message.success.userId;
+  const deviceId = regResponse.message.success.deviceId;
 
   // Wait a bit before login
   sleep(0.5);
@@ -90,18 +91,19 @@ export default function (data) {
     device_name: deviceName,
   });
   const loginDuration = Date.now() - loginStart;
-  
+
   loginLatency.add(loginDuration);
   totalRequests.add(1);
-  
+
   const loginOk = check(loginResponse, {
     'login successful': (r) => r && r.status === grpc.StatusOK,
-    'user_id matches': (r) => r && r.message && r.message.user_id === userId,
-    'device_id matches': (r) => r && r.message && r.message.device_id === deviceId,
-    'got access_token': (r) => r && r.message && r.message.access_token && r.message.access_token.length > 0,
-    'got refresh_token': (r) => r && r.message && r.message.refresh_token && r.message.refresh_token.length > 0,
+    'got success response': (r) => r && r.message && r.message.success,
+    'user_id matches': (r) => r && r.message && r.message.success && r.message.success.userId === userId,
+    'device_id matches': (r) => r && r.message && r.message.success && r.message.success.deviceId === deviceId,
+    'got access_token': (r) => r && r.message && r.message.success && r.message.success.accessToken && r.message.success.accessToken.length > 0,
+    'got refresh_token': (r) => r && r.message && r.message.success && r.message.success.refreshToken && r.message.success.refreshToken.length > 0,
   });
-  
+
   loginSuccess.add(loginOk);
 
   if (!loginOk) {
