@@ -26,18 +26,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let common_proto = proto_dir.join("common.proto");
     let messaging_proto = proto_dir.join("messaging.proto");
+    let auth_proto = proto_dir.join("auth.proto");
 
     // Don't specify out_dir - let tonic_build use default OUT_DIR
     tonic_build::configure()
         .build_server(true)
         .build_client(true)
         .compile_protos(
-            &[common_proto.to_str().unwrap(), messaging_proto.to_str().unwrap()],
+            &[
+                common_proto.to_str().unwrap(),
+                messaging_proto.to_str().unwrap(),
+                auth_proto.to_str().unwrap(),
+            ],
             &[proto_dir.to_str().unwrap()],
         )?;
 
     println!("cargo:rerun-if-changed={}", common_proto.display());
     println!("cargo:rerun-if-changed={}", messaging_proto.display());
+    println!("cargo:rerun-if-changed={}", auth_proto.display());
     println!("cargo:rerun-if-changed={}", proto_dir.display());
 
     Ok(())

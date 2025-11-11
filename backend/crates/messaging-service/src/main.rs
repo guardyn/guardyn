@@ -27,6 +27,9 @@ pub mod proto {
     pub mod messaging {
         tonic::include_proto!("guardyn.messaging");
     }
+    pub mod auth {
+        tonic::include_proto!("guardyn.auth");
+    }
 }
 
 use proto::messaging::{
@@ -57,7 +60,19 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SendMessageRequest>,
     ) -> Result<Response<SendMessageResponse>, Status> {
-        handlers::send_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
+        // TODO: Enable E2EE by default after testing
+        // For gradual rollout, check env var ENABLE_E2EE=true
+        let enable_e2ee = std::env::var("ENABLE_E2EE")
+            .unwrap_or_else(|_| "false".to_string())
+            .to_lowercase() == "true";
+
+        if enable_e2ee {
+            tracing::info!("E2EE enabled, using send_message_e2ee handler");
+            handlers::send_message_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
+        } else {
+            tracing::debug!("E2EE disabled, using legacy send_message handler");
+            handlers::send_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
+        }
     }
 
     type ReceiveMessagesStream = tokio_stream::wrappers::ReceiverStream<Result<Message, Status>>;
@@ -66,7 +81,18 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<ReceiveMessagesRequest>,
     ) -> Result<Response<Self::ReceiveMessagesStream>, Status> {
-        handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone()).await
+        // TODO: Enable E2EE by default after testing
+        let enable_e2ee = std::env::var("ENABLE_E2EE")
+            .unwrap_or_else(|_| "false".to_string())
+            .to_lowercase() == "true";
+
+        if enable_e2ee {
+            tracing::info!("E2EE enabled, using receive_messages_e2ee handler");
+            handlers::receive_messages_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
+        } else {
+            tracing::debug!("E2EE disabled, using legacy receive_messages handler");
+            handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone()).await
+        }
     }
 
     async fn get_messages(
