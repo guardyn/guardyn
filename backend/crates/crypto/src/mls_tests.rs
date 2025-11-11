@@ -12,18 +12,18 @@ mod mls_integration_tests {
     use guardyn_crypto::mls::{MlsGroupManager, MlsKeyPackage};
     use guardyn_crypto::{CryptoError, Result};
 
-    /// Helper to create a test credential
-    fn create_credential(identity: &str) -> Result<openmls::prelude::CredentialWithKey> {
-        guardyn_crypto::mls::create_test_credential(identity)
+    /// Helper to create a test keypair
+    fn create_test_keypair() -> Result<openmls_basic_credential::SignatureKeyPair> {
+        guardyn_crypto::mls::create_test_keypair()
     }
 
     #[test]
     fn test_create_group() {
         // Alice creates a group
         let alice_identity = b"alice:device1";
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
 
-        let group = MlsGroupManager::create_group("test_group_001", alice_identity, alice_cred);
+        let group = MlsGroupManager::create_group("test_group_001", alice_identity, alice_keypair);
 
         assert!(group.is_ok());
         let group = group.unwrap();
@@ -47,9 +47,9 @@ mod mls_integration_tests {
     #[test]
     fn test_add_single_member() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_002", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_002", b"alice:device1", alice_keypair)
                 .unwrap();
 
         assert_eq!(alice_group.members().len(), 1);
@@ -76,9 +76,9 @@ mod mls_integration_tests {
     #[test]
     fn test_add_multiple_members() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_003", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_003", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Add Bob
@@ -111,9 +111,9 @@ mod mls_integration_tests {
     #[test]
     fn test_encrypt_decrypt_message() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_004", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_004", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Encrypt a message
@@ -138,9 +138,9 @@ mod mls_integration_tests {
     #[test]
     fn test_group_state_serialization() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let alice_group =
-            MlsGroupManager::create_group("test_group_005", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_005", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Serialize group state
@@ -156,9 +156,9 @@ mod mls_integration_tests {
     #[test]
     fn test_encrypt_after_adding_member() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_006", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_006", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Add Bob
@@ -180,9 +180,9 @@ mod mls_integration_tests {
     #[test]
     fn test_member_list() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_007", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_007", b"alice:device1", alice_keypair)
                 .unwrap();
 
         let members = alice_group.members();
@@ -202,9 +202,9 @@ mod mls_integration_tests {
     #[test]
     fn test_epoch_advancement() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_008", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_008", b"alice:device1", alice_keypair)
                 .unwrap();
 
         assert_eq!(alice_group.epoch(), 0);
@@ -221,9 +221,9 @@ mod mls_integration_tests {
     #[test]
     fn test_multiple_messages() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_009", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_009", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Send multiple messages
@@ -259,9 +259,9 @@ mod mls_integration_tests {
     #[test]
     fn test_empty_message() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_010", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_010", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Try to encrypt empty message
@@ -279,9 +279,9 @@ mod mls_integration_tests {
     #[test]
     fn test_large_message() {
         // Alice creates a group
-        let alice_cred = create_credential("alice:device1").unwrap();
+        let alice_keypair = create_test_keypair().unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_011", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_011", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Encrypt a large message (1 MB)
@@ -305,9 +305,9 @@ mod mls_error_handling_tests {
 
     #[test]
     fn test_decrypt_invalid_ciphertext() {
-        let alice_cred = guardyn_crypto::mls::create_test_credential("alice:device1").unwrap();
+        let alice_keypair = guardyn_crypto::mls::create_test_credential("alice:device1").unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_error_001", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_error_001", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Try to decrypt invalid ciphertext
@@ -319,9 +319,9 @@ mod mls_error_handling_tests {
 
     #[test]
     fn test_add_invalid_key_package() {
-        let alice_cred = guardyn_crypto::mls::create_test_credential("alice:device1").unwrap();
+        let alice_keypair = guardyn_crypto::mls::create_test_credential("alice:device1").unwrap();
         let mut alice_group =
-            MlsGroupManager::create_group("test_group_error_002", b"alice:device1", alice_cred)
+            MlsGroupManager::create_group("test_group_error_002", b"alice:device1", alice_keypair)
                 .unwrap();
 
         // Try to add member with invalid key package
