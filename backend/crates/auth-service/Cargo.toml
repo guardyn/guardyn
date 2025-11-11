@@ -35,5 +35,8 @@ argon2 = "0.5"
 # UUID generation
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
+# Hex encoding for package IDs
+hex = "0.4"
+
 [build-dependencies]
 tonic-build.workspace = true

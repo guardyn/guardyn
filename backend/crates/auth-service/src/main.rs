@@ -35,6 +35,8 @@ use proto::auth::{
     ValidateTokenRequest, ValidateTokenResponse,
     GetKeyBundleRequest, GetKeyBundleResponse,
     UploadPreKeysRequest, UploadPreKeysResponse,
+    UploadMlsKeyPackageRequest, UploadMlsKeyPackageResponse,
+    GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -100,6 +102,22 @@ impl AuthService for AuthServiceImpl {
         request: Request<UploadPreKeysRequest>,
     ) -> Result<Response<UploadPreKeysResponse>, Status> {
         handlers::key_bundle::upload(self, request).await
+    }
+
+    async fn upload_mls_key_package(
+        &self,
+        request: Request<UploadMlsKeyPackageRequest>,
+    ) -> Result<Response<UploadMlsKeyPackageResponse>, Status> {
+        let db = std::sync::Arc::new(self.db.clone());
+        handlers::mls_key_package::upload_mls_key_package(request, db).await
+    }
+
+    async fn get_mls_key_package(
+        &self,
+        request: Request<GetMlsKeyPackageRequest>,
+    ) -> Result<Response<GetMlsKeyPackageResponse>, Status> {
+        let db = std::sync::Arc::new(self.db.clone());
+        handlers::mls_key_package::get_mls_key_package(request, db).await
     }
 
     async fn health(
