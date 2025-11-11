@@ -30,6 +30,9 @@ pub enum CryptoError {
     #[error("Invalid key: {0}")]
     InvalidKey(String),
     
+    #[error("Invalid signature: {0}")]
+    InvalidSignature(String),
+    
     #[error("Protocol error: {0}")]
     Protocol(String),
 }
