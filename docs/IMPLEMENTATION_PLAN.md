@@ -46,6 +46,7 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 ### 🎉 **Backend Services Fully Operational (Phase 4 Complete)**
 
 - **Auth Service**: ✅ PRODUCTION-READY
+
   - User registration/login/logout ✅
   - Device management ✅
   - JWT token generation/validation ✅
@@ -70,6 +71,7 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 ### 🔐 **Cryptography Implementation (Phase 6) - COMPLETE** ✅
 
 - **X3DH Key Agreement**: ✅ COMPLETE
+
   - Identity key pairs (Ed25519) ✅
   - Signed pre-keys (X25519) ✅
   - One-time pre-keys (X25519) ✅
@@ -78,6 +80,7 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
   - 6 unit tests passing ✅
 
 - **Double Ratchet**: ✅ COMPLETE + INTEGRATED
+
   - Symmetric ratchet (HKDF chain) ✅
   - Diffie-Hellman ratchet (key rotation) ✅
   - Message encryption/decryption (AES-256-GCM) ✅
@@ -543,11 +546,13 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 - [x] **Group state serialization** ✅ (for TiKV persistence)
 
 - [x] **Auth Service Integration** ✅
+
   - [x] UploadMlsKeyPackage RPC (store key packages in TiKV)
   - [x] GetMlsKeyPackage RPC (fetch key packages for member addition)
   - [x] Key package storage with SHA-256 IDs
 
 - [x] **Messaging Service Integration** ✅
+
   - [x] MlsManager for group state management
   - [x] send_group_message_mls handler (MLS encryption)
   - [x] add_group_member_mls handler (MLS protocol for member addition)
@@ -559,7 +564,7 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 
 - **Core MLS**: `backend/crates/crypto/src/mls.rs` (~520 lines)
 - **Auth Integration**: `backend/crates/auth-service/src/handlers/mls_key_package.rs` (~250 lines)
-- **Messaging Integration**: 
+- **Messaging Integration**:
   - `backend/crates/messaging-service/src/mls_manager.rs` (~310 lines) - Group state management
   - `send_group_message_mls.rs` (~280 lines) - MLS message sending
   - `add_group_member_mls.rs` (~230 lines) - Member addition with MLS protocol
@@ -569,6 +574,7 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 - **Tests**: 15 unit tests covering group creation, member add/remove, encryption, epoch advancement
 
 **Test Coverage**:
+
 - ✅ Group creation
 - ✅ Key package generation
 - ✅ Single/multiple member addition
@@ -580,16 +586,18 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 - ✅ Error handling (invalid ciphertext, invalid key package)
 
 **Known Limitations**:
+
 - ⚠️ **CRITICAL BLOCKER**: OpenMLS API incompatibility - compilation fails with 16 errors
-  * OpenMLS 0.5 API is incompatible with current implementation
-  * Git dependency added for `openmls_basic_credential` but API signatures don't match
-  * Resolution: Upgrade to OpenMLS 0.7 (recommended) - 6-8 hours estimated
+  - OpenMLS 0.5 API is incompatible with current implementation
+  - Git dependency added for `openmls_basic_credential` but API signatures don't match
+  - Resolution: Upgrade to OpenMLS 0.7 (recommended) - 6-8 hours estimated
 - ⚠️ OpenMLS v0.5 doesn't provide state deserialization (requires in-memory managers or custom serialization)
 - ⚠️ gRPC client implementation complete but blocked by compilation failure
 
 **Status**: ⚠️ **COMPILATION BLOCKED** - MLS protocol design complete (85%), needs OpenMLS 0.7 migration
 
 **Next Steps**:
+
 1. 🔴 **CRITICAL**: Migrate to OpenMLS 0.7 to resolve compilation issues (~6-8 hours)
    - Replace `OpenMlsRustCrypto` with `RustCrypto` backend
    - Update all API calls to match OpenMLS 0.7 signatures

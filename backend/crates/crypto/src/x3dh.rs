@@ -205,13 +205,13 @@ impl X3DHProtocol {
     }
 
     /// Perform 4-DH key agreement as initiator (Alice)
-    /// 
+    ///
     /// Inputs:
     /// - local_identity_key: Alice's long-term identity key
     /// - local_ephemeral_key: Alice's ephemeral key (generated for this exchange)
     /// - peer_bundle: Bob's public key bundle
     /// - one_time_key_id: ID of the one-time pre-key to use (if available)
-    /// 
+    ///
     /// Returns: 32-byte shared secret
     pub fn initiate_key_agreement(
         local_identity_secret: &StaticSecret,
@@ -221,14 +221,14 @@ impl X3DHProtocol {
         // Parse peer's keys
         let peer_identity = x25519_public_from_bytes(&peer_bundle.identity_key)?;
         let peer_signed_pre_key = x25519_public_from_bytes(&peer_bundle.signed_pre_key)?;
-        
+
         // Verify signed pre-key signature
         IdentityKeyPair::verify(
             &peer_bundle.identity_key,
             &peer_bundle.signed_pre_key,
             &peer_bundle.signed_pre_key_signature,
         )?;
-        
+
         // Generate ephemeral key for this exchange
         let ephemeral_secret = StaticSecret::random_from_rng(OsRng);
         let ephemeral_public = X25519PublicKey::from(&ephemeral_secret);        // Perform 4-DH:
@@ -392,7 +392,7 @@ mod tests {
         // Bob generates key material
         let bob_material = X3DHKeyMaterial::generate(10).unwrap();
         let bob_bundle = bob_material.export_bundle();
-        
+
         // Alice initiates key agreement
         let alice_identity_secret = StaticSecret::random_from_rng(OsRng);
         let (alice_shared_secret, _alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
@@ -400,9 +400,9 @@ mod tests {
             &bob_bundle,
             true,
         ).unwrap();
-        
+
         assert_eq!(alice_shared_secret.len(), 32);
-        
+
         // Note: Full responder test requires proper key conversion
         // This is a basic test of the initiator side
     }
