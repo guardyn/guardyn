@@ -18,6 +18,7 @@ pub struct MessageEnvelope {
 
 /// NATS client for message routing
 pub struct NatsClient {
+    client: async_nats::Client,
     context: jetstream::Context,
     messages_stream: Stream,
 }
@@ -31,7 +32,7 @@ impl NatsClient {
             .context("Failed to connect to NATS")?;
 
         // Create JetStream context
-        let context = jetstream::new(client);
+        let context = jetstream::new(client.clone());
 
         // Get or create MESSAGES stream
         let messages_stream = context
@@ -47,6 +48,7 @@ impl NatsClient {
         tracing::info!("Connected to NATS JetStream");
 
         Ok(Self {
+            client,
             context,
             messages_stream,
         })
@@ -148,4 +150,46 @@ impl NatsClient {
 
         Ok(envelopes)
     }
+
+    /// Low-level publish method (used by MLS handlers)
+    pub async fn publish(&self, subject: &str, payload: &[u8]) -> Result<()> {
+        self.context
+            .publish(subject.to_string(), payload.into())
+            .await
+            .context("Failed to publish to NATS")?
+            .await
+            .context("Failed to confirm NATS publish")?;
+        Ok(())
+    }
+
+    /// Create a consumer for specific subject (used by E2EE handlers)
+    pub async fn create_consumer(
+        &self,
+        consumer_name: &str,
+        subject: &str,
+    ) -> Result<PullConsumer> {
+        let consumer = self
+            .messages_stream
+            .get_or_create_consumer(
+                consumer_name,
+                jetstream::consumer::pull::Config {
+                    filter_subject: subject.to_string(),
+                    durable_name: Some(consumer_name.to_string()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .context("Failed to create consumer")?;
+
+        tracing::info!("Created consumer {} for subject {}", consumer_name, subject);
+
+        Ok(consumer)
+    }
+
+    /// Get NATS connection state
+    pub fn connection_state(&self) -> async_nats::connection::State {
+        self.client.connection_state()
+    }
 }
+
+

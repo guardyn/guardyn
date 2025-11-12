@@ -596,6 +596,7 @@ dependencies = [
  "digest",
  "fiat-crypto",
  "rustc_version",
+ "serde",
  "subtle",
  "zeroize",
 ]
@@ -750,6 +751,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "115531babc129696a58c64a4fef0a8bf9e9698629fb97e9e40767d235cfbcd53"
 dependencies = [
  "pkcs8",
+ "serde",
  "signature",
 ]
 
@@ -1142,6 +1144,7 @@ dependencies = [
  "async-nats",
  "chrono",
  "config",
+ "ed25519-dalek",
  "futures",
  "guardyn-common",
  "guardyn-crypto",
@@ -1158,6 +1161,7 @@ dependencies = [
  "tonic-build",
  "tracing",
  "uuid",
+ "x25519-dalek",
 ]
 
 [[package]]

@@ -15,7 +15,7 @@ mod mls_tests;
 
 pub use x3dh::{X3DHKeyBundle, X3DHProtocol};
 pub use double_ratchet::DoubleRatchet;
-pub use mls::MlsGroupManager;
+pub use mls::{MlsGroupManager, create_test_credential};
 
 use thiserror::Error;
 

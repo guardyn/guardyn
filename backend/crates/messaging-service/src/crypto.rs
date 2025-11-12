@@ -4,7 +4,7 @@
 
 use anyhow::{Context, Result, anyhow};
 use guardyn_crypto::{
-    x3dh::{X3DHProtocol, KeyBundle as X3DHKeyBundle},
+    x3dh::{X3DHProtocol, X3DHKeyBundle},
     double_ratchet::DoubleRatchet,
 };
 use crate::models::RatchetSession;

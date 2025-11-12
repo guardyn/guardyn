@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 /// Handler for sending MLS-encrypted group messages
 ///
 /// Uses MLS (Messaging Layer Security) protocol for group encryption.
@@ -32,7 +33,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::Unauthorized as i32,
                     message: "Invalid or expired access token".to_string(),
-                    details: None,
+                    details: HashMap::new(),
                 })),
             }));
         }
@@ -44,7 +45,7 @@ pub async fn send_group_message_mls(
             result: Some(send_group_message_response::Result::Error(ErrorResponse {
                 code: crate::proto::common::error_response::ErrorCode::InvalidRequest as i32,
                 message: "Group ID required".to_string(),
-                details: None,
+                details: HashMap::new(),
             })),
         }));
     }
@@ -55,7 +56,7 @@ pub async fn send_group_message_mls(
             result: Some(send_group_message_response::Result::Error(ErrorResponse {
                 code: crate::proto::common::error_response::ErrorCode::InvalidRequest as i32,
                 message: "Content required".to_string(),
-                details: None,
+                details: HashMap::new(),
             })),
         }));
     }
@@ -75,7 +76,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
                     message: "Group not found".to_string(),
-                    details: None,
+                    details: HashMap::new(),
                 })),
             }));
         }
@@ -85,7 +86,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to verify group".to_string(),
-                    details: Some(e.to_string()),
+                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                 })),
             }));
         }
@@ -102,7 +103,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::Unauthorized as i32,
                     message: "Not a member of this group".to_string(),
-                    details: None,
+                    details: HashMap::new(),
                 })),
             }));
         }
@@ -112,7 +113,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to verify membership".to_string(),
-                    details: Some(e.to_string()),
+                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                 })),
             }));
         }
@@ -127,7 +128,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to load group state".to_string(),
-                    details: Some(e.to_string()),
+                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                 })),
             }));
         }
@@ -145,7 +146,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to initialize encryption".to_string(),
-                    details: Some(e.to_string()),
+                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                 })),
             }));
         }
@@ -199,7 +200,7 @@ pub async fn send_group_message_mls(
             result: Some(send_group_message_response::Result::Error(ErrorResponse {
                 code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                 message: "Failed to store message".to_string(),
-                details: Some(e.to_string()),
+                details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
             })),
         }));
     }
@@ -213,7 +214,7 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to fetch group members".to_string(),
-                    details: Some(e.to_string()),
+                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                 })),
             }));
         }

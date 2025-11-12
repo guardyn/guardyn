@@ -260,9 +260,10 @@ message AddGroupMemberRequest {
   string access_token = 1;
   string group_id = 2;
   string member_user_id = 3;
+  string member_device_id = 4;  // Device ID for MLS key package fetching
 
   // Updated MLS group state
-  bytes mls_group_state = 4;
+  bytes mls_group_state = 5;
 }
 
 message AddGroupMemberResponse {

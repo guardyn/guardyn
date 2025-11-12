@@ -26,6 +26,8 @@ async-nats.workspace = true
 uuid = { version = "1.11", features = ["v1", "v4", "v5", "serde"] }
 chrono = "0.4"
 jsonwebtoken = "9.3"
+ed25519-dalek = { version = "2.1", features = ["serde"] }
+x25519-dalek = { version = "2.0", features = ["serde", "static_secrets"] }
 
 [build-dependencies]
 tonic-build.workspace = true
