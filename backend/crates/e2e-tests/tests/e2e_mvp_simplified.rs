@@ -345,7 +345,7 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
     // User 1 sends 3 messages to User 2
     let mut messaging_client = env.messaging_client().await?;
     let mut message_ids = Vec::new();
-    
+
     for i in 1..=3 {
         let message_content = format!("Test message {}", i).into_bytes();
         let now = SystemTime::now()
@@ -367,7 +367,7 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
         });
 
         let send_response = messaging_client.send_message(send_request).await?.into_inner();
-        
+
         if let Some(proto::messaging::send_message_response::Result::Success(success)) = send_response.result {
             message_ids.push(success.message_id.clone());
             println!("✅ Message {} sent: {}", i, success.message_id);
@@ -379,7 +379,7 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
 
     // User 2 marks messages as read
     let _conversation_id = generate_conversation_id(&user1.user_id()?, &user2.user_id()?);
-    
+
     let mark_read_request = Request::new(proto::messaging::MarkAsReadRequest {
         access_token: user2.token()?,
         message_ids: message_ids.clone(),
@@ -419,7 +419,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
     // User 1 sends 2 messages
     let mut messaging_client = env.messaging_client().await?;
     let mut message_ids = Vec::new();
-    
+
     for i in 1..=2 {
         let message_content = format!("Message to delete {}", i).into_bytes();
         let now = SystemTime::now()
@@ -441,7 +441,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
         });
 
         let send_response = messaging_client.send_message(send_request).await?.into_inner();
-        
+
         if let Some(proto::messaging::send_message_response::Result::Success(success)) = send_response.result {
             message_ids.push(success.message_id.clone());
             println!("✅ Message {} sent: {}", i, success.message_id);
@@ -452,7 +452,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
 
     // User 2 deletes the first message
     let conversation_id = generate_conversation_id(&user1.user_id()?, &user2.user_id()?);
-    
+
     let delete_request = Request::new(proto::messaging::DeleteMessageRequest {
         access_token: user2.token()?,
         message_id: message_ids[0].clone(),
@@ -474,7 +474,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
 
     // Verify message is marked as deleted (or not returned)
     sleep(Duration::from_secs(1)).await;
-    
+
     let get_request = Request::new(GetMessagesRequest {
         access_token: user2.token()?,
         conversation_user_id: String::new(),
@@ -490,7 +490,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(proto::messaging::get_messages_response::Result::Success(success)) = get_response.result {
         let deleted_msg = success.messages.iter()
             .find(|m| m.message_id == message_ids[0]);
-        
+
         // Message should either not exist or have is_deleted=true
         if let Some(msg) = deleted_msg {
             assert!(msg.is_deleted, "Deleted message should have is_deleted=true");
@@ -512,7 +512,7 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
     let user1_id = Uuid::new_v4().to_string().replace("-", "");
     let user2_id = Uuid::new_v4().to_string().replace("-", "");
     let user3_id = Uuid::new_v4().to_string().replace("-", "");
-    
+
     let mut user1 = TestUser::new(&format!("group_admin_{}", &user1_id[..8]));
     let mut user2 = TestUser::new(&format!("group_mem1_{}", &user2_id[..8]));
     let mut user3 = TestUser::new(&format!("group_mem2_{}", &user3_id[..8]));
@@ -549,7 +549,7 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
 
     // User 1 sends a group message
     let group_message = b"Hello, group members!".to_vec();
-    
+
     let send_group_request = Request::new(proto::messaging::SendGroupMessageRequest {
         access_token: user1.token()?,
         group_id: group_id.clone(),
@@ -593,14 +593,14 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
     match get_group_response.result {
         Some(proto::messaging::get_group_messages_response::Result::Success(success)) => {
             assert!(!success.messages.is_empty(), "Should have at least one group message");
-            
+
             let received_msg = success.messages.iter()
                 .find(|m| m.message_id == message_id)
                 .expect("Should find the sent group message");
-            
+
             assert_eq!(received_msg.encrypted_content, group_message, "Message content should match");
             assert_eq!(received_msg.sender_user_id, user1.user_id()?, "Sender should match");
-            
+
             println!("✅ Group message retrieved successfully");
         }
         Some(proto::messaging::get_group_messages_response::Result::Error(error)) => {
@@ -659,7 +659,7 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
     sleep(Duration::from_secs(2)).await;
 
     let conversation_id = generate_conversation_id(&user1.user_id()?, &user2.user_id()?);
-    
+
     let get_request = Request::new(GetMessagesRequest {
         access_token: user2.token()?,
         conversation_user_id: String::new(),
@@ -675,11 +675,11 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
     match get_response.result {
         Some(proto::messaging::get_messages_response::Result::Success(success)) => {
             assert!(!success.messages.is_empty(), "Should have offline messages");
-            
+
             let offline_msg = success.messages.iter()
                 .find(|m| m.encrypted_content == message_content)
                 .expect("Should find the offline message");
-            
+
             println!("✅ Offline message retrieved successfully");
             println!("✅ Delivery status: {} (0=SENT, 1=DELIVERED)", offline_msg.delivery_status);
         }
@@ -702,7 +702,7 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
     let user2_id = Uuid::new_v4().to_string().replace("-", "");
     let user3_id = Uuid::new_v4().to_string().replace("-", "");
     let user4_id = Uuid::new_v4().to_string().replace("-", "");
-    
+
     let mut user1 = TestUser::new(&format!("admin_{}", &user1_id[..8]));
     let mut user2 = TestUser::new(&format!("member1_{}", &user2_id[..8]));
     let mut user3 = TestUser::new(&format!("member2_{}", &user3_id[..8]));
@@ -741,6 +741,7 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         access_token: user1.token()?,
         group_id: group_id.clone(),
         member_user_id: user4.user_id()?,
+        member_device_id: user4.device_id()?,
         mls_group_state: vec![], // Mock MLS state
     });
 
