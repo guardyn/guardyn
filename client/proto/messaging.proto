@@ -1,0 +1,368 @@
+syntax = "proto3";
+
+package guardyn.messaging;
+
+import "common.proto";
+
+// ============================================================================
+// Messaging Service - 1-on-1 and group messaging with E2EE
+// ============================================================================
+
+service MessagingService {
+  // Send 1-on-1 encrypted message
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // Receive messages (streaming from server)
+  rpc ReceiveMessages(ReceiveMessagesRequest) returns (stream Message);
+
+  // Get message history
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+
+  // Mark message as read (send read receipt)
+  rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
+
+  // Delete message (for self or for everyone)
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+
+  // Send typing indicator
+  rpc SendTypingIndicator(TypingIndicatorRequest) returns (TypingIndicatorResponse);
+
+  // Create group chat
+  rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse);
+
+  // Add member to group
+  rpc AddGroupMember(AddGroupMemberRequest) returns (AddGroupMemberResponse);
+
+  // Remove member from group
+  rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberResponse);
+
+  // Send group message
+  rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageResponse);
+
+  // Get group messages
+  rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (common.HealthStatus);
+}
+
+// ============================================================================
+// 1-on-1 Messaging
+// ============================================================================
+
+message SendMessageRequest {
+  string access_token = 1; // Authentication
+  string recipient_user_id = 2; // Target user UUID
+  string recipient_device_id = 3; // Target device UUID (optional, if not set - all devices)
+
+  // Encrypted message content (Double Ratchet encrypted)
+  bytes encrypted_content = 4;
+
+  // Message metadata
+  MessageType message_type = 5;
+  string client_message_id = 6; // Client-generated UUID for deduplication
+  common.Timestamp client_timestamp = 7;
+
+  // Optional: media attachment reference
+  string media_id = 8; // Reference to media uploaded via Media Service
+}
+
+enum MessageType {
+  TEXT = 0;
+  IMAGE = 1;
+  VIDEO = 2;
+  AUDIO = 3;
+  FILE = 4;
+  VOICE_NOTE = 5;
+  LOCATION = 6;
+}
+
+message SendMessageResponse {
+  oneof result {
+    SendMessageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SendMessageSuccess {
+  string message_id = 1; // Server-generated UUID
+  common.Timestamp server_timestamp = 2;
+  DeliveryStatus delivery_status = 3;
+}
+
+enum DeliveryStatus {
+  PENDING = 0; // Queued for delivery
+  SENT = 1; // Sent to recipient's device
+  DELIVERED = 2; // Delivered to recipient's device
+  READ = 3; // Read by recipient
+  FAILED = 4; // Delivery failed
+}
+
+// ============================================================================
+// Receiving Messages
+// ============================================================================
+
+message ReceiveMessagesRequest {
+  string access_token = 1; // Authentication
+  bool include_history = 2; // If true, sends offline messages first
+}
+
+message Message {
+  string message_id = 1; // Server UUID
+  string sender_user_id = 2;
+  string sender_device_id = 3;
+  string recipient_user_id = 4;
+  string recipient_device_id = 5;
+
+  // Encrypted content
+  bytes encrypted_content = 6;
+
+  // Metadata
+  MessageType message_type = 7;
+  string client_message_id = 8;
+  common.Timestamp client_timestamp = 9;
+  common.Timestamp server_timestamp = 10;
+
+  // Delivery tracking
+  DeliveryStatus delivery_status = 11;
+
+  // Media reference
+  string media_id = 12;
+
+  // Deletion flag
+  bool is_deleted = 13;
+}
+
+// ============================================================================
+// Message History
+// ============================================================================
+
+message GetMessagesRequest {
+  string access_token = 1;
+  string conversation_user_id = 2; // User ID of the conversation partner
+  string conversation_id = 6; // Conversation ID (alternative to conversation_user_id)
+
+  // Pagination
+  common.PaginationRequest pagination = 3;
+  int32 limit = 7; // Simple limit (alternative to pagination)
+
+  // Time range filtering
+  common.Timestamp start_time = 4;
+  common.Timestamp end_time = 5;
+}
+
+message GetMessagesResponse {
+  oneof result {
+    GetMessagesSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetMessagesSuccess {
+  repeated Message messages = 1;
+  common.PaginationResponse pagination = 2;
+  bool has_more = 3; // True if there are more messages available
+}
+
+// ============================================================================
+// Read Receipts
+// ============================================================================
+
+message MarkAsReadRequest {
+  string access_token = 1;
+  repeated string message_ids = 2; // UUIDs of messages to mark as read
+}
+
+message MarkAsReadResponse {
+  oneof result {
+    MarkAsReadSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message MarkAsReadSuccess {
+  uint32 messages_marked = 1;
+  int32 marked_count = 2; // Number of messages marked (alternative field name)
+  common.Timestamp timestamp = 3; // Server timestamp of operation
+}
+
+// ============================================================================
+// Message Deletion
+// ============================================================================
+
+message DeleteMessageRequest {
+  string access_token = 1;
+  string message_id = 2; // UUID
+  string conversation_id = 4; // Conversation ID (required for ScyllaDB deletion)
+  bool delete_for_everyone = 3; // If true, deletes for all participants
+}
+
+message DeleteMessageResponse {
+  oneof result {
+    DeleteMessageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteMessageSuccess {
+  bool deleted = 1;
+  string message_id = 2; // Echo back the message ID
+  common.Timestamp timestamp = 3; // Server timestamp of deletion
+}
+
+// ============================================================================
+// Typing Indicators
+// ============================================================================
+
+message TypingIndicatorRequest {
+  string access_token = 1;
+  string recipient_user_id = 2;
+  bool is_typing = 3; // true = started typing, false = stopped typing
+}
+
+message TypingIndicatorResponse {
+  oneof result {
+    TypingIndicatorSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message TypingIndicatorSuccess {
+  bool sent = 1;
+}
+
+// ============================================================================
+// Group Messaging
+// ============================================================================
+
+message CreateGroupRequest {
+  string access_token = 1;
+  string group_name = 2;
+  repeated string member_user_ids = 3; // Initial members
+
+  // MLS group state (encrypted with OpenMLS)
+  bytes mls_group_state = 4;
+}
+
+message CreateGroupResponse {
+  oneof result {
+    CreateGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message CreateGroupSuccess {
+  string group_id = 1; // UUID
+  common.Timestamp created_at = 2;
+}
+
+message AddGroupMemberRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string member_user_id = 3;
+  string member_device_id = 4;  // Device ID for MLS key package fetching
+
+  // Updated MLS group state
+  bytes mls_group_state = 5;
+}
+
+message AddGroupMemberResponse {
+  oneof result {
+    AddGroupMemberSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message AddGroupMemberSuccess {
+  bool added = 1;
+}
+
+message RemoveGroupMemberRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string member_user_id = 3;
+
+  // Updated MLS group state
+  bytes mls_group_state = 4;
+}
+
+message RemoveGroupMemberResponse {
+  oneof result {
+    RemoveGroupMemberSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RemoveGroupMemberSuccess {
+  bool removed = 1;
+}
+
+message SendGroupMessageRequest {
+  string access_token = 1;
+  string group_id = 2;
+
+  // MLS encrypted content
+  bytes encrypted_content = 3;
+
+  MessageType message_type = 4;
+  string client_message_id = 5;
+  common.Timestamp client_timestamp = 6;
+
+  string media_id = 7; // Optional
+}
+
+message SendGroupMessageResponse {
+  oneof result {
+    SendGroupMessageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SendGroupMessageSuccess {
+  string message_id = 1;
+  common.Timestamp server_timestamp = 2;
+}
+
+message GetGroupMessagesRequest {
+  string access_token = 1;
+  string group_id = 2;
+  common.PaginationRequest pagination = 3;
+  int32 limit = 6; // Simple limit (alternative to pagination)
+  common.Timestamp start_time = 4;
+  common.Timestamp end_time = 5;
+}
+
+message GetGroupMessagesResponse {
+  oneof result {
+    GetGroupMessagesSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetGroupMessagesSuccess {
+  repeated GroupMessage messages = 1;
+  common.PaginationResponse pagination = 2;
+}
+
+message GroupMessage {
+  string message_id = 1;
+  string group_id = 2;
+  string sender_user_id = 3;
+  string sender_device_id = 4;
+
+  bytes encrypted_content = 5;
+
+  MessageType message_type = 6;
+  string client_message_id = 7;
+  common.Timestamp client_timestamp = 8;
+  common.Timestamp server_timestamp = 9;
+
+  string media_id = 10;
+  bool is_deleted = 11; // Soft deletion flag
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+message HealthRequest {}

@@ -687,7 +687,7 @@ All core MVP features are deployed, tested, and production-ready:
 
 ---
 
-## Phase 7: Client Applications ⏳
+## Phase 7: Client Applications 🔄
 
 ### 7.1 Core Client Library (Rust)
 
@@ -703,7 +703,54 @@ All core MVP features are deployed, tested, and production-ready:
 
 - [ ] FFI bindings for mobile
 
-### 7.2 Android Client (Kotlin Multiplatform)
+### 7.2 Flutter Mobile Client (Android/iOS) ✅ **PARTIALLY COMPLETE**
+
+**Completed: Authentication Flow (November 14, 2025)**
+
+- [x] Project setup with Flutter 3.x
+- [x] Protocol Buffers code generation (15 .dart files)
+- [x] Clean Architecture implementation (Domain/Data/Presentation layers)
+- [x] Dependency injection (GetIt + injectable)
+- [x] gRPC client configuration (auth + messaging services)
+- [x] Secure storage wrapper (flutter_secure_storage)
+- [x] Auth domain layer (User entity, AuthRepository interface, 3 use cases)
+- [x] Auth data layer (AuthRemoteDatasource, AuthRepositoryImpl)
+- [x] Auth presentation layer (AuthBloc with 4 events, 5 states)
+- [x] UI screens (SplashPage, LoginPage, RegistrationPage, HomePage)
+- [x] State management (BLoC pattern with flutter_bloc)
+- [x] Main app configuration (routing, navigation, error handling)
+- [x] Compilation verification (flutter analyze: zero errors)
+- [x] Documentation (client/README.md with setup guide)
+
+**Architecture:**
+
+- Clean Architecture: `features/auth/{domain,data,presentation}`
+- BLoC State Management: AuthBloc with event/state handlers
+- gRPC Integration: Connects to localhost:50051 (auth) and localhost:50052 (messaging)
+- Secure Token Storage: Platform-specific encryption (Keychain/KeyStore)
+
+**Known Limitations:**
+
+- Placeholder KeyBundle generation (uses random bytes instead of X3DH)
+- No messaging UI implemented yet
+- No group chat UI
+- No offline caching
+- No push notifications
+
+**Pending Work:**
+
+- [ ] Manual testing with k3d cluster port-forwarding
+- [ ] Unit tests (AuthBloc, repository, use cases)
+- [ ] X3DH key generation (replace placeholder crypto)
+- [ ] Messaging UI (chat screens)
+- [ ] Group chat UI
+- [ ] Background service for push notifications
+- [ ] Media capture/playback
+- [ ] Offline message caching (SQLite)
+
+### 7.3 Android Client (Kotlin Multiplatform) - DEPRECATED
+
+**Note**: KMP implementation deprecated in favor of Flutter cross-platform approach.
 
 - [ ] Project setup with KMP
 
