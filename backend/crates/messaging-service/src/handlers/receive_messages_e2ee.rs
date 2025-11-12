@@ -7,7 +7,8 @@
 use crate::db::DatabaseClient;
 use crate::nats::{NatsClient, MessageEnvelope};
 use crate::models::RatchetSession;
-use crate::crypto::{SessionManager, CryptoManager};
+use crate::crypto::SessionManager;
+use futures::StreamExt; // For async iterator on NATS Batch
 use crate::proto::messaging::{Message, MessageType, DeliveryStatus, ReceiveMessagesRequest};
 use crate::proto::common::Timestamp;
 use std::sync::Arc;
@@ -109,7 +110,7 @@ async fn stream_messages_e2ee(
                     ).await {
                         Ok(r) => r,
                         Err(e) => {
-                            tracing::error!("Failed to get ratchet session for message {}: {}", 
+                            tracing::error!("Failed to get ratchet session for message {}: {}",
                                 delivery_state.message_id, e);
                             continue;
                         }
@@ -132,7 +133,7 @@ async fn stream_messages_e2ee(
                     ).await {
                         Ok(plaintext) => plaintext,
                         Err(e) => {
-                            tracing::error!("Failed to decrypt message {}: {}", 
+                            tracing::error!("Failed to decrypt message {}: {}",
                                 delivery_state.message_id, e);
                             // Send error indication or skip message
                             continue;

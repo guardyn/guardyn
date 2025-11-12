@@ -191,7 +191,7 @@ impl DatabaseClient {
                 sender_user_id,
                 sender_device_id,
                 recipient_user_id,
-                recipient_device_id,
+                recipient_device_id: Some(recipient_device_id),
                 encrypted_content,
                 message_type,
                 server_timestamp,
@@ -703,8 +703,9 @@ impl DatabaseClient {
 
     /// Health check - verify ScyllaDB connectivity
     pub async fn scylladb_health_check(&self) -> anyhow::Result<()> {
-        // Execute a simple query to verify connectivity
-        self.scylla.query("SELECT now() FROM system.local", ()).await?;
+        // Execute a simple query to verify connectivity using query_unpaged
+        let query = scylla::query::Query::new("SELECT now() FROM system.local");
+        self.scylla.query_unpaged(query, ()).await?;
         Ok(())
     }
 

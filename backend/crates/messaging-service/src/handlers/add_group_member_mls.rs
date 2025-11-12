@@ -216,24 +216,16 @@ pub async fn add_group_member_mls(
 
     // Load group state from TiKV
     let group_state = match mls_manager.load_group_state(&request.group_id).await {
-        Ok(Some(state)) => state,
-        Ok(None) => {
-            error!("Group state not found for group_id={}", request.group_id);
+        Ok(state) => state,
+        Err(e) => {
+            error!("Failed to load group state: {}", e);
+            let mut details = HashMap::new();
+            details.insert("error".to_string(), e.to_string());
             return Ok(Response::new(AddGroupMemberResponse {
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
                     message: "Group state not found".to_string(),
-                    details: Some("MLS group state missing in TiKV".to_string()),
-                })),
-            }));
-        }
-        Err(e) => {
-            error!("Failed to load group state: {}", e);
-            return Ok(Response::new(AddGroupMemberResponse {
-                result: Some(add_group_member_response::Result::Error(ErrorResponse {
-                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
-                    message: "Failed to load group state".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details,
                 })),
             }));
         }
@@ -250,19 +242,38 @@ pub async fn add_group_member_mls(
     // Create MLS group manager with identity from requester
     // NOTE: This is a workaround for OpenMLS deserialization limitation
     // In production, we need to maintain in-memory group managers or implement custom serialization
+    let requester_identity = format!("{}:{}", requester_user_id, requester_device_id);
+    let credential_bundle = match guardyn_crypto::mls::create_test_credential(requester_identity.as_bytes()) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            error!("Failed to create MLS credential: {}", e);
+            let mut details = HashMap::new();
+            details.insert("error".to_string(), e.to_string());
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to create MLS credential".to_string(),
+                    details,
+                })),
+            }));
+        }
+    };
+
     let mut group_manager = match MlsGroupManager::create_group(
-        &requester_user_id,
-        &requester_device_id,
         &request.group_id,
+        requester_identity.as_bytes(),
+        credential_bundle,
     ) {
         Ok(manager) => manager,
         Err(e) => {
             error!("Failed to create MLS group manager: {}", e);
+            let mut details = HashMap::new();
+            details.insert("error".to_string(), e.to_string());
             return Ok(Response::new(AddGroupMemberResponse {
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to initialize MLS group manager".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details,
                 })),
             }));
         }
@@ -287,23 +298,43 @@ pub async fn add_group_member_mls(
 
     info!("MLS member addition successful, saving group state");
 
+    // Serialize updated group state
+    let updated_state = match group_manager.serialize_state() {
+        Ok(state) => state,
+        Err(e) => {
+            error!("Failed to serialize group state: {}", e);
+            let mut details = HashMap::new();
+            details.insert("error".to_string(), e.to_string());
+            return Ok(Response::new(AddGroupMemberResponse {
+                result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to serialize group state".to_string(),
+                    details,
+                })),
+            }));
+        }
+    };
+
     // Save updated group state (epoch incremented)
     if let Err(e) = mls_manager
-        .save_group_state(&request.group_id, &group_manager)
+        .save_group_state(&request.group_id, &updated_state)
         .await
     {
         error!("Failed to save group state: {}", e);
+        let mut details = HashMap::new();
+        details.insert("error".to_string(), e.to_string());
         return Ok(Response::new(AddGroupMemberResponse {
             result: Some(add_group_member_response::Result::Error(ErrorResponse {
                 code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                 message: "Failed to save group state".to_string(),
-                details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                details,
             })),
         }));
     }
 
     // Add member to TiKV members list
     let new_member = GroupMember {
+        group_id: request.group_id.clone(),
         user_id: request.member_user_id.clone(),
         device_id: request.member_device_id.clone(),
         role: GroupRole::Member,
@@ -311,7 +342,11 @@ pub async fn add_group_member_mls(
     };
 
     if let Err(e) = mls_manager
-        .add_member_to_list(&request.group_id, &new_member)
+        .add_member_to_list(
+            &request.group_id, 
+            &request.member_user_id, 
+            &request.member_device_id
+        )
         .await
     {
         error!("Failed to add member to members list: {}", e);
