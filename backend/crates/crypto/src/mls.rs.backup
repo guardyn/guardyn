@@ -7,7 +7,7 @@
 use crate::{CryptoError, Result};
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_rust_crypto::RustCrypto;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -38,7 +38,7 @@ pub struct MlsGroupState {
 /// Each instance represents a single MLS group from one member's perspective.
 pub struct MlsGroupManager {
     mls_group: MlsGroup,
-    crypto_backend: RustCrypto,
+    crypto_backend: OpenMlsRustCrypto,
     credential_with_key: CredentialWithKey,
     signature_keypair: SignatureKeyPair,  // Store the keypair for signing operations
 }
@@ -58,7 +58,7 @@ impl MlsGroupManager {
         creator_identity: &[u8],
         signature_keypair: SignatureKeyPair,
     ) -> Result<Self> {
-        let crypto_backend = RustCrypto::default();
+        let crypto_backend = OpenMlsRustCrypto::default();
         let group_id_bytes = group_id.as_bytes().to_vec();
 
         // Create credential (OpenMLS 0.7 API: credential_type first, then identity)
@@ -107,7 +107,7 @@ impl MlsGroupManager {
         signature_keypair: SignatureKeyPair,
         key_package: KeyPackage,
     ) -> Result<Self> {
-        let crypto_backend = RustCrypto::default();
+        let crypto_backend = OpenMlsRustCrypto::default();
 
         // Get identity from key package credential
         let credential = key_package.leaf_node().credential();
@@ -147,17 +147,17 @@ impl MlsGroupManager {
     }
 
     /// Generate a key package for this member
-    ///
+    /// 
     /// Key packages are pre-generated and stored on the server.
     /// They are used by group admins to add members to groups.
-    ///
+    /// 
     /// # Arguments
     /// * `identity` - Member identity (user_id:device_id)
-    ///
+    /// 
     /// # Returns
     /// MlsKeyPackage with serialized key package and metadata
     pub fn generate_key_package(identity: &[u8]) -> Result<MlsKeyPackage> {
-        let crypto_backend = RustCrypto::default();
+        let crypto_backend = OpenMlsRustCrypto::default();
 
         // Create credential (OpenMLS 0.6: credential_type first)
         let credential = Credential::new(CredentialType::Basic, identity.to_vec());
@@ -202,16 +202,51 @@ impl MlsGroupManager {
             key_package_bytes,
             credential_identity: identity.to_vec(),
         })
+    }", e)))?;
+
+        // Create credential with key bundle
+        let credential_with_key = CredentialWithKey {
+            credential: credential.clone(),
+            signature_key: signature_keypair.public().into(),
+        };
+
+        // Generate key package (OpenMLS 0.7 API)
+        let key_package = KeyPackage::builder()
+            .build(
+                MLS_CIPHERSUITE,
+                &crypto_backend,
+                &signature_keypair,
+                credential_with_key.credential.clone(),
+            )
+            .map_err(|e| CryptoError::Protocol(format!("Failed to build key package: {:?}", e)))?;
+
+        // Serialize key package
+        let key_package_bytes = key_package
+            .tls_serialize_detached()
+            .map_err(|e| CryptoError::Protocol(format!("Failed to serialize key package: {:?}", e)))?;
+
+        // Get package ID
+        let package_id = key_package
+            .hash_ref(&crypto_backend)
+            .map_err(|e| CryptoError::Protocol(format!("Failed to compute package hash: {:?}", e)))?
+            .as_slice()
+            .to_vec();
+
+        Ok(MlsKeyPackage {
+            package_id,
+            key_package_bytes,
+            credential_identity: identity.to_vec(),
+        })
     }
 
     /// Add member to group
-    ///
+    /// 
     /// Creates a Commit message with Welcome for the new member.
     /// The Welcome message must be sent to the new member separately.
-    ///
+    /// 
     /// # Arguments
     /// * `member_key_package_bytes` - Serialized KeyPackage of the member to add
-    ///
+    /// 
     /// # Returns
     /// Tuple of (commit_bytes, welcome_bytes) - commit for group, welcome for new member
     pub fn add_member(&mut self, member_key_package_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
@@ -245,13 +280,13 @@ impl MlsGroupManager {
     }
 
     /// Remove member from group
-    ///
+    /// 
     /// Creates a Commit message removing the specified member.
     /// The commit must be distributed to all remaining members.
-    ///
+    /// 
     /// # Arguments
     /// * `member_index` - Index of the member to remove (from leaf nodes)
-    ///
+    /// 
     /// # Returns
     /// Serialized commit message
     pub fn remove_member(&mut self, member_index: LeafNodeIndex) -> Result<Vec<u8>> {
@@ -275,12 +310,12 @@ impl MlsGroupManager {
     }
 
     /// Process incoming commit message from another member
-    ///
+    /// 
     /// Updates group state based on membership changes or epoch advancement.
-    ///
+    /// 
     /// # Arguments
     /// * `commit_bytes` - Serialized commit message
-    ///
+    /// 
     /// # Returns
     /// Ok(()) if commit processed successfully
     pub fn process_commit(&mut self, commit_bytes: &[u8]) -> Result<()> {
@@ -290,20 +325,20 @@ impl MlsGroupManager {
 
         // Process commit (OpenMLS 0.6 API - returns ProcessedMessage, process via parse_message)
         let _processed = self.mls_group
-            .process_message(commit, &self.crypto_backend)
+            .parse_message(commit, &self.crypto_backend)
             .map_err(|e| CryptoError::Protocol(format!("Failed to process commit: {:?}", e)))?;
 
         Ok(())
     }
 
     /// Encrypt a group message
-    ///
+    /// 
     /// # Arguments
     /// * `plaintext` - Message plaintext bytes
-    ///
+    /// 
     /// # Returns
     /// Serialized encrypted MLS message
-    ///
+    /// 
     /// Note: OpenMLS 0.5 removed AAD parameter from create_message
     pub fn encrypt_message(&mut self, plaintext: &[u8]) -> Result<Vec<u8>> {
         // Create application message
@@ -321,10 +356,10 @@ impl MlsGroupManager {
     }
 
     /// Decrypt a group message
-    ///
+    /// 
     /// # Arguments
     /// * `ciphertext` - Serialized encrypted MLS message
-    ///
+    /// 
     /// # Returns
     /// Tuple of (plaintext, aad) - decrypted message and associated data
     pub fn decrypt_message(&mut self, ciphertext: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
@@ -332,33 +367,32 @@ impl MlsGroupManager {
         let message = MlsMessageIn::tls_deserialize(&mut ciphertext.as_ref())
             .map_err(|e| CryptoError::Decryption(format!("Failed to deserialize message: {:?}", e)))?;
 
-        // Process and decrypt message (OpenMLS 0.6)
+        // Process and decrypt message (OpenMLS 0.6 uses parse_message)
         let processed_message = self
             .mls_group
-            .process_message(message, &self.crypto_backend)
-            .map_err(|e| CryptoError::Decryption(format!("Failed to process message: {:?}", e)))?;
+            .parse_message(message, &self.crypto_backend)
+            .map_err(|e| CryptoError::Decryption(format!("Failed to parse message: {:?}", e)))?;
 
-        // Extract plaintext from ProcessedMessage (OpenMLS 0.6)
-        match processed_message.content() {
-            ProcessedMessageContent::ApplicationMessage(app_msg) => {
+        // Extract plaintext from ProcessedMessage
+        match processed_message {
+            ProcessedMessage::ApplicationMessage(app_msg) => {
                 Ok((app_msg.into_bytes(), vec![]))
             }
-            ProcessedMessageContent::ProposalMessage(_) => {
-                let err_msg = String::from("Unexpected") + " " + "proposal";
-                Err(CryptoError::Protocol(err_msg))
+            ProcessedMessage::ProposalMessage(_) => {
+                return Err(CryptoError::Protocol(
+                    String::from("Unexpected proposal")
+                ));
             }
-            ProcessedMessageContent::StagedCommitMessage(_) => {
-                let err_msg = String::from("Unexpected") + " " + "commit";
-                Err(CryptoError::Protocol(err_msg))
-            }
-            _ => {
-                Err(CryptoError::Protocol("Unknown message type".to_string()))
+            ProcessedMessage::StagedCommitMessage(_) => {
+                return Err(CryptoError::Protocol(
+                    String::from("Unexpected commit")
+                ));
             }
         }
     }
 
     /// Serialize group state for storage
-    ///
+    /// 
     /// # Returns
     /// MlsGroupState with serialized group data
     pub fn serialize_state(&self) -> Result<MlsGroupState> {
@@ -389,8 +423,11 @@ impl MlsGroupManager {
         self.mls_group
             .members()
             .map(|member| {
-                // In OpenMLS 0.6, use identity() method
-                member.credential.identity().to_vec()
+                // In OpenMLS 0.6, Credential is an enum, extract identity bytes
+                match &member.credential {
+                    Credential::Basic(bytes) => bytes.clone(),
+                    _ => vec![],  // Other credential types not supported yet
+                }
             })
             .collect()
     }
@@ -400,7 +437,7 @@ impl MlsGroupManager {
 ///
 /// **SECURITY WARNING**: This is for testing only. In production, credentials
 /// Test helper to create a signature keypair for testing
-///
+/// 
 /// ⚠️ WARNING: This is for testing only! In production, signature keypairs
 /// should be generated securely and stored with proper key management.
 pub fn create_test_keypair() -> Result<SignatureKeyPair> {
@@ -500,8 +537,7 @@ mod tests {
         assert!(state.is_ok());
 
         let state = state.unwrap();
-        let group_id_str = "test_group";
-        let group_id_bytes = group_id_str.as_bytes().to_vec();
+        let group_id_bytes = b"test_group".to_vec();
         assert_eq!(state.group_id, group_id_bytes);
         assert_eq!(state.epoch, 0);
         assert!(!state.serialized_state.is_empty());
