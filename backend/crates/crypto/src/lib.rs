@@ -1,5 +1,5 @@
 /// Cryptographic protocols and primitives for Guardyn
-/// 
+///
 /// This crate implements:
 /// - X3DH key agreement protocol
 /// - Double Ratchet for 1-on-1 messaging
@@ -15,7 +15,7 @@ mod mls_tests;
 
 pub use x3dh::{X3DHKeyBundle, X3DHProtocol};
 pub use double_ratchet::DoubleRatchet;
-pub use mls::MLSGroupManager;
+pub use mls::MlsGroupManager;
 
 use thiserror::Error;
 
@@ -23,19 +23,19 @@ use thiserror::Error;
 pub enum CryptoError {
     #[error("Key generation failed: {0}")]
     KeyGeneration(String),
-    
+
     #[error("Encryption failed: {0}")]
     Encryption(String),
-    
+
     #[error("Decryption failed: {0}")]
     Decryption(String),
-    
+
     #[error("Invalid key: {0}")]
     InvalidKey(String),
-    
+
     #[error("Invalid signature: {0}")]
     InvalidSignature(String),
-    
+
     #[error("Protocol error: {0}")]
     Protocol(String),
 }

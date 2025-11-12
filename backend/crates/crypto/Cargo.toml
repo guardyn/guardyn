@@ -18,6 +18,7 @@ serde.workspace = true
 openmls.workspace = true
 openmls_rust_crypto.workspace = true
 openmls_traits.workspace = true
+openmls_basic_credential.workspace = true
 
 # Curve25519 for key exchange
 x25519-dalek.workspace = true
