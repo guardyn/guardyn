@@ -9,12 +9,12 @@
 
 #[cfg(test)]
 mod mls_integration_tests {
-    use guardyn_crypto::mls::{MlsGroupManager, MlsKeyPackage};
-    use guardyn_crypto::{CryptoError, Result};
+    use crate::mls::{MlsGroupManager, MlsKeyPackage};
+    use crate::{CryptoError, Result};
 
     /// Helper to create a test keypair
     fn create_test_keypair() -> Result<openmls_basic_credential::SignatureKeyPair> {
-        guardyn_crypto::mls::create_test_keypair()
+        crate::mls::create_test_keypair()
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod mls_integration_tests {
         let plaintext = b"Hello, MLS group!";
         let aad = b"metadata";
 
-        let ciphertext = alice_group.encrypt_message(plaintext, aad);
+        let ciphertext = alice_group.encrypt_message(plaintext);
         assert!(ciphertext.is_ok());
 
         let ciphertext = ciphertext.unwrap();
@@ -167,7 +167,7 @@ mod mls_integration_tests {
 
         // Alice encrypts a message after adding Bob
         let plaintext = b"Welcome, Bob!";
-        let ciphertext = alice_group.encrypt_message(plaintext, b"");
+        let ciphertext = alice_group.encrypt_message(plaintext);
 
         assert!(ciphertext.is_ok());
         let ciphertext = ciphertext.unwrap();
@@ -235,7 +235,7 @@ mod mls_integration_tests {
         ];
 
         for msg in &messages {
-            let ciphertext = alice_group.encrypt_message(msg, b"").unwrap();
+            let ciphertext = alice_group.encrypt_message(msg).unwrap();
             let (decrypted, _) = alice_group.decrypt_message(&ciphertext).unwrap();
             assert_eq!(decrypted, *msg);
         }
@@ -266,7 +266,7 @@ mod mls_integration_tests {
 
         // Try to encrypt empty message
         let plaintext = b"";
-        let ciphertext = alice_group.encrypt_message(plaintext, b"");
+        let ciphertext = alice_group.encrypt_message(plaintext);
 
         assert!(ciphertext.is_ok());
         let ciphertext = ciphertext.unwrap();
@@ -286,7 +286,7 @@ mod mls_integration_tests {
 
         // Encrypt a large message (1 MB)
         let plaintext = vec![b'X'; 1024 * 1024];
-        let ciphertext = alice_group.encrypt_message(&plaintext, b"");
+        let ciphertext = alice_group.encrypt_message(&plaintext);
 
         assert!(ciphertext.is_ok());
         let ciphertext = ciphertext.unwrap();
@@ -301,11 +301,11 @@ mod mls_integration_tests {
 #[cfg(test)]
 mod mls_error_handling_tests {
     use super::*;
-    use guardyn_crypto::mls::MlsGroupManager;
+    use crate::mls::MlsGroupManager;
 
     #[test]
     fn test_decrypt_invalid_ciphertext() {
-        let alice_keypair = guardyn_crypto::mls::create_test_credential("alice:device1").unwrap();
+        let alice_keypair = crate::mls::create_test_keypair().unwrap();
         let mut alice_group =
             MlsGroupManager::create_group("test_group_error_001", b"alice:device1", alice_keypair)
                 .unwrap();
@@ -319,7 +319,7 @@ mod mls_error_handling_tests {
 
     #[test]
     fn test_add_invalid_key_package() {
-        let alice_keypair = guardyn_crypto::mls::create_test_credential("alice:device1").unwrap();
+        let alice_keypair = crate::mls::create_test_keypair().unwrap();
         let mut alice_group =
             MlsGroupManager::create_group("test_group_error_002", b"alice:device1", alice_keypair)
                 .unwrap();
