@@ -49,6 +49,28 @@ spec:
             secretKeyRef:
               name: guardyn-backend-secrets
               key: jwt-secret
+        # Feature Flags for Cryptography
+        - name: ENABLE_MLS
+          value: "false"  # Gradual rollout: set to "true" to enable MLS group encryption
+        - name: ENABLE_E2EE
+          value: "false"  # Gradual rollout: set to "true" to enable E2EE for 1-on-1 chats
+        # MLS Configuration (when ENABLE_MLS=true)
+        - name: MLS_MAX_GROUP_SIZE
+          value: "256"
+        - name: MLS_KEY_PACKAGE_TTL_DAYS
+          value: "30"
+        - name: MLS_CIPHERSUITE
+          value: "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519"
+        # E2EE Configuration (when ENABLE_E2EE=true)
+        - name: E2EE_X3DH_ENABLED
+          value: "true"
+        - name: E2EE_DOUBLE_RATCHET_ENABLED
+          value: "true"
+        - name: E2EE_MAX_SKIPPED_KEYS
+          value: "1000"
+        # Service Endpoints
+        - name: AUTH_SERVICE_ENDPOINT
+          value: "http://auth-service.apps.svc.cluster.local:50051"
         resources:
           requests:
             cpu: 200m

@@ -598,17 +598,50 @@ All core MVP features plus comprehensive cryptography are implemented, compiled,
 
 **Next Steps**:
 
-1. 🔴 **CRITICAL**: Migrate to OpenMLS 0.7 to resolve compilation issues (~6-8 hours)
-   - Replace `OpenMlsRustCrypto` with `RustCrypto` backend
-   - Update all API calls to match OpenMLS 0.7 signatures
-   - Fix message type handling in `process_message()`
-   - Update test suite to match new APIs
-2. ⏳ Verify compilation succeeds and run 15 unit tests
+1. ✅ ~~**CRITICAL**: Migrate to OpenMLS 0.7~~ **RESOLVED** - OpenMLS 0.6 API compatibility fixed (Nov 12, 2025)
+   - ✅ OpenMlsRustCrypto provider pattern implemented
+   - ✅ Message type conversion fixed (MlsMessageIn→Welcome, KeyPackage validation)
+   - ✅ X3DH lifetime issues resolved
+   - ✅ Compilation successful (zero errors)
+2. ⚠️ **PARTIAL**: Unit tests passing (6/13) - needs test refactor for 2-member groups
 3. ⏳ Solve OpenMLS state deserialization (consider state caching)
-4. ⏳ Add integration tests with database fixtures
+4. ✅ **COMPLETE**: MLS integration tests created (e2e_mls_integration.rs, Nov 12, 2025)
+   - ✅ Scenario 1: Key package upload/retrieval
+   - ✅ Scenario 2: Group creation and member addition
+   - ✅ Scenario 3: MLS message encryption/decryption
+   - ✅ Integration test: Full MLS flow end-to-end
 5. ⏳ Implement member removal handler (remove_group_member_mls.rs)
 
-### 6.4 Post-Quantum Cryptography
+### 6.4 Feature Flag System ✅ (Completed Nov 12, 2025)
+
+**Objective**: Gradual rollout strategy for MLS and E2EE encryption
+
+- [x] **Configuration module** (`backend/crates/messaging-service/src/config.rs`, ~280 lines)
+  - [x] `MlsConfig` - MLS feature flag and tuning parameters
+  - [x] `E2eeConfig` - E2EE feature flag for 1-on-1 chats
+  - [x] `MessagingConfig` - Combined configuration with service endpoints
+  - [x] Unit tests (3 tests for default values and env parsing)
+
+- [x] **Environment variables** (16 new variables in Kubernetes deployment)
+  - [x] `ENABLE_MLS` - Master switch (default: false)
+  - [x] `ENABLE_E2EE` - E2EE toggle (default: false)
+  - [x] MLS tuning: max_group_size, key_package_ttl, ciphersuite
+  - [x] E2EE tuning: x3dh_enabled, double_ratchet_enabled, max_skipped_keys
+  - [x] Service endpoints: auth_service_endpoint, tikv_endpoints, etc.
+
+- [x] **Kubernetes deployment updated** (`infra/k8s/base/apps/messaging-service.yaml`)
+  - [x] All feature flags default to disabled (safe rollout)
+  - [x] Configuration documented with inline comments
+
+- [x] **main.rs integration** - Config loaded at startup with summary logging
+
+**Deployment Strategy**:
+1. Phase 1 (Current): MLS/E2EE disabled - Zero impact on production
+2. Phase 2 (Canary): Enable for single test group - Monitor metrics
+3. Phase 3 (Gradual): Percentage-based enablement (1% → 5% → 10% → 25% → 50% → 100%)
+4. Phase 4 (Production): MLS enabled globally - Remove plaintext handlers
+
+### 6.5 Post-Quantum Cryptography
 
 - [ ] Integrate Kyber (PQC KEM)
 

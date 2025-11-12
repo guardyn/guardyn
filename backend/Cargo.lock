@@ -1116,6 +1116,7 @@ name = "guardyn-e2e-tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "hex",
  "prost 0.13.5",
  "serde",
  "serde_json",

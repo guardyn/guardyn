@@ -15,6 +15,7 @@ mod jwt;
 mod crypto;
 mod mls_manager;
 mod auth_client;
+mod config;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
@@ -195,7 +196,7 @@ impl MessagingService for MessagingServiceImpl {
         }
 
         // Check NATS connectivity
-        match self.nats_client.connection_state() {
+        match self.nats.connection_state() {
             async_nats::connection::State::Connected => {
                 components.insert("nats".to_string(), "healthy".to_string());
             }
@@ -229,6 +230,10 @@ async fn main() -> Result<()> {
     observability::init_tracing(&config.service_name, &config.observability.log_level);
 
     tracing::info!("Starting messaging service on {}:{}", config.host, config.port);
+
+    // Load messaging-specific configuration (feature flags, etc.)
+    let messaging_config = config::MessagingConfig::from_env();
+    messaging_config.print_summary();
 
     // Initialize database connections
     let tikv_endpoints = config.database.tikv_pd_endpoints.clone();

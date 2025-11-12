@@ -13,6 +13,7 @@ uuid = { version = "1.11", features = ["v4", "v5", "serde"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+hex = "0.4"
 
 [build-dependencies]
 tonic-build = { workspace = true }
@@ -20,4 +21,9 @@ tonic-build = { workspace = true }
 [[test]]
 name = "e2e_mvp_simplified"
 path = "tests/e2e_mvp_simplified.rs"
+harness = true
+
+[[test]]
+name = "e2e_mls_integration"
+path = "tests/e2e_mls_integration.rs"
 harness = true
