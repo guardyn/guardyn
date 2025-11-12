@@ -3,7 +3,7 @@
 /// Used for initial key exchange in 1-on-1 messaging
 use crate::{CryptoError, Result};
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret, SharedSecret};
+use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use hkdf::Hkdf;
@@ -59,7 +59,7 @@ impl IdentityKeyPair {
 }
 
 /// Signed pre-key (X25519 for DH, signed with Ed25519)
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SignedPreKey {
     pub key_id: u32,
     pub public: X25519PublicKey,
@@ -104,7 +104,7 @@ impl SignedPreKey {
 }
 
 /// One-time pre-key (X25519)
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct OneTimePreKey {
     pub key_id: u32,
     pub public: X25519PublicKey,
@@ -242,10 +242,10 @@ impl X3DHProtocol {
         let dh3 = ephemeral_secret.diffie_hellman(&peer_signed_pre_key);
 
         // Optional DH4 = DH(EK_A, OPK_B)
-        let mut dh_outputs = vec![
-            dh1.as_bytes(),
-            dh2.as_bytes(),
-            dh3.as_bytes(),
+        let mut dh_outputs: Vec<Vec<u8>> = vec![
+            dh1.as_bytes().to_vec(),
+            dh2.as_bytes().to_vec(),
+            dh3.as_bytes().to_vec(),
         ];
 
         if use_one_time_key && !peer_bundle.one_time_pre_keys.is_empty() {
@@ -253,7 +253,7 @@ impl X3DHProtocol {
                 &peer_bundle.one_time_pre_keys[0].public_key
             )?;
             let dh4 = ephemeral_secret.diffie_hellman(&peer_one_time_key);
-            dh_outputs.push(dh4.as_bytes());
+            dh_outputs.push(dh4.as_bytes().to_vec());
         }
 
         // Derive shared secret using HKDF-SHA256
@@ -294,17 +294,17 @@ impl X3DHProtocol {
         // DH3 = DH(SPK_B, EK_A)
         let dh3 = key_material.signed_pre_key.dh(&peer_ephemeral);
 
-        let mut dh_outputs = vec![
-            dh1.as_slice(),
-            dh2_bytes.as_slice(),
-            dh3.as_slice(),
+        let mut dh_outputs: Vec<Vec<u8>> = vec![
+            dh1,
+            dh2_bytes,
+            dh3,
         ];
 
         // Optional DH4 with one-time key
         if let Some(key_id) = one_time_key_id {
             if let Some(otk) = key_material.one_time_pre_keys.iter().find(|k| k.key_id == key_id) {
                 let dh4 = otk.dh(&peer_ephemeral);
-                dh_outputs.push(dh4.as_slice());
+                dh_outputs.push(dh4);
             }
         }
 
@@ -323,7 +323,7 @@ fn x25519_public_from_bytes(bytes: &[u8]) -> Result<X25519PublicKey> {
 }
 
 /// Helper: Derive shared secret from DH outputs using HKDF
-fn derive_shared_secret(dh_outputs: &[&[u8]]) -> Result<Vec<u8>> {
+fn derive_shared_secret(dh_outputs: &[Vec<u8>]) -> Result<Vec<u8>> {
     // Concatenate all DH outputs
     let mut concat = Vec::new();
     for output in dh_outputs {
