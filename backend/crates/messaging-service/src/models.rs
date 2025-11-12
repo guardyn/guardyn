@@ -79,6 +79,7 @@ pub struct GroupMetadata {
 pub struct GroupMember {
     pub group_id: String,
     pub user_id: String,
+    pub device_id: String,  // Added for MLS operations
     pub role: GroupRole,
     pub joined_at: i64,
 }

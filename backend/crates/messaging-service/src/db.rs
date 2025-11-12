@@ -100,6 +100,113 @@ impl DatabaseClient {
     }
 
     // ========================================================================
+    // Low-level TiKV Operations
+    // ========================================================================
+
+    /// Put a key-value pair into TiKV
+    pub async fn put(&self, key: &[u8], value: Vec<u8>) -> Result<()> {
+        self.tikv
+            .put(key.to_vec(), value)
+            .await
+            .context("TiKV put failed")?;
+        Ok(())
+    }
+
+    /// Get a value from TiKV by key
+    pub async fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        self.tikv
+            .get(key.to_vec())
+            .await
+            .context("TiKV get failed")
+    }
+
+    /// Delete a key from TiKV
+    pub async fn delete(&self, key: &[u8]) -> Result<()> {
+        self.tikv
+            .delete(key.to_vec())
+            .await
+            .context("TiKV delete failed")?;
+        Ok(())
+    }
+
+    /// Get a message by ID from ScyllaDB (for E2EE decryption)
+    pub async fn get_message(&self, message_id: &str) -> Result<Option<StoredMessage>> {
+        // Note: This is inefficient as it requires scanning, but needed for E2EE
+        // In production, consider maintaining a message_id -> conversation_id index
+        let query = "SELECT * FROM guardyn.messages WHERE message_id = ? ALLOW FILTERING";
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+
+        let rows = self.scylla
+            .query_unpaged(query, (message_uuid,))
+            .await
+            .context("Failed to query message by ID")?;
+
+        if let Some(row) = rows.rows.and_then(|r| r.into_iter().next()) {
+            let conversation_id: uuid::Uuid = row.columns[0].as_ref()
+                .and_then(|v| v.as_uuid())
+                .context("Missing conversation_id")?;
+            let message_id: uuid::Uuid = row.columns[1].as_ref()
+                .and_then(|v| v.as_uuid())
+                .context("Missing message_id")?;
+            let sender_user_id: String = row.columns[2].as_ref()
+                .and_then(|v| v.as_text())
+                .context("Missing sender_user_id")?
+                .to_string();
+            let sender_device_id: String = row.columns[3].as_ref()
+                .and_then(|v| v.as_text())
+                .context("Missing sender_device_id")?
+                .to_string();
+            let recipient_user_id: String = row.columns[4].as_ref()
+                .and_then(|v| v.as_text())
+                .context("Missing recipient_user_id")?
+                .to_string();
+            let recipient_device_id: String = row.columns[5].as_ref()
+                .and_then(|v| v.as_text())
+                .context("Missing recipient_device_id")?
+                .to_string();
+            let encrypted_content: Vec<u8> = row.columns[6].as_ref()
+                .and_then(|v| v.as_blob())
+                .context("Missing encrypted_content")?
+                .to_vec();
+            let message_type: i32 = row.columns[7].as_ref()
+                .and_then(|v| v.as_int())
+                .context("Missing message_type")?;
+            let server_timestamp: i64 = row.columns[8].as_ref()
+                .and_then(|v| v.as_bigint())
+                .context("Missing server_timestamp")?;
+            let client_timestamp: i64 = row.columns[9].as_ref()
+                .and_then(|v| v.as_bigint())
+                .context("Missing client_timestamp")?;
+            let delivery_status: i32 = row.columns[10].as_ref()
+                .and_then(|v| v.as_int())
+                .context("Missing delivery_status")?;
+            let is_deleted: bool = row.columns[11].as_ref()
+                .and_then(|v| v.as_boolean())
+                .unwrap_or(false);
+
+            let msg = StoredMessage {
+                conversation_id: conversation_id.to_string(),
+                message_id: message_id.to_string(),
+                sender_user_id,
+                sender_device_id,
+                recipient_user_id,
+                recipient_device_id,
+                encrypted_content,
+                message_type,
+                server_timestamp,
+                client_timestamp,
+                delivery_status,
+                is_deleted,
+            };
+            Ok(Some(msg))
+        } else {
+            Ok(None)
+        }
+    }
+
+
+    // ========================================================================
     // Delivery State Operations (TiKV)
     // ========================================================================
 

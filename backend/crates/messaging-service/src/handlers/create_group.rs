@@ -82,6 +82,7 @@ pub async fn create_group(
     let creator_member = GroupMember {
         group_id: group_id.clone(),
         user_id: creator_user_id.clone(),
+        device_id: creator_device_id.clone(),
         role: GroupRole::Owner,
         joined_at: timestamp,
     };
@@ -100,6 +101,7 @@ pub async fn create_group(
         let member = GroupMember {
             group_id: group_id.clone(),
             user_id: member_user_id.clone(),
+            device_id: "primary".to_string(),  // Default device for initial members
             role: GroupRole::Member,
             joined_at: timestamp,
         };

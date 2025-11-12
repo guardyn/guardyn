@@ -8,7 +8,7 @@
 use crate::db::DatabaseClient;
 use crate::models::{DeliveryState, DeliveryStatus, StoredMessage, RatchetSession};
 use crate::nats::{MessageEnvelope, NatsClient};
-use crate::crypto::{SessionManager, CryptoManager};
+use crate::crypto::SessionManager;
 use crate::proto::messaging::{
     send_message_response, SendMessageRequest, SendMessageResponse, SendMessageSuccess,
 };

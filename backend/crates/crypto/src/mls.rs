@@ -537,3 +537,22 @@ mod tests {
         assert!(!state.serialized_state.is_empty());
     }
 }
+
+/// Helper function to create test credential for MLS operations
+///
+/// This is a convenience function for testing and development.
+/// In production, use proper credential management with secure storage.
+///
+/// # Arguments
+/// * `identity` - User identity bytes (typically "user_id:device_id")
+///
+/// # Returns
+/// SignatureKeyPair for MLS operations
+pub fn create_test_credential(_identity: &[u8]) -> Result<SignatureKeyPair> {
+    // Note: identity parameter is kept for API compatibility but not used
+    // OpenMLS 0.6 SignatureKeyPair::new() only takes signature scheme
+    let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
+        .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
+    Ok(signature_keypair)
+}
+

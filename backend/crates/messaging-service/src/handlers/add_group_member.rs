@@ -111,6 +111,7 @@ pub async fn add_group_member(
     let new_member = GroupMember {
         group_id: request.group_id.clone(),
         user_id: request.member_user_id.clone(),
+        device_id: "primary".to_string(),  // Default device for non-MLS group members
         role: GroupRole::Member,
         joined_at: timestamp,
     };
