@@ -9,6 +9,7 @@ use guardyn_crypto::{
 };
 use crate::models::RatchetSession;
 use std::sync::Arc;
+use rand::rngs::OsRng;
 
 // Import generated proto types
 use crate::proto::auth::{
@@ -47,14 +48,16 @@ impl CryptoManager {
         // Parse key bundle into X3DH types
         let x3dh_bundle = self.parse_key_bundle(&key_bundle)?;
 
-        // Initialize X3DH protocol with local identity key
-        // TODO: This needs proper identity key management - for now using placeholder
-        let local_x3dh = X3DHProtocol::generate()
-            .context("Failed to generate local X3DH keys")?;
+        // Generate local ephemeral key for X3DH
+        // TODO: This is a placeholder - in production, use proper identity key management
+        let local_identity_secret = x25519_dalek::StaticSecret::random_from_rng(OsRng);
 
         // Perform X3DH key agreement (Alice side)
-        let (shared_secret, ephemeral_public) = local_x3dh.initiate(&x3dh_bundle)
-            .context("X3DH key agreement failed")?;
+        let (shared_secret, ephemeral_public) = X3DHProtocol::initiate_key_agreement(
+            &local_identity_secret,
+            &x3dh_bundle,
+            false, // Don't use one-time keys for MVP
+        ).context("X3DH key agreement failed")?;
 
         // Initialize Double Ratchet with shared secret
         let remote_signed_prekey_pub = x25519_dalek::PublicKey::from(
@@ -66,7 +69,7 @@ impl CryptoManager {
             .context("Failed to initialize Double Ratchet")?;
 
         // Return ratchet and ephemeral key for initial message
-        Ok((ratchet, ephemeral_public.to_bytes().to_vec()))
+        Ok((ratchet, ephemeral_public.as_bytes().to_vec()))
     }
 
     /// Fetch key bundle from auth-service via gRPC
@@ -123,23 +126,24 @@ impl CryptoManager {
                 .context("Invalid signature length")?
         );
 
-        // Parse one-time pre-keys
-        let one_time_keys: Result<Vec<X25519PublicKey>> = bundle.one_time_pre_keys
+        // Convert one-time pre-keys to the format expected by crypto crate
+        let one_time_pre_keys: Vec<guardyn_crypto::x3dh::OneTimePreKeyPublic> = bundle.one_time_pre_keys
             .iter()
-            .map(|key_bytes| {
-                let key_array: [u8; 32] = key_bytes.as_slice().try_into()
-                    .context("Invalid one-time key length")?;
-                Ok(X25519PublicKey::from(key_array))
+            .enumerate()
+            .map(|(idx, key_bytes)| {
+                guardyn_crypto::x3dh::OneTimePreKeyPublic {
+                    key_id: idx as u32,
+                    public_key: key_bytes.clone(),
+                }
             })
             .collect();
 
-        let one_time_pre_key = one_time_keys?.first().cloned();
-
         Ok(X3DHKeyBundle {
-            identity_key,
-            signed_pre_key,
-            signed_pre_key_signature: signature,
-            one_time_pre_key,
+            identity_key: identity_key.to_bytes().to_vec(),
+            signed_pre_key: signed_pre_key.as_bytes().to_vec(),
+            signed_pre_key_id: 1, // Default ID for MVP
+            signed_pre_key_signature: signature.to_bytes().to_vec(),
+            one_time_pre_keys,
         })
     }
 

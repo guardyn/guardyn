@@ -153,8 +153,9 @@ impl NatsClient {
 
     /// Low-level publish method (used by MLS handlers)
     pub async fn publish(&self, subject: &str, payload: &[u8]) -> Result<()> {
+        let payload_bytes = bytes::Bytes::copy_from_slice(payload);
         self.context
-            .publish(subject.to_string(), payload.into())
+            .publish(subject.to_string(), payload_bytes)
             .await
             .context("Failed to publish to NATS")?
             .await

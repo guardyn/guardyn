@@ -138,7 +138,7 @@ pub async fn send_group_message_mls(
     // Note: This requires the sender's credential bundle
     // For now, we'll use a test credential (production should fetch from secure storage)
     let sender_identity = format!("{}:{}", sender_user_id, sender_device_id);
-    let credential_bundle = match guardyn_crypto::mls::create_test_credential(&sender_identity) {
+    let credential_bundle = match guardyn_crypto::mls::create_test_credential(sender_identity.as_bytes()) {
         Ok(cred) => cred,
         Err(e) => {
             error!("Failed to create credential: {}", e);
@@ -184,7 +184,7 @@ pub async fn send_group_message_mls(
         sender_user_id: sender_user_id.clone(),
         sender_device_id: sender_device_id.clone(),
         encrypted_content: request.encrypted_content.clone(), // TODO: Replace with MLS-encrypted content
-        mls_epoch: group_state.epoch,
+        mls_epoch: group_state.epoch as i64,
         sent_at: server_timestamp_millis,
         metadata,
     };
@@ -241,7 +241,7 @@ pub async fn send_group_message_mls(
 
         let payload = serde_json::to_vec(&message_json).unwrap();
 
-        if let Err(e) = nats.publish(&subject, payload).await {
+        if let Err(e) = nats.publish(&subject, &payload).await {
             error!("Failed to publish to NATS for member {}: {}", member.user_id, e);
             // Continue with other members even if one fails
         } else {
@@ -254,7 +254,10 @@ pub async fn send_group_message_mls(
         result: Some(send_group_message_response::Result::Success(
             SendGroupMessageSuccess {
                 message_id,
-                server_timestamp: server_timestamp_millis,
+                server_timestamp: Some(crate::proto::common::Timestamp {
+                    seconds: server_timestamp_millis / 1000,
+                    nanos: ((server_timestamp_millis % 1000) * 1_000_000) as i32,
+                }),
             },
         )),
     }))

@@ -62,7 +62,7 @@ impl MlsManager {
         // Note: In a real implementation, we need to pass the actual credential bundle
         // For now, we'll generate it on the fly (should be fetched from user's stored credentials)
         let credential_bundle = guardyn_crypto::mls::create_test_credential(
-            &String::from_utf8_lossy(creator_identity)
+            creator_identity
         )?;
 
         let group_manager = MlsGroupManager::create_group(

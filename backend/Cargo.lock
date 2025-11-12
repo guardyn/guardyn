@@ -1142,6 +1142,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-nats",
+ "bytes",
  "chrono",
  "config",
  "ed25519-dalek",
@@ -1150,6 +1151,7 @@ dependencies = [
  "guardyn-crypto",
  "jsonwebtoken",
  "prost 0.13.5",
+ "rand 0.8.5",
  "scylla",
  "serde",
  "serde_json",
