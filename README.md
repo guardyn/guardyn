@@ -43,6 +43,8 @@ WhatsApp's "end-to-end encryption" doesn't protect your metadata. Telegram's ser
 
 **Guardyn is the cryptographically-verified, audit-ready, quantum-resistant secure communication platform that treats privacy as a human right, not a marketing slogan.**
 
+Designed for high-security communications with military-grade cryptography and audit-ready architecture.
+
 Built by security engineers who got tired of waiting for Big Tech to fix itself.
 
 ---
