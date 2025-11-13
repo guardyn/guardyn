@@ -1,14 +1,14 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/features/auth/domain/entities/user.dart';
+import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
-import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart';
-import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
-import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
-import 'package:guardyn_client/features/auth/domain/entities/user.dart';
-import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
+import 'package:mocktail/mocktail.dart';
 
 // Mock classes
 class MockRegisterUser extends Mock implements RegisterUser {}
