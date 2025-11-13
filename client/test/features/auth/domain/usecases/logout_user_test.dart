@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
 import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
