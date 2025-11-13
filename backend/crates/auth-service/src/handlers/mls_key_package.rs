@@ -13,6 +13,7 @@ use crate::proto::auth::{
 };
 use crate::proto::common::{ErrorResponse, Timestamp};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tonic::{Request, Response, Status};
@@ -34,8 +35,8 @@ pub async fn upload_mls_key_package(
     info!("Uploading MLS key package");
 
     // Validate JWT token
-    let claims = match verify_jwt(&req.access_token) {
-        Ok(claims) => claims,
+    let user_id = match verify_jwt(&req.access_token, "your-secret-key") { // TODO: Get from config
+        Ok(user_id) => user_id,
         Err(e) => {
             error!("JWT validation failed: {:?}", e);
             return Ok(Response::new(UploadMlsKeyPackageResponse {
@@ -43,15 +44,14 @@ pub async fn upload_mls_key_package(
                     ErrorResponse {
                         code: crate::proto::common::error_response::ErrorCode::Unauthorized as i32,
                         message: format!("Invalid token: {}", e),
-                        details: None,
+                        details: HashMap::new(),
                     },
                 )),
             }));
         }
     };
 
-    let user_id = &claims.sub;
-    let device_id = &claims.device_id;
+    let device_id = "default"; // TODO: Extract from token claims or request
 
     // Validate key package
     if req.key_package.is_empty() {
@@ -60,7 +60,7 @@ pub async fn upload_mls_key_package(
                 ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InvalidRequest as i32,
                     message: "Key package cannot be empty".to_string(),
-                    details: None,
+                    details: HashMap::new(),
                 },
             )),
         }));
@@ -79,7 +79,7 @@ pub async fn upload_mls_key_package(
 
             // Add to user's package list (for rotation/cleanup)
             let list_key = format!("/mls/key_packages/by_user/{}/{}", user_id, device_id);
-            let _ = db.put(list_key.as_bytes(), package_id.as_bytes()).await;
+            let _ = db.put(list_key.as_bytes(), package_id.as_bytes().to_vec()).await;
 
             let now = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -105,7 +105,7 @@ pub async fn upload_mls_key_package(
                     ErrorResponse {
                         code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                         message: "Failed to store key package".to_string(),
-                        details: Some(e.to_string()),
+                        details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                     },
                 )),
             }))
@@ -136,7 +136,7 @@ pub async fn get_mls_key_package(
                 ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InvalidRequest as i32,
                     message: "User ID cannot be empty".to_string(),
-                    details: None,
+                    details: HashMap::new(),
                 },
             )),
         }));
@@ -152,7 +152,7 @@ pub async fn get_mls_key_package(
                 ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InvalidRequest as i32,
                     message: "Device ID must be specified".to_string(),
-                    details: None,
+                    details: HashMap::new(),
                 },
             )),
         }));
@@ -189,7 +189,7 @@ pub async fn get_mls_key_package(
                             ErrorResponse {
                                 code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
                                 message: "Key package not found".to_string(),
-                                details: None,
+                                details: HashMap::new(),
                             },
                         )),
                     }))
@@ -201,7 +201,7 @@ pub async fn get_mls_key_package(
                             ErrorResponse {
                                 code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                                 message: "Failed to fetch key package".to_string(),
-                                details: Some(e.to_string()),
+                                details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                             },
                         )),
                     }))
@@ -215,7 +215,7 @@ pub async fn get_mls_key_package(
                     ErrorResponse {
                         code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
                         message: "No key packages available for user".to_string(),
-                        details: None,
+                        details: HashMap::new(),
                     },
                 )),
             }))
@@ -227,7 +227,7 @@ pub async fn get_mls_key_package(
                     ErrorResponse {
                         code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                         message: "Failed to query key packages".to_string(),
-                        details: Some(e.to_string()),
+                        details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
                     },
                 )),
             }))

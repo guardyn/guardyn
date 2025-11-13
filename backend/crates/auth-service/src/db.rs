@@ -273,4 +273,14 @@ impl DatabaseClient {
             .context("TiKV health check failed")?;
         Ok(())
     }
+
+    /// Generic put method for raw key-value storage
+    pub async fn put(&self, key: &[u8], value: Vec<u8>) -> Result<()> {
+        self.client.put(key.to_vec(), value).await.map_err(Into::into)
+    }
+
+    /// Generic get method for raw key-value retrieval
+    pub async fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        self.client.get(key.to_vec()).await.map_err(Into::into)
+    }
 }

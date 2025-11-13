@@ -117,6 +117,14 @@ pub fn get_token_type(claims: &Claims) -> TokenType {
     }
 }
 
+/// Verify a JWT token and return user ID
+pub fn verify_jwt(token: &str, secret: &str) -> Result<String, tonic::Status> {
+    match validate_token(token, secret) {
+        Ok(claims) => Ok(claims.sub),
+        Err(_) => Err(tonic::Status::unauthenticated("Invalid token")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
