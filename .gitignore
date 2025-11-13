@@ -4,3 +4,4 @@ backend/target/
 **/target/
 **/*.rs.bk
 *.pdb
+logs.log
