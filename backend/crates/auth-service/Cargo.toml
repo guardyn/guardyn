@@ -38,5 +38,8 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 # Hex encoding for package IDs
 hex = "0.4"
 
+# SHA2 for hashing
+sha2 = "0.10"
+
 [build-dependencies]
 tonic-build.workspace = true
