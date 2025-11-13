@@ -72,8 +72,8 @@ flutter run -d chrome  # Run in Chrome browser
 1. Tap "Don't have an account? Register"
 2. Fill in the form:
    - Username: `testuser1`
-   - Password: `password123`
-   - Confirm Password: `password123`
+   - Password: `password12345`
+   - Confirm Password: `password12345`
    - Device Name: `Flutter Test Device`
 3. Tap "Register" button
 
@@ -99,7 +99,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 **Test 2a: Short Username**
 1. On RegistrationPage, enter:
    - Username: `ab` (only 2 characters)
-   - Password: `password123`
+   - Password: `password12345`
    - Device Name: `Test`
 2. Try to tap "Register"
 
@@ -110,19 +110,19 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 **Test 2b: Short Password**
 1. Enter:
    - Username: `testuser2`
-   - Password: `pass` (only 4 characters)
+   - Password: `short` (only 5 characters)
    - Device Name: `Test`
 2. Try to tap "Register"
 
-**Expected**: Error message appears: "Password must be at least 8 characters"
+**Expected**: Error message appears: "Password must be at least 12 characters"
 
 ---
 
 **Test 2c: Password Mismatch**
 1. Enter:
    - Username: `testuser2`
-   - Password: `password123`
-   - Confirm Password: `password456` (different)
+   - Password: `password12345`
+   - Confirm Password: `password67890` (different)
    - Device Name: `Test`
 2. Try to tap "Register"
 
@@ -133,8 +133,8 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 **Test 2d: Empty Device Name**
 1. Enter:
    - Username: `testuser2`
-   - Password: `password123`
-   - Confirm Password: `password123`
+   - Password: `password12345`
+   - Confirm Password: `password12345`
    - Device Name: `` (empty)
 2. Try to tap "Register"
 
@@ -148,8 +148,8 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 1. Try to register with username `testuser1` again (already exists)
 2. Fill in:
    - Username: `testuser1`
-   - Password: `password123`
-   - Confirm Password: `password123`
+   - Password: `password12345`
+   - Confirm Password: `password12345`
    - Device Name: `Another Device`
 3. Tap "Register"
 
@@ -171,7 +171,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 1. If on HomePage, tap "Logout" button → navigates to LoginPage
 2. Enter credentials:
    - Username: `testuser1`
-   - Password: `password123`
+   - Password: `password12345`
 3. Tap "Login" button
 
 **Expected Results:**
@@ -199,7 +199,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 **Alternative: Non-existent Username**
 1. Enter:
    - Username: `nonexistentuser`
-   - Password: `password123`
+   - Password: `password12345`
 2. Tap "Login"
 
 **Expected**: Same error behavior as above.

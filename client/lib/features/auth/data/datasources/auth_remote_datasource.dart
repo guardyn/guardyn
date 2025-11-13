@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
@@ -131,6 +132,8 @@ class AuthRemoteDatasource {
   /// TODO: Replace with real X3DH key generation
   common.KeyBundle _generatePlaceholderKeyBundle() {
     final random = Random.secure();
+    final now = DateTime.now();
+    
     return common.KeyBundle()
       ..identityKey = Uint8List.fromList(
         List.generate(32, (_) => random.nextInt(256)),
@@ -144,6 +147,9 @@ class AuthRemoteDatasource {
       ..oneTimePreKeys.addAll([
         Uint8List.fromList(List.generate(32, (_) => random.nextInt(256))),
         Uint8List.fromList(List.generate(32, (_) => random.nextInt(256))),
-      ]);
+      ])
+      ..createdAt = (common.Timestamp()
+        ..seconds = Int64(now.millisecondsSinceEpoch ~/ 1000)
+        ..nanos = (now.millisecondsSinceEpoch % 1000) * 1000000);
   }
 }
