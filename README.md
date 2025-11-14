@@ -2,277 +2,285 @@
   <img src="landing/media/logo.svg" alt="Guardyn Logo" width="200"/>
 </p>
 
-<h1 align="center">Guardyn: The Privacy Rebellion Starts Now</h1>
+<h1 align="center">Guardyn: Privacy-Focused Secure Communication</h1>
 
 <p align="center">
-  <strong>"Your conversations are not a product. Your metadata is not for sale. Your privacy is not negotiable."</strong>
+  <strong>Open source messaging platform built on proven cryptography (Signal Protocol + OpenMLS)</strong>
 </p>
 
 <p align="center">
-  <a href="#-the-revolution-you-demanded"><strong>Join the Movement</strong></a> •
-  <a href="#-why-guardyn-destroys-the-competition"><strong>See the Proof</strong></a> •
-  <a href="#-get-started"><strong>Deploy Now</strong></a> •
-  <a href="docs/mvp_discovery.md"><strong>Documentation</strong></a>
+  <a href="#-current-status"><strong>Project Status</strong></a> •
+  <a href="#-technical-approach"><strong>Architecture</strong></a> •
+  <a href="#-getting-started"><strong>Get Started</strong></a> •
+  <a href="docs/IMPLEMENTATION_PLAN.md"><strong>Documentation</strong></a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"/>
+  <img src="https://img.shields.io/badge/Status-MVP--Backend--Complete-green.svg" alt="Status"/>
   <img src="https://img.shields.io/badge/Encryption-E2EE-green.svg" alt="E2EE"/>
-  <img src="https://img.shields.io/badge/Post--Quantum-Ready-purple.svg" alt="PQ-Ready"/>
-  <img src="https://img.shields.io/badge/Audited-Cure53-orange.svg" alt="Security Audit"/>
+  <img src="https://img.shields.io/badge/Post--Quantum-In--Progress-purple.svg" alt="PQ-Ready"/>
   <img src="https://img.shields.io/badge/Build-Reproducible-yellow.svg" alt="Reproducible"/>
 </p>
 
 ---
 
-## 🔥 **The Surveillance Age Ends Here**
+## � Current Status
 
-**Every second, your "private" messages are:**
+**Phase:** MVP Backend Complete, Mobile Client in Development (November 2025)
 
-- 🕵️ Analyzed by AI for advertising profiles
-- 📊 Sold to data brokers for billions
-- 🔓 Accessible to governments without warrants
-- 💰 Monetized by corporations you've never heard of
-- 🎯 Used to manipulate your elections, your shopping, your thoughts
+**What's Working:**
 
-### **They told you it was encrypted. They lied.**
+- ✅ **Backend Services**: Auth and Messaging services operational (Kubernetes deployment)
+- ✅ **Cryptography**: X3DH, Double Ratchet, OpenMLS fully implemented and tested
+- ✅ **Infrastructure**: Production-ready stack (TiKV, ScyllaDB, NATS, Prometheus, Grafana)
+- ✅ **Testing**: 8/8 E2E integration tests passing, performance baseline established
+- ✅ **Reproducible Builds**: Nix flakes for deterministic builds
 
-WhatsApp's "end-to-end encryption" doesn't protect your metadata. Telegram's servers can read your group chats. Signal is non-profit but can't scale to enterprises. The game was rigged from the start.
+**In Active Development:**
 
-### **Until now.**
+- 🚧 **Mobile Client**: Authentication complete, messaging UI in progress
+- 🚧 **Security Audits**: Planning Cure53 audit for Q2 2026
+- 🚧 **Additional Services**: Presence and Media services
 
-**Guardyn is the cryptographically-verified, audit-ready, quantum-resistant secure communication platform that treats privacy as a human right, not a marketing slogan.**
+**Planned Features:**
 
-Designed for high-security communications with military-grade cryptography and audit-ready architecture.
+- 📋 Voice/video calls (WebRTC + SFrame E2EE)
+- 📋 Desktop applications (Windows, macOS, Linux)
+- 📋 Post-quantum key exchange (Kyber hybrid - code ready, not enforced)
+- 📋 Web client
 
-Built by security engineers who got tired of waiting for Big Tech to fix itself.
+**Public Beta Target:** Q2 2026
 
----
-
-## � **The Revolution You Demanded**
-
-### **STOP Accepting Corporate Surveillance**
-
-<table>
-<tr>
-<td width="50%">
-
-#### ❌ **What You're Fed Up With:**
-
-- Servers that can read your "encrypted" groups
-- Metadata sold to the highest bidder
-- Proprietary crypto no auditor can verify
-- "Trust us" promises from billion-dollar corps
-- Your encryption breaking when quantum computers arrive
-- Censorship at government request
-- Ads targeting you based on private conversations
-
-</td>
-<td width="50%">
-
-#### ✅ **What You Deserve:**
-
-- **Military-grade E2EE** (Signal + OpenMLS)
-- **Zero metadata collection** (none, period)
-- **Post-quantum cryptography** (Kyber hybrid)
-- **Reproducible builds** (verify every byte)
-- **Formal mathematical proofs** (TLA+ specifications)
-- **Full code transparency** (Apache-2.0 license)
-- **Independent security audits** (Cure53, Symbolic)
-- **Enterprise compliance** (GDPR, SOC 2, ISO 27001)
-
-</td>
-</tr>
-</table>
+[Full technical roadmap →](docs/IMPLEMENTATION_PLAN.md)
 
 ---
 
-## 🏆 **Why Guardyn DESTROYS the Competition**
+## 🎯 Project Vision
 
-### **The Brutal Truth About "Secure Messaging" in 2025**
+Guardyn aims to provide enterprise-grade secure communication with the same privacy guarantees as Signal, while adding:
 
-#### **vs. Telegram: The Illusion of Privacy**
+- **Self-hosting capability** for organizations requiring data sovereignty
+- **Modern group encryption** using OpenMLS (IETF standard RFC 9420)
+- **Full transparency** with 100% Apache-2.0 licensed code and reproducible builds
+- **Enterprise features** (planned: LDAP, SAML, compliance tools)
 
-| Feature                  | Telegram                                      | **Guardyn**          | **Winner**     |
-| ------------------------ | --------------------------------------------- | -------------------- | -------------- |
-| E2EE by Default          | ❌ Only "Secret Chats"                        | ✅ **Always**        | 🟢 **Guardyn** |
-| Group E2EE               | ❌ **Server can read everything**             | ✅ OpenMLS           | 🟢 **Guardyn** |
-| Voice/Video E2EE         | ❌ Plaintext                                  | ✅ SFrame encryption | 🟢 **Guardyn** |
-| Server Access to Content | ✅ **Full access**                            | ❌ Impossible        | 🟢 **Guardyn** |
-| Independent Audit        | ⚠️ MTProto (proprietary, rejected by experts) | ✅ Cure53 + Symbolic | 🟢 **Guardyn** |
-| Metadata Collection      | ✅ **Extensive**                              | ❌ Minimal           | 🟢 **Guardyn** |
-| Open Source Server       | ❌ **Closed**                                 | ✅ Apache-2.0        | 🟢 **Guardyn** |
-
-**Verdict:** Telegram is a social network with optional encryption. Guardyn is a fortress.
+**We build on Signal's foundation**, not against it. Signal pioneered the Double Ratchet protocol, and we use the same battle-tested cryptography for 1-on-1 messaging. For groups, we implement OpenMLS—the newer IETF standard designed specifically for scalable group encryption.
 
 ---
 
-#### **vs. WhatsApp: Facebook's Data Goldmine**
+## 🔐 Why Guardyn?
 
-| Feature          | WhatsApp                        | **Guardyn**                    | **Winner**                |
-| ---------------- | ------------------------------- | ------------------------------ | ------------------------- |
-| E2EE Protocol    | ✅ Signal Protocol              | ✅ Signal + **MLS for groups** | 🟡 **Guardyn (enhanced)** |
-| Metadata Privacy | ❌ **Collected by Meta**        | ✅ Minimal                     | 🟢 **Guardyn**            |
-| Cloud Backups    | ❌ **Unencrypted**              | ✅ Local only, encrypted       | 🟢 **Guardyn**            |
-| Open Source      | ❌ Closed                       | ✅ Full stack                  | 🟢 **Guardyn**            |
-| Ad Targeting     | ✅ **Your data = their profit** | ❌ Never                       | 🟢 **Guardyn**            |
-| Compliance       | ⚠️ Meta controls                | ✅ Self-hosted option          | 🟢 **Guardyn**            |
+### The Problem We're Solving
 
-**Verdict:** WhatsApp's encryption protects you from hackers, not from Facebook.
+Modern messaging platforms face a fundamental tension:
 
----
+- **Privacy-first apps** (like Signal) struggle with enterprise adoption and sustainable funding
+- **Enterprise platforms** (like Slack, Teams) lack end-to-end encryption and are closed source
+- **Popular messengers** (like Telegram, WhatsApp) make privacy compromises for scale
 
-#### **vs. Signal: We Stand on Giants' Shoulders**
+### Our Approach
 
-| Feature             | Signal                              | **Guardyn**                               | **Winner**     |
-| ------------------- | ----------------------------------- | ----------------------------------------- | -------------- |
-| 1-on-1 E2EE         | ✅ Double Ratchet                   | ✅ Double Ratchet (libsignal)             | 🟡 **Tie**     |
-| Group E2EE          | ⚠️ Sender Keys (2020 tech)          | ✅ **OpenMLS (2025 standard)**            | 🟢 **Guardyn** |
-| Post-Quantum        | ❌ In development                   | ✅ **Kyber + ECDH hybrid (ready now)**    | 🟢 **Guardyn** |
-| Media Encryption    | ⚠️ Basic                            | ✅ **SFrame + Insertable Streams**        | 🟢 **Guardyn** |
-| Server Open Source  | ⚠️ Partial (some components closed) | ✅ **100% open (Apache-2.0)**             | 🟢 **Guardyn** |
-| Reproducible Builds | ⚠️ Limited support                  | ✅ **Nix flakes (full determinism)**      | 🟢 **Guardyn** |
-| Formal Verification | ❌ None                             | ✅ **TLA+ + ProVerif proofs**             | 🟢 **Guardyn** |
-| Enterprise Features | ❌ Consumer-only                    | ✅ **LDAP, SAML, audit logs, compliance** | 🟢 **Guardyn** |
-| Live Streaming E2EE | ❌                                  | ✅ **First in the world**                 | 🟢 **Guardyn** |
-| Funding Model       | 💰 Donations (uncertain)            | 💰 **Sustainable (Open Core + Cloud)**    | 🟢 **Guardyn** |
+**For individuals and privacy advocates:**
 
-**Verdict:** Signal is our hero. Guardyn is Signal 2.0 for the enterprise era and quantum age.
+- Military-grade encryption (Signal Protocol + OpenMLS)
+- Zero-knowledge architecture (servers can't decrypt your messages)
+- Open source and auditable (Apache-2.0 license)
+- Self-hosting option (full control of your data)
 
----
+**For organizations:**
 
-#### **vs. Viber: Not Even in the Same League**
+- Compliance-ready architecture (GDPR, HIPAA, SOC 2 target)
+- Self-hosted deployment option (data sovereignty)
+- Enterprise features (planned: SSO, admin tools, audit logs)
+- Kubernetes-native scalability
 
-| Feature          | Viber              | **Guardyn**             |
-| ---------------- | ------------------ | ----------------------- |
-| E2EE             | ⚠️ Optional        | ✅ **Mandatory**        |
-| Crypto Standards | ❌ Proprietary     | ✅ Industry-standard    |
-| Security Audit   | ❌ None            | ✅ Multiple independent |
-| Business Model   | 🎯 Ads + Your Data | 🛡️ **Privacy-First**    |
+**For developers:**
 
-**Verdict:** Viber shouldn't be in this conversation.
+- 100% open source (no proprietary server components)
+- Reproducible builds (verify binaries match source)
+- Modern tech stack (Rust, Kubernetes, gRPC)
+- Formal verification (TLA+ specs, cryptographic proofs planned)
 
 ---
 
-### **vs. Telegram: Security Theater vs. Real Security**
+## 🔍 Comparison: How Guardyn Differs
 
-| Feature             | Telegram                           | **Guardyn**                              |
-| ------------------- | ---------------------------------- | ---------------------------------------- |
-| E2EE by Default     | ❌ (only "Secret Chats")           | ✅ **Always E2EE, always**               |
-| Group E2EE          | ❌ **Server can read everything**  | ✅ **OpenMLS cryptographic guarantees**  |
-| Voice/Video E2EE    | ❌ Plaintext                       | ✅ **SFrame encryption**                 |
-| Server-Side Storage | ✅ Cloud sync (readable)           | ❌ **Client-side only, zero-knowledge**  |
-| Crypto Audit        | ⚠️ MTProto (proprietary, unproven) | ✅ **Cure53 + Symbolic Software audits** |
-| Open Source Backend | ❌ Closed                          | ✅ **Apache-2.0 licensed**               |
+### Design Philosophy
 
-**Telegram = convenience with surveillance risk. Guardyn = convenience with cryptographic proof.**
+**Signal Foundation pioneered modern E2EE messaging**. The Double Ratchet protocol they created is now the industry standard, protecting billions of messages daily. We build on their work, not against it.
 
----
+**Guardyn's additions:**
 
-### **vs. WhatsApp: Your Metadata is the Product**
+- OpenMLS for scalable group encryption (IETF RFC 9420)
+- Self-hosting option for data sovereignty
+- Enterprise features (LDAP, SAML, audit logs - planned)
+- 100% open source server components (Apache-2.0)
 
-| Feature             | WhatsApp                              | **Guardyn**                             |
-| ------------------- | ------------------------------------- | --------------------------------------- |
-| E2EE Protocol       | ✅ Signal Protocol                    | ✅ **Signal + MLS for groups**          |
-| Metadata Collection | ❌ **Facebook advertising empire**    | ✅ **Minimal metadata, no advertising** |
-| Backup Encryption   | ❌ Unencrypted in iCloud/Google Drive | ✅ **Local only, AES-256-GCM**          |
-| Open Source         | ❌ Closed (trust Meta?)               | ✅ **Fully auditable**                  |
-| Formal Verification | ❌                                    | ✅ **TLA+, ProVerif, Verifpal proofs**  |
-| Who Owns Your Data? | Meta Platforms Inc.                   | **You**                                 |
+### Technical Comparison
 
-**WhatsApp encrypts content but sells your behavior. Guardyn encrypts content AND protects metadata.**
+#### vs. Signal (Our Foundation)
 
----
+| Feature             | Signal                              | Guardyn                                  | Notes                          |
+| ------------------- | ----------------------------------- | ---------------------------------------- | ------------------------------ |
+| 1-on-1 E2EE         | ✅ Double Ratchet                   | ✅ Double Ratchet (same protocol)        | Both use battle-tested Signal  |
+| Group E2EE          | ✅ Sender Keys (proven, 2020)       | ✅ OpenMLS (IETF standard, 2024)         | Different approaches, both E2E |
+| Post-Quantum        | 🚧 PQXDH in development             | 🚧 Kyber hybrid (code ready, not active) | Both working on PQ             |
+| Server Open Source  | ⚠️ Most components open             | ✅ 100% open (Apache-2.0)                | Minor difference               |
+| Reproducible Builds | ⚠️ Android only                     | ✅ Nix flakes (all platforms)            | Infrastructure choice          |
+| Self-Hosting        | ❌ Not supported                    | ✅ Full Kubernetes deployment            | Core difference                |
+| Enterprise Features | ❌ Consumer-focused                 | 🚧 LDAP, SAML (planned)                  | Different target market        |
+| Track Record        | ✅ **10+ years, billions of users** | ⚠️ **New project (2025)**                | Signal has proven reliability  |
+| Security Audits     | ✅ **Multiple completed**           | � **Planning Cure53 (Q2 2026)**          | Signal is audit-proven         |
 
-### **vs. Viber: Marketing Hype vs. Cryptographic Reality**
-
-| Feature         | Viber                           | **Guardyn**                                    |
-| --------------- | ------------------------------- | ---------------------------------------------- |
-| E2EE            | ⚠️ Optional, off by default     | ✅ **Mandatory, always on**                    |
-| Crypto Standard | ⚠️ Proprietary (no peer review) | ✅ **Industry standard (IETF MLS)**            |
-| Security Audit  | ❌ None public                  | ✅ **Independent auditors (Cure53, Symbolic)** |
-| Business Model  | Ads + stickers                  | ✅ **Privacy-first SaaS (no ads)**             |
-| Open Source     | ❌ Closed                       | ✅ **Apache-2.0**                              |
-
-**Viber = messaging app with encryption checkbox. Guardyn = cryptographic platform with messaging features.**
+**Verdict:** Signal has 10 years of battle-testing and billions of users. Guardyn is a new project (2025) adding self-hosting and enterprise features to proven cryptography. If you need maximum trust, use Signal. If you need self-hosting, consider Guardyn once audited.
 
 ---
 
-## 💎 **What You Actually Get With Guardyn**
+#### vs. WhatsApp (Signal Protocol + Meta)
 
-### **1. Unbreakable Cryptography**
+| Feature          | WhatsApp                        | Guardyn                                    | Notes                                 |
+| ---------------- | ------------------------------- | ------------------------------------------ | ------------------------------------- |
+| E2EE Protocol    | ✅ Signal Protocol              | ✅ Signal + OpenMLS for groups             | Both use Signal for 1-on-1            |
+| Metadata Privacy | ❌ Collected by Meta            | ✅ Minimal collection                      | Major difference                      |
+| Cloud Backups    | ⚠️ Unencrypted on iCloud/Google | ✅ Local only, encrypted                   | WhatsApp has unencrypted backup issue |
+| Open Source      | ❌ Closed source                | ✅ Full stack open (Apache-2.0)            | Auditability difference               |
+| Business Model   | Meta advertising empire         | Open source (cloud SaaS planned)           | Fundamental difference                |
+| Self-Hosting     | ❌ Not possible                 | ✅ Kubernetes deployment                   | Data sovereignty option               |
+| User Base        | ✅ **2+ billion users**         | ⚠️ **In development (beta planned Q2 26)** | WhatsApp is proven at scale           |
 
-```
-🔐 X3DH key exchange (Perfect Forward Secrecy)
-🔐 Double Ratchet (Signal Protocol - battle-tested)
-🔐 OpenMLS (IETF standard for group encryption)
-🔐 Kyber + ECDH hybrid (quantum-resistant future-proofing)
-🔐 SFrame media encryption (E2EE video/audio streams)
-🔐 Secure Enclave/StrongBox/TPM integration (hardware-backed keys)
-```
-
-### **2. Audit-Ready Transparency**
-
-```
-📜 Reproducible builds (Nix flakes - verify binaries match source)
-📜 SBOM generation (Software Bill of Materials for every release)
-📜 Artifact signing (Sigstore/Cosign - tamper detection)
-📜 TLA+ specifications (formal proofs of message ordering)
-📜 ProVerif/Tamarin models (cryptographic protocol correctness)
-📜 Independent audits (Cure53, Symbolic Software, Fallible)
-📜 Responsible disclosure program (bug bounty planned post-launch)
-```
-
-### **3. Enterprise-Grade Infrastructure**
-
-```
-🏗️ Rust backend (memory-safe, no buffer overflows)
-🏗️ TiKV (distributed KV store, ACID transactions, CNCF graduated)
-🏗️ ScyllaDB (Cassandra-compatible, million ops/sec)
-🏗️ NATS JetStream (distributed messaging, at-least-once delivery)
-🏗️ Kubernetes-native (horizontal scaling, triple redundancy)
-🏗️ OpenTelemetry (distributed tracing, observability)
-🏗️ Prometheus + Grafana + Loki (real-time monitoring)
-```
-
-### **4. Performance That Doesn't Sacrifice Security**
-
-```
-⚡ Message delivery: < 500 ms
-⚡ Call setup: < 2 seconds
-⚡ Voice latency: < 150 ms end-to-end
-⚡ Video quality: 1080p @ 30fps
-⚡ Media upload: 10 MB in < 3 seconds
-⚡ Throughput: 1000+ messages/sec/server
-⚡ Presence updates: < 1 second global propagation
-```
-
-### **5. Features You'll Actually Use**
-
-```
-💬 1-on-1 messaging (Signal Protocol E2EE)
-👥 Group chat (OpenMLS, up to 1000 members)
-📞 Voice calls (Opus codec, SRTP encryption)
-📹 Video calls (VP9/AV1, SFrame E2EE)
-📺 Live broadcasting (< 2s latency, E2EE streams)
-📁 File sharing (10 GB limit, AES-256-GCM)
-🔔 Push notifications (metadata-minimized)
-👻 Disappearing messages (configurable timers)
-✅ Read receipts (optional, privacy-respecting)
-🎨 Custom themes (light/dark/auto)
-```
+**Verdict:** WhatsApp uses Signal's E2EE but collects metadata for Meta's advertising. Guardyn focuses on both content and metadata privacy, with self-hosting option. WhatsApp has massive scale advantage.
 
 ---
 
-## 🚀 **Getting Started in 60 Seconds**
+#### vs. Telegram (Convenience vs. Security)
 
-### **Development Status**
+| Feature            | Telegram                                   | Guardyn                                  | Notes                                 |
+| ------------------ | ------------------------------------------ | ---------------------------------------- | ------------------------------------- |
+| E2EE by Default    | ❌ Only "Secret Chats"                     | ✅ Always E2EE                           | **Critical security difference**      |
+| Group E2EE         | ❌ Server can read messages                | ✅ OpenMLS (cryptographically protected) | **Telegram groups are not E2EE**      |
+| Voice/Video E2EE   | ❌ Not encrypted                           | 🚧 SFrame (planned)                      | Telegram prioritizes convenience      |
+| Server Open Source | ❌ Closed                                  | ✅ Apache-2.0                            | Transparency difference               |
+| Crypto Review      | ⚠️ MTProto (custom, criticized by experts) | ✅ Standard protocols (Signal, OpenMLS)  | Telegram's crypto is non-standard     |
+| Cloud Sync         | ✅ Convenient (server stores plaintext)    | ❌ Local only (privacy over convenience) | Different priorities                  |
+| User Base          | ✅ **900+ million users**                  | ⚠️ **In development**                    | Telegram has massive user base        |
+| Independent Audits | ⚠️ Limited, MTProto not widely reviewed    | 📋 Planning (Cure53 Q2 2026)             | Both need more independent validation |
 
-**Current Phase**: MVP Backend Complete, Client in Development ✅
+**Verdict:** Telegram prioritizes convenience and cloud sync over E2EE. Most Telegram conversations are readable by servers. Guardyn enforces E2EE always, sacrificing some convenience for security.
 
-**November 2025 Status:**
+---
 
-**✅ Production-Ready Components:**
+#### vs. Viber (Consumer Messaging)
+
+| Feature         | Viber                      | Guardyn                             | Notes                              |
+| --------------- | -------------------------- | ----------------------------------- | ---------------------------------- |
+| E2EE            | ⚠️ Optional, not default   | ✅ Mandatory, always on             | **Default security differs**       |
+| Crypto Standard | ⚠️ Proprietary protocol    | ✅ Industry standards (Signal, MLS) | Guardyn uses peer-reviewed crypto  |
+| Security Audit  | ❌ None publicly available | 📋 Planning (Cure53 Q2 2026)        | Both need independent verification |
+| Open Source     | ❌ Closed                  | ✅ Apache-2.0                       | Transparency difference            |
+| Business Model  | Ads, stickers, games       | Open source (cloud SaaS planned)    | Revenue model differs              |
+| Target Market   | Consumer messaging         | Privacy-focused users, enterprises  | Different audiences                |
+
+**Verdict:** Viber is a consumer messaging app with optional encryption. Guardyn is focused on mandatory E2EE and open source transparency.
+
+---
+
+### Key Takeaways
+
+1. **We respect Signal** - they pioneered the Double Ratchet protocol we use. Their 10 years of battle-testing is invaluable.
+2. **Our additions** - OpenMLS for groups, self-hosting, enterprise features, 100% Apache-2.0 license
+3. **We're new (2025)** - Signal has proven reliability at scale. Guardyn is unproven but building on proven protocols.
+4. **Audit status** - Signal has completed multiple security audits. Guardyn is planning Cure53 audit for Q2 2026.
+5. **Use Signal if** - you want maximum trust and proven reliability
+6. **Consider Guardyn if** - you need self-hosting or want to contribute to open source development
+
+---
+
+## � Technical Foundation
+
+### Cryptographic Protocols
+
+**1-on-1 Messaging (Implemented):**
+
+- X3DH key exchange (Perfect Forward Secrecy)
+- Double Ratchet (Signal Protocol - same as WhatsApp, Signal)
+- AES-256-GCM encryption (NIST standard)
+
+**Group Messaging (Implemented):**
+
+- OpenMLS (IETF RFC 9420 - 2024 standard)
+- Tree-based group management (scalable to 10k+ members)
+- Post-compromise security (automatic healing)
+
+**Post-Quantum (Code Ready, Not Enforced):**
+
+- Kyber + ECDH hybrid key exchange
+- NIST PQC finalist integration
+- Gradual rollout planned (Q3 2026)
+
+**Media Encryption (Planned):**
+
+- SFrame encryption for voice/video
+- Insertable Streams API for WebRTC
+- Hardware-backed key storage
+
+### Infrastructure Stack
+
+**Backend (Production-Ready):**
+
+- Rust services (memory-safe, no buffer overflows)
+- gRPC APIs (efficient binary protocol)
+- TiKV distributed KV store (ACID transactions)
+- ScyllaDB for message storage (high throughput)
+- NATS JetStream (event streaming)
+
+**Deployment (Production-Ready):**
+
+- Kubernetes-native (k3d for local, k8s for prod)
+- Horizontal scaling (3 servers + 2 agents)
+- Cilium CNI (network policies, observability)
+- cert-manager for TLS automation
+
+**Observability (Production-Ready):**
+
+- Prometheus metrics collection
+- Grafana dashboards
+- Loki log aggregation
+- Distributed tracing (OpenTelemetry)
+
+### Build Reproducibility
+
+**Nix Flakes (Implemented):**
+
+- Deterministic builds across all platforms
+- Pinned dependencies (nixpkgs 23.11)
+- Same binary from same source code
+- SBOM generation with Syft
+- Artifact signing with Cosign
+
+### Performance Benchmarks (Current)
+
+### Performance Benchmarks (Current)
+
+**E2E Test Results (November 2025):**
+
+- Auth Service: 361ms P95 latency (local k3d cluster)
+- Messaging Service: 28ms P95 latency (local k3d cluster)
+- 8/8 integration tests passing
+- k6 performance baseline established
+
+**Note:** These are local development benchmarks, not production performance guarantees. Production benchmarks will be published after cloud deployment.
+
+---
+
+## 🚀 Getting Started
+
+### Current Status (November 2025)
+
+**What's Working:**
+
+**Production-Ready Backend:**
+
 - **Authentication Service**: User registration, login, JWT auth, device management (2/2 replicas running)
 - **Messaging Service**: 1-on-1 and group chat, CRUD operations, member management (3/3 replicas running)
 - **Cryptography**: X3DH key exchange, Double Ratchet encryption, OpenMLS group encryption (fully implemented)
@@ -280,398 +288,220 @@ Built by security engineers who got tired of waiting for Big Tech to fix itself.
 - **Testing**: 8/8 E2E integration tests passing, k6 performance baseline established
 - **Observability**: Prometheus, Loki, Grafana monitoring stack (deployed)
 
-**🚧 In Active Development:**
+**In Active Development:**
+
 - **Mobile Client**: Authentication flow complete, messaging UI in progress
 - **Presence Service**: Online/offline status, typing indicators
 - **Media Service**: File uploads, encryption, thumbnails
-- **Post-Quantum Crypto**: Kyber hybrid key exchange integration
+- **Post-Quantum Crypto**: Kyber hybrid key exchange integration (code ready, not enforced)
 
-**📋 Planned Features:**
+**Planned Features:**
+
 - Voice/video calls (WebRTC + SFrame E2EE)
-- Live broadcasting with E2EE
 - Desktop applications (Windows, macOS, Linux)
 - Web client
+- Enterprise features (LDAP, SAML, admin tools)
 
-**Target Launch**: Q2 2026 (Public Beta)
+**Public Beta Target:** Q2 2026
 
 For detailed implementation status, see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
-### **Try Guardyn Cloud (Managed SaaS)**
+---
 
-**Coming Q2 2025** - Currently in development
+### Self-Hosting (For Developers)
 
-```bash
-# No setup required - just sign up
-https://guardyn.io/signup
+**Status:** Infrastructure operational, services ready for testing
 
-✅ 99.9% uptime SLA
-✅ Global CDN (< 50ms latency worldwide)
-✅ Automatic backups (encrypted, client-side keys)
-✅ Free tier: 5 GB storage, unlimited messages
-```
+**Prerequisites:**
 
-### **Self-Host (Community Edition - 100% Free)**
+- Nix package manager
+- 16GB RAM minimum
+- Docker or Podman
 
-**Status**: Infrastructure ready, services in development
+**Quick Start:**
 
 ```bash
-# Prerequisites: Nix package manager, 16GB RAM
-# Full setup guide: docs/infra_poc.md
-
 git clone https://github.com/guardyn/guardyn.git
 cd guardyn
 
 # Enter reproducible environment (Nix)
-nix develop --extra-experimental-features nix-command --extra-experimental-features flakes
+nix develop
 
 # Deploy to local Kubernetes (k3d)
-just kube-create
-just kube-bootstrap
-just k8s-deploy nats
-kubectl apply -k infra/k8s/base/tikv
-just k8s-deploy scylladb
-just k8s-deploy monitoring
-just verify-kube
+just kube-create        # Create k3d cluster
+just kube-bootstrap     # Install CRDs and namespaces
+just k8s-deploy nats    # Deploy NATS JetStream
+kubectl apply -k infra/k8s/base/tikv  # Deploy TiKV
+just k8s-deploy scylladb  # Deploy ScyllaDB
+just k8s-deploy monitoring  # Deploy observability
+just verify-kube        # Run smoke tests
 
-# Verify TiKV cluster
-kubectl exec -n data pd-0 -- /pd-ctl -u http://localhost:2379 store
-kubectl exec -n data -it guardyn-scylla-0 -- cqlsh -f /mnt/scripts/scylla-init.cql
-
-# Access monitoring at http://localhost:3000 (Grafana)
+# Access Grafana at http://localhost:3000
 # Default credentials: admin/admin
 ```
 
-**Current Limitations**:
+**Full setup guide:** [`docs/infra_poc.md`](docs/infra_poc.md)
 
-- ✅ Backend services production-ready (Auth + Messaging + Crypto)
-- ✅ E2E tests passing (8/8 integration scenarios)
-- ✅ Infrastructure fully deployed (Kubernetes + databases + monitoring)
-- 🚧 Mobile client partially implemented (auth complete, messaging UI in progress)
-- ⏳ Presence and Media services planned
-- 📌 Self-hosting available for developers and early testers
+**Current Limitations:**
 
-**Recent Milestones** (November 2025):
-
-- ✅ **MVP Backend Deployed**: All core services running in Kubernetes
-- ✅ **Cryptography Complete**: X3DH, Double Ratchet, OpenMLS fully implemented
-- ✅ **E2E Testing**: Full integration test suite operational
-- ✅ **Performance Baseline**: Auth 361ms, Messaging 28ms (P95)
-- ✅ **Observability**: Prometheus + Loki + Grafana monitoring all services
-- 📋 **Next**: Complete mobile client messaging UI, add presence service
-
-See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for detailed roadmap.
-
-### **Verify Reproducible Build**
-
-```bash
-# Build from source
-nix build .#guardyn-server
-
-# Compare hash with official release
-sha256sum result/bin/guardyn-server
-# Should match: https://guardyn.io/releases/v0.1.0/SHA256SUMS
-
-# Verify signature
-cosign verify --key guardyn.pub guardyn-server:v0.1.0
-```
+- Backend services operational but mobile client incomplete
+- Recommended for developers and early testers only
+- Not production-ready for end users yet
 
 ---
 
-## 🛡️ **Security Guarantees**
+## 🛡️ Security
 
-### **What We Cryptographically Guarantee:**
+### Cryptographic Guarantees
 
-- ✅ **End-to-end encryption**: Servers cannot decrypt your messages, calls, or media
+**What we implement:**
+
+- ✅ **End-to-end encryption**: X3DH + Double Ratchet for 1-on-1, OpenMLS for groups
 - ✅ **Perfect Forward Secrecy**: Compromised keys don't expose past messages
-- ✅ **Post-Compromise Security**: Future messages are safe after key rotation
-- ✅ **Deniable authentication**: Cryptographic plausible deniability
-- ✅ **Metadata minimization**: We don't know who talks to whom (routing only)
+- ✅ **Post-Compromise Security**: OpenMLS provides automatic key healing
+- ✅ **Deniable authentication**: Cryptographic plausible deniability (Double Ratchet property)
 
-### **What We DON'T Guarantee (Be Honest):**
+**What we DON'T claim:**
 
-- ⚠️ **Device security**: If your phone is compromised, we can't help
-- ⚠️ **Screenshot protection**: Recipients can take screenshots (physics problem)
-- ⚠️ **Network metadata**: ISPs see IP addresses (use Tor/VPN for anonymity)
-- ⚠️ **Quantum resistance TODAY**: Kyber hybrid ready but not enforced until NIST standardizes
+- ⚠️ **Device security**: If your device is compromised, encryption can't help
+- ⚠️ **Screenshot protection**: Recipients can take screenshots (unavoidable)
+- ⚠️ **Network anonymity**: ISPs see IP addresses (use Tor/VPN for anonymity)
+- ⚠️ **Metadata elimination**: We minimize but can't eliminate all metadata (routing requires some)
 
----
+### Security Audits
 
-## 📊 **Open Source Transparency**
+**Status:** No independent security audits completed yet.
 
-### **100% Apache-2.0 Licensed**
+**Planned:**
 
-Guardyn is fully open source - no proprietary components, no "Enterprise Edition" paywalls.
+- Cure53 audit scheduled for Q2 2026
+- Cost: $50k-$100k (fundraising in progress)
+- Scope: Cryptographic implementation, server infrastructure, client security
 
-**What's included:**
+**Current verification:**
 
-```
-✅ Client applications (iOS, Android, Desktop, Web)
-✅ Server core (auth, messaging, presence, media services)
-✅ Cryptographic libraries (X3DH, Double Ratchet, OpenMLS)
-✅ Infrastructure configs (Kubernetes, Terraform)
-✅ CI/CD pipelines (GitHub Actions, reproducible builds)
-✅ All features, no artificial limitations
-```
+- Backend code review by team
+- E2E integration tests (8/8 passing)
+- Cryptographic protocols are industry standards (Signal, OpenMLS)
 
-**Free forever. Self-host anywhere. No licensing surprises.**
-
-Future enterprise features (LDAP/SAML, admin console, advanced compliance tools) will be developed as open source modules when there's demand. We believe in sustainable open source through managed cloud services, not licensing restrictions.
+**Security Policy:** See [SECURITY.md](SECURITY.md) for responsible disclosure process.
 
 ---
 
-## 🔥 **Why Choose Guardyn? The Benefits That Matter**
-
-### **🛡️ For Privacy-Conscious Individuals**
-
-<table>
-<tr>
-<td width="50%">
-
-#### **Your Benefits:**
-
-- 🔒 **Sleep Easy**: Your conversations are mathematically impossible to decrypt
-- 🚫 **No Advertising**: Your data never trains AI or targets ads
-- 🌐 **True Freedom**: Censorship-resistant infrastructure
-- 🔐 **Future-Proof**: Quantum computers won't break your old messages
-- ⚡ **Fast & Reliable**: Enterprise infrastructure, consumer simplicity
-- 💵 **Free Forever**: Community Edition costs nothing, ever
-
-</td>
-<td width="50%">
-
-#### **What You Escape:**
-
-- ❌ Facebook/Meta reading your metadata
-- ❌ Government backdoors (we can't build them even if asked)
-- ❌ Data breaches exposing your history
-- ❌ Ads following you based on private chats
-- ❌ Terms of Service changes stealing your rights
-- ❌ Platform shutdowns losing your data
-
-</td>
-</tr>
-</table>
-
----
-
-### **🏢 For Enterprises & Organizations**
-
-<table>
-<tr>
-<td width="50%">
-
-#### **Your ROI:**
-
-- ✅ **Compliance Made Easy**: GDPR, HIPAA, SOC 2, ISO 27001 ready
-- ✅ **Audit-Ready**: Formal proofs + independent security audits
-- ✅ **Self-Hosted Option**: Full data sovereignty, your infrastructure
-- ✅ **Enterprise SSO**: LDAP, SAML, Active Directory integration
-- ✅ **99.9% SLA**: Production-grade reliability
-- ✅ **Cost Savings**: $10-50/user/month vs $75-150 for legacy solutions
-
-</td>
-<td width="50%">
-
-#### **Risk Mitigation:**
-
-- 🛡️ **Zero Trust Architecture**: Even we can't decrypt your data
-- 🛡️ **Insider Threat Protection**: E2EE prevents rogue admins
-- 🛡️ **Regulatory Fines Avoided**: Built-in compliance controls
-- 🛡️ **IP Protection**: Trade secrets encrypted at rest and in transit
-- 🛡️ **Litigation Defense**: Deniable authentication + audit logs
-- 🛡️ **Vendor Lock-In Free**: Open source means you own your destiny
-
-</td>
-</tr>
-</table>
-
----
-
-### **👨‍💻 For Developers & Security Researchers**
-
-#### **Why You'll Love Us:**
-
-```diff
-+ Full transparency: 100% open source client + server (Apache-2.0)
-+ Reproducible builds: Verify every binary with Nix flakes
-+ Formal proofs: TLA+ specifications, not marketing slides
-+ Security research program: Coordinated disclosure with future rewards
-+ Modern stack: Rust, Kubernetes, TiKV, NATS, ScyllaDB
-+ API-first: Build on our platform with documented REST/gRPC APIs
-+ Community: Join security engineers who got tired of Big Tech lies
-```
-
----
-
-### **🎙️ For Content Creators & Broadcasters**
-
-#### **First E2EE Live Streaming Platform:**
-
-- 📺 **Broadcast to Thousands**: < 2s glass-to-glass latency
-- 🔐 **Encrypted Streams**: Only your audience can decrypt (SFrame)
-- 💰 **Direct Monetization**: Native tipping, no platform fees
-- 🎬 **Screen Sharing E2EE**: Presentations without corporate spying
-- 📊 **Interactive Polls**: Real-time engagement, privacy-preserved
-- 🌍 **Global Reach**: CDN-backed delivery, 50ms worldwide
-
----
-
-## ⚔️ **The Honest Competitive Breakdown**
-
-### **When to Choose Competitors Over Guardyn**
-
-We respect informed choice. Here's when you should use others:
-
-| Choose This          | If You Need                            | Why Not Guardyn (Yet)                                               |
-| -------------------- | -------------------------------------- | ------------------------------------------------------------------- |
-| **Signal**           | 🏆 Maximum battle-tested maturity      | ✅ We use Signal Protocol, but add enterprise features Signal lacks |
-| **Telegram**         | 📱 Largest user base (900M+)           | ❌ No E2EE by default = privacy theater                             |
-| **WhatsApp**         | 👨‍👩‍👧‍👦 Your entire family is already there | ❌ Metadata collected by Meta                                       |
-| **Viber**            | 🌍 Popular in Eastern Europe           | ❌ Proprietary crypto, no audits                                    |
-| **Element (Matrix)** | 🌐 Decentralized federation            | ✅ We're centralized for performance, self-host for sovereignty     |
-
-### **When Guardyn is Objectively Superior**
-
-| You Should Choose Guardyn If:          | Because:                                                    |
-| -------------------------------------- | ----------------------------------------------------------- |
-| 🏢 **You're an enterprise**            | Only one with formal verification + compliance tools        |
-| 🔐 **You need group E2EE**             | OpenMLS > Sender Keys (Signal) > Server-readable (Telegram) |
-| 🚀 **You want quantum resistance NOW** | Kyber hybrid ready today, not "coming soon"                 |
-| 🔍 **You require audit-readiness**     | Reproducible builds + public security proofs                |
-| 📺 **You broadcast to audiences**      | First E2EE live streaming platform                          |
-| 💼 **You want sustainable funding**    | Open Core model ensures long-term development               |
-
----
-
-## 🎯 **Our Mission: Encrypt the Planet**
-
-### **The World We're Building:**
-
-By 2030, we envision a world where:
-
-1. **E2EE is Default**: No "secret chat" toggles, just always-on encryption
-2. **Metadata is Sacred**: Communication graphs are as private as content
-3. **Audits are Required**: "Trust us" claims are laughed out of boardrooms
-4. **Quantum-Safe is Standard**: Post-quantum crypto is table stakes
-5. **Users Own Their Data**: Platforms serve users, not advertisers
-
-**Guardyn is the infrastructure for this future.** Join us.
-
----
-
-## 🌍 **Join the Privacy Rebellion**
-
-### **For Users:**
-
-- 🔗 [Download Apps](https://guardyn.io/download) (iOS, Android, Desktop, Web)
-- 📚 [User Guide](https://docs.guardyn.io/users)
-- 💬 [Community Forum](https://community.guardyn.io)
-- 🐦 [Twitter/X](https://x.com/guardyn_io)
-
-### **For Developers:**
-
-- 📖 [Developer Docs](https://docs.guardyn.io/developers)
-- 🔧 [API Reference](https://api.guardyn.io/docs)
-- 🐛 [Responsible Disclosure](SECURITY.md) (bug bounty program coming soon)
-- 💡 [Contribute](CONTRIBUTING.md) (CLA required)
-
-### **For Enterprises:**
-
-- 🏢 [Enterprise Edition](https://guardyn.io/enterprise)
-- 📞 Sales: [enterprise@guardyn.io](mailto:enterprise@guardyn.io)
-- 🎓 [Training & Consulting](https://guardyn.io/services)
-- 📄 [SOC 2 Report](https://guardyn.io/compliance)
-
-### **For Security Researchers:**
-
-- 🔒 [Security Policy](SECURITY.md)
-- 🎯 [Formal Specifications](docs/formal-specs/)
-- 📊 [Audit Reports](https://guardyn.io/audits)
-- 🏆 [Hall of Fame](https://guardyn.io/security/thanks)
-
----
-
-## 🎯 **Roadmap to Digital Sovereignty**
-
-### **✅ Alpha (Current - Q4 2024)**
-
-- Core E2EE messaging (Signal Protocol)
-- Voice/video calls (WebRTC + SFrame)
-- Reproducible builds (Nix flakes)
-- Formal specs (TLA+, ProVerif)
-
-### **🚧 Beta (Q1 2025)**
-
-- Group chat with OpenMLS
-- Live broadcasting (E2EE streams)
-- Mobile apps (iOS, Android)
-- External audit (Cure53)
-
-### **🎯 v1.0 GA (Q2 2025)**
-
-- Desktop apps (Windows, macOS, Linux)
-- Enterprise Edition (BSL)
-- SOC 2 Type II certification
-- Responsible disclosure program launch
-
-### **🔮 v2.0 (Q4 2025)**
-
-- Post-quantum Kyber enforcement
-- Decentralized identity (DIDs)
-- Interoperability (Matrix bridge)
-- Blockchain-based audit logs
-
----
-
-## 📜 **License**
+## 📖 License
 
 **Guardyn is 100% open source under Apache-2.0 license.**
 
-- **Community Edition**: [Apache-2.0](LICENSE) - Free forever, self-host anywhere
-- **Managed Cloud**: Proprietary SaaS (launching Q2 2026) - Fully managed hosting with 99.9% SLA
+- All code (backend, frontend, clients) is Apache-2.0
+- No dual licensing
+- No "Enterprise Edition" with withheld features
+- Free forever, self-host anywhere
 
-All code, including backend services, cryptographic libraries, and client applications, is Apache-2.0 licensed. No dual licensing, no Enterprise Edition, no artificial feature limitations.
+See [LICENSE](LICENSE) for complete terms.
 
-See [NOTICE](NOTICE) for complete licensing details and third-party attributions.
+**Future Business Model:**
+
+- Managed cloud hosting (SaaS) planned for Q2 2026
+- Enterprise features (LDAP, SAML, admin tools) will be developed as open source when funded
+- Sustainable through services, not licensing restrictions
+
+See [NOTICE](NOTICE) for third-party attributions.
 
 ---
 
-## 🙏 **Acknowledgments**
+## 🤝 Contributing
 
-Guardyn stands on the shoulders of giants:
+We welcome contributions! However, please note:
 
-- **Signal Foundation** - Signal Protocol, pioneering privacy advocacy
-- **IETF MLS Working Group** - OpenMLS standardization
-- **Cure53, Symbolic Software, Fallible** - Security audits
-- **Rust Community** - Memory-safe infrastructure
-- **Nix Community** - Reproducible builds
+**Project Status:** MVP backend complete, mobile client in development
+
+**How to Contribute:**
+
+1. **Code:** See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
+2. **Security:** See [SECURITY.md](SECURITY.md) for vulnerability disclosure
+3. **Documentation:** Help us improve docs in `docs/`
+4. **Testing:** Run E2E tests and report issues
+
+**Community:**
+
+- GitHub Issues: Bug reports and feature requests
+- Discussions: Architecture and design questions
+
+---
+
+## 🗺️ Roadmap
+
+### Completed (November 2025)
+
+- ✅ Backend MVP (Auth + Messaging services operational)
+- ✅ Cryptography (X3DH, Double Ratchet, OpenMLS)
+- ✅ Infrastructure (Kubernetes, TiKV, ScyllaDB, NATS)
+- ✅ E2E Testing (8/8 tests passing)
+- ✅ Observability (Prometheus, Grafana, Loki)
+
+### Q1 2026
+
+- 🚧 Complete mobile client messaging UI
+- 🚧 Presence service (online/offline status)
+- 🚧 Media service (file uploads, encryption)
+- 📋 Desktop clients (Electron-based)
+
+### Q2 2026 (Public Beta Target)
+
+- 📋 Security audit (Cure53)
+- 📋 Voice/video calls (WebRTC + SFrame)
+- 📋 Web client (PWA)
+- 📋 Public beta launch
+
+### Q3-Q4 2026
+
+- 📋 Post-quantum enforcement (Kyber hybrid)
+- 📋 Enterprise features (LDAP, SAML, audit logs)
+- 📋 Managed cloud hosting (SaaS launch)
+- 📋 Production v1.0 release
+
+**Note:** Roadmap is subject to change based on resources and community feedback.
+
+---
+
+## 🙏 Acknowledgments
+
+Guardyn builds on the work of pioneers:
+
+- **Signal Foundation** - Double Ratchet protocol and E2EE advocacy
+- **IETF MLS Working Group** - OpenMLS standardization (RFC 9420)
+- **Rust Community** - Memory-safe systems programming
 - **CNCF Projects** - Kubernetes, NATS, Prometheus ecosystem
+- **Nix Community** - Reproducible build infrastructure
+
+We stand on the shoulders of giants.
 
 ---
 
-## 🔥 **The Time is Now**
+## 📬 Contact
 
-Every day you wait, your metadata enriches surveillance capitalists.  
-Every message you send unencrypted is training AI models to predict your behavior.  
-Every video call without E2EE is potentially recorded by nation-states.
+- **Website:** https://guardyn.io (coming soon)
+- **GitHub:** https://github.com/guardyn/guardyn
+- **Security:** security@guardyn.io (for vulnerabilities only)
+- **General:** hello@guardyn.io
 
-**The surveillance economy depends on your apathy.**
+---
 
-**Break the cycle. Choose Guardyn.**
+## ⚠️ Project Status Disclaimer
 
-**Your privacy is not a feature. It's a human right.**
+**Guardyn is in active development (November 2025).**
+
+- Backend MVP operational but **not production-ready for general users**
+- Mobile client incomplete (authentication works, messaging UI in progress)
+- **No security audits completed yet** (Cure53 audit planned Q2 2026)
+- Recommended for developers and early testers only
+- Use Signal or other proven messengers for critical communications until v1.0
+
+**Target for production use:** Q3-Q4 2026 (after security audit and public beta)
 
 ---
 
 <p align="center">
-  <strong>Made with 🔐 by privacy advocates, for privacy advocates</strong><br>
-  <a href="https://guardyn.io">Website</a> •
-  <a href="https://docs.guardyn.io">Docs</a> •
-  <a href="https://github.com/guardyn/guardyn">GitHub</a> •
-  <a href="https://x.com/guardyn_io">Twitter</a> •
-  <a href="mailto:hello@guardyn.io">Contact</a>
-</p>
-
-<p align="center">
-  <sub>Licensed under Apache-2.0 • Copyright © 2025 Guardyn Team</sub>
+  <strong>Built with ❤️ by privacy advocates</strong><br>
+  Licensed under Apache-2.0 • Copyright © 2025 Guardyn Team
 </p>
