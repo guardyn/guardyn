@@ -268,18 +268,33 @@ Built by security engineers who got tired of waiting for Big Tech to fix itself.
 
 ### **Development Status**
 
-**Current Phase**: MVP/PoC Infrastructure Complete ✅
+**Current Phase**: MVP Backend Complete, Client in Development ✅
 
-- ✅ Kubernetes cluster (k3d) operational
-- ✅ TiKV + ScyllaDB deployed and verified
-- ✅ NATS JetStream messaging configured
-- ✅ Observability stack (Prometheus, Grafana, Loki)
-- ✅ Backend service scaffolds (Rust)
-- ✅ Cryptography crate structure (X3DH, Double Ratchet, MLS)
-- ✅ gRPC API definitions complete (.proto files)
-- 🔄 Database schemas designed (see `docs/DATABASE_SCHEMA.md`)
-- 🔄 Implementing crypto protocols
-- 📋 Next: Authentication service implementation
+**November 2025 Status:**
+
+**✅ Production-Ready Components:**
+- **Authentication Service**: User registration, login, JWT auth, device management (2/2 replicas running)
+- **Messaging Service**: 1-on-1 and group chat, CRUD operations, member management (3/3 replicas running)
+- **Cryptography**: X3DH key exchange, Double Ratchet encryption, OpenMLS group encryption (fully implemented)
+- **Infrastructure**: Kubernetes (k3d), TiKV, ScyllaDB, NATS JetStream (operational)
+- **Testing**: 8/8 E2E integration tests passing, k6 performance baseline established
+- **Observability**: Prometheus, Loki, Grafana monitoring stack (deployed)
+
+**🚧 In Active Development:**
+- **Mobile Client**: Authentication flow complete, messaging UI in progress
+- **Presence Service**: Online/offline status, typing indicators
+- **Media Service**: File uploads, encryption, thumbnails
+- **Post-Quantum Crypto**: Kyber hybrid key exchange integration
+
+**📋 Planned Features:**
+- Voice/video calls (WebRTC + SFrame E2EE)
+- Live broadcasting with E2EE
+- Desktop applications (Windows, macOS, Linux)
+- Web client
+
+**Target Launch**: Q2 2026 (Public Beta)
+
+For detailed implementation status, see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ### **Try Guardyn Cloud (Managed SaaS)**
 
@@ -328,20 +343,21 @@ kubectl exec -n data -it guardyn-scylla-0 -- cqlsh -f /mnt/scripts/scylla-init.c
 
 **Current Limitations**:
 
-- ✅ Infrastructure deployed (Kubernetes, databases, messaging, observability)
-- ✅ gRPC APIs fully defined (auth, messaging, presence)
-- ⏳ Backend services have basic scaffolds, business logic in progress
-- ⏳ Cryptography protocols (X3DH, Double Ratchet, MLS) - implementation pending
-- ❌ No client applications yet
-- 📌 For development and testing only (MVP phase)
+- ✅ Backend services production-ready (Auth + Messaging + Crypto)
+- ✅ E2E tests passing (8/8 integration scenarios)
+- ✅ Infrastructure fully deployed (Kubernetes + databases + monitoring)
+- 🚧 Mobile client partially implemented (auth complete, messaging UI in progress)
+- ⏳ Presence and Media services planned
+- 📌 Self-hosting available for developers and early testers
 
-**Recent Progress** (Nov 3, 2025):
+**Recent Milestones** (November 2025):
 
-- ✅ Created complete gRPC protocol definitions (`.proto` files)
-- ✅ Added build configuration for code generation (`build.rs`)
-- ✅ Database schemas designed and documented
-- ✅ Added Argon2 password hashing to auth service
-- 📋 Next: Implement auth service registration endpoint
+- ✅ **MVP Backend Deployed**: All core services running in Kubernetes
+- ✅ **Cryptography Complete**: X3DH, Double Ratchet, OpenMLS fully implemented
+- ✅ **E2E Testing**: Full integration test suite operational
+- ✅ **Performance Baseline**: Auth 361ms, Messaging 28ms (P95)
+- ✅ **Observability**: Prometheus + Loki + Grafana monitoring all services
+- 📋 **Next**: Complete mobile client messaging UI, add presence service
 
 See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for detailed roadmap.
 
@@ -382,7 +398,11 @@ cosign verify --key guardyn.pub guardyn-server:v0.1.0
 
 ## 📊 **Open Source Transparency**
 
-### **Community Edition (Apache-2.0)**
+### **100% Apache-2.0 Licensed**
+
+Guardyn is fully open source - no proprietary components, no "Enterprise Edition" paywalls.
+
+**What's included:**
 
 ```
 ✅ Client applications (iOS, Android, Desktop, Web)
@@ -390,25 +410,12 @@ cosign verify --key guardyn.pub guardyn-server:v0.1.0
 ✅ Cryptographic libraries (X3DH, Double Ratchet, OpenMLS)
 ✅ Infrastructure configs (Kubernetes, Terraform)
 ✅ CI/CD pipelines (GitHub Actions, reproducible builds)
+✅ All features, no artificial limitations
 ```
 
-### **Enterprise Edition (BSL 1.1 → Apache-2.0 in 4 years)**
+**Free forever. Self-host anywhere. No licensing surprises.**
 
-```
-🏢 LDAP/SAML integration
-🏢 Admin console (web-based management)
-🏢 Compliance tools (audit logs, e-discovery)
-🏢 Advanced analytics (usage metrics, dashboards)
-🏢 Policy-based retention (GDPR, HIPAA compliance)
-🏢 HSM integration (FIPS 140-2 Level 3)
-
-License: Business Source License 1.1
-Change Date: 4 years from release
-Change License: Apache-2.0
-Additional Use Grant: Free for up to 100 users
-```
-
-**Why BSL?** Protects against cloud providers reselling our work while guaranteeing future open source release. See [LICENSE-ENTERPRISE](LICENSE-ENTERPRISE) for details.
+Future enterprise features (LDAP/SAML, admin console, advanced compliance tools) will be developed as open source modules when there's demand. We believe in sustainable open source through managed cloud services, not licensing restrictions.
 
 ---
 
@@ -618,13 +625,14 @@ By 2030, we envision a world where:
 
 ## 📜 **License**
 
-Guardyn uses a **dual-licensing model** to balance open source transparency with sustainable business:
+**Guardyn is 100% open source under Apache-2.0 license.**
 
 - **Community Edition**: [Apache-2.0](LICENSE) - Free forever, self-host anywhere
-- **Enterprise Edition**: [BSL 1.1](LICENSE-ENTERPRISE) - Becomes Apache-2.0 in 4 years
-- **Managed Cloud**: Proprietary SaaS - Fully managed hosting
+- **Managed Cloud**: Proprietary SaaS (launching Q2 2026) - Fully managed hosting with 99.9% SLA
 
-See [NOTICE](NOTICE) for complete licensing details.
+All code, including backend services, cryptographic libraries, and client applications, is Apache-2.0 licensed. No dual licensing, no Enterprise Edition, no artificial feature limitations.
+
+See [NOTICE](NOTICE) for complete licensing details and third-party attributions.
 
 ---
 
@@ -665,5 +673,5 @@ Every video call without E2EE is potentially recorded by nation-states.
 </p>
 
 <p align="center">
-  <sub>Licensed under Apache-2.0 (Community Edition) • Copyright © 2025 Guardyn Team</sub>
+  <sub>Licensed under Apache-2.0 • Copyright © 2025 Guardyn Team</sub>
 </p>
