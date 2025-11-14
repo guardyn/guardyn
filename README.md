@@ -489,10 +489,10 @@ We stand on the shoulders of giants.
 
 ## 📬 Contact
 
-- **Website:** https://guardyn.io (coming soon)
+- **Website:** https://guardyn.app (coming soon)
 - **GitHub:** https://github.com/guardyn/guardyn
-- **Security:** security@guardyn.io (for vulnerabilities only)
-- **General:** hello@guardyn.io
+- **Security:** security@guardyn.app (for vulnerabilities only)
+- **General:** hello@guardyn.app
 
 ---
 
