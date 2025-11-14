@@ -25,6 +25,7 @@ kubectl port-forward -n apps svc/auth-service 50051:50051
 ```
 
 **Expected output:**
+
 ```
 Forwarding from 127.0.0.1:50051 -> 50051
 Forwarding from [::1]:50051 -> 50051
@@ -39,6 +40,7 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 ```
 
 **Expected output:**
+
 ```
 Forwarding from 127.0.0.1:50052 -> 50052
 Forwarding from [::1]:50052 -> 50052
@@ -69,6 +71,7 @@ flutter run -d chrome  # Run in Chrome browser
 ### Test Case 1: Successful Registration ✅
 
 **Steps:**
+
 1. Tap "Don't have an account? Register"
 2. Fill in the form:
    - Username: `testuser1`
@@ -78,6 +81,7 @@ flutter run -d chrome  # Run in Chrome browser
 3. Tap "Register" button
 
 **Expected Results:**
+
 - ✅ Loading indicator appears briefly
 - ✅ Navigation to HomePage
 - ✅ HomePage displays:
@@ -87,6 +91,7 @@ flutter run -d chrome  # Run in Chrome browser
   - "Logout" button visible
 
 **Backend Verification:**
+
 ```bash
 # Check that user was created in backend
 kubectl logs -n apps deployment/auth-service | grep "testuser1"
@@ -97,6 +102,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ### Test Case 2: Validation Errors ❌
 
 **Test 2a: Short Username**
+
 1. On RegistrationPage, enter:
    - Username: `ab` (only 2 characters)
    - Password: `password12345`
@@ -108,6 +114,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ---
 
 **Test 2b: Short Password**
+
 1. Enter:
    - Username: `testuser2`
    - Password: `short` (only 5 characters)
@@ -119,6 +126,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ---
 
 **Test 2c: Password Mismatch**
+
 1. Enter:
    - Username: `testuser2`
    - Password: `password12345`
@@ -131,6 +139,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ---
 
 **Test 2d: Empty Device Name**
+
 1. Enter:
    - Username: `testuser2`
    - Password: `password12345`
@@ -145,6 +154,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ### Test Case 3: Duplicate Username ❌
 
 **Steps:**
+
 1. Try to register with username `testuser1` again (already exists)
 2. Fill in:
    - Username: `testuser1`
@@ -154,6 +164,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 3. Tap "Register"
 
 **Expected Results:**
+
 - ✅ Loading indicator appears
 - ✅ Error SnackBar appears with message (e.g., "Username already exists" or "ALREADY_EXISTS")
 - ✅ AuthBloc transitions to AuthError state
@@ -168,6 +179,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 **Pre-requisite**: User `testuser1` must be registered (from Test Case 1).
 
 **Steps:**
+
 1. If on HomePage, tap "Logout" button → navigates to LoginPage
 2. Enter credentials:
    - Username: `testuser1`
@@ -175,6 +187,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 3. Tap "Login" button
 
 **Expected Results:**
+
 - ✅ Loading indicator appears briefly
 - ✅ Navigation to HomePage
 - ✅ HomePage displays correct user info (username: "testuser1")
@@ -184,12 +197,14 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ### Test Case 5: Invalid Credentials ❌
 
 **Steps:**
+
 1. On LoginPage, enter:
    - Username: `testuser1`
    - Password: `wrongpassword`
 2. Tap "Login"
 
 **Expected Results:**
+
 - ✅ Loading indicator appears
 - ✅ Error SnackBar: "Invalid username or password" or "INVALID_CREDENTIALS"
 - ✅ User stays on LoginPage
@@ -197,6 +212,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ---
 
 **Alternative: Non-existent Username**
+
 1. Enter:
    - Username: `nonexistentuser`
    - Password: `password12345`
@@ -209,16 +225,19 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ### Test Case 6: Network Error Simulation ⚠️
 
 **Steps:**
+
 1. Stop port-forwarding (kill the kubectl process in Terminal 1)
 2. Try to login with valid credentials
 3. Tap "Login"
 
 **Expected Results:**
+
 - ✅ Error SnackBar: "Connection error" or "Unable to reach server"
 - ✅ App doesn't crash
 - ✅ AuthBloc transitions to AuthError state
 
 **After Test:**
+
 - Restart port-forwarding: `kubectl port-forward -n apps svc/auth-service 50051:50051`
 
 ---
@@ -230,6 +249,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 **Pre-requisite**: User `testuser1` is logged in.
 
 **Steps:**
+
 1. Verify you're on HomePage (logged in as testuser1)
 2. **Close the app completely** (not just minimize):
    - Chrome: Close the browser tab
@@ -238,6 +258,7 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 3. **Restart the app** (run `flutter run` again or reopen browser)
 
 **Expected Results:**
+
 - ✅ SplashPage appears briefly
 - ✅ AuthBloc checks SecureStorage for tokens
 - ✅ Tokens found → AuthCheckStatus succeeds
@@ -251,11 +272,13 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ### Test Case 8: Logout Clears Session ✅
 
 **Steps:**
+
 1. From HomePage, tap "Logout" button
 2. Verify navigation to LoginPage
 3. **Close and restart the app** (same as Test Case 7)
 
 **Expected Results:**
+
 - ✅ SplashPage appears
 - ✅ AuthBloc checks SecureStorage → no tokens found
 - ✅ **Navigation to LoginPage** (not HomePage)
@@ -270,18 +293,23 @@ kubectl logs -n apps deployment/auth-service | grep "testuser1"
 ### Test Case 9: Backend Service Down ⚠️
 
 **Steps:**
+
 1. Stop auth-service pods:
+
    ```bash
    kubectl scale deployment auth-service -n apps --replicas=0
    ```
+
 2. Try to register or login
 
 **Expected Results:**
+
 - ✅ Error SnackBar with user-friendly message
 - ✅ App doesn't crash
 - ✅ AuthBloc handles GrpcError gracefully
 
 **After Test:**
+
 ```bash
 kubectl scale deployment auth-service -n apps --replicas=2
 ```
@@ -291,10 +319,12 @@ kubectl scale deployment auth-service -n apps --replicas=2
 ### Test Case 10: Rapid Button Taps (Double-submit Prevention)
 
 **Steps:**
+
 1. Fill in registration form
 2. Tap "Register" button **multiple times quickly** (simulate double-tap)
 
 **Expected Results:**
+
 - ✅ Only one registration request sent (AuthBloc in Loading state prevents duplicate events)
 - ✅ No duplicate user creation
 - ✅ UI shows loading indicator during first request
@@ -327,6 +357,7 @@ Test Results:
 ## 🎯 Success Criteria
 
 **Phase 1 Testing Complete** when:
+
 - ✅ All 13 test cases pass
 - ✅ No app crashes during any scenario
 - ✅ Error messages are user-friendly
@@ -338,6 +369,7 @@ Test Results:
 ## 📝 Notes for Reporting Issues
 
 If you encounter issues, please provide:
+
 1. **Test case number** (e.g., "Test Case 5: Invalid Credentials")
 2. **Steps to reproduce**
 3. **Expected behavior**
@@ -352,6 +384,7 @@ If you encounter issues, please provide:
 ### Issue: "Connection refused" error
 
 **Solution:**
+
 1. Verify backend pods are running: `kubectl get pods -n apps`
 2. Verify port-forwarding is active: Check Terminal 1 and 2
 3. Restart port-forwarding if needed
@@ -361,6 +394,7 @@ If you encounter issues, please provide:
 ### Issue: "MissingPluginException" (Linux only)
 
 **Solution:**
+
 ```bash
 sudo apt-get install libsecret-1-dev
 flutter clean
@@ -373,6 +407,7 @@ flutter run
 ### Issue: App doesn't launch
 
 **Solution:**
+
 ```bash
 flutter doctor  # Check for issues
 flutter clean
@@ -385,6 +420,7 @@ flutter run
 ## ✅ After Manual Testing Complete
 
 Once all manual tests pass, report back with:
+
 1. Test results checklist (all checkboxes)
 2. Any issues encountered
 3. Screenshots/recordings (optional but helpful)

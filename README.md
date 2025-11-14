@@ -303,7 +303,7 @@ https://guardyn.io/signup
 # Prerequisites: Nix package manager, 16GB RAM
 # Full setup guide: docs/infra_poc.md
 
-git clone https://github.com/anrysys/guardyn3.git
+git clone https://github.com/guardyn/guardyn.git
 cd guardyn
 
 # Enter reproducible environment (Nix)
