@@ -220,7 +220,7 @@ Built by security engineers who got tired of waiting for Big Tech to fix itself.
 📜 TLA+ specifications (formal proofs of message ordering)
 📜 ProVerif/Tamarin models (cryptographic protocol correctness)
 📜 Independent audits (Cure53, Symbolic Software, Fallible)
-📜 Public bug bounty (HackerOne - $500-$10,000 rewards)
+📜 Responsible disclosure program (bug bounty planned post-launch)
 ```
 
 ### **3. Enterprise-Grade Infrastructure**
@@ -488,7 +488,7 @@ Additional Use Grant: Free for up to 100 users
 + Full transparency: 100% open source client + server (Apache-2.0)
 + Reproducible builds: Verify every binary with Nix flakes
 + Formal proofs: TLA+ specifications, not marketing slides
-+ Bug bounty: $500-$10,000 for vulnerabilities
++ Security research program: Coordinated disclosure with future rewards
 + Modern stack: Rust, Kubernetes, TiKV, NATS, ScyllaDB
 + API-first: Build on our platform with documented REST/gRPC APIs
 + Community: Join security engineers who got tired of Big Tech lies
@@ -565,7 +565,7 @@ By 2030, we envision a world where:
 
 - 📖 [Developer Docs](https://docs.guardyn.io/developers)
 - 🔧 [API Reference](https://api.guardyn.io/docs)
-- 🐛 [Bug Bounty](https://hackerone.com/guardyn) ($500-$10,000)
+- 🐛 [Responsible Disclosure](SECURITY.md) (bug bounty program coming soon)
 - 💡 [Contribute](CONTRIBUTING.md) (CLA required)
 
 ### **For Enterprises:**
@@ -605,7 +605,7 @@ By 2030, we envision a world where:
 - Desktop apps (Windows, macOS, Linux)
 - Enterprise Edition (BSL)
 - SOC 2 Type II certification
-- Public bug bounty launch
+- Responsible disclosure program launch
 
 ### **🔮 v2.0 (Q4 2025)**
 
