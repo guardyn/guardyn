@@ -2,6 +2,19 @@
 
 Thank you for your interest in contributing to Guardyn! This document provides guidelines and best practices for contributing to the project.
 
+## 🎯 Current Project Status (November 2025)
+
+**Guardyn is in active MVP development:**
+
+- ✅ **Backend Services**: Auth and Messaging services production-ready and deployed
+- ✅ **Cryptography**: X3DH, Double Ratchet, and OpenMLS fully implemented
+- ✅ **Infrastructure**: Kubernetes cluster operational with TiKV, ScyllaDB, NATS
+- ✅ **Testing**: 8/8 E2E integration tests passing
+- 🚧 **Mobile Client**: Authentication complete, messaging UI in progress
+- ⏳ **Presence & Media Services**: Planned for next milestone
+
+We welcome contributions in all areas, especially mobile UI development, security audits, and documentation!
+
 ## Getting Started
 
 Please refer to the main [README.md](README.md) for setup instructions and project overview.
