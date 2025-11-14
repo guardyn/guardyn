@@ -95,6 +95,15 @@ Modern messaging platforms face a fundamental tension:
 - Enterprise features (planned: SSO, admin tools, audit logs)
 - Kubernetes-native scalability
 
+**For high-security environments:**
+
+- Government agencies requiring secure inter-agency communication
+- Military organizations needing tactical and strategic messaging
+- Intelligence services with strict data sovereignty requirements
+- Defense contractors handling classified information
+- Security-conscious institutions with air-gap deployment needs
+- Zero-trust architecture (even we can't decrypt your data)
+
 **For developers:**
 
 - 100% open source (no proprietary server components)
