@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Support Guardyn - Help us build the world's most trusted secure communication platform. Your sponsorship funds full-time development, security audits, and infrastructure.">
+    <meta name="keywords" content="sponsor, open source, privacy, security, funding, github sponsors, support development">
+    <meta property="og:title" content="Sponsor Guardyn - Support Privacy-First Development">
+    <meta property="og:description" content="Your sponsorship directly funds security audits, infrastructure, and full-time development of privacy-first secure communications.">
+    <meta property="og:image" content="https://guardyn.co/media/logo.svg">
+    <meta property="og:url" content="https://guardyn.co/sponsor">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="robots" content="index, follow">
+
+    <title>Sponsor Guardyn - Support Privacy-First Development</title>
+
+    <link rel="icon" type="image/webp" href="/media/logo.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hero-bg {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
+                        url('/media/bg.webp');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tier-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .tier-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(99, 102, 241, 0.8);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-gray-900/80 backdrop-blur-lg border-b border-white/10">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <img src="/media/logo.svg" alt="Guardyn Logo" class="h-10 w-10">
+                    <span class="text-2xl font-bold">Guardyn</span>
+                </a>
+                <div class="flex space-x-6 items-center">
+                    <a href="index.html" class="hover:text-blue-400 transition">Home</a>
+                    <a href="privacy.html" class="hover:text-blue-400 transition">Privacy</a>
+                    <a href="terms.html" class="hover:text-blue-400 transition">Terms</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg pt-32 pb-16">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto text-center">
+                <h1 class="text-5xl md:text-6xl font-bold mb-6">
+                    💖 Support <span class="gradient-text">Guardyn</span> Development
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
+                    Help us build the world's most trusted secure communication platform.<br>
+                    Your sponsorship directly funds full-time development, security audits, and infrastructure.
+                </p>
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer" 
+                       class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg font-semibold text-lg hover:from-pink-700 hover:to-purple-700 transition shadow-lg pulse-glow">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        Become a GitHub Sponsor
+                    </a>
+                    <a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center px-8 py-4 bg-blue-600 rounded-lg font-semibold text-lg hover:bg-blue-700 transition shadow-lg">
+                        💼 Open Collective
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Current Progress -->
+    <section class="py-16 bg-gray-800/50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto">
+                <h2 class="text-4xl font-bold mb-8 text-center">🚀 Current Progress</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-gray-800 p-6 rounded-xl border border-green-500/30">
+                        <div class="text-4xl mb-2">✅</div>
+                        <h3 class="text-xl font-bold mb-2">Backend MVP</h3>
+                        <p class="text-gray-300">Complete & deployed</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-green-500/30">
+                        <div class="text-4xl mb-2">✅</div>
+                        <h3 class="text-xl font-bold mb-2">E2E Tests</h3>
+                        <p class="text-gray-300">8/8 passing</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-yellow-500/30">
+                        <div class="text-4xl mb-2">🚧</div>
+                        <h3 class="text-xl font-bold mb-2">Mobile Client</h3>
+                        <p class="text-gray-300">In development</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-blue-500/30">
+                        <div class="text-4xl mb-2">📋</div>
+                        <h3 class="text-xl font-bold mb-2">Security Audit</h3>
+                        <p class="text-gray-300">Planned Q2 2026</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Sponsor -->
+    <section class="py-16 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto">
+                <h2 class="text-4xl font-bold mb-12 text-center">💡 Why Your Support Matters</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-gradient-to-br from-blue-900/30 to-purple-900/30 p-8 rounded-xl border border-blue-500/30">
+                        <div class="text-5xl mb-4">👨‍💻</div>
+                        <h3 class="text-2xl font-bold mb-4">Full-Time Development</h3>
+                        <p class="text-gray-300 leading-relaxed">
+                            Guardyn is built by a solo founder dedicated to making privacy accessible to everyone. 
+                            Your sponsorship enables full-time work on security features, bug fixes, and new functionality.
+                        </p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-purple-900/30 to-pink-900/30 p-8 rounded-xl border border-purple-500/30">
+                        <div class="text-5xl mb-4">🔒</div>
+                        <h3 class="text-2xl font-bold mb-4">Security Audits</h3>
+                        <p class="text-gray-300 leading-relaxed">
+                            Professional security audits cost €15,000-25,000. We're saving for audits by Cure53 and Trail of Bits 
+                            to ensure cryptographic implementation meets the highest standards.
+                        </p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-green-900/30 to-blue-900/30 p-8 rounded-xl border border-green-500/30">
+                        <div class="text-5xl mb-4">☁️</div>
+                        <h3 class="text-2xl font-bold mb-4">Infrastructure Costs</h3>
+                        <p class="text-gray-300 leading-relaxed">
+                            Running Kubernetes clusters, CI/CD pipelines, testing environments, and storage infrastructure 
+                            costs $500-2,000/month. Your support keeps the lights on.
+                        </p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-yellow-900/30 to-red-900/30 p-8 rounded-xl border border-yellow-500/30">
+                        <div class="text-5xl mb-4">📚</div>
+                        <h3 class="text-2xl font-bold mb-4">Community Building</h3>
+                        <p class="text-gray-300 leading-relaxed">
+                            Documentation, tutorials, community support, and educational content take time. 
+                            Sponsorship funds help us build a thriving open-source community.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sponsorship Tiers -->
+    <section class="py-16 bg-gray-800/50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl font-bold mb-4 text-center">🎯 Sponsorship Tiers</h2>
+                <p class="text-xl text-gray-300 mb-12 text-center">Choose a tier that works for you. Every contribution matters! ❤️</p>
+                
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                    <!-- Supporter Tier -->
+                    <div class="tier-card bg-gray-800 p-8 rounded-xl border border-gray-700">
+                        <div class="text-4xl mb-4">🥉</div>
+                        <h3 class="text-2xl font-bold mb-2">Supporter</h3>
+                        <div class="text-4xl font-bold mb-6 gradient-text">$5<span class="text-lg text-gray-400">/month</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Name listed in README.md</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Sponsor badge on GitHub profile</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Monthly development updates</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Good karma for supporting privacy ❤️</span>
+                            </li>
+                        </ul>
+                        <a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer"
+                           class="block w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-center font-semibold transition">
+                            Become a Supporter
+                        </a>
+                    </div>
+
+                    <!-- Contributor Tier -->
+                    <div class="tier-card bg-gray-800 p-8 rounded-xl border-2 border-blue-500">
+                        <div class="text-4xl mb-4">🥈</div>
+                        <h3 class="text-2xl font-bold mb-2">Contributor</h3>
+                        <div class="text-4xl font-bold mb-6 gradient-text">$25<span class="text-lg text-gray-400">/month</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Everything in Supporter</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Access to private Discord channel</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Vote on feature prioritization</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Listed on guardyn.co/sponsors page</span>
+                            </li>
+                        </ul>
+                        <a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer"
+                           class="block w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-center font-semibold transition">
+                            Become a Contributor
+                        </a>
+                    </div>
+
+                    <!-- Corporate Sponsor Tier -->
+                    <div class="tier-card bg-gray-800 p-8 rounded-xl border-2 border-purple-500">
+                        <div class="text-4xl mb-4">🥇</div>
+                        <h3 class="text-2xl font-bold mb-2">Corporate Sponsor</h3>
+                        <div class="text-4xl font-bold mb-6 gradient-text">$100<span class="text-lg text-gray-400">/month</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Everything in Contributor</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Company logo in README.md</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Logo on guardyn.co homepage</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Priority issue support</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Influence on feature roadmap</span>
+                            </li>
+                        </ul>
+                        <a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer"
+                           class="block w-full py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-center font-semibold transition">
+                            Become a Corporate Sponsor
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Premium Tiers -->
+                <div class="grid md:grid-cols-2 gap-8">
+                    <!-- Founding Patron -->
+                    <div class="tier-card bg-gradient-to-br from-yellow-900/30 to-orange-900/30 p-8 rounded-xl border-2 border-yellow-500 pulse-glow">
+                        <div class="text-4xl mb-4">💎</div>
+                        <h3 class="text-2xl font-bold mb-2">Founding Patron</h3>
+                        <div class="text-4xl font-bold mb-6 gradient-text">$500<span class="text-lg text-gray-400">/month</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Everything in Corporate Sponsor</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Prominent logo placement (top position)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Monthly 1-on-1 video call with founder</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Early access to new features (beta)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Lifetime recognition as founding patron</span>
+                            </li>
+                        </ul>
+                        <a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer"
+                           class="block w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 rounded-lg text-center font-semibold transition">
+                            Become a Founding Patron
+                        </a>
+                    </div>
+
+                    <!-- Enterprise Partner -->
+                    <div class="tier-card bg-gradient-to-br from-purple-900/30 to-pink-900/30 p-8 rounded-xl border-2 border-pink-500 pulse-glow">
+                        <div class="text-4xl mb-4">🏢</div>
+                        <h3 class="text-2xl font-bold mb-2">Enterprise Partner</h3>
+                        <div class="text-4xl font-bold mb-6 gradient-text">$2,000<span class="text-lg text-gray-400">/month</span></div>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Everything in Founding Patron</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Custom integration support</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Priority feature development</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Dedicated technical support</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span>Listed as Enterprise Partner</span>
+                            </li>
+                        </ul>
+                        <a href="mailto:enterprise@guardyn.app?subject=Enterprise%20Partnership%20Inquiry"
+                           class="block w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-center font-semibold transition">
+                            Contact for Enterprise Partnership
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- One-Time Donations -->
+    <section class="py-16 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto text-center">
+                <h2 class="text-4xl font-bold mb-6">☕ Prefer a One-Time Donation?</h2>
+                <p class="text-xl text-gray-300 mb-8">
+                    Not ready for monthly sponsorship? You can support Guardyn with a one-time contribution!
+                </p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="https://ko-fi.com/guardyn" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-red-600 to-pink-600 rounded-lg font-semibold text-lg hover:from-red-700 hover:to-pink-700 transition shadow-lg">
+                        ☕ Buy Me a Coffee (Ko-fi)
+                    </a>
+                    <a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center px-8 py-4 bg-blue-600 rounded-lg font-semibold text-lg hover:bg-blue-700 transition shadow-lg">
+                        💼 One-Time via Open Collective
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Transparency -->
+    <section class="py-16 bg-gray-800/50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto">
+                <h2 class="text-4xl font-bold mb-8 text-center">📊 Financial Transparency</h2>
+                <div class="bg-gray-800 p-8 rounded-xl border border-gray-700">
+                    <p class="text-lg text-gray-300 mb-6 leading-relaxed">
+                        We believe in complete transparency. All sponsorship funds are tracked publicly on 
+                        <a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">Open Collective</a>, 
+                        where you can see exactly how your contributions are being used.
+                    </p>
+                    <h3 class="text-2xl font-bold mb-4">How We Allocate Funds:</h3>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-gray-900 p-6 rounded-lg border border-blue-500/30">
+                            <div class="text-3xl font-bold text-blue-400 mb-2">40%</div>
+                            <div class="text-gray-300">Development<br>(founder time)</div>
+                        </div>
+                        <div class="bg-gray-900 p-6 rounded-lg border border-green-500/30">
+                            <div class="text-3xl font-bold text-green-400 mb-2">25%</div>
+                            <div class="text-gray-300">Infrastructure<br>(servers, CI/CD)</div>
+                        </div>
+                        <div class="bg-gray-900 p-6 rounded-lg border border-purple-500/30">
+                            <div class="text-3xl font-bold text-purple-400 mb-2">20%</div>
+                            <div class="text-gray-300">Security Audits<br>(saving for Cure53)</div>
+                        </div>
+                        <div class="bg-gray-900 p-6 rounded-lg border border-yellow-500/30">
+                            <div class="text-3xl font-bold text-yellow-400 mb-2">15%</div>
+                            <div class="text-gray-300">Marketing & Community<br>(content, events)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="py-16 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-4xl font-bold mb-12 text-center">❓ Frequently Asked Questions</h2>
+                <div class="space-y-6">
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-bold mb-3">Can I cancel my sponsorship anytime?</h3>
+                        <p class="text-gray-300">Yes! GitHub Sponsors and Open Collective allow you to cancel anytime with no penalties. We appreciate any support, whether for one month or many years.</p>
+                    </div>
+
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-bold mb-3">Is my sponsorship tax-deductible?</h3>
+                        <p class="text-gray-300">If you sponsor through Open Collective, your contribution may be tax-deductible (depending on your country and tax laws). GitHub Sponsors payments are generally not tax-deductible. Consult your tax advisor for specific guidance.</p>
+                    </div>
+
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-bold mb-3">Will Guardyn always be free and open source?</h3>
+                        <p class="text-gray-300">Yes! The core Guardyn platform will always be 100% free, open source (Apache 2.0 license), and self-hostable. We will offer optional paid services (managed hosting, enterprise support) to sustain development, but the code will remain free forever.</p>
+                    </div>
+
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-bold mb-3">How are sponsors recognized?</h3>
+                        <p class="text-gray-300">All sponsors are listed in our README.md on GitHub and on this sponsors page. Higher tiers receive logo placement on the homepage and additional recognition. You can choose to remain anonymous if you prefer.</p>
+                    </div>
+
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-bold mb-3">Can I sponsor as a company?</h3>
+                        <p class="text-gray-300">Absolutely! Corporate sponsorships are welcome and come with additional benefits like logo placement, priority support, and influence on the roadmap. For Enterprise Partner inquiries ($2,000+/month), please contact <a href="mailto:enterprise@guardyn.app" class="text-blue-400 hover:text-blue-300 underline">enterprise@guardyn.app</a>.</p>
+                    </div>
+
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-bold mb-3">What happens if you don't reach your funding goals?</h3>
+                        <p class="text-gray-300">If we don't reach sustainable funding ($2,000-5,000/month), development will slow down as the founder will need to take on part-time consulting work. However, the project will continue—just at a slower pace. Your sponsorship directly accelerates development!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-16 bg-gradient-to-br from-blue-900/30 to-purple-900/30 border-y border-blue-500/30">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto text-center">
+                <h2 class="text-4xl md:text-5xl font-bold mb-6">🚀 Ready to Make a Difference?</h2>
+                <p class="text-xl text-gray-300 mb-8 leading-relaxed">
+                    Every sponsor helps us build a more private, secure internet.<br>
+                    Join the privacy rebellion today! 💜
+                </p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center px-10 py-5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg font-bold text-xl hover:from-pink-700 hover:to-purple-700 transition shadow-2xl pulse-glow">
+                        <svg class="w-7 h-7 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        Become a Sponsor Now
+                    </a>
+                    <a href="mailto:hello@guardyn.app?subject=Sponsorship%20Inquiry"
+                       class="inline-flex items-center px-10 py-5 bg-gray-700 rounded-lg font-bold text-xl hover:bg-gray-600 transition shadow-lg">
+                        📧 Contact Us
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-gray-900 border-t border-white/10">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <div class="grid md:grid-cols-4 gap-8 mb-8">
+                    <div>
+                        <h4 class="font-bold mb-4">Product</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="index.html" class="hover:text-blue-400 transition">Home</a></li>
+                            <li><a href="index.html#features" class="hover:text-blue-400 transition">Features</a></li>
+                            <li><a href="index.html#security" class="hover:text-blue-400 transition">Security</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Community</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="https://github.com/guardyn" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition">GitHub</a></li>
+                            <li><a href="https://discord.gg/guardyn" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition">Discord</a></li>
+                            <li><a href="https://twitter.com/guardyn_io" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition">Twitter</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Support</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="sponsor.html" class="hover:text-blue-400 transition">Sponsor</a></li>
+                            <li><a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer" class="hover:text-blue-400 transition">Open Collective</a></li>
+                            <li><a href="mailto:hello@guardyn.app" class="hover:text-blue-400 transition">Contact</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Legal</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="privacy.html" class="hover:text-blue-400 transition">Privacy Policy</a></li>
+                            <li><a href="terms.html" class="hover:text-blue-400 transition">Terms of Service</a></li>
+                            <li><a href="mailto:security@guardyn.app" class="hover:text-blue-400 transition">Security</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="text-center text-gray-400 pt-8 border-t border-white/10">
+                    <p>© 2025 Guardyn. Open source under Apache 2.0 license. Built with ❤️ for privacy.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
