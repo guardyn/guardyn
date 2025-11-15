@@ -25,7 +25,7 @@ When reporting a vulnerability, please provide:
 - ✅ **Response Time**: We will acknowledge your report within 48 hours
 - ✅ **Updates**: We will keep you informed throughout the fix process
 - ✅ **Credit**: We will credit you in our security acknowledgments (unless you prefer to remain anonymous)
-- ✅ **Bug Bounty**: Rewards program planned for post-launch (Q2 2025)
+- ✅ **Bug Bounty**: Rewards program planned for post-launch (Q2 2026)
 
 ## Scope
 
@@ -85,13 +85,12 @@ _No vulnerabilities reported yet - be the first!_
 
 ## Additional Resources
 
-- [Developer Documentation](https://docs.guardyn.io/developers)
+- [Developer Documentation](https://github.com/guardyn/guardyn/tree/main/docs)
 - [Architecture Documentation](docs/mvp_discovery.md)
-- [Cryptographic Specifications](docs/CRYPTO_SPEC.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 
 ---
 
 **Thank you for helping make Guardyn more secure!**
 
-_Last updated: November 14, 2025_
+_Last updated: November 15, 2025_
