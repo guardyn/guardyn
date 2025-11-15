@@ -1,4 +1,4 @@
-# MVP Discovery Package — Variant 1 (Rust-Centric Architecture)
+# MVP Discovery Package
 
 ## 1. Personas and Core User Stories
 

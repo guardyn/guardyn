@@ -1,4 +1,4 @@
-# Infrastructure PoC Guide — Variant 1 MVP
+# Infrastructure PoC Guide
 
 ## 1. Overview
 
