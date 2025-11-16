@@ -127,6 +127,20 @@
             color: var(--primary);
         }
 
+        .sponsor-button {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+            color: white !important;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .sponsor-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(236, 72, 153, 0.4);
+        }
+
         /* Hero Section */
         .hero {
             min-height: 100vh;
@@ -743,6 +757,7 @@
                     <li><a href="#tech">Technology</a></li>
                     <li><a href="#architecture">Architecture</a></li>
                     <li><a href="https://github.com/guardyn/guardyn" target="_blank">GitHub</a></li>
+                    <li><a href="/sponsor" class="sponsor-button">💖 Sponsor</a></li>
                     <li><a href="#beta" class="btn btn-primary">Join Beta</a></li>
                 </ul>
             </div>
@@ -1187,6 +1202,21 @@
                         <li><a href="mailto:hello@guardyn.app">Contact</a></li>
                     </ul>
                 </div>
+
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="/sponsor">💖 Sponsor Development</a></li>
+                        <li><a href="https://github.com/sponsors/guardyn" target="_blank">GitHub Sponsors</a></li>
+                        <li><a href="https://opencollective.com/guardyn" target="_blank">Open Collective</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sponsor-cta" style="margin: 3rem 0; padding: 2rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; text-align: center;">
+                <h3 style="margin-bottom: 1rem; font-size: 1.5rem;">Support Guardyn Development</h3>
+                <p style="margin-bottom: 1.5rem; color: var(--text-muted);">Help us make privacy accessible to everyone</p>
+                <a href="/sponsor" class="btn btn-primary">Become a Sponsor</a>
             </div>
 
             <div class="footer-bottom">
