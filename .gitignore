@@ -1,4 +1,13 @@
 _local/
+
+# Secrets and Private Keys
+infra/secrets/*.asc
+infra/secrets/*.key
+infra/secrets/age-key.txt
+# Only commit SOPS-encrypted files:
+!infra/secrets/*.enc.yaml
+!infra/secrets/*.enc.asc
+
 # Rust
 backend/target/
 **/target/

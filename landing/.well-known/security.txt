@@ -1,0 +1,16 @@
+Contact: mailto:security@guardyn.io
+Expires: 2026-11-17T23:59:59.000Z
+Preferred-Languages: en, uk, ru
+Canonical: https://guardyn.co/.well-known/security.txt
+
+# Guardyn Security Contact Information
+#
+# If you believe you have found a security vulnerability in Guardyn,
+# please report it to us at: security@guardyn.io
+#
+# Please do NOT file a public issue on GitHub.
+#
+# Response time: Within 48 hours
+#
+# Thank you for helping keep Guardyn and our users safe!
+

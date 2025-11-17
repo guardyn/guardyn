@@ -29,9 +29,12 @@ For reporting security vulnerabilities (please use responsible disclosure):
 
 **Response time**: 24 hours for critical issues
 
-**PGP Key**: Available at https://guardyn.co/.well-known/security.txt
+**PGP Key**: https://guardyn.co/.well-known/pgp-key.txt  
+**Fingerprint**: `72E2 35E0 C28B 3042 6434 1BF6 AC2A E8F7 04CE 083A`
 
-**Responsible Disclosure Policy**: https://guardyn.co/security
+**Security Contact Info**: https://guardyn.co/.well-known/security.txt
+
+**Responsible Disclosure Policy**: https://guardyn.co/security (coming soon)
 
 ---
 
