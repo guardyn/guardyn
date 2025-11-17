@@ -2,3 +2,6 @@ creation_rules:
   - path_regex: infra/secrets/.*\.enc\.yaml$
     encrypted_regex: '^(data|stringData)$'
     age: ["age1m4zvq4slkpsf9jd8l70hcddg7txke3xykyr4d3pjxlmmdzhe6u4sdgrj4j"]
+
+  - path_regex: infra/secrets/.*\.enc\.asc$
+    age: ["age1m4zvq4slkpsf9jd8l70hcddg7txke3xykyr4d3pjxlmmdzhe6u4sdgrj4j"]
