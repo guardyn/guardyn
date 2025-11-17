@@ -99,7 +99,7 @@ Update links in `index.html`:
 
 - GitHub: `https://github.com/guardyn` (line ~115, ~600)
 - LinkedIn: `https://linkedin.com/company/guardyn` (line ~604)
-- Email: `hello@guardyn.app` (line ~612)
+- Email: `hello@guardyn.io` (line ~612)
 
 ### Add Cloudflare Web Analytics
 
