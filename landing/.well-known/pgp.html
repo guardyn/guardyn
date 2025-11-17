@@ -56,9 +56,9 @@
 </head>
 <body>
     <h1>🔐 Guardyn PGP Public Key</h1>
-    
+
     <p>Use this PGP key to send encrypted communications to the Guardyn security team.</p>
-    
+
     <div class="key-info">
         <h2>Key Information</h2>
         <ul>
@@ -70,25 +70,25 @@
             <li><strong>Expires:</strong> 2027-11-17</li>
         </ul>
     </div>
-    
+
     <h2>📥 Download Key</h2>
     <a href="pgp-key.txt" class="button" download>Download PGP Key</a>
     <a href="https://keys.openpgp.org/search?q=security@guardyn.io" class="button" target="_blank">Verify on keys.openpgp.org</a>
-    
+
     <h2>🔧 How to Import</h2>
     <p>Import this key using GPG:</p>
     <pre><code>curl https://guardyn.co/.well-known/pgp-key.txt | gpg --import</code></pre>
-    
+
     <p>Or download and import manually:</p>
     <pre><code>gpg --import pgp-key.txt</code></pre>
-    
+
     <p>Verify the fingerprint:</p>
     <pre><code>gpg --fingerprint security@guardyn.io</code></pre>
-    
+
     <h2>📧 Send Encrypted Message</h2>
     <p>Encrypt a message to Guardyn security team:</p>
     <pre><code>gpg --encrypt --armor --recipient security@guardyn.io message.txt</code></pre>
-    
+
     <h2>🔑 Public Key</h2>
     <div class="key-block">
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -121,13 +121,13 @@ dsEoNEApDl7m1tHQxZ+t2hgjWekSdKQ=
 =Meee
 -----END PGP PUBLIC KEY BLOCK-----
     </div>
-    
+
     <hr style="margin: 40px 0;">
-    
+
     <p style="text-align: center; color: #64748b;">
         <small>
-            Guardyn Security Team | 
-            <a href="https://guardyn.co">guardyn.co</a> | 
+            Guardyn Security Team |
+            <a href="https://guardyn.co">guardyn.co</a> |
             <a href="https://github.com/guardyn">GitHub</a>
         </small>
     </p>
