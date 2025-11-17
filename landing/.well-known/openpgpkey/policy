@@ -1,0 +1,40 @@
+# Guardyn PGP Key Policy
+
+This domain supports Web Key Directory (WKD) for automatic PGP key discovery.
+
+## Supported Email Addresses
+
+- security@guardyn.io
+- founder@guardyn.io
+- backers@guardyn.io
+- admin@guardyn.io
+
+## Key Information
+
+**Security Team Key:**
+- Email: security@guardyn.io
+- Fingerprint: 72E2 35E0 C28B 3042 6434 1BF6 AC2A E8F7 04CE 083A
+- Key ID: 04CE083A
+- Created: 2025-11-17
+- Expires: 2027-11-17
+- Algorithm: RSA 4096-bit
+
+## Key Usage
+
+This key is used for:
+- Encrypted communication with Guardyn security team
+- Signing security advisories
+- Responsible vulnerability disclosure
+- Grant applications and official correspondence
+
+## Verification
+
+You can verify our PGP key from multiple sources:
+- https://guardyn.co/.well-known/pgp-key.txt
+- https://keys.openpgp.org (search: security@guardyn.io)
+- Our GitHub repository: github.com/guardyn/guardyn
+
+## Contact
+
+For security issues, please encrypt your message to security@guardyn.io
+For general inquiries: hello@guardyn.io
