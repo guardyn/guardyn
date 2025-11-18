@@ -1,7 +1,12 @@
 # These are supported funding model platforms
 
+github: [guardyn]
 open_collective: guardyn
 ko_fi: guardyn
+custom: [
+  "https://guardyn.io/crypto",
+  "https://guardyn.io/sponsor"
+]
 
 
 
