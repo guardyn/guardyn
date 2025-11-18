@@ -23,7 +23,24 @@ For detailed coding guidelines and AI-assisted development instructions, see [.g
 
 ## Code of Conduct
 
-We expect all contributors to be respectful and professional. Please follow the language policy and coding conventions outlined in the project documentation.
+We expect all contributors to be respectful and professional. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) for details on our standards and enforcement.
+
+## 🐛 Reporting Issues
+
+Before creating an issue, please:
+
+1. **Search existing issues** to avoid duplicates
+2. **Check documentation** in the [docs/](docs/) directory
+3. **For security vulnerabilities**: Email <security@guardyn.app> directly (DO NOT open public issues)
+
+We have several issue templates to help you report different types of issues:
+
+- **[Bug Report](.github/ISSUE_TEMPLATE/bug_report.md)** - Report bugs or unexpected behavior
+- **[Feature Request](.github/ISSUE_TEMPLATE/feature_request.md)** - Suggest new features or enhancements
+- **[Documentation Issue](.github/ISSUE_TEMPLATE/documentation.md)** - Report documentation problems
+- **[Testing Issue](.github/ISSUE_TEMPLATE/testing.md)** - Report test or CI/CD issues
+- **[Infrastructure Issue](.github/ISSUE_TEMPLATE/infrastructure.md)** - Report infrastructure/DevOps problems
+- **[Contribution Question](.github/ISSUE_TEMPLATE/contribution.md)** - Ask about contributing
 
 ## 📁 Project Structure and File Organization
 
