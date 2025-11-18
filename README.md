@@ -12,7 +12,9 @@
   <a href="#-current-status"><strong>Project Status</strong></a> •
   <a href="#-technical-approach"><strong>Architecture</strong></a> •
   <a href="#-getting-started"><strong>Get Started</strong></a> •
-  <a href="docs/IMPLEMENTATION_PLAN.md"><strong>Documentation</strong></a>
+  <a href="docs/IMPLEMENTATION_PLAN.md"><strong>Documentation</strong></a> •
+  <a href="CONTRIBUTING.md"><strong>Contributing</strong></a> •
+  <a href="CODE_OF_CONDUCT.md"><strong>Code of Conduct</strong></a>
 </p>
 
 <p align="center">
