@@ -244,35 +244,32 @@ cargo clippy -- -D warnings
 1. **Commit your changes** with conventional commit messages
 2. **Push to your fork**: `git push origin feat/your-feature-name`
 3. **Open a Pull Request** against `main` branch
-4. **Address review feedback** promptly
-5. **Ensure CI passes** before merge
+4. **Fill out the PR template** (see `.github/pull_request_template.md`)
+5. **Address review feedback** promptly
+6. **Ensure CI passes** before merge
 
 ## 📋 Pull Request Guidelines
 
-### PR Description Template
+When you open a PR, GitHub will automatically populate a comprehensive template that includes:
 
-```markdown
-## Description
-Brief description of what this PR does
+- **Description and context** - What changes are made and why
+- **Type of change** - Bug fix, feature, breaking change, etc.
+- **Components affected** - Which parts of the codebase are modified
+- **Testing details** - Test coverage and how to verify changes
+- **Breaking changes** - Documentation of any breaking changes
+- **Security considerations** - Security implications review
+- **Documentation updates** - Changes to docs or comments
+- **Comprehensive checklist** - Code quality, file placement, naming, testing, security
 
-## Type of Change
-- [ ] Bug fix (non-breaking change that fixes an issue)
-- [ ] New feature (non-breaking change that adds functionality)
-- [ ] Breaking change (fix or feature that changes existing behavior)
-- [ ] Documentation update
+**Key sections to complete:**
 
-## Testing
-- [ ] Unit tests pass
-- [ ] E2E tests pass
-- [ ] Manual testing completed
+- Link related issues using `Fixes #123` or `Relates to #456`
+- Mark the type(s) of change your PR introduces
+- Describe what changed and why
+- Provide test results and instructions for reviewers
+- Complete all relevant checklist items
 
-## Checklist
-- [ ] Code follows project conventions
-- [ ] Documentation updated
-- [ ] No new warnings
-- [ ] Commit messages follow conventional commits
-- [ ] Files placed in correct directories
-```
+**Full template:** [`.github/pull_request_template.md`](.github/pull_request_template.md)
 
 ### PR Review Process
 
