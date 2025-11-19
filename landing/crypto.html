@@ -243,197 +243,285 @@
                     <p class="text-xl text-gray-300">Send directly to our wallet addresses</p>
                 </div>
 
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="space-y-6">
                     <!-- Bitcoin -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 ₿
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">Bitcoin</h3>
-                                <p class="text-sm text-gray-400">BTC</p>
+                                <p class="text-sm text-gray-400">BTC • Bitcoin Network</p>
+                                <p class="text-xs text-gray-500 mt-1">✓ Supports all BTC address formats (1, 3, bc1p, bc1q)</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Bitcoin Network:</p>
-                        <div class="wallet-address text-orange-400 mb-3">
-                            bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" 
+                                     alt="Bitcoin QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-orange-400 mb-3">
+                                    bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                                </div>
+                                <button onclick="copyToClipboard('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-3">
-                            ✓ Supports all BTC address formats (1, 3, bc1p, bc1q)
-                        </p>
-                        <button onclick="copyToClipboard('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Ethereum -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 ⟠
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">Ethereum</h3>
-                                <p class="text-sm text-gray-400">ETH</p>
+                                <p class="text-sm text-gray-400">ETH • ERC-20 Network</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">ERC-20 Network:</p>
-                        <div class="wallet-address text-blue-400 mb-3">
-                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb" 
+                                     alt="Ethereum QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-blue-400 mb-3">
+                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                                </div>
+                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- USDT (ERC-20) -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 ₮
                             </div>
                             <div>
-                                <h3 class="text-xl font-bold">Tether</h3>
-                                <p class="text-sm text-gray-400">USDT (ERC-20)</p>
+                                <h3 class="text-xl font-bold">Tether USD</h3>
+                                <p class="text-sm text-gray-400">USDT • ERC-20 Network (Ethereum)</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Ethereum Network:</p>
-                        <div class="wallet-address text-green-400 mb-3">
-                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb" 
+                                     alt="USDT ERC-20 QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-green-400 mb-3">
+                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                                </div>
+                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-green-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-green-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- USDT (TRC-20) -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 ₮
                             </div>
                             <div>
-                                <h3 class="text-xl font-bold">Tether</h3>
-                                <p class="text-sm text-gray-400">USDT (TRC-20)</p>
+                                <h3 class="text-xl font-bold">Tether USD</h3>
+                                <p class="text-sm text-gray-400">USDT • TRC-20 Network (Tron)</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Tron Network:</p>
-                        <div class="wallet-address text-red-400 mb-3">
-                            TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS" 
+                                     alt="USDT TRC-20 QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-red-400 mb-3">
+                                    TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS
+                                </div>
+                                <button onclick="copyToClipboard('TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- BNB (BSC) -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 ◈
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">BNB</h3>
-                                <p class="text-sm text-gray-400">Binance Coin</p>
+                                <p class="text-sm text-gray-400">BNB • BSC Network (Binance Smart Chain)</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">BSC Network:</p>
-                        <div class="wallet-address text-yellow-400 mb-3">
-                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb" 
+                                     alt="BNB BSC QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-yellow-400 mb-3">
+                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                                </div>
+                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- USDC -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 $
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">USD Coin</h3>
-                                <p class="text-sm text-gray-400">USDC (ERC-20)</p>
+                                <p class="text-sm text-gray-400">USDC • ERC-20 Network (Ethereum)</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Ethereum Network:</p>
-                        <div class="wallet-address text-blue-400 mb-3">
-                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb" 
+                                     alt="USDC QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-blue-400 mb-3">
+                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                                </div>
+                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Litecoin -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 Ł
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">Litecoin</h3>
-                                <p class="text-sm text-gray-400">LTC</p>
+                                <p class="text-sm text-gray-400">LTC • Litecoin Network</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Litecoin Network:</p>
-                        <div class="wallet-address text-gray-400 mb-3">
-                            ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j" 
+                                     alt="Litecoin QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-gray-400 mb-3">
+                                    ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j
+                                </div>
+                                <button onclick="copyToClipboard('ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Dogecoin -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 Ð
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">Dogecoin</h3>
-                                <p class="text-sm text-gray-400">DOGE</p>
+                                <p class="text-sm text-gray-400">DOGE • Dogecoin Network</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Dogecoin Network:</p>
-                        <div class="wallet-address text-yellow-600 mb-3">
-                            DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L" 
+                                     alt="Dogecoin QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-yellow-600 mb-3">
+                                    DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L
+                                </div>
+                                <button onclick="copyToClipboard('DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-600/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-600/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Monero -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
                                 ɱ
                             </div>
                             <div>
                                 <h3 class="text-xl font-bold">Monero</h3>
-                                <p class="text-sm text-gray-400">XMR</p>
+                                <p class="text-sm text-gray-400">XMR • Monero Network</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 mb-2">Monero Network:</p>
-                        <div class="wallet-address text-orange-600 mb-3 text-xs">
-                            4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- QR Code -->
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx" 
+                                     alt="Monero QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <!-- Address -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-orange-600 mb-3 text-xs">
+                                    4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx
+                                </div>
+                                <button onclick="copyToClipboard('4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-600/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-600/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
                 </div>
             </div>
@@ -449,11 +537,11 @@
                     <p class="text-xl text-gray-300">We accept 50+ cryptocurrencies via multiple networks</p>
                 </div>
 
-                <div class="grid md:grid-cols-2 gap-6">
+                <div class="space-y-6">
                     <!-- Solana -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-xl mr-3">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                                 ◎
                             </div>
                             <div>
@@ -461,19 +549,28 @@
                                 <p class="text-xs text-gray-400">Solana Network</p>
                             </div>
                         </div>
-                        <div class="wallet-address text-purple-400 mb-3 text-xs">
-                            7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV" 
+                                     alt="Solana QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-purple-400 mb-3 text-xs">
+                                    7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV
+                                </div>
+                                <button onclick="copyToClipboard('7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Cardano -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-xl mr-3">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                                 ₳
                             </div>
                             <div>
@@ -481,19 +578,28 @@
                                 <p class="text-xs text-gray-400">Cardano Network</p>
                             </div>
                         </div>
-                        <div class="wallet-address text-blue-400 mb-3 text-xs">
-                            addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" 
+                                     alt="Cardano QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-blue-400 mb-3 text-xs">
+                                    addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                                </div>
+                                <button onclick="copyToClipboard('addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-600/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-600/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Polkadot -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-xl mr-3">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                                 ●
                             </div>
                             <div>
@@ -501,19 +607,28 @@
                                 <p class="text-xs text-gray-400">Polkadot Network</p>
                             </div>
                         </div>
-                        <div class="wallet-address text-pink-400 mb-3 text-xs">
-                            13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB" 
+                                     alt="Polkadot QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-pink-400 mb-3 text-xs">
+                                    13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB
+                                </div>
+                                <button onclick="copyToClipboard('13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-pink-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-pink-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Avalanche -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-xl mr-3">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                                 ▲
                             </div>
                             <div>
@@ -521,19 +636,28 @@
                                 <p class="text-xs text-gray-400">Avalanche C-Chain</p>
                             </div>
                         </div>
-                        <div class="wallet-address text-red-400 mb-3 text-xs">
-                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb" 
+                                     alt="Avalanche QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-red-400 mb-3 text-xs">
+                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                                </div>
+                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Polygon -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-xl mr-3">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                                 ⬡
                             </div>
                             <div>
@@ -541,19 +665,28 @@
                                 <p class="text-xs text-gray-400">Polygon Network</p>
                             </div>
                         </div>
-                        <div class="wallet-address text-purple-400 mb-3 text-xs">
-                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb" 
+                                     alt="Polygon QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-purple-400 mb-3 text-xs">
+                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                                </div>
+                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-600/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-600/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
 
                     <!-- Ripple -->
                     <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-xl mr-3">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
                                 ✕
                             </div>
                             <div>
@@ -561,13 +694,22 @@
                                 <p class="text-xs text-gray-400">XRP Ledger</p>
                             </div>
                         </div>
-                        <div class="wallet-address text-gray-400 mb-3 text-xs">
-                            rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <div class="qr-container flex-shrink-0">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh" 
+                                     alt="Ripple QR Code" class="w-[120px] h-[120px]">
+                            </div>
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address text-gray-400 mb-3 text-xs">
+                                    rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh
+                                </div>
+                                <button onclick="copyToClipboard('rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Address
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="copyToClipboard('rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh', this)"
-                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
-                            📋 Copy Address
-                        </button>
                     </div>
                 </div>
 
