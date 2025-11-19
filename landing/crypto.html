@@ -651,8 +651,7 @@
                 textColor: 'text-red-400',
                 hoverColor: 'hover:bg-red-500/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700',
-                info: '✓ Please note that this deposit address supports C-Chain deposits. For X-Chain deposits, please use the AVAX network.
-'
+                info: '✓ Please note that this deposit address supports C-Chain deposits. For X-Chain deposits, please use the AVAX network.'
             },
             {
                 id: 'matic',
@@ -675,15 +674,79 @@
                 textColor: 'text-gray-400',
                 hoverColor: 'hover:bg-gray-500/20',
                 address: 'rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV',
-                info: '✓ Both a MEMO and an Address are required to successfully deposit your asset to Binance.'
+                memo: '481757971',
+                info: '⚠️ Both Address and Memo are required, or you will lose your coins. Incorrect MEMOs may result in fund loss.'
             }
         ];
 
         // Generate cryptocurrency card HTML
         function generateCryptoCard(crypto) {
             const infoHTML = crypto.info ?
-                `<p class="text-xs text-gray-500 mt-1">${crypto.info}</p>` : '';
+                `<p class="text-xs ${crypto.id === 'xrp' ? 'text-red-400' : 'text-gray-500'} mt-1">${crypto.info}</p>` : '';
 
+            // Special handling for XRP with memo (destination tag)
+            if (crypto.id === 'xrp' && crypto.memo) {
+                return `
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-12 h-12 ${crypto.iconBg} rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+                                ${crypto.icon}
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">${crypto.name}</h3>
+                                <p class="text-sm text-gray-400">${crypto.symbol} • ${crypto.network}</p>
+                                ${infoHTML}
+                            </div>
+                        </div>
+                        <div class="flex flex-col md:flex-row gap-6 items-start">
+                            <!-- Address QR Code -->
+                            <div class="flex-shrink-0">
+                                <p class="text-xs text-gray-400 mb-2 text-center">Address</p>
+                                <div class="qr-container qr-clickable" 
+                                     onclick="openQRModal('${crypto.name} - Address', '${crypto.symbol}', '${encodeURIComponent(crypto.address)}', 'Address')"
+                                     title="Click to enlarge QR code">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(crypto.address)}" 
+                                         alt="${crypto.name} Address QR Code" 
+                                         class="w-[120px] h-[120px]">
+                                </div>
+                            </div>
+                            <!-- Memo QR Code -->
+                            <div class="flex-shrink-0">
+                                <p class="text-xs text-gray-400 mb-2 text-center">Memo (Destination Tag)</p>
+                                <div class="qr-container qr-clickable" 
+                                     onclick="openQRModal('${crypto.name} - Memo', '${crypto.symbol}', '${encodeURIComponent(crypto.memo)}', 'Memo')"
+                                     title="Click to enlarge QR code">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(crypto.memo)}" 
+                                         alt="${crypto.name} Memo QR Code" 
+                                         class="w-[120px] h-[120px]">
+                                </div>
+                            </div>
+                            <!-- Address & Memo Details -->
+                            <div class="flex-1 w-full">
+                                <p class="text-xs text-gray-400 mb-2">Address:</p>
+                                <div class="wallet-address ${crypto.textColor} mb-3">
+                                    ${crypto.address}
+                                </div>
+                                <button onclick="copyToClipboard('${crypto.address}', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 ${crypto.hoverColor} rounded-lg text-sm font-semibold transition mb-4">
+                                    📋 Copy Address
+                                </button>
+                                
+                                <p class="text-xs text-gray-400 mb-2">Memo (Destination Tag):</p>
+                                <div class="wallet-address ${crypto.textColor} mb-3">
+                                    ${crypto.memo}
+                                </div>
+                                <button onclick="copyToClipboard('${crypto.memo}', this)"
+                                        class="copy-btn w-full py-2 px-4 bg-gray-700 ${crypto.hoverColor} rounded-lg text-sm font-semibold transition">
+                                    📋 Copy Memo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Standard cryptocurrency card (non-XRP)
             return `
                 <div class="crypto-card p-6 rounded-xl border border-gray-700">
                     <div class="flex items-center gap-4 mb-4">
@@ -752,14 +815,23 @@
         }
 
         // Open QR modal
-        function openQRModal(name, symbol, encodedAddress) {
+        function openQRModal(name, symbol, encodedAddress, label) {
             const modal = document.getElementById('qr-modal');
             const title = document.getElementById('modal-title');
             const subtitle = document.getElementById('modal-subtitle');
             const image = document.getElementById('modal-qr-image');
 
             title.textContent = name + ' (' + symbol + ')';
-            subtitle.textContent = 'Scan this QR code with your crypto wallet';
+
+            // Custom subtitle for XRP memo
+            if (label === 'Memo') {
+                subtitle.textContent = 'Scan this QR code for the Destination Tag (MEMO)';
+            } else if (label === 'Address') {
+                subtitle.textContent = 'Scan this QR code for the wallet address';
+            } else {
+                subtitle.textContent = 'Scan this QR code with your crypto wallet';
+            }
+
             image.src = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodedAddress;
             image.alt = name + ' QR Code';
 
