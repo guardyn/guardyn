@@ -207,7 +207,7 @@ Modern messaging platforms face a fundamental tension:
 
 ---
 
-## � Technical Foundation
+## 📋 Technical Foundation
 
 ### Cryptographic Protocols
 
