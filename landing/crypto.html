@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Support Guardyn with cryptocurrency donations - Bitcoin, Ethereum, USDT, and more. Fast, anonymous, and secure crypto payments accepted.">
+    <meta name="keywords" content="crypto donation, bitcoin, ethereum, cryptocurrency, BTC, ETH, USDT, blockchain, support guardyn">
+    <meta property="og:title" content="Crypto Donations - Support Guardyn with Cryptocurrency">
+    <meta property="og:description" content="Support privacy-first development with cryptocurrency donations. Accept Bitcoin, Ethereum, USDT, and 50+ cryptocurrencies.">
+    <meta property="og:image" content="https://guardyn.co/media/logo.svg">
+    <meta property="og:url" content="https://guardyn.co/crypto">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="robots" content="index, follow">
+
+    <title>Crypto Donations - Support Guardyn with Cryptocurrency</title>
+
+    <link rel="icon" type="image/webp" href="/media/logo.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hero-bg {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
+                        url('/media/bg.webp');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .crypto-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(51, 65, 85, 0.8) 100%);
+        }
+
+        .crypto-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(245, 158, 11, 0.3);
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(245, 158, 11, 0.8);
+            }
+        }
+
+        .wallet-address {
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .copy-btn {
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .qr-container {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .currency-selector {
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(245, 158, 11, 0.5) rgba(30, 41, 59, 0.5);
+        }
+
+        .currency-selector::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .currency-selector::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 4px;
+        }
+
+        .currency-selector::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.5);
+            border-radius: 4px;
+        }
+
+        .currency-option {
+            transition: background 0.2s ease;
+        }
+
+        .currency-option:hover {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .amount-btn {
+            transition: all 0.2s ease;
+        }
+
+        .amount-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: scale(1.05);
+        }
+
+        .amount-btn.active {
+            background: rgba(245, 158, 11, 0.3);
+            border-color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-gray-900/80 backdrop-blur-lg border-b border-white/10">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <img src="/media/logo.svg" alt="Guardyn Logo" class="h-10 w-10">
+                    <span class="text-2xl font-bold">Guardyn</span>
+                </a>
+                <div class="flex space-x-6 items-center">
+                    <a href="index.html" class="hover:text-orange-400 transition">Home</a>
+                    <a href="sponsor.html" class="hover:text-orange-400 transition">Sponsor</a>
+                    <a href="privacy.html" class="hover:text-orange-400 transition">Privacy</a>
+                    <a href="terms.html" class="hover:text-orange-400 transition">Terms</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg pt-32 pb-16">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto text-center">
+                <h1 class="text-5xl md:text-6xl font-bold mb-6">
+                    ₿ Support with <span class="gradient-text">Cryptocurrency</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
+                    Fast, anonymous, and secure crypto donations.<br>
+                    Support privacy-first development with your preferred cryptocurrency.
+                </p>
+                <div class="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        No KYC Required
+                    </span>
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        Instant Processing
+                    </span>
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        Low Fees
+                    </span>
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        50+ Coins Supported
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Binance Pay Section -->
+    <section class="py-16 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl font-bold mb-4">💳 Quick Donation via Binance Pay</h2>
+                    <p class="text-xl text-gray-300">Scan QR code with Binance app - Select any cryptocurrency and amount</p>
+                </div>
+
+                <div class="bg-gradient-to-br from-yellow-900/20 to-orange-900/20 p-8 rounded-2xl border border-orange-500/30">
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <!-- QR Code -->
+                        <div class="flex justify-center">
+                            <div class="qr-container">
+                                <img src="/media/crypto/binance.jpeg" alt="Binance Pay QR Code" class="w-64 h-64 mx-auto">
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="space-y-6">
+                            <h3 class="text-2xl font-bold mb-4">How to donate:</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-start">
+                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">1</div>
+                                    <p class="text-gray-300">Open <strong>Binance</strong> app on your phone</p>
+                                </div>
+                                <div class="flex items-start">
+                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">2</div>
+                                    <p class="text-gray-300">Go to <strong>Pay</strong> section and tap <strong>Scan</strong></p>
+                                </div>
+                                <div class="flex items-start">
+                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">3</div>
+                                    <p class="text-gray-300">Scan the QR code above</p>
+                                </div>
+                                <div class="flex items-start">
+                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">4</div>
+                                    <p class="text-gray-300">Select <strong>cryptocurrency</strong> and <strong>amount</strong>, then confirm</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-800 p-4 rounded-lg border border-orange-500/20 mt-6">
+                                <p class="text-sm text-gray-400 mb-2">Binance Pay ID:</p>
+                                <p class="font-bold text-orange-400">guardyn</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Popular Cryptocurrencies Section -->
+    <section class="py-16 bg-gray-800/50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl font-bold mb-4">🪙 Popular Cryptocurrencies</h2>
+                    <p class="text-xl text-gray-300">Send directly to our wallet addresses</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Bitcoin -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                                ₿
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Bitcoin</h3>
+                                <p class="text-sm text-gray-400">BTC</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Bitcoin Network:</p>
+                        <div class="wallet-address text-orange-400 mb-3">
+                            bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                        </div>
+                        <button onclick="copyToClipboard('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Ethereum -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                                ⟠
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Ethereum</h3>
+                                <p class="text-sm text-gray-400">ETH</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">ERC-20 Network:</p>
+                        <div class="wallet-address text-blue-400 mb-3">
+                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        </div>
+                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- USDT (ERC-20) -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                                ₮
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Tether</h3>
+                                <p class="text-sm text-gray-400">USDT (ERC-20)</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Ethereum Network:</p>
+                        <div class="wallet-address text-green-400 mb-3">
+                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        </div>
+                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-green-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- USDT (TRC-20) -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                                ₮
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Tether</h3>
+                                <p class="text-sm text-gray-400">USDT (TRC-20)</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Tron Network:</p>
+                        <div class="wallet-address text-red-400 mb-3">
+                            TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS
+                        </div>
+                        <button onclick="copyToClipboard('TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- BNB (BSC) -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-2xl mr-4">
+                                ◈
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">BNB</h3>
+                                <p class="text-sm text-gray-400">Binance Coin</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">BSC Network:</p>
+                        <div class="wallet-address text-yellow-400 mb-3">
+                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        </div>
+                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- USDC -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-2xl mr-4">
+                                $
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">USD Coin</h3>
+                                <p class="text-sm text-gray-400">USDC (ERC-20)</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Ethereum Network:</p>
+                        <div class="wallet-address text-blue-400 mb-3">
+                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        </div>
+                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Litecoin -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center text-2xl mr-4">
+                                Ł
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Litecoin</h3>
+                                <p class="text-sm text-gray-400">LTC</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Litecoin Network:</p>
+                        <div class="wallet-address text-gray-400 mb-3">
+                            ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j
+                        </div>
+                        <button onclick="copyToClipboard('ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Dogecoin -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                                Ð
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Dogecoin</h3>
+                                <p class="text-sm text-gray-400">DOGE</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Dogecoin Network:</p>
+                        <div class="wallet-address text-yellow-600 mb-3">
+                            DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L
+                        </div>
+                        <button onclick="copyToClipboard('DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-600/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Monero -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center text-2xl mr-4">
+                                ɱ
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold">Monero</h3>
+                                <p class="text-sm text-gray-400">XMR</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Monero Network:</p>
+                        <div class="wallet-address text-orange-600 mb-3 text-xs">
+                            4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx
+                        </div>
+                        <button onclick="copyToClipboard('4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-600/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Additional Cryptocurrencies -->
+    <section class="py-16 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl font-bold mb-4">💎 More Cryptocurrencies</h2>
+                    <p class="text-xl text-gray-300">We accept 50+ cryptocurrencies via multiple networks</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Solana -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-xl mr-3">
+                                ◎
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Solana (SOL)</h3>
+                                <p class="text-xs text-gray-400">Solana Network</p>
+                            </div>
+                        </div>
+                        <div class="wallet-address text-purple-400 mb-3 text-xs">
+                            7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV
+                        </div>
+                        <button onclick="copyToClipboard('7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Cardano -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-xl mr-3">
+                                ₳
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Cardano (ADA)</h3>
+                                <p class="text-xs text-gray-400">Cardano Network</p>
+                            </div>
+                        </div>
+                        <div class="wallet-address text-blue-400 mb-3 text-xs">
+                            addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                        </div>
+                        <button onclick="copyToClipboard('addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-600/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Polkadot -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-xl mr-3">
+                                ●
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Polkadot (DOT)</h3>
+                                <p class="text-xs text-gray-400">Polkadot Network</p>
+                            </div>
+                        </div>
+                        <div class="wallet-address text-pink-400 mb-3 text-xs">
+                            13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB
+                        </div>
+                        <button onclick="copyToClipboard('13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-pink-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Avalanche -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-xl mr-3">
+                                ▲
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Avalanche (AVAX)</h3>
+                                <p class="text-xs text-gray-400">Avalanche C-Chain</p>
+                            </div>
+                        </div>
+                        <div class="wallet-address text-red-400 mb-3 text-xs">
+                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        </div>
+                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Polygon -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-xl mr-3">
+                                ⬡
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Polygon (MATIC)</h3>
+                                <p class="text-xs text-gray-400">Polygon Network</p>
+                            </div>
+                        </div>
+                        <div class="wallet-address text-purple-400 mb-3 text-xs">
+                            0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
+                        </div>
+                        <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-600/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+
+                    <!-- Ripple -->
+                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-xl mr-3">
+                                ✕
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Ripple (XRP)</h3>
+                                <p class="text-xs text-gray-400">XRP Ledger</p>
+                            </div>
+                        </div>
+                        <div class="wallet-address text-gray-400 mb-3 text-xs">
+                            rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh
+                        </div>
+                        <button onclick="copyToClipboard('rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh', this)" 
+                                class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
+                            📋 Copy Address
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-12 text-center">
+                    <div class="bg-gradient-to-br from-orange-900/20 to-red-900/20 p-8 rounded-2xl border border-orange-500/30 max-w-3xl mx-auto">
+                        <h3 class="text-2xl font-bold mb-4">📧 Don't see your cryptocurrency?</h3>
+                        <p class="text-gray-300 mb-6">
+                            We accept 50+ cryptocurrencies! If you'd like to donate with a different coin,<br>
+                            please contact us and we'll provide the wallet address.
+                        </p>
+                        <a href="mailto:hello@guardyn.io?subject=Crypto%20Donation%20Inquiry" 
+                           class="inline-flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-semibold transition">
+                            ✉️ Contact Us
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Crypto Section -->
+    <section class="py-16 bg-gray-800/50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto">
+                <h2 class="text-4xl font-bold mb-12 text-center">🔐 Why Donate with Crypto?</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
+                        <div class="text-4xl mb-4">🕵️</div>
+                        <h3 class="text-xl font-bold mb-2">Privacy First</h3>
+                        <p class="text-gray-300 text-sm">No personal information required. Support us anonymously.</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
+                        <div class="text-4xl mb-4">⚡</div>
+                        <h3 class="text-xl font-bold mb-2">Instant</h3>
+                        <p class="text-gray-300 text-sm">Transactions process in minutes, not days like bank transfers.</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
+                        <div class="text-4xl mb-4">🌍</div>
+                        <h3 class="text-xl font-bold mb-2">Global</h3>
+                        <p class="text-gray-300 text-sm">Works anywhere in the world. No currency conversion hassles.</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
+                        <div class="text-4xl mb-4">💸</div>
+                        <h3 class="text-xl font-bold mb-2">Low Fees</h3>
+                        <p class="text-gray-300 text-sm">Much lower fees than traditional payment processors.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Notice -->
+    <section class="py-16 bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-gradient-to-br from-blue-900/30 to-purple-900/30 p-8 rounded-2xl border border-blue-500/30">
+                    <h3 class="text-2xl font-bold mb-4 flex items-center">
+                        <svg class="w-8 h-8 mr-3 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Security Notice
+                    </h3>
+                    <div class="space-y-3 text-gray-300">
+                        <p>✅ <strong>Always verify addresses:</strong> Double-check wallet addresses before sending. Crypto transactions are irreversible.</p>
+                        <p>✅ <strong>Network compatibility:</strong> Make sure you're sending on the correct network (ERC-20, TRC-20, BSC, etc.)</p>
+                        <p>✅ <strong>Test with small amount:</strong> For large donations, consider sending a small test transaction first.</p>
+                        <p>✅ <strong>Official addresses only:</strong> These addresses are listed on <a href="https://guardyn.co/crypto" class="text-orange-400 hover:underline">guardyn.co/crypto</a> and <a href="https://github.com/guardyn" class="text-orange-400 hover:underline">GitHub</a>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Thank You Section -->
+    <section class="py-16 bg-gray-800/50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-3xl mx-auto text-center">
+                <h2 class="text-4xl font-bold mb-6">❤️ Thank You for Your Support!</h2>
+                <p class="text-xl text-gray-300 mb-8">
+                    Your cryptocurrency donations directly fund the development of privacy-first secure communications.<br>
+                    Every contribution helps us build a safer digital future.
+                </p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="sponsor.html" class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition">
+                        💜 Other Ways to Support
+                    </a>
+                    <a href="index.html" class="inline-flex items-center px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition">
+                        🏠 Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-white/10 py-12">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <div class="grid md:grid-cols-4 gap-8 mb-8">
+                    <div>
+                        <div class="flex items-center space-x-3 mb-4">
+                            <img src="/media/logo.svg" alt="Guardyn Logo" class="h-8 w-8">
+                            <span class="text-xl font-bold">Guardyn</span>
+                        </div>
+                        <p class="text-gray-400 text-sm">Privacy-first secure communication platform.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Product</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="index.html#features" class="hover:text-orange-400 transition">Features</a></li>
+                            <li><a href="index.html#security" class="hover:text-orange-400 transition">Security</a></li>
+                            <li><a href="index.html#roadmap" class="hover:text-orange-400 transition">Roadmap</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Support</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="sponsor.html" class="hover:text-orange-400 transition">Sponsor</a></li>
+                            <li><a href="crypto.html" class="hover:text-orange-400 transition text-orange-400">Crypto Donations</a></li>
+                            <li><a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer" class="hover:text-orange-400 transition">Open Collective</a></li>
+                            <li><a href="mailto:hello@guardyn.io" class="hover:text-orange-400 transition">Contact</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Legal</h4>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><a href="privacy.html" class="hover:text-orange-400 transition">Privacy Policy</a></li>
+                            <li><a href="terms.html" class="hover:text-orange-400 transition">Terms of Service</a></li>
+                            <li><a href="mailto:security@guardyn.io" class="hover:text-orange-400 transition">Security</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="text-center text-gray-400 pt-8 border-t border-white/10">
+                    <p>© 2025 Guardyn. Open source under Apache 2.0 license. Built with ❤️ for privacy.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Copy to Clipboard Script -->
+    <script>
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(function() {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ Copied!';
+                button.classList.add('bg-green-600');
+                
+                setTimeout(function() {
+                    button.innerHTML = originalText;
+                    button.classList.remove('bg-green-600');
+                }, 2000);
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+                button.innerHTML = '❌ Failed';
+                setTimeout(function() {
+                    button.innerHTML = '📋 Copy Address';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
