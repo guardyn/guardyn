@@ -142,7 +142,7 @@ Modern messaging platforms face a fundamental tension:
 | Self-Hosting        | ❌ Not supported                    | ✅ Full Kubernetes deployment            | Core difference                |
 | Enterprise Features | ❌ Consumer-focused                 | 🚧 LDAP, SAML (planned)                  | Different target market        |
 | Track Record        | ✅ **10+ years, billions of users** | ⚠️ **New project (2025)**                | Signal has proven reliability  |
-| Security Audits     | ✅ **Multiple completed**           | � **Planning Cure53 (Q2 2026)**          | Signal is audit-proven         |
+| Security Audits     | ✅ **Multiple completed**           | 📋 **Planning Cure53 (Q2 2026)**          | Signal is audit-proven         |
 
 **Verdict:** Signal has 10 years of battle-testing and billions of users. Guardyn is a new project (2025) adding self-hosting and enterprise features to proven cryptography. If you need maximum trust, use Signal. If you need self-hosting, consider Guardyn once audited.
 
