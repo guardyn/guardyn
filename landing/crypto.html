@@ -129,6 +129,136 @@
             background: rgba(245, 158, 11, 0.3);
             border-color: #f59e0b;
         }
+
+        /* Modal styles */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .qr-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .qr-modal-content {
+            position: relative;
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: scaleIn 0.3s ease;
+            box-shadow: 0 25px 50px rgba(245, 158, 11, 0.5);
+        }
+
+        .qr-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #1f2937;
+            transition: all 0.2s ease;
+        }
+
+        .qr-modal-close:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .qr-modal-image {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .qr-modal-title {
+            color: #1f2937;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .qr-modal-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 640px) {
+            .qr-modal-content {
+                padding: 30px 20px;
+            }
+            .qr-modal-image {
+                max-width: 280px;
+            }
+            .qr-modal-title {
+                font-size: 20px;
+            }
+        }
+
+        /* Tablet responsive */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .qr-modal-image {
+                max-width: 350px;
+            }
+        }
+
+        .qr-clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .qr-clickable:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -243,488 +373,8 @@
                     <p class="text-xl text-gray-300">Send directly to our wallet addresses</p>
                 </div>
 
-                <div class="space-y-6">
-                    <!-- Bitcoin -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ₿
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Bitcoin</h3>
-                                <p class="text-sm text-gray-400">BTC • Bitcoin Network</p>
-                                <p class="text-xs text-gray-500 mt-1">✓ Supports all BTC address formats (1, 3, bc1p, bc1q)</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=1H5TwT1qarvaE6fhxUr2GCk9XvBoeRmiKm"
-                                     alt="Bitcoin QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-orange-400 mb-3">
-                                    1H5TwT1qarvaE6fhxUr2GCk9XvBoeRmiKm
-                                </div>
-                                <button onclick="copyToClipboard('1H5TwT1qarvaE6fhxUr2GCk9XvBoeRmiKm', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Ethereum -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ⟠
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Ethereum</h3>
-                                <p class="text-sm text-gray-400">ETH • ERC-20 Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-                                     alt="Ethereum QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-blue-400 mb-3">
-                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
-                                </div>
-                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- USDT (ERC-20) -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ₮
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Tether USD</h3>
-                                <p class="text-sm text-gray-400">USDT • ERC-20 Network (Ethereum)</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-                                     alt="USDT ERC-20 QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-green-400 mb-3">
-                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
-                                </div>
-                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-green-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- USDT (TRC-20) -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ₮
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Tether USD</h3>
-                                <p class="text-sm text-gray-400">USDT • TRC-20 Network (Tron)</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS"
-                                     alt="USDT TRC-20 QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-red-400 mb-3">
-                                    TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS
-                                </div>
-                                <button onclick="copyToClipboard('TYASr5UV6HEcXatwdFQfmLVUqQQQMUxHLS', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- BNB (BSC) -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ◈
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">BNB</h3>
-                                <p class="text-sm text-gray-400">BNB • BSC Network (Binance Smart Chain)</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-                                     alt="BNB BSC QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-yellow-400 mb-3">
-                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
-                                </div>
-                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- USDC -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                $
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">USD Coin</h3>
-                                <p class="text-sm text-gray-400">USDC • ERC-20 Network (Ethereum)</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-                                     alt="USDC QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-blue-400 mb-3">
-                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
-                                </div>
-                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Litecoin -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                Ł
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Litecoin</h3>
-                                <p class="text-sm text-gray-400">LTC • Litecoin Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j"
-                                     alt="Litecoin QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-gray-400 mb-3">
-                                    ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j
-                                </div>
-                                <button onclick="copyToClipboard('ltc1qc8jmspmjyh8zqg7arh8r88vjxd9yjccvv2kx0j', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Dogecoin -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                Ð
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Dogecoin</h3>
-                                <p class="text-sm text-gray-400">DOGE • Dogecoin Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L"
-                                     alt="Dogecoin QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-yellow-600 mb-3">
-                                    DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L
-                                </div>
-                                <button onclick="copyToClipboard('DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-yellow-600/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Monero -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 bg-orange-600 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ɱ
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">Monero</h3>
-                                <p class="text-sm text-gray-400">XMR • Monero Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- QR Code -->
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx"
-                                     alt="Monero QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <!-- Address -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-orange-600 mb-3 text-xs">
-                                    4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx
-                                </div>
-                                <button onclick="copyToClipboard('4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-orange-600/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Additional Cryptocurrencies -->
-    <section class="py-16 bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="max-w-6xl mx-auto">
-                <div class="text-center mb-12">
-                    <h2 class="text-4xl font-bold mb-4">💎 More Cryptocurrencies</h2>
-                    <p class="text-xl text-gray-300">We accept 50+ cryptocurrencies via multiple networks</p>
-                </div>
-
-                <div class="space-y-6">
-                    <!-- Solana -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                                ◎
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold">Solana (SOL)</h3>
-                                <p class="text-xs text-gray-400">Solana Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV"
-                                     alt="Solana QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-purple-400 mb-3 text-xs">
-                                    7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV
-                                </div>
-                                <button onclick="copyToClipboard('7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Cardano -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                                ₳
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold">Cardano (ADA)</h3>
-                                <p class="text-xs text-gray-400">Cardano Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-                                     alt="Cardano QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-blue-400 mb-3 text-xs">
-                                    addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
-                                </div>
-                                <button onclick="copyToClipboard('addr1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-blue-600/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Polkadot -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                                ●
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold">Polkadot (DOT)</h3>
-                                <p class="text-xs text-gray-400">Polkadot Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB"
-                                     alt="Polkadot QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-pink-400 mb-3 text-xs">
-                                    13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB
-                                </div>
-                                <button onclick="copyToClipboard('13UVJyLnbVp9RBZYFwFGyDvVd1y27Tt8tkntv6Q7JVPhFsTB', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-pink-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Avalanche -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                                ▲
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold">Avalanche (AVAX)</h3>
-                                <p class="text-xs text-gray-400">Avalanche C-Chain</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-                                     alt="Avalanche QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-red-400 mb-3 text-xs">
-                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
-                                </div>
-                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-red-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Polygon -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                                ⬡
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold">Polygon (MATIC)</h3>
-                                <p class="text-xs text-gray-400">Polygon Network</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-                                     alt="Polygon QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-purple-400 mb-3 text-xs">
-                                    0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb
-                                </div>
-                                <button onclick="copyToClipboard('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-purple-600/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Ripple -->
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-xl flex-shrink-0">
-                                ✕
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-bold">Ripple (XRP)</h3>
-                                <p class="text-xs text-gray-400">XRP Ledger</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <div class="qr-container flex-shrink-0">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh"
-                                     alt="Ripple QR Code" class="w-[120px] h-[120px]">
-                            </div>
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address text-gray-400 mb-3 text-xs">
-                                    rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh
-                                </div>
-                                <button onclick="copyToClipboard('rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 hover:bg-gray-500/20 rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Address
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-12 text-center">
-                    <div class="bg-gradient-to-br from-orange-900/20 to-red-900/20 p-8 rounded-2xl border border-orange-500/30 max-w-3xl mx-auto">
-                        <h3 class="text-2xl font-bold mb-4">📧 Don't see your cryptocurrency?</h3>
-                        <p class="text-gray-300 mb-6">
-                            We accept 50+ cryptocurrencies! If you'd like to donate with a different coin,<br>
-                            please contact us and we'll provide the wallet address.
-                        </p>
-                        <a href="mailto:hello@guardyn.io?subject=Crypto%20Donation%20Inquiry"
-                           class="inline-flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-semibold transition">
-                            ✉️ Contact Us
-                        </a>
-                    </div>
+                <div id="crypto-wallets-container" class="space-y-6">
+                    <!-- Cryptocurrency cards will be generated here by JavaScript -->
                 </div>
             </div>
         </div>
@@ -804,6 +454,18 @@
         </div>
     </section>
 
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="qr-modal" onclick="closeQRModal(event)">
+        <div class="qr-modal-content" onclick="event.stopPropagation()">
+            <button class="qr-modal-close" onclick="closeQRModal()" aria-label="Close modal">
+                ×
+            </button>
+            <h3 id="modal-title" class="qr-modal-title"></h3>
+            <p id="modal-subtitle" class="qr-modal-subtitle"></p>
+            <img id="modal-qr-image" class="qr-modal-image" src="" alt="QR Code">
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-gray-900 border-t border-white/10 py-12">
         <div class="container mx-auto px-4">
@@ -849,8 +511,226 @@
         </div>
     </footer>
 
-    <!-- Copy to Clipboard Script -->
+    <!-- Cryptocurrency Wallets Configuration & Copy Script -->
     <script>
+        // ===== CRYPTOCURRENCY CONFIGURATION =====
+        // Add or update cryptocurrency details here
+        const cryptocurrencies = [
+            {
+                id: 'btc',
+                name: 'Bitcoin',
+                symbol: 'BTC',
+                icon: '₿',
+                iconBg: 'bg-orange-500',
+                network: 'Bitcoin Network',
+                textColor: 'text-orange-400',
+                hoverColor: 'hover:bg-orange-500/20',
+                address: '1H5TwT1qarvaE6fhxUr2GCk9XvBoeRmiKm',
+                info: '✓ Supports all BTC address formats (1, 3, bc1p, bc1q)'
+            },
+            {
+                id: 'eth',
+                name: 'Ethereum',
+                symbol: 'ETH',
+                icon: '⟠',
+                iconBg: 'bg-blue-500',
+                network: 'ERC-20 Network',
+                textColor: 'text-blue-400',
+                hoverColor: 'hover:bg-blue-500/20',
+                address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700',
+                info: '✓ Please do not send validator rewards to your Binance deposit address, as they will not be credited and funds may be lost.'
+            },
+            {
+                id: 'usdt_erc20',
+                name: 'Tether USD',
+                symbol: 'USDT',
+                icon: '₮',
+                iconBg: 'bg-green-500',
+                network: 'ERC-20 Network (Ethereum)',
+                textColor: 'text-green-400',
+                hoverColor: 'hover:bg-green-500/20',
+                address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
+            },
+            {
+                id: 'usdt_trc20',
+                name: 'Tether USD',
+                symbol: 'USDT',
+                icon: '₮',
+                iconBg: 'bg-red-500',
+                network: 'TRC-20 Network (Tron)',
+                textColor: 'text-red-400',
+                hoverColor: 'hover:bg-red-500/20',
+                address: 'TJAJjkTrhst448yqM5jXGpC3SWxQFMAVeZ'
+            },
+            {
+                id: 'bnb',
+                name: 'BNB',
+                symbol: 'BNB',
+                icon: '◈',
+                iconBg: 'bg-yellow-500',
+                network: 'BSC Network (Binance Smart Chain)',
+                textColor: 'text-yellow-400',
+                hoverColor: 'hover:bg-yellow-500/20',
+                address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
+            },
+            {
+                id: 'usdc',
+                name: 'USD Coin',
+                symbol: 'USDC',
+                icon: '$',
+                iconBg: 'bg-blue-400',
+                network: 'ERC-20 Network (Ethereum)',
+                textColor: 'text-blue-400',
+                hoverColor: 'hover:bg-blue-500/20',
+                address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
+            },
+            {
+                id: 'ltc',
+                name: 'Litecoin',
+                symbol: 'LTC',
+                icon: 'Ł',
+                iconBg: 'bg-gray-400',
+                network: 'Litecoin Network',
+                textColor: 'text-gray-400',
+                hoverColor: 'hover:bg-gray-500/20',
+                address: 'LNqCyXS5Vx2LCnrA7WQc3VyTSuWBfsyGxJ',
+                info: '✓ Please note that confidential deposits via the MWEB function are not supported and will result in deposits being lost.'
+            },
+            {
+                id: 'doge',
+                name: 'Dogecoin',
+                symbol: 'DOGE',
+                icon: 'Ð',
+                iconBg: 'bg-yellow-600',
+                network: 'Dogecoin Network',
+                textColor: 'text-yellow-400',
+                hoverColor: 'hover:bg-yellow-600/20',
+                address: 'DMzZH6p96Lo2b46wxwCFZHSDQ1F275uQ2i'
+            },
+            {
+                id: 'sol',
+                name: 'Solana',
+                symbol: 'SOL',
+                icon: '◎',
+                iconBg: 'bg-purple-500',
+                network: 'Solana Network',
+                textColor: 'text-purple-400',
+                hoverColor: 'hover:bg-purple-500/20',
+                address: '4xYGeDjMTTEwKy3XABS8gvfyPrddsyjFP6mXdqtPo1YD',
+                info: '✓ Please note that SOL addresses are case sensitive.'
+            },
+            {
+                id: 'ada',
+                name: 'Cardano',
+                symbol: 'ADA',
+                icon: '₳',
+                iconBg: 'bg-blue-600',
+                network: 'Cardano Network',
+                textColor: 'text-blue-400',
+                hoverColor: 'hover:bg-blue-600/20',
+                address: 'addr1vyach749e2hgejng5hl2qym49hq98e5unw3xmarcdzq8mkskw0389'
+            },
+            {
+                id: 'dot',
+                name: 'Polkadot',
+                symbol: 'DOT',
+                icon: '●',
+                iconBg: 'bg-pink-500',
+                network: 'Polkadot Network',
+                textColor: 'text-pink-400',
+                hoverColor: 'hover:bg-pink-500/20',
+                address: '14W6Zw4t5N2NhgFhehrg6MM4EjW5vvPn7hEGzKapP9Ws1oVn'
+            },
+            {
+                id: 'avax',
+                name: 'Avalanche',
+                symbol: 'AVAX',
+                icon: '▲',
+                iconBg: 'bg-red-500',
+                network: 'Avalanche C-Chain',
+                textColor: 'text-red-400',
+                hoverColor: 'hover:bg-red-500/20',
+                address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700',
+                info: '✓ Please note that this deposit address supports C-Chain deposits. For X-Chain deposits, please use the AVAX network.
+'
+            },
+            {
+                id: 'matic',
+                name: 'Polygon',
+                symbol: 'MATIC',
+                icon: '⬡',
+                iconBg: 'bg-purple-600',
+                network: 'BSC (BEP20) Network',
+                textColor: 'text-purple-400',
+                hoverColor: 'hover:bg-purple-600/20',
+                address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
+            },
+            {
+                id: 'xrp',
+                name: 'Ripple',
+                symbol: 'XRP',
+                icon: '✕',
+                iconBg: 'bg-gray-500',
+                network: 'XRP Ledger',
+                textColor: 'text-gray-400',
+                hoverColor: 'hover:bg-gray-500/20',
+                address: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            }
+        ];
+
+        // Generate cryptocurrency card HTML
+        function generateCryptoCard(crypto) {
+            const infoHTML = crypto.info ?
+                `<p class="text-xs text-gray-500 mt-1">${crypto.info}</p>` : '';
+
+            return `
+                <div class="crypto-card p-6 rounded-xl border border-gray-700">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 ${crypto.iconBg} rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+                            ${crypto.icon}
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">${crypto.name}</h3>
+                            <p class="text-sm text-gray-400">${crypto.symbol} • ${crypto.network}</p>
+                            ${infoHTML}
+                        </div>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-6 items-start">
+                        <!-- QR Code -->
+                        <div class="qr-container flex-shrink-0 qr-clickable" 
+                             onclick="openQRModal('${crypto.name}', '${crypto.symbol}', '${encodeURIComponent(crypto.address)}')"
+                             title="Click to enlarge QR code">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(crypto.address)}" 
+                                 alt="${crypto.name} QR Code" 
+                                 class="w-[120px] h-[120px]">
+                        </div>
+                        <!-- Address -->
+                        <div class="flex-1 w-full">
+                            <p class="text-xs text-gray-400 mb-2">Address:</p>
+                            <div class="wallet-address ${crypto.textColor} mb-3 ${crypto.id === 'xmr' ? 'text-xs' : ''}">
+                                ${crypto.address}
+                            </div>
+                            <button onclick="copyToClipboard('${crypto.address}', this)"
+                                    class="copy-btn w-full py-2 px-4 bg-gray-700 ${crypto.hoverColor} rounded-lg text-sm font-semibold transition">
+                                📋 Copy Address
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize wallets on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('crypto-wallets-container');
+            if (container) {
+                // Generate all cryptocurrency cards
+                const cardsHTML = cryptocurrencies.map(crypto => generateCryptoCard(crypto)).join('');
+                container.innerHTML = cardsHTML;
+            }
+        });
+
+        // Copy to clipboard function
         function copyToClipboard(text, button) {
             navigator.clipboard.writeText(text).then(function() {
                 const originalText = button.innerHTML;
@@ -869,6 +749,39 @@
                 }, 2000);
             });
         }
+
+        // Open QR modal
+        function openQRModal(name, symbol, encodedAddress) {
+            const modal = document.getElementById('qr-modal');
+            const title = document.getElementById('modal-title');
+            const subtitle = document.getElementById('modal-subtitle');
+            const image = document.getElementById('modal-qr-image');
+
+            title.textContent = name + ' (' + symbol + ')';
+            subtitle.textContent = 'Scan this QR code with your crypto wallet';
+            image.src = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodedAddress;
+            image.alt = name + ' QR Code';
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        // Close QR modal
+        function closeQRModal(event) {
+            // Only close if clicking outside content or on close button
+            if (!event || event.target.id === 'qr-modal' || event.target.classList.contains('qr-modal-close')) {
+                const modal = document.getElementById('qr-modal');
+                modal.classList.remove('active');
+                document.body.style.overflow = ''; // Restore scrolling
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeQRModal();
+            }
+        });
     </script>
 </body>
 </html>
