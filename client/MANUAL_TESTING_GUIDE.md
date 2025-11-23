@@ -337,19 +337,19 @@ After completing all test cases, fill out this checklist:
 
 ```
 Test Results:
-[ ] Test Case 1: Successful Registration ✅
-[ ] Test Case 2a: Short Username Validation ❌
-[ ] Test Case 2b: Short Password Validation ❌
-[ ] Test Case 2c: Password Mismatch Validation ❌
-[ ] Test Case 2d: Empty Device Name Validation ❌
-[ ] Test Case 3: Duplicate Username Error ❌
-[ ] Test Case 4: Successful Login ✅
-[ ] Test Case 5: Invalid Credentials Error ❌
-[ ] Test Case 6: Network Error Handling ⚠️
-[ ] Test Case 7: Token Persistence (Auto-login) ✅
-[ ] Test Case 8: Logout Clears Session ✅
-[ ] Test Case 9: Backend Service Down ⚠️
-[ ] Test Case 10: Rapid Button Taps ⚠️
+[x] Test Case 1: Successful Registration ✅
+[x] Test Case 2a: Short Username Validation ❌
+[x] Test Case 2b: Short Password Validation ❌
+[x] Test Case 2c: Password Mismatch Validation ❌
+[x] Test Case 2d: Empty Device Name Validation ❌
+[x] Test Case 3: Duplicate Username Error ❌
+[x] Test Case 4: Successful Login ✅
+[x] Test Case 5: Invalid Credentials Error ❌
+[x] Test Case 6: Network Error Handling ⚠️
+[x] Test Case 7: Token Persistence (Auto-login) ✅
+[x] Test Case 8: Logout Clears Session ✅
+[x] Test Case 9: Backend Service Down ⚠️
+[x] Test Case 10: Rapid Button Taps ⚠️
 ```
 
 ---
