@@ -4,8 +4,40 @@
 
 Guardyn uses gRPC for efficient, type-safe service-to-service communication. All API definitions are in Protocol Buffers v3 format.
 
-**Last Updated**: November 3, 2025  
-**Status**: Protocol definitions complete, implementation pending
+**Last Updated**: November 23, 2025  
+**Status**: Services operational, Envoy proxy deployed for web clients
+
+---
+
+## gRPC Communication Architecture
+
+### Native gRPC (Backend Services)
+
+Backend services communicate using **native gRPC** (HTTP/2 with gRPC framing):
+- **Auth Service**: `auth-service:50051`
+- **Messaging Service**: `messaging-service:50052`
+
+### gRPC-Web (Browser Clients)
+
+Web browsers cannot use native gRPC due to browser security restrictions (no direct TCP socket access). Instead, they use **gRPC-Web** via Envoy proxy:
+
+```
+Chrome/Firefox → Envoy (Port 8080) → Native gRPC Backend
+```
+
+**Envoy translates**:
+- **Incoming**: gRPC-Web (HTTP/1.1 or HTTP/2 via `fetch` API) → Native gRPC (HTTP/2 with gRPC framing)
+- **Outgoing**: Native gRPC responses → gRPC-Web format
+
+**Platform Requirements**:
+
+| Platform | Protocol | Port | Envoy Required? |
+|----------|----------|------|----------------|
+| Web (Chrome/Firefox/Safari) | gRPC-Web | 8080 | ✅ Yes |
+| Android/iOS native | Native gRPC | 50051/50052 | ❌ No |
+| Linux/macOS/Windows desktop | Native gRPC | 50051/50052 | ❌ No |
+
+**Envoy Configuration**: See `infra/k8s/base/envoy/` for Kubernetes deployment.
 
 ---
 

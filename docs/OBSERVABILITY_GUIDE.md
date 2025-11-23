@@ -105,6 +105,24 @@ kubectl logs -n apps -l app=messaging-service | jq 'select(.level == "ERROR")'
 - `container_network_receive_bytes_total` - Network RX
 - `container_network_transmit_bytes_total` - Network TX
 
+**Envoy Proxy Metrics** (automatically exposed on port 9901):
+
+- `envoy_http_downstream_rq_total` - Total HTTP requests received
+- `envoy_http_downstream_rq_xx` - Requests by status code (2xx, 4xx, 5xx)
+- `envoy_cluster_upstream_rq_total` - Requests forwarded to backend
+- `envoy_cluster_upstream_rq_time` - Backend response time histogram
+- `envoy_listener_downstream_cx_active` - Active connections
+
+**Query Envoy metrics**:
+
+```bash
+# Port-forward to Envoy admin interface
+kubectl port-forward -n apps svc/guardyn-envoy 9901:9901
+
+# Access metrics
+curl http://localhost:9901/stats/prometheus
+```
+
 **Example Queries**:
 
 ```promql
@@ -116,6 +134,15 @@ container_memory_working_set_bytes{namespace="apps", pod=~"messaging-service.*"}
 
 # Running pods
 kube_pod_status_phase{namespace="apps", pod=~"messaging-service.*", phase="Running"}
+
+# Envoy: Requests per second
+rate(envoy_http_downstream_rq_total{namespace="apps", pod=~"guardyn-envoy.*"}[5m])
+
+# Envoy: Request latency (P95)
+histogram_quantile(0.95, rate(envoy_cluster_upstream_rq_time_bucket{namespace="apps"}[5m]))
+
+# Envoy: Error rate (5xx responses)
+rate(envoy_http_downstream_rq_5xx{namespace="apps", pod=~"guardyn-envoy.*"}[5m])
 ```
 
 ### Future: Application Metrics

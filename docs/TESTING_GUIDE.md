@@ -17,8 +17,26 @@ Guardyn MVP uses a layered testing approach:
 All tests require:
 
 - **k3d cluster running**: `k3d cluster list`
-- **Services deployed**: Auth + Messaging services in `apps` namespace
+- **Services deployed**: Auth + Messaging services + Envoy proxy in `apps` namespace
 - **Nix environment**: `nix --extra-experimental-features 'nix-command flakes' develop`
+
+**Port-forwarding for web clients**:
+
+```bash
+# Required for web browsers (Chrome/Firefox)
+kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+
+# Required for all platforms
+kubectl port-forward -n apps svc/auth-service 50051:50051
+kubectl port-forward -n apps svc/messaging-service 50052:50052
+```
+
+**Platform Requirements**:
+
+| Platform | Protocol | Ports | Envoy Required? |
+|----------|----------|-------|----------------|
+| Web browsers | gRPC-Web | 8080 | ✅ Yes |
+| Android/iOS/Desktop | Native gRPC | 50051/50052 | ❌ No |
 
 ## 🧪 E2E Tests
 

@@ -67,6 +67,15 @@ kubectl port-forward -n observability svc/prometheus-kube-prometheus-stack-prome
 pkill -f "port-forward"
 ```
 
+### Envoy proxy not running (web clients)
+```bash
+# Port-forward Envoy for web browsers
+kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+
+# Verify
+lsof -i :8080
+```
+
 ### Services not running
 ```bash
 kubectl get pods -n apps

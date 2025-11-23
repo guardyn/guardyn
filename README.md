@@ -241,9 +241,16 @@ Modern messaging platforms face a fundamental tension:
 
 - Rust services (memory-safe, no buffer overflows)
 - gRPC APIs (efficient binary protocol)
+- Envoy proxy (gRPC-Web translation for browsers)
 - TiKV distributed KV store (ACID transactions)
 - ScyllaDB for message storage (high throughput)
 - NATS JetStream (event streaming)
+
+**Client Communication:**
+
+- Native gRPC for mobile/desktop (direct TCP connections)
+- gRPC-Web for browsers (via Envoy proxy on port 8080)
+- Automatic platform detection (transparent to developers)
 
 **Deployment (Production-Ready):**
 
@@ -294,6 +301,7 @@ Modern messaging platforms face a fundamental tension:
 
 - **Authentication Service**: User registration, login, JWT auth, device management (2/2 replicas running)
 - **Messaging Service**: 1-on-1 and group chat, CRUD operations, member management (3/3 replicas running)
+- **Envoy Proxy**: gRPC-Web translation for browser clients (1/1 replica running)
 - **Cryptography**: X3DH key exchange, Double Ratchet encryption, OpenMLS group encryption (fully implemented)
 - **Infrastructure**: Kubernetes (k3d), TiKV, ScyllaDB, NATS JetStream (operational)
 - **Testing**: 8/8 E2E integration tests passing, k6 performance baseline established
