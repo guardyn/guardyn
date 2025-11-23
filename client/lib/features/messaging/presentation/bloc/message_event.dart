@@ -1,0 +1,72 @@
+import 'package:equatable/equatable.dart';
+import '../../domain/entities/message.dart';
+
+abstract class MessageEvent extends Equatable {
+  const MessageEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class MessageLoadHistory extends MessageEvent {
+  final String conversationUserId;
+  final String? conversationId;
+  final int limit;
+
+  const MessageLoadHistory({
+    required this.conversationUserId,
+    this.conversationId,
+    this.limit = 50,
+  });
+
+  @override
+  List<Object?> get props => [conversationUserId, conversationId, limit];
+}
+
+class MessageSend extends MessageEvent {
+  final String recipientUserId;
+  final String recipientDeviceId;
+  final String textContent;
+  final Map<String, String>? metadata;
+
+  const MessageSend({
+    required this.recipientUserId,
+    required this.recipientDeviceId,
+    required this.textContent,
+    this.metadata,
+  });
+
+  @override
+  List<Object?> get props => [recipientUserId, recipientDeviceId, textContent, metadata];
+}
+
+class MessageReceived extends MessageEvent {
+  final Message message;
+
+  const MessageReceived(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+class MessageMarkAsRead extends MessageEvent {
+  final String messageId;
+
+  const MessageMarkAsRead(this.messageId);
+
+  @override
+  List<Object?> get props => [messageId];
+}
+
+class MessageDelete extends MessageEvent {
+  final String messageId;
+
+  const MessageDelete(this.messageId);
+
+  @override
+  List<Object?> get props => [messageId];
+}
+
+class MessageSubscribeToStream extends MessageEvent {
+  const MessageSubscribeToStream();
+}
