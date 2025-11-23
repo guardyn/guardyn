@@ -63,11 +63,11 @@ flutter run -d emulator-5554
 ## 🧪 Testing Flow
 
 1. **Device 1 (Alice)**:
-   - Register user: `alice` / `password123`
+   - Register user: `alice` / `password12345` / `Alice Device`
    - **Copy User ID** from HomePage
 
 2. **Device 2 (Bob)**:
-   - Register user: `bob` / `password123`
+   - Register user: `bob` / `password12345` / `Bob Device`
    - **Copy User ID** from HomePage
 
 3. **Send Message (Alice → Bob)**:
