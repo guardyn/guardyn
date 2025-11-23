@@ -17,11 +17,26 @@ For complete testing documentation, see:
 ### Automated Testing (Recommended)
 
 ```bash
-# Integration tests
-./scripts/run_integration_tests.sh
+# Integration tests (automated)
+./scripts/test-client.sh integration
 
-# Two-device manual testing
-./scripts/test_two_devices.sh chrome  # or 'linux'
+# Two-device manual testing (Chrome + Android)
+./scripts/test-client.sh two-device chrome
+
+# Two-device manual testing (Linux + Android)
+./scripts/test-client.sh two-device linux
+
+# Verify setup and build
+./scripts/test-client.sh verify
+
+# Start port-forwarding only
+./scripts/test-client.sh port-forward
+
+# Start Envoy proxy for Chrome
+./scripts/test-client.sh envoy
+
+# Show all commands
+./scripts/test-client.sh help
 ```
 
 ### Manual Testing
@@ -32,7 +47,7 @@ kubectl port-forward -n apps svc/auth-service 50051:50051 &
 kubectl port-forward -n apps svc/messaging-service 50052:50052 &
 
 # Chrome only: Start Envoy proxy
-./scripts/start_envoy_proxy.sh
+./scripts/test-client.sh envoy
 
 # Run Flutter
 flutter run -d chrome          # Chrome
