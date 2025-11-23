@@ -1,0 +1,13 @@
+{
+  "codeQL.cli.executablePath": "",
+  "codeQL.runningQueries.numberOfThreads": 0,
+  "codeQL.runningQueries.memory": 4096,
+  "codeQL.runningQueries.timeout": 600,
+  "codeQL.resultsDisplay.pageSize": 200,
+  "codeQL.queryHistory.format": "list",
+  "codeQL.telemetry.enableTelemetry": false,
+
+  // Multi-language database configuration
+  "codeQL.database.primaryLanguage": "rust",
+  "codeQL.database.secondaryLanguages": ["javascript"]
+}

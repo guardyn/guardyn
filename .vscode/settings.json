@@ -19,5 +19,18 @@
         "titleBar.inactiveForeground": "#e7e7e799"
     },
     "peacock.color": "#215732",
-
+    
+    // CodeQL configuration - suppress multi-language database warning
+    "codeQL.runningQueries.memory": 4096,
+    "codeQL.resultsDisplay.pageSize": 200,
+    
+    // Terminal configuration - fix Atlassian CLI issue
+    "terminal.integrated.profiles.linux": {
+        "zsh": {
+            "path": "/usr/bin/zsh",
+            "args": ["-l"]
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "terminal.integrated.inheritEnv": false
 }
