@@ -14,3 +14,10 @@ backend/target/
 **/*.rs.bk
 *.pdb
 logs.log
+
+# CodeQL
+.codeql/
+*.sarif
+codeql-database/
+**/.codeqlmanifest
+.playwright-mcp
