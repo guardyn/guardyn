@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+
 import '../../domain/entities/message.dart';
 
 abstract class MessageEvent extends Equatable {

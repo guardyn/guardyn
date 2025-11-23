@@ -1,7 +1,8 @@
-import '../../domain/entities/message.dart';
-import '../../../generated/messaging.pb.dart' as proto;
-import '../../../generated/common.pb.dart' as common_proto;
 import 'package:fixnum/fixnum.dart';
+
+import '../../../generated/common.pb.dart' as common_proto;
+import '../../../generated/messaging.pb.dart' as proto;
+import '../../domain/entities/message.dart';
 
 /// Data transfer object for Message
 /// Converts between domain entity and proto/JSON

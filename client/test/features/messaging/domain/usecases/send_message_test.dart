@@ -1,10 +1,10 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/features/messaging/domain/entities/message.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
-import 'package:guardyn_client/core/error/failures.dart';
+import 'package:mocktail/mocktail.dart';
 
 // Mock repository
 class MockMessageRepository extends Mock implements MessageRepository {}

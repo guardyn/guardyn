@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
-import '../entities/message.dart';
+
 import '../../../../core/error/failures.dart';
+import '../entities/message.dart';
 
 /// Repository interface for message operations
 /// (Implementation will be in data layer)

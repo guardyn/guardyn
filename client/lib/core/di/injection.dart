@@ -1,17 +1,16 @@
 import 'package:get_it/get_it.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
-import 'package:injectable/injectable.dart';
-
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
-import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
-import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
+import 'package:injectable/injectable.dart';
 
 final getIt = GetIt.instance;
 

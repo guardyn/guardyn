@@ -751,12 +751,13 @@ All core MVP features are deployed, tested, and production-ready:
 **Pending Work:**
 
 - [x] **Manual testing execution** (requires backend port-forwarding) ✅ **COMPLETED (Nov 23, 2025)**
-- [ ] **Messaging UI (chat screens)** ⏳ **NEXT PRIORITY** - See `_local/MESSAGING_UI_IMPLEMENTATION_PLAN.md`
-  - [ ] Phase 1: Domain Layer (Message entity, repository, use cases) - 3-4 hours
-  - [ ] Phase 2: Data Layer (Models, datasources, repository impl) - 4-5 hours
-  - [ ] Phase 3: Presentation Layer (BLoC, ChatPage, widgets) - 6-8 hours
-  - [ ] Phase 4: Integration & Testing (DI, tests, manual testing) - 4-6 hours
-  - **Timeline**: 2-3 days (17-23 hours total)
+- [x] **Messaging UI (chat screens)** ✅ **COMPLETED (Nov 23, 2025)** - See `_local/MESSAGING_UI_IMPLEMENTATION_PLAN.md`
+  - [x] Phase 1: Domain Layer (Message entity, repository, use cases) - Commit: a483dd1
+  - [x] Phase 2: Data Layer (Models, datasources, repository impl) - Commit: 89cbbdb
+  - [x] Phase 3: Presentation Layer (BLoC, ChatPage, widgets) - Commit: 2299d1a
+  - [x] Phase 4: Integration & Testing (DI, tests, manual testing) - Commit: 81fe787
+  - **Completion Time**: 4 hours (20 files created, ~2,500 lines of code)
+- [ ] **Two-device manual testing** ⏳ **NEXT PRIORITY**
 - [ ] X3DH key generation (replace placeholder crypto)
 - [ ] Group chat UI
 - [ ] Background service for push notifications
