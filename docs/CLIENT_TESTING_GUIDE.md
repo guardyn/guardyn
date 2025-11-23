@@ -59,15 +59,24 @@ messaging-service-xxx                 3/3     Running   0          10m
 
 ### Port-Forwarding Setup
 
-**You need TWO terminal windows running these commands:**
+**You need THREE terminal windows for web testing (or TWO for native platforms):**
 
-#### Terminal 1: Auth Service
+#### Terminal 1: Envoy Proxy (Web browsers ONLY)
+
+```bash
+kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+```
+
+**Required for**: Chrome, Firefox, Safari (any web browser)  
+**Not needed for**: Android, iOS, Linux, macOS, Windows desktop apps
+
+#### Terminal 2: Auth Service (All platforms)
 
 ```bash
 kubectl port-forward -n apps svc/auth-service 50051:50051
 ```
 
-#### Terminal 2: Messaging Service
+#### Terminal 3: Messaging Service (All platforms)
 
 ```bash
 kubectl port-forward -n apps svc/messaging-service 50052:50052
@@ -75,13 +84,40 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 
 **Keep these terminals running throughout testing!**
 
-### Chrome-Specific Requirements
+**Note**: Native platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052. Web browsers connect via Envoy on port 8080.
 
-**⚠️ Chrome/Web requires Envoy gRPC-Web proxy** (browsers can't use native gRPC):
+### Envoy Proxy Requirements
+
+**⚠️ Web browsers (Chrome/Firefox) require Envoy gRPC-Web proxy**
+
+#### Why Envoy is Needed
+
+Browsers cannot create TCP sockets directly (security sandbox), so they cannot use native gRPC. Envoy translates between:
+- **gRPC-Web** (HTTP/1.1 or HTTP/2 via browser `fetch` API)
+- **Native gRPC** (HTTP/2 with gRPC framing)
+
+```
+❌ Chrome → gRPC Backend
+   Error: "Unsupported operation: Socket constructor"
+   
+✅ Chrome → Envoy (Port 8080) → gRPC Backend
+   Works! Envoy translates protocols
+```
+
+#### Platform Requirements
+
+| Platform | Native gRPC Support | Needs Envoy? |
+|----------|-------------------|-------------|
+| **Chrome/Firefox/Safari** | ❌ No | ✅ **Yes** |
+| **Android/iOS native** | ✅ Yes | ❌ No |
+| **Linux/macOS/Windows desktop** | ✅ Yes | ❌ No |
+
+#### Starting Envoy Proxy
+
+**Option 1: Port-forward to Kubernetes** (Recommended):
 
 ```bash
-cd client
-./scripts/test-client.sh envoy
+kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
 ```
 
 Verify Envoy is running:
@@ -89,6 +125,13 @@ Verify Envoy is running:
 ```bash
 lsof -i :8080
 # Should show kubectl port-forward to guardyn-envoy
+```
+
+**Option 2: Docker (standalone)**:
+
+```bash
+cd client
+docker run -p 8080:8080 -v $(pwd)/envoy-grpc-web.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.31-latest
 ```
 
 **Note**: Linux desktop and Android emulator use native gRPC and don't need Envoy.

@@ -53,6 +53,7 @@ All core MVP features are deployed, tested, and production-ready:
 - **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace)
 - **ScyllaDB cluster operational** (1 node, datacenter `dc1`, 4/4 containers running)
 - **NATS JetStream** (with 4 streams: MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
+- **Envoy Proxy** (gRPC-Web translation for browsers, 1/1 replica running)
 - **Cert-manager** (for TLS certificate automation)
 - **Auth Service** - Fully deployed and tested ✅
 - **Messaging Service** - Fully deployed and tested ✅

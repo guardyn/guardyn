@@ -87,6 +87,36 @@ just k8s:deploy nats
 - Configures cluster of 3 pods, memory storage with file-backed persistence for PoC.
 - Exposes monitoring endpoint on ClusterIP + ServiceMonitor for Prometheus.
 
+### 4.3.1 Deploy Envoy Proxy (gRPC-Web for Browsers)
+
+```bash
+kubectl apply -k infra/k8s/base/envoy
+```
+
+- Deploys Envoy proxy for gRPC-Web translation (browsers cannot use native gRPC).
+- Routes HTTP requests from browsers to backend gRPC services.
+- **Configuration**: `infra/k8s/base/envoy/configmap.yaml`
+- **Service clusters**:
+  - `auth_service` → `auth-service.apps.svc.cluster.local:50051`
+  - `messaging_service` → `messaging-service.apps.svc.cluster.local:50052`
+- **Port**: Listens on 8080 (gRPC-Web), admin interface on 9901.
+- **Features**: CORS handling, HTTP/2 upgrade, request routing by service prefix.
+
+**Why Envoy is needed**:
+
+Browsers cannot create TCP sockets (security sandbox), so they cannot use native gRPC. Envoy translates:
+- **gRPC-Web** (HTTP/1.1 or HTTP/2 via browser `fetch` API) → **Native gRPC** (HTTP/2 with gRPC framing)
+
+**Port-forward for testing**:
+
+```bash
+kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+```
+
+**Platform requirements**:
+- Web browsers (Chrome/Firefox/Safari): **Require Envoy** (port 8080)
+- Android/iOS/Desktop apps: **Direct gRPC** (ports 50051/50052, no Envoy needed)
+
 ### 4.4 Deploy Data Stores
 
 ```bash
