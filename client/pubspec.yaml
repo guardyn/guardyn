@@ -40,6 +40,7 @@ dependencies:
   # Utilities
   logger: ^2.0.2+1
   intl: ^0.18.1
+  uuid: ^4.0.0
 
   # SVG Support
   flutter_svg: ^2.0.9
