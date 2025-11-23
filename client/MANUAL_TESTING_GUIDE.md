@@ -1,7 +1,14 @@
 # Flutter Client Manual Testing Guide
 
-**Date**: November 14, 2025  
-**Status**: Ready for manual testing - All unit tests passing (41/41)
+**Date**: November 23, 2025  
+**Status**: Ready for messaging testing - Authentication + Messaging UI complete
+
+---
+
+## 📋 Testing Phases
+
+- ✅ **Phase 1: Authentication Flow** (Completed November 14, 2025)
+- 🔄 **Phase 2: Messaging Between Two Users** (Current - November 23, 2025)
 
 ---
 
@@ -429,4 +436,492 @@ Then we'll proceed to Phase 2: Messaging UI implementation.
 
 ---
 
-**Good luck with testing! 🚀**
+## 🔥 PHASE 2: TWO-DEVICE MESSAGING TESTING
+
+**Date**: November 23, 2025  
+**Objective**: Test real-time message sending and receiving between two users
+
+---
+
+### 🎯 Test Overview
+
+This phase tests the complete messaging flow:
+- ✅ Sending messages between two devices
+- ✅ Real-time message reception
+- ✅ Delivery status updates
+- ✅ Conversation list
+- ✅ Message persistence
+- ✅ Offline message delivery
+
+---
+
+### 📱 Step 1: Launch Two Flutter Instances
+
+You have **two options** for running two simultaneous instances:
+
+#### Option A: Two Android Emulators (Recommended)
+
+1. **Launch first emulator:**
+   ```bash
+   # List available AVDs
+   emulator -list-avds
+   
+   # Start first emulator (e.g., Pixel_6_API_33)
+   emulator -avd Pixel_6_API_33 &
+   ```
+
+2. **Launch second emulator:**
+   ```bash
+   # Start second emulator (e.g., Pixel_7_API_34)
+   emulator -avd Pixel_7_API_34 &
+   ```
+
+3. **Verify both devices are detected:**
+   ```bash
+   cd client
+   flutter devices
+   ```
+   
+   **Expected output:**
+   ```
+   4 connected devices:
+   
+   sdk gphone64 arm64 (mobile) • emulator-5554 • android-arm64  • Android 13 (API 33)
+   sdk gphone64 arm64 (mobile) • emulator-5556 • android-arm64  • Android 14 (API 34)
+   ...
+   ```
+
+4. **Run Flutter on first device:**
+   ```bash
+   # Terminal 3 (keep port-forwards running in Terminal 1 & 2)
+   cd client
+   flutter run -d emulator-5554
+   ```
+
+5. **Run Flutter on second device:**
+   ```bash
+   # Terminal 4 (new terminal window)
+   cd client
+   flutter run -d emulator-5556
+   ```
+
+#### Option B: Chrome + Android Emulator
+
+1. **Launch Android emulator:**
+   ```bash
+   emulator -avd Pixel_6_API_33 &
+   ```
+
+2. **Run on Chrome (Device 1):**
+   ```bash
+   cd client
+   flutter run -d chrome
+   ```
+
+3. **Run on Android (Device 2):**
+   ```bash
+   # New terminal
+   cd client
+   flutter run -d emulator-5554
+   ```
+
+---
+
+### 🧪 Test Case 11: Two-Device Message Exchange
+
+**Duration**: 5-10 minutes  
+**Complexity**: Medium
+
+#### Setup Phase
+
+1. **Device 1 (Alice):**
+   - Register new user: `alice`
+   - Password: `password123`
+   - Device name: `Alice iPhone`
+   - ✅ Verify successful registration
+   - **Write down Alice's User ID** (displayed on HomePage)
+
+2. **Device 2 (Bob):**
+   - Register new user: `bob`
+   - Password: `password123`
+   - Device name: `Bob Android`
+   - ✅ Verify successful registration
+   - **Write down Bob's User ID** (displayed on HomePage)
+
+#### Messaging Test - Alice sends to Bob
+
+1. **Device 1 (Alice):**
+   - Tap "Open Messages" button on HomePage
+   - ✅ Verify ConversationListPage opens
+   - Tap "New Chat" or navigate to ChatPage directly
+   - Enter **Bob's User ID** as recipient
+   - Type message: `"Hello Bob! 👋"`
+   - Tap Send button
+
+2. **Device 1 (Alice) - Expected Results:**
+   - ✅ Message appears in chat bubble (right-aligned, blue)
+   - ✅ Delivery status icon shows "sent" (single checkmark ✓)
+   - ✅ No error SnackBar
+   - ✅ Input field clears after sending
+
+3. **Device 2 (Bob):**
+   - Wait 1-3 seconds
+   - ✅ Message appears automatically (if already on ChatPage)
+   - OR: Tap "Open Messages" → see conversation with Alice
+   - ✅ Message appears in chat bubble (left-aligned, gray)
+   - ✅ Message text: "Hello Bob! 👋"
+   - ✅ Sender shown as "alice"
+
+#### Messaging Test - Bob replies to Alice
+
+4. **Device 2 (Bob):**
+   - Open chat with Alice (if not already there)
+   - Type message: `"Hi Alice! How are you?"`
+   - Tap Send button
+
+5. **Device 2 (Bob) - Expected Results:**
+   - ✅ Message appears in chat bubble (right-aligned, blue)
+   - ✅ Delivery status shows "sent"
+
+6. **Device 1 (Alice):**
+   - Wait 1-3 seconds
+   - ✅ Bob's reply appears automatically
+   - ✅ Message text: "Hi Alice! How are you?"
+   - ✅ Left-aligned, gray bubble
+   - ✅ Auto-scroll to bottom of chat
+
+#### Bidirectional Conversation Test
+
+7. **Both devices:**
+   - Send 3-5 more messages back and forth
+   - Test different content:
+     - Short message: `"OK"`
+     - Long message: `"This is a longer message to test how the UI handles text wrapping and multiple lines of content in the message bubble"`
+     - Special characters: `"Test 123 !@#$%^&*()"`
+     - Emoji: `"🚀 🎉 💬"`
+
+8. **Expected Results:**
+   - ✅ All messages delivered in correct order
+   - ✅ Auto-scroll works on new messages
+   - ✅ Message bubbles format correctly (no overflow)
+   - ✅ Timestamps display properly
+   - ✅ Sender/recipient alignment correct (right/left)
+
+---
+
+### 🧪 Test Case 12: Conversation List
+
+**Duration**: 3-5 minutes
+
+1. **Device 1 (Alice):**
+   - Navigate back to ConversationListPage (tap back button)
+   - ✅ Verify conversation with Bob appears in list
+   - ✅ Last message preview shows latest text
+   - ✅ Timestamp shows correct time
+
+2. **Device 2 (Bob):**
+   - Send another message to Alice: `"Testing conversation list"`
+
+3. **Device 1 (Alice):**
+   - Check ConversationListPage
+   - ✅ Last message updates to "Testing conversation list"
+   - ✅ Unread count badge appears (if implemented)
+   - Tap on Bob's conversation
+   - ✅ Opens ChatPage with full message history
+
+---
+
+### 🧪 Test Case 13: Message Delivery Status
+
+**Duration**: 2-3 minutes
+
+1. **Device 1 (Alice):**
+   - Send message to Bob
+   - Observe delivery status icon progression:
+     - Initially: ⏳ Pending (clock icon)
+     - After send: ✓ Sent (single checkmark)
+     - After delivery: ✓✓ Delivered (double checkmark - if implemented)
+     - After read: ✓✓ Read (blue checkmarks - if implemented)
+
+2. **Expected Status Flow:**
+   - ✅ Status icon updates correctly
+   - ✅ No status gets stuck in "pending"
+   - ✅ Failed messages show error icon (✗)
+
+---
+
+### 🧪 Test Case 14: Offline Message Delivery
+
+**Duration**: 5 minutes  
+**Complexity**: Advanced
+
+#### Setup
+
+1. **Device 2 (Bob):**
+   - **Close the app completely** (swipe away from recent apps)
+   - OR: Put device in airplane mode
+
+2. **Device 1 (Alice):**
+   - Send message to Bob: `"Are you there?"`
+   - ✅ Message shows as "sent" (not delivered yet)
+
+3. **Wait 5-10 seconds**
+
+4. **Device 2 (Bob):**
+   - **Re-open the app** (or disable airplane mode)
+   - App should auto-login
+
+5. **Device 2 (Bob) - Expected Results:**
+   - ✅ Alice's message appears automatically
+   - ✅ Message text: "Are you there?"
+   - ✅ No data loss
+
+---
+
+### 🧪 Test Case 15: Rapid Message Sending
+
+**Duration**: 2 minutes
+
+1. **Device 1 (Alice):**
+   - Send 5 messages rapidly (one after another):
+     - `"Message 1"`
+     - `"Message 2"`
+     - `"Message 3"`
+     - `"Message 4"`
+     - `"Message 5"`
+
+2. **Device 1 (Alice) - Expected Results:**
+   - ✅ All 5 messages appear in chat
+   - ✅ Messages in correct order (1, 2, 3, 4, 5)
+   - ✅ No duplicate messages
+   - ✅ No dropped messages
+
+3. **Device 2 (Bob) - Expected Results:**
+   - ✅ All 5 messages received
+   - ✅ Correct order preserved
+   - ✅ No UI lag or freezing
+
+---
+
+### 🧪 Test Case 16: Long Conversation Scrolling
+
+**Duration**: 3 minutes
+
+**Prerequisites**: Send 20+ messages between Alice and Bob
+
+1. **Device 1 (Alice):**
+   - Scroll to top of conversation (oldest messages)
+   - Send new message: `"Testing scroll"`
+
+2. **Expected Results:**
+   - ✅ Chat auto-scrolls to bottom (new message visible)
+   - ✅ Scroll animation smooth
+   - ✅ No jump/flash in UI
+
+3. **Manual Scroll Test:**
+   - Scroll up to middle of conversation
+   - Hold position for 5 seconds
+   - ✅ Chat stays at scroll position (no auto-scroll unless user is near bottom)
+
+---
+
+### 🧪 Test Case 17: Error Handling - Backend Unavailable
+
+**Duration**: 3 minutes
+
+1. **Stop messaging service:**
+   ```bash
+   kubectl scale deployment messaging-service -n apps --replicas=0
+   ```
+
+2. **Device 1 (Alice):**
+   - Try to send message: `"Will this work?"`
+
+3. **Expected Results:**
+   - ✅ Message shows as "failed" (error icon ✗)
+   - ✅ Error SnackBar appears with user-friendly message
+   - ✅ App doesn't crash
+   - ✅ Can retry sending later
+
+4. **Restore service:**
+   ```bash
+   kubectl scale deployment messaging-service -n apps --replicas=3
+   ```
+
+5. **Wait for pods to be Ready (30-60 seconds):**
+   ```bash
+   kubectl get pods -n apps -w
+   ```
+
+6. **Device 1 (Alice):**
+   - Try sending message again
+   - ✅ Message sends successfully
+
+---
+
+### 🧪 Test Case 18: Multiple Conversations
+
+**Duration**: 5-7 minutes
+
+**Prerequisites**: Need third user
+
+1. **Device 1 or 2:**
+   - Logout current user
+   - Register third user: `charlie`
+   - Password: `password123`
+
+2. **Device 1 (Alice):**
+   - Start conversation with Charlie
+   - Send: `"Hi Charlie!"`
+
+3. **Device 2 (Charlie):**
+   - Reply: `"Hello Alice!"`
+
+4. **Device 1 (Alice):**
+   - Go to ConversationListPage
+   - ✅ Verify two conversations visible:
+     - Conversation with Bob
+     - Conversation with Charlie
+   - ✅ Each shows correct last message
+   - ✅ Tapping each opens correct chat
+
+5. **Switch between conversations:**
+   - Open Bob's chat → send message
+   - Back to list
+   - Open Charlie's chat → send message
+   - ✅ Messages don't mix between conversations
+   - ✅ Each conversation maintains separate history
+
+---
+
+### 📊 Phase 2 Test Results Summary
+
+After completing all messaging tests, fill out this checklist:
+
+```
+Messaging Test Results:
+[ ] Test Case 11: Two-Device Message Exchange ✅/❌
+[ ] Test Case 12: Conversation List ✅/❌
+[ ] Test Case 13: Message Delivery Status ✅/❌
+[ ] Test Case 14: Offline Message Delivery ✅/❌
+[ ] Test Case 15: Rapid Message Sending ✅/❌
+[ ] Test Case 16: Long Conversation Scrolling ✅/❌
+[ ] Test Case 17: Error Handling - Backend Unavailable ✅/❌
+[ ] Test Case 18: Multiple Conversations ✅/❌
+```
+
+---
+
+### 🎯 Phase 2 Success Criteria
+
+**Messaging Testing Complete** when:
+
+- ✅ Messages send and receive between two devices in real-time
+- ✅ Delivery status updates correctly
+- ✅ Conversation list shows all conversations
+- ✅ Offline messages delivered when user comes online
+- ✅ No messages lost or duplicated
+- ✅ No app crashes during any messaging scenario
+- ✅ UI handles long conversations smoothly
+- ✅ Error handling works gracefully
+
+---
+
+### 📸 Recording Test Results
+
+**Please capture:**
+
+1. **Screenshots:**
+   - Both devices showing bidirectional conversation
+   - ConversationListPage with multiple conversations
+   - Message delivery status icons
+
+2. **Screen Recording (Optional):**
+   - 30-second video showing:
+     - Alice sending message
+     - Bob receiving message (real-time)
+     - Reply from Bob to Alice
+
+3. **Console Logs:**
+   - Flutter console output from both devices
+   - Any errors or warnings
+
+---
+
+### 🐛 Troubleshooting Messaging Tests
+
+#### Issue: Messages not appearing on second device
+
+**Solution:**
+
+1. Verify both devices connected to same backend:
+   ```bash
+   # Check port-forwards are active
+   lsof -i :50051  # Auth service
+   lsof -i :50052  # Messaging service
+   ```
+
+2. Check backend logs:
+   ```bash
+   kubectl logs -n apps deployment/messaging-service --tail=50
+   ```
+
+3. Verify user IDs are correct (copy-paste from HomePage)
+
+---
+
+#### Issue: "User not found" error when sending message
+
+**Solution:**
+
+1. Verify recipient user ID is exact (no extra spaces)
+2. Check both users are registered:
+   ```bash
+   kubectl logs -n apps deployment/auth-service | grep "registered"
+   ```
+
+---
+
+#### Issue: Message stuck in "pending" status
+
+**Solution:**
+
+1. Check messaging service is running:
+   ```bash
+   kubectl get pods -n apps | grep messaging
+   ```
+
+2. Check gRPC connection:
+   ```bash
+   # From Flutter console, look for:
+   # "gRPC Error: Connection refused"
+   ```
+
+3. Restart port-forward if needed
+
+---
+
+#### Issue: Duplicate messages appearing
+
+**Potential causes:**
+- StreamSubscription not cancelled properly
+- Multiple BLoC instances created
+
+**Solution:**
+- Restart both Flutter apps
+- Check Flutter console for warnings
+
+---
+
+### ✅ After Phase 2 Testing Complete
+
+Report back with:
+
+1. ✅ Phase 2 test results checklist (all 8 test cases)
+2. 🐛 Any issues encountered (with screenshots/logs)
+3. 📸 Screenshots of successful two-device messaging
+4. 💡 UX feedback (UI improvements, missing features)
+
+---
+
+**Good luck with messaging testing! 🚀💬**

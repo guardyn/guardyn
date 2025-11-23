@@ -133,34 +133,102 @@ UI Widget → BLoC Event → Use Case → Repository → Remote Datasource (gRPC
 
 ## Testing
 
-### Manual Testing
+### Unit Tests (41 tests - 100% passing)
 
-1. **Registration Flow:**
-
-   - Launch app
-   - Tap "Don't have an account? Register"
-   - Fill in: username, password, confirm password, device name
-   - Tap "Register"
-   - Should navigate to home page with user info
-
-2. **Login Flow:**
-
-   - Launch app (after registering)
-   - Logout from home page
-   - Enter username and password
-   - Tap "Login"
-   - Should navigate to home page
-
-3. **Error Handling:**
-   - Try invalid credentials
-   - Try duplicate username registration
-   - Try weak password (< 8 chars)
-
-### Unit Tests
+Run all unit tests:
 
 ```bash
+cd client
 flutter test
 ```
+
+**Test Coverage:**
+- AuthBloc: 18 tests
+- RegisterUser use case: 11 tests  
+- LoginUser use case: 6 tests
+- LogoutUser use case: 6 tests
+
+### Integration Tests (Automated)
+
+Integration tests simulate two users exchanging messages programmatically.
+
+**Prerequisites:**
+```bash
+# 1. Ensure backend is running
+kubectl get pods -n apps
+
+# 2. Port-forward services (Terminal 1 & 2)
+kubectl port-forward -n apps svc/auth-service 50051:50051
+kubectl port-forward -n apps svc/messaging-service 50052:50052
+```
+
+**Run integration tests:**
+```bash
+# Using helper script (recommended)
+cd client
+./scripts/run_integration_tests.sh
+
+# Or manually
+flutter test integration_test/messaging_two_device_test.dart
+
+# Run on specific device
+flutter test integration_test/ -d chrome
+flutter test integration_test/ -d emulator-5554
+```
+
+**What gets tested:**
+- ✅ User registration (Alice and Bob)
+- ✅ User login/logout flows
+- ✅ Navigation to Messages screen
+- ✅ Backend connectivity health check
+- ⏳ Message sending (requires "New Chat" UI)
+
+See `integration_test/README.md` for full documentation.
+
+### Manual Testing (Two Devices)
+
+For comprehensive UI testing with real devices/emulators, see detailed guide:
+
+**📖 [MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md)**
+
+**Quick start:**
+
+1. **Launch two emulators:**
+   ```bash
+   emulator -avd Pixel_6_API_33 &
+   emulator -avd Pixel_7_API_34 &
+   ```
+
+2. **Run Flutter on both devices:**
+   ```bash
+   # Terminal 3
+   flutter run -d emulator-5554
+   
+   # Terminal 4
+   flutter run -d emulator-5556
+   ```
+
+3. **Test messaging flow:**
+   - Device 1: Register as "alice"
+   - Device 2: Register as "bob"
+   - Device 1: Send message to Bob's user ID
+   - Device 2: Verify message received
+   - Test bidirectional conversation
+
+**18 comprehensive test cases** covering:
+- Authentication (13 tests)
+- Two-device messaging (8 tests)
+- Error handling, offline scenarios, rapid sending
+
+### Test Results Summary
+
+Run the manual testing checklist and report:
+- ✅ Test case results
+- 🐛 Issues encountered  
+- 📸 Screenshots/recordings
+- 💡 UX feedback
+
+---
 
 ## Dependencies
 
