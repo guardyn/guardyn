@@ -5,7 +5,8 @@ import 'package:injectable/injectable.dart';
 import '../../../../core/network/grpc_clients.dart';
 import '../../../../generated/common.pb.dart' as proto_common;
 import '../../../../generated/messaging.pb.dart' as proto;
-import '../../../../generated/messaging.pbgrpc.dart' hide MessageType, DeliveryStatus;
+import '../../../../generated/messaging.pbgrpc.dart'
+    hide MessageType, DeliveryStatus;
 import '../../domain/entities/message.dart';
 import '../models/message_model.dart';
 
@@ -39,16 +40,16 @@ class MessageRemoteDatasource {
     final response = await _messagingClient.sendMessage(request);
 
     if (response.hasError()) {
-      throw GrpcError.custom(
-        response.error.code.value,
-        response.error.message,
-      );
+      throw GrpcError.custom(response.error.code.value, response.error.message);
     }
 
     // Convert response to MessageModel
     return MessageModel(
       messageId: response.success.messageId,
-      conversationId: _deriveConversationId(recipientUserId, ''), // Will be filled by repository
+      conversationId: _deriveConversationId(
+        recipientUserId,
+        '',
+      ), // Will be filled by repository
       senderUserId: '', // Will be filled by repository
       senderDeviceId: '', // Will be filled by repository
       recipientUserId: recipientUserId,
@@ -83,10 +84,7 @@ class MessageRemoteDatasource {
     final response = await _messagingClient.getMessages(request);
 
     if (response.hasError()) {
-      throw GrpcError.custom(
-        response.error.code.value,
-        response.error.message,
-      );
+      throw GrpcError.custom(response.error.code.value, response.error.message);
     }
 
     return response.success.messages
@@ -124,10 +122,7 @@ class MessageRemoteDatasource {
     final response = await _messagingClient.markAsRead(request);
 
     if (response.hasError()) {
-      throw GrpcError.custom(
-        response.error.code.value,
-        response.error.message,
-      );
+      throw GrpcError.custom(response.error.code.value, response.error.message);
     }
   }
 
@@ -148,10 +143,7 @@ class MessageRemoteDatasource {
     final response = await _messagingClient.deleteMessage(request);
 
     if (response.hasError()) {
-      throw GrpcError.custom(
-        response.error.code.value,
-        response.error.message,
-      );
+      throw GrpcError.custom(response.error.code.value, response.error.message);
     }
   }
 

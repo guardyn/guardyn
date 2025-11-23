@@ -39,20 +39,20 @@ if [[ -n "$AUTH_PORT_CHECK" ]] && [[ -n "$MSG_PORT_CHECK" ]]; then
     echo -e "${GREEN}✅ Port-forwarding already active${NC}"
 else
     echo -e "${YELLOW}⚙️  Starting port-forwarding in background...${NC}"
-    
+
     # Kill existing port-forwards if any
     pkill -f "kubectl port-forward.*auth-service" 2>/dev/null || true
     pkill -f "kubectl port-forward.*messaging-service" 2>/dev/null || true
-    
+
     # Start new port-forwards
     kubectl port-forward -n apps svc/auth-service 50051:50051 >/dev/null 2>&1 &
     AUTH_PF_PID=$!
     kubectl port-forward -n apps svc/messaging-service 50052:50052 >/dev/null 2>&1 &
     MSG_PF_PID=$!
-    
+
     # Wait for ports to be ready
     sleep 2
-    
+
     echo -e "${GREEN}✅ Port-forwarding started (PIDs: $AUTH_PF_PID, $MSG_PF_PID)${NC}"
     echo -e "${YELLOW}   (To stop: pkill -f 'kubectl port-forward')${NC}"
 fi
@@ -97,23 +97,23 @@ if [[ "$CHOICE" =~ ^[Aa]$ ]]; then
     echo "   Open a new terminal and run:"
     echo -e "   ${YELLOW}cd client && flutter run -d chrome${NC}"
     echo ""
-    
+
     # Get first AVD
     FIRST_AVD=$(echo "$AVDS" | head -n1)
-    
+
     read -p "Press Enter to start Android emulator ($FIRST_AVD) for Device 2 (Bob)..."
-    
+
     echo -e "${GREEN}📱 Starting Android emulator: $FIRST_AVD${NC}"
     $EMULATOR_PATH -avd "$FIRST_AVD" >/dev/null 2>&1 &
     EMULATOR_PID=$!
     echo -e "${GREEN}✅ Emulator starting (PID: $EMULATOR_PID)${NC}"
     echo ""
     echo -e "${YELLOW}⏳ Waiting for emulator to boot (this may take 30-60 seconds)...${NC}"
-    
+
     # Wait for emulator to be ready
     sleep 10
     flutter devices | grep -q "emulator" && echo -e "${GREEN}✅ Emulator ready!${NC}" || echo -e "${YELLOW}⏳ Still booting...${NC}"
-    
+
     echo ""
     echo -e "${GREEN}📱 Starting Device 2 (Bob) on Android...${NC}"
     echo "   Open another terminal and run:"
@@ -123,7 +123,7 @@ if [[ "$CHOICE" =~ ^[Aa]$ ]]; then
     else
         echo -e "   ${YELLOW}cd client && flutter run -d <emulator-id>${NC}"
     fi
-    
+
 elif [[ "$CHOICE" =~ ^[Bb]$ ]]; then
     # Option B: Linux + Android
     echo ""
@@ -131,22 +131,22 @@ elif [[ "$CHOICE" =~ ^[Bb]$ ]]; then
     echo "   Open a new terminal and run:"
     echo -e "   ${YELLOW}cd client && flutter run -d linux${NC}"
     echo ""
-    
+
     # Get first AVD
     FIRST_AVD=$(echo "$AVDS" | head -n1)
-    
+
     read -p "Press Enter to start Android emulator ($FIRST_AVD) for Device 2 (Bob)..."
-    
+
     echo -e "${GREEN}📱 Starting Android emulator: $FIRST_AVD${NC}"
     $EMULATOR_PATH -avd "$FIRST_AVD" >/dev/null 2>&1 &
     EMULATOR_PID=$!
     echo -e "${GREEN}✅ Emulator starting (PID: $EMULATOR_PID)${NC}"
     echo ""
     echo -e "${YELLOW}⏳ Waiting for emulator to boot...${NC}"
-    
+
     sleep 10
     flutter devices | grep -q "emulator" && echo -e "${GREEN}✅ Emulator ready!${NC}" || echo -e "${YELLOW}⏳ Still booting...${NC}"
-    
+
     echo ""
     echo -e "${GREEN}📱 Starting Device 2 (Bob) on Android...${NC}"
     echo "   Open another terminal and run:"
