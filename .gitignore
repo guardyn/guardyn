@@ -21,3 +21,4 @@ logs.log
 codeql-database/
 **/.codeqlmanifest
 .playwright-mcp
+.vscode/
