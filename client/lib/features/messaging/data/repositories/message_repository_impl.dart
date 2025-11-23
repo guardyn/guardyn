@@ -1,13 +1,13 @@
 import 'package:dartz/dartz.dart';
-import 'package:injectable/injectable.dart';
 import 'package:grpc/grpc.dart';
-import 'package:uuid/uuid.dart';
+import 'package:injectable/injectable.dart';
+
+import '../../../../core/error/failures.dart';
+import '../../../../core/storage/secure_storage.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/message_repository.dart';
 import '../datasources/message_remote_datasource.dart';
 import '../models/message_model.dart';
-import '../../../../core/error/failures.dart';
-import '../../../../core/storage/secure_storage.dart';
 
 @Injectable(as: MessageRepository)
 class MessageRepositoryImpl implements MessageRepository {

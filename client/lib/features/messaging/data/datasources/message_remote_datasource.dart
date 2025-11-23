@@ -1,12 +1,13 @@
-import 'package:injectable/injectable.dart';
-import 'package:grpc/grpc.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:grpc/grpc.dart';
+import 'package:injectable/injectable.dart';
+
 import '../../../core/network/grpc_clients.dart';
+import '../../../generated/common.pb.dart' as proto_common;
 import '../../../generated/messaging.pb.dart' as proto;
 import '../../../generated/messaging.pbgrpc.dart';
-import '../../../generated/common.pb.dart' as proto_common;
-import '../models/message_model.dart';
 import '../../domain/entities/message.dart';
+import '../models/message_model.dart';
 
 /// Remote datasource for message operations via gRPC
 @injectable

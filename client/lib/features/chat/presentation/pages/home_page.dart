@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
 import 'package:guardyn_client/features/messaging/presentation/pages/conversation_list_page.dart';
-import 'package:guardyn_client/core/di/injection.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});

@@ -1,11 +1,13 @@
 import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+
 import '../../domain/entities/message.dart';
-import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/get_messages.dart';
-import '../../domain/usecases/receive_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
+import '../../domain/usecases/receive_messages.dart';
+import '../../domain/usecases/send_message.dart';
 import 'message_event.dart';
 import 'message_state.dart';
 

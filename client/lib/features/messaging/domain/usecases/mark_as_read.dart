@@ -1,7 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:injectable/injectable.dart';
-import '../repositories/message_repository.dart';
+
 import '../../../../core/error/failures.dart';
+import '../repositories/message_repository.dart';
 
 @injectable
 class MarkAsRead {
