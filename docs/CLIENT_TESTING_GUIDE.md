@@ -147,7 +147,7 @@ docker run -p 8080:8080 -v $(pwd)/envoy-grpc-web.yaml:/etc/envoy/envoy.yaml envo
 
 ```bash
 cd client
-./scripts/run_integration_tests.sh
+./scripts/test-client.sh
 ```
 
 **Expected output:**
@@ -166,7 +166,7 @@ cd client
 
 ```bash
 cd client
-./scripts/test_two_devices.sh chrome  # Or 'linux' for desktop
+./scripts/test-client.sh two-device chrome  # Or 'linux' for desktop
 ```
 
 **Output shows:**
@@ -487,7 +487,7 @@ You have **three options** for running two simultaneous instances:
 
 ```bash
 cd client
-./scripts/start_two_device_test.sh
+./scripts/test-client.sh two-device chrome  # Or 'linux' for desktop
 ```
 
 This script will:
