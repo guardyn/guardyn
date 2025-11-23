@@ -48,6 +48,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  
+  integration_test:
+    sdk: flutter
 
   # Linting
   flutter_lints: ^5.0.0
