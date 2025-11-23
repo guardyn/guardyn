@@ -457,23 +457,77 @@ This phase tests the complete messaging flow:
 
 ### 📱 Step 1: Launch Two Flutter Instances
 
-You have **two options** for running two simultaneous instances:
+You have **three options** for running two simultaneous instances:
 
-#### Option A: Two Android Emulators (Recommended)
+#### Option A: Automated Setup Script (Recommended) 🚀
+
+**Easiest way - Use the automated script:**
+
+```bash
+cd client
+./scripts/start_two_device_test.sh
+```
+
+This script will:
+- ✅ Check backend services
+- ✅ Setup port-forwarding automatically
+- ✅ Launch Android emulator
+- ✅ Guide you through Chrome or Linux desktop setup
+- ✅ Display step-by-step instructions
+
+---
+
+#### Option B: Manual - Chrome + Android Emulator
+
+> **Note**: On Linux, use full path to Android SDK emulator.
+
+1. **Launch Android emulator:**
+   ```bash
+   # List available AVDs
+   $HOME/Android/Sdk/emulator/emulator -list-avds
+   
+   # Start emulator (replace with your AVD name)
+   $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 &
+   ```
+
+2. **Wait for emulator to boot** (30-60 seconds)
+
+3. **Run Flutter on Chrome (Device 1 - Alice):**
+   ```bash
+   cd client
+   flutter run -d chrome
+   ```
+
+4. **Run Flutter on Android (Device 2 - Bob):**
+   ```bash
+   # New terminal window
+   cd client
+   flutter devices  # Find emulator ID (e.g., emulator-5554)
+   flutter run -d emulator-5554
+   ```
+
+---
+
+#### Option C: Manual - Two Android Emulators
+
+> **Note**: You need to create two AVDs in Android Studio first.
 
 1. **Launch first emulator:**
    ```bash
    # List available AVDs
-   emulator -list-avds
+   $HOME/Android/Sdk/emulator/emulator -list-avds
    
-   # Start first emulator (e.g., Pixel_6_API_33)
-   emulator -avd Pixel_6_API_33 &
+   # Start first emulator
+   $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 &
    ```
 
-2. **Launch second emulator:**
+2. **Create second AVD** (if not exists):
+   - Open Android Studio → Device Manager → Create Virtual Device
+
+3. **Launch second emulator:**
    ```bash
-   # Start second emulator (e.g., Pixel_7_API_34)
-   emulator -avd Pixel_7_API_34 &
+   # Start second emulator (replace with your second AVD name)
+   $HOME/Android/Sdk/emulator/emulator -avd <second_avd_name> &
    ```
 
 3. **Verify both devices are detected:**

@@ -41,25 +41,40 @@ cd client
 
 **Quick steps**:
 
-1. **Terminal 1 & 2: Port-forward backend**
+1. **Use automated script (easiest)**:
+   ```bash
+   cd client
+   ./scripts/start_two_device_test.sh
+   ```
+
+   OR manually:
+
+2. **Terminal 1 & 2: Port-forward backend**
    ```bash
    kubectl port-forward -n apps svc/auth-service 50051:50051
    kubectl port-forward -n apps svc/messaging-service 50052:50052
    ```
 
-2. **Launch two emulators**
+3. **Launch emulator** (Linux - use full path):
    ```bash
-   emulator -avd Pixel_6_API_33 &
-   emulator -avd Pixel_7_API_34 &
+   $HOME/Android/Sdk/emulator/emulator -list-avds
+   $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 &
    ```
 
-3. **Terminal 3 & 4: Run Flutter**
+4. **Terminal 3: Run Flutter on Chrome (Device 1)**
    ```bash
-   flutter run -d emulator-5554  # Device 1
-   flutter run -d emulator-5556  # Device 2
+   cd client
+   flutter run -d chrome
    ```
 
-4. **Test messaging flow**
+5. **Terminal 4: Run Flutter on Android (Device 2)**
+   ```bash
+   cd client
+   flutter devices  # Find emulator ID
+   flutter run -d emulator-5554
+   ```
+
+6. **Test messaging flow**
    - Device 1: Register as "alice"
    - Device 2: Register as "bob"  
    - Device 1: Navigate to Messages → Send to Bob's ID

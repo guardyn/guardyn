@@ -2,10 +2,10 @@ import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
 
-import '../../../core/network/grpc_clients.dart';
-import '../../../generated/common.pb.dart' as proto_common;
-import '../../../generated/messaging.pb.dart' as proto;
-import '../../../generated/messaging.pbgrpc.dart';
+import '../../../../core/network/grpc_clients.dart';
+import '../../../../generated/common.pb.dart' as proto_common;
+import '../../../../generated/messaging.pb.dart' as proto;
+import '../../../../generated/messaging.pbgrpc.dart' hide MessageType, DeliveryStatus;
 import '../../domain/entities/message.dart';
 import '../models/message_model.dart';
 
@@ -40,7 +40,7 @@ class MessageRemoteDatasource {
 
     if (response.hasError()) {
       throw GrpcError.custom(
-        response.error.code,
+        response.error.code.value,
         response.error.message,
       );
     }
@@ -84,7 +84,7 @@ class MessageRemoteDatasource {
 
     if (response.hasError()) {
       throw GrpcError.custom(
-        response.error.code,
+        response.error.code.value,
         response.error.message,
       );
     }
@@ -125,7 +125,7 @@ class MessageRemoteDatasource {
 
     if (response.hasError()) {
       throw GrpcError.custom(
-        response.error.code,
+        response.error.code.value,
         response.error.message,
       );
     }
@@ -149,7 +149,7 @@ class MessageRemoteDatasource {
 
     if (response.hasError()) {
       throw GrpcError.custom(
-        response.error.code,
+        response.error.code.value,
         response.error.message,
       );
     }
