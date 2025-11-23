@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:grpc/grpc.dart';
 import 'package:grpc/grpc_connection_interface.dart';
-// Conditional import: only import grpc_web on web platform
-import 'grpc_channel_stub.dart'
-    if (dart.library.js_interop) 'package:grpc/grpc_web.dart';
 import 'package:guardyn_client/core/constants/config.dart';
 import 'package:guardyn_client/generated/auth.pbgrpc.dart';
 import 'package:guardyn_client/generated/messaging.pbgrpc.dart';
+
+// Conditional import: only import grpc_web on web platform
+import 'grpc_channel_stub.dart'
+    if (dart.library.js_interop) 'package:grpc/grpc_web.dart';
 
 /// Manages gRPC client connections to backend services
 class GrpcClients {
