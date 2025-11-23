@@ -88,7 +88,7 @@ Verify Envoy is running:
 
 ```bash
 lsof -i :8080
-# Should show kubectl port-forward to envoy-grpc-web
+# Should show kubectl port-forward to guardyn-envoy
 ```
 
 **Note**: Linux desktop and Android emulator use native gRPC and don't need Envoy.
@@ -902,7 +902,7 @@ cd client
 ./scripts/test-client.sh envoy
 
 # Verify Envoy is running
-lsof -i :8080  # Should show kubectl port-forward to envoy-grpc-web
+lsof -i :8080  # Should show kubectl port-forward to guardyn-envoy
 
 # Terminal 4: Start Android emulator
 $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 -no-snapshot -no-audio -gpu swiftshader_indirect &
@@ -934,8 +934,8 @@ flutter run -d emulator-5554
 adb emu kill
 
 # Stop Envoy proxy (if using Chrome)
-docker stop guardyn-envoy-grpc-web
-docker rm guardyn-envoy-grpc-web
+docker stop guardyn-envoy
+docker rm guardyn-envoy
 ```
 
 ---

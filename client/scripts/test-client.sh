@@ -205,17 +205,17 @@ start_envoy_proxy() {
   log_header "Starting Envoy gRPC-Web Proxy"
 
   # Check if Envoy deployment exists
-  if ! kubectl get deployment -n apps envoy-grpc-web &> /dev/null; then
+  if ! kubectl get deployment -n apps guardyn-envoy &> /dev/null; then
     log_error "Envoy deployment not found in Kubernetes"
     log_warning "Deploy Envoy first: kubectl apply -k infra/k8s/base/envoy"
     exit 1
   fi
 
   # Check if Envoy pod is running
-  POD_STATUS=$(kubectl get pods -n apps -l app=envoy-grpc-web -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
+  POD_STATUS=$(kubectl get pods -n apps -l app=guardyn-envoy -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
   if [ "$POD_STATUS" != "Running" ]; then
     log_error "Envoy pod is not running (status: $POD_STATUS)"
-    log_warning "Check pod status: kubectl get pods -n apps -l app=envoy-grpc-web"
+    log_warning "Check pod status: kubectl get pods -n apps -l app=guardyn-envoy"
     exit 1
   fi
 
@@ -223,7 +223,7 @@ start_envoy_proxy() {
 
   # Check if port 8080 is available
   if lsof -i :8080 > /dev/null 2>&1; then
-    if pgrep -f "port-forward.*envoy-grpc-web.*8080" > /dev/null; then
+    if pgrep -f "port-forward.*guardyn-envoy.*8080" > /dev/null; then
       log_success "Envoy port-forward already running"
       return 0
     else
@@ -235,7 +235,7 @@ start_envoy_proxy() {
   log_info "Starting port-forward to Envoy service..."
 
   # Start port-forward in background
-  kubectl port-forward -n apps svc/envoy-grpc-web 8080:8080 > /dev/null 2>&1 &
+  kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 > /dev/null 2>&1 &
   ENVOY_PF_PID=$!
 
   # Wait for port-forward to start
@@ -249,7 +249,7 @@ start_envoy_proxy() {
   fi
 
   log_success "Envoy gRPC-Web proxy is ready!"
-  log_success "  Envoy Pod: apps/envoy-grpc-web"
+  log_success "  Envoy Pod: apps/guardyn-envoy"
   log_success "  Local access: http://localhost:8080 (PID: $ENVOY_PF_PID)"
   echo ""
   log_info "Chrome client will connect to http://localhost:8080"

@@ -10,5 +10,5 @@ resources:
   - service.yaml
 
 commonLabels:
-  app: envoy-grpc-web
+  app: guardyn-envoy
   guardyn.io/stage: poc

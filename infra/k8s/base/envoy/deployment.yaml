@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: envoy-grpc-web
+  name: guardyn-envoy
   namespace: apps
   labels:
-    app: envoy-grpc-web
+    app: guardyn-envoy
     guardyn.io/stage: poc
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: envoy-grpc-web
+      app: guardyn-envoy
   template:
     metadata:
       labels:
-        app: envoy-grpc-web
+        app: guardyn-envoy
         guardyn.io/stage: poc
     spec:
       containers:
