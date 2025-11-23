@@ -2,15 +2,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: envoy-grpc-web
+  name: guardyn-envoy
   namespace: apps
   labels:
-    app: envoy-grpc-web
+    app: guardyn-envoy
     guardyn.io/stage: poc
 spec:
   type: ClusterIP
   selector:
-    app: envoy-grpc-web
+    app: guardyn-envoy
   ports:
   - name: grpc-web
     port: 8080

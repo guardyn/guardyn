@@ -5,7 +5,7 @@ metadata:
   name: envoy-config
   namespace: apps
   labels:
-    app: envoy-grpc-web
+    app: guardyn-envoy
     guardyn.io/stage: poc
 data:
   envoy.yaml: |
