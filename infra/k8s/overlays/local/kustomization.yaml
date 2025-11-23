@@ -6,5 +6,6 @@ bases:
   - ../../base/cilium
   - ../../base/tikv
   - ../../base/scylladb
+  - ../../base/envoy
 resources:
   - ../../base/monitoring

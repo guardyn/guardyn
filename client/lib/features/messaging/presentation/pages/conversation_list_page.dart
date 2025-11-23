@@ -5,7 +5,7 @@ import '../bloc/message_bloc.dart';
 import 'chat_page.dart';
 
 class ConversationListPage extends StatelessWidget {
-  const ConversationListPage({Key? key}) : super(key: key);
+  const ConversationListPage({super.key});
 
   @override
   Widget build(BuildContext context) {

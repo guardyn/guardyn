@@ -8,10 +8,10 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     this.onLongPress,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class MessageBubble extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSentByMe
                 ? theme.colorScheme.primary
-                : theme.colorScheme.surfaceVariant,
+                : theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(16),
           ),
           constraints: BoxConstraints(
@@ -86,7 +86,7 @@ class MessageBubble extends StatelessWidget {
       return 'Yesterday ${DateFormat('HH:mm').format(timestamp)}';
     } else if (difference.inDays < 7) {
       // Within a week - show day name and time
-      return '${DateFormat('EEE HH:mm').format(timestamp)}';
+      return DateFormat('EEE HH:mm').format(timestamp);
     } else {
       // Older - show date and time
       return DateFormat('MMM d, HH:mm').format(timestamp);

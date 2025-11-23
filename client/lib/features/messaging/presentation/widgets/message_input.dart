@@ -5,10 +5,10 @@ class MessageInput extends StatefulWidget {
   final bool enabled;
 
   const MessageInput({
-    Key? key,
+    super.key,
     required this.onSend,
     this.enabled = true,
-  }) : super(key: key);
+  });
 
   @override
   State<MessageInput> createState() => _MessageInputState();
@@ -70,7 +70,7 @@ class _MessageInputState extends State<MessageInput> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant,
+                  color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: TextField(
@@ -95,7 +95,7 @@ class _MessageInputState extends State<MessageInput> {
             Material(
               color: _hasText && widget.enabled
                   ? theme.colorScheme.primary
-                  : theme.colorScheme.surfaceVariant,
+                  : theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(24),
               child: InkWell(
                 onTap: _hasText && widget.enabled ? _handleSend : null,

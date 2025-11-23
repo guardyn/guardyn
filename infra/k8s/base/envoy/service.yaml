@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-grpc-web
+  namespace: apps
+  labels:
+    app: envoy-grpc-web
+    guardyn.io/stage: poc
+spec:
+  type: ClusterIP
+  selector:
+    app: envoy-grpc-web
+  ports:
+  - name: grpc-web
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: admin
+    port: 9901
+    targetPort: 9901
+    protocol: TCP
