@@ -1,7 +1,7 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
-import 'package:guardyn_client/main.dart' as app;
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/main.dart' as app;
+import 'package:integration_test/integration_test.dart';
 
 /// Integration test for two-device messaging flow
 /// 
