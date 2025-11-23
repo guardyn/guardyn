@@ -81,14 +81,14 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 
 ```bash
 cd client
-./scripts/start_envoy_proxy.sh
+./scripts/test-client.sh envoy
 ```
 
 Verify Envoy is running:
 
 ```bash
-docker ps | grep envoy
-# Should show: guardyn-envoy-grpc-web
+lsof -i :8080
+# Should show kubectl port-forward to envoy-grpc-web
 ```
 
 **Note**: Linux desktop and Android emulator use native gRPC and don't need Envoy.
@@ -131,7 +131,23 @@ cd client
 - Device 1 (Alice): Command to run on Chrome/Linux
 - Device 2 (Bob): Command to run on Android emulator
 
-### Option 3: Manual Step-by-Step
+### Option 3: Quick Commands
+
+```bash
+# Verify setup and build
+./scripts/test-client.sh verify
+
+# Start port-forwarding only
+./scripts/test-client.sh port-forward
+
+# Start Envoy proxy for Chrome
+./scripts/test-client.sh envoy
+
+# Show help
+./scripts/test-client.sh help
+```
+
+### Option 4: Manual Step-by-Step
 
 See [Test Commands Reference](#test-commands-reference) for complete manual setup.
 
@@ -809,6 +825,33 @@ Messaging Test Results:
 
 ## Test Commands Reference
 
+### Using the Unified Testing Script
+
+The new unified script `test-client.sh` provides all testing functionality:
+
+```bash
+# Show all available commands
+./scripts/test-client.sh help
+
+# Run integration tests
+./scripts/test-client.sh integration
+
+# Setup two-device testing (Chrome + Android)
+./scripts/test-client.sh two-device chrome
+
+# Setup two-device testing (Linux + Android)
+./scripts/test-client.sh two-device linux
+
+# Start port-forwarding only
+./scripts/test-client.sh port-forward
+
+# Start Envoy proxy for Chrome
+./scripts/test-client.sh envoy
+
+# Verify backend and build
+./scripts/test-client.sh verify
+```
+
 ### Complete Testing Sequence - Linux + Android
 
 ```bash
@@ -837,6 +880,16 @@ flutter run -d emulator-5554
 
 ### Complete Testing Sequence - Chrome + Android
 
+**Using unified script (Recommended):**
+
+```bash
+# One command does it all
+cd client
+./scripts/test-client.sh two-device chrome
+```
+
+**Or manually:**
+
 ```bash
 # Terminal 1: Auth service port-forwarding
 kubectl port-forward -n apps svc/auth-service 50051:50051
@@ -845,11 +898,11 @@ kubectl port-forward -n apps svc/auth-service 50051:50051
 kubectl port-forward -n apps svc/messaging-service 50052:50052
 
 # Terminal 3: Start Envoy gRPC-Web proxy (required for Chrome)
-cd /home/anry/projects/guardyn/guardyn/client
-./scripts/start_envoy_proxy.sh
+cd client
+./scripts/test-client.sh envoy
 
 # Verify Envoy is running
-docker ps | grep envoy  # Should show: guardyn-envoy-grpc-web
+lsof -i :8080  # Should show kubectl port-forward to envoy-grpc-web
 
 # Terminal 4: Start Android emulator
 $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 -no-snapshot -no-audio -gpu swiftshader_indirect &
@@ -896,10 +949,10 @@ Chrome needs Envoy gRPC-Web proxy:
 ```bash
 # Start Envoy proxy
 cd client
-./scripts/start_envoy_proxy.sh
+./scripts/test-client.sh envoy
 
 # Verify it's running
-docker ps | grep envoy
+lsof -i :8080
 ```
 
 ---
@@ -938,6 +991,9 @@ flutter devices
 # Regenerate proto files
 cd client
 ./scripts/generate_proto.sh
+
+# Verify setup
+./scripts/test-client.sh verify
 
 # Clean build
 flutter clean

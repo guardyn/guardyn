@@ -185,7 +185,7 @@ stop_port_forwarding() {
   if [ -n "${AUTH_PF_PID:-}" ]; then
     kill "$AUTH_PF_PID" 2>/dev/null || true
   fi
-  
+
   if [ -n "${MESSAGING_PF_PID:-}" ]; then
     kill "$MESSAGING_PF_PID" 2>/dev/null || true
   fi
@@ -358,11 +358,11 @@ setup_two_device_testing() {
   if [[ "$DEVICE1" == "chrome" ]]; then
     echo ""
     log_info "Chrome requires Envoy gRPC-Web proxy"
-    
+
     if ! lsof -i :8080 > /dev/null 2>&1; then
       read -p "Start Envoy proxy now? (y/n) [y]: " START_ENVOY
       START_ENVOY=${START_ENVOY:-y}
-      
+
       if [[ "$START_ENVOY" =~ ^[Yy]$ ]]; then
         start_envoy_proxy
       else
@@ -402,17 +402,17 @@ setup_two_device_testing() {
     log_success "Android emulator already running: $EMULATOR_ID"
   else
     FIRST_AVD=$(echo "$AVDS" | head -n1)
-    
+
     read -p "Start Android emulator ($FIRST_AVD)? (y/n) [y]: " START_EMU
     START_EMU=${START_EMU:-y}
-    
+
     if [[ "$START_EMU" =~ ^[Yy]$ ]]; then
       log_info "Starting Android emulator: $FIRST_AVD"
       $EMULATOR_PATH -avd "$FIRST_AVD" -no-snapshot -no-audio -gpu swiftshader_indirect >/dev/null 2>&1 &
       EMULATOR_PID=$!
       log_success "Emulator starting (PID: $EMULATOR_PID)"
       log_warning "Waiting for emulator to boot (30-60 seconds)..."
-      
+
       # Wait for emulator to be ready
       for i in {1..30}; do
         sleep 2
@@ -474,7 +474,7 @@ verify_setup() {
   # Check port-forwarding
   echo ""
   log_info "Checking port-forwarding..."
-  
+
   if ! lsof -i :50051 > /dev/null 2>&1; then
     log_warning "Port 50051 (auth-service) is not forwarded"
     log_info "Run: kubectl port-forward -n apps svc/auth-service 50051:50051 &"
@@ -545,24 +545,24 @@ main() {
       done
       run_integration_tests
       ;;
-    
+
     two-device)
       if [ -z "${2:-}" ]; then
         log_error "Missing device type argument"
         log_info "Usage: $0 two-device <chrome|linux>"
         exit 1
       fi
-      
+
       DEVICE1=$2
       if [[ "$DEVICE1" != "chrome" ]] && [[ "$DEVICE1" != "linux" ]]; then
         log_error "Invalid device type: $DEVICE1"
         log_info "Use: chrome or linux"
         exit 1
       fi
-      
+
       setup_two_device_testing "$DEVICE1"
       ;;
-    
+
     port-forward)
       log_header "Port-Forwarding Setup"
       check_kubectl
@@ -571,32 +571,32 @@ main() {
       echo ""
       log_success "Port-forwarding is active"
       log_info "Press Ctrl+C to stop"
-      
+
       # Keep script running
       trap stop_port_forwarding EXIT INT TERM
       while true; do sleep 1; done
       ;;
-    
+
     envoy)
       check_kubectl
       check_cluster
       start_envoy_proxy
       echo ""
       log_info "Press Ctrl+C to stop"
-      
+
       # Keep script running
       trap stop_port_forwarding EXIT INT TERM
       while true; do sleep 1; done
       ;;
-    
+
     verify)
       verify_setup
       ;;
-    
+
     help|--help|-h)
       show_help
       ;;
-    
+
     *)
       log_error "Unknown command: $COMMAND"
       echo ""
