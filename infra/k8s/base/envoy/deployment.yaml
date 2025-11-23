@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-grpc-web
+  namespace: apps
+  labels:
+    app: envoy-grpc-web
+    guardyn.io/stage: poc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: envoy-grpc-web
+  template:
+    metadata:
+      labels:
+        app: envoy-grpc-web
+        guardyn.io/stage: poc
+    spec:
+      containers:
+      - name: envoy
+        image: envoyproxy/envoy:v1.31-latest
+        ports:
+        - containerPort: 8080
+          name: grpc-web
+          protocol: TCP
+        - containerPort: 9901
+          name: admin
+          protocol: TCP
+        volumeMounts:
+        - name: envoy-config
+          mountPath: /etc/envoy
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 9901
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9901
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: envoy-config
+        configMap:
+          name: envoy-config
