@@ -4,6 +4,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
+import 'package:guardyn_client/features/messaging/presentation/pages/conversation_list_page.dart';
+import 'package:guardyn_client/core/di/injection.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -62,11 +65,25 @@ class HomePage extends StatelessWidget {
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 48),
-                    const Text(
-                      'Messaging UI coming soon...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontStyle: FontStyle.italic,
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BlocProvider(
+                              create: (context) => getIt<MessageBloc>(),
+                              child: const ConversationListPage(),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.message),
+                      label: const Text('Open Messages'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
                       ),
                     ),
                   ],
