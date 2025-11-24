@@ -1,43 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/network/grpc_clients.dart';
+import '../../../../generated/messaging.pb.dart' as proto;
+import '../../data/datasources/message_remote_datasource.dart';
 import '../bloc/message_bloc.dart';
 import 'chat_page.dart';
 import 'user_search_page.dart';
 
-class ConversationListPage extends StatelessWidget {
+class ConversationListPage extends StatefulWidget {
   const ConversationListPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // TODO: Replace with actual conversations from backend
-    final mockConversations = [
-      {
-        'userId': 'user-test-1',
-        'deviceId': 'device-test-1',
-        'name': 'Alice Johnson',
-        'lastMessage': 'Hey, how are you?',
-        'timestamp': DateTime.now().subtract(const Duration(minutes: 5)),
-        'unreadCount': 2,
-      },
-      {
-        'userId': 'user-test-2',
-        'deviceId': 'device-test-2',
-        'name': 'Bob Smith',
-        'lastMessage': 'See you tomorrow!',
-        'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
-        'unreadCount': 0,
-      },
-      {
-        'userId': 'user-test-3',
-        'deviceId': 'device-test-3',
-        'name': 'Carol White',
-        'lastMessage': 'Thanks for your help',
-        'timestamp': DateTime.now().subtract(const Duration(days: 1)),
-        'unreadCount': 0,
-      },
-    ];
+  State<ConversationListPage> createState() => _ConversationListPageState();
+}
 
+class _ConversationListPageState extends State<ConversationListPage> {
+  final _secureStorage = const FlutterSecureStorage();
+  List<proto.Conversation> _conversations = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+  }
+
+  Future<void> _loadConversations() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final accessToken = await _secureStorage.read(key: 'access_token');
+      if (accessToken == null || accessToken.isEmpty) {
+        setState(() {
+          _errorMessage = 'Not authenticated';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final grpcClients = context.read<GrpcClients>();
+      final datasource = MessageRemoteDatasource(grpcClients);
+
+      final conversations = await datasource.getConversations(
+        accessToken: accessToken,
+        limit: 50,
+      );
+
+      setState(() {
+        _conversations = conversations;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load conversations: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Messages'),
@@ -54,6 +82,10 @@ class ConversationListPage extends StatelessWidget {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadConversations,
+          ),
+          IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {
               // TODO: Implement settings
@@ -61,7 +93,35 @@ class ConversationListPage extends StatelessWidget {
           ),
         ],
       ),
-      body: mockConversations.isEmpty
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadConversations,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : _conversations.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -69,37 +129,63 @@ class ConversationListPage extends StatelessWidget {
                   Icon(
                     Icons.chat_bubble_outline,
                     size: 64,
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No conversations yet',
                     style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserSearchPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.search),
+                    label: const Text('Find Users'),
                   ),
                 ],
               ),
             )
           : ListView.builder(
-              itemCount: mockConversations.length,
+              itemCount: _conversations.length,
               itemBuilder: (context, index) {
-                final conversation = mockConversations[index];
+                final conversation = _conversations[index];
+                final lastMessage = conversation.lastMessage;
+                final timestamp = lastMessage.hasServerTimestamp()
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        lastMessage.serverTimestamp.seconds.toInt() * 1000 +
+                            (lastMessage.serverTimestamp.nanos ~/ 1000000),
+                      )
+                    : DateTime.now();
+
                 return ListTile(
                   leading: CircleAvatar(
                     child: Text(
-                      (conversation['name'] as String)[0].toUpperCase(),
+                      conversation.username.isNotEmpty
+                          ? conversation.username[0].toUpperCase()
+                          : '?',
                     ),
                   ),
                   title: Text(
-                    conversation['name'] as String,
+                    conversation.username.isNotEmpty
+                        ? conversation.username
+                        : conversation.userId,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    conversation['lastMessage'] as String,
+                    String.fromCharCodes(lastMessage.encryptedContent),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -108,16 +194,15 @@ class ConversationListPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _formatTimestamp(conversation['timestamp'] as DateTime),
+                        _formatTimestamp(timestamp),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
-                      if ((conversation['unreadCount'] as int) > 0) ...[
+                      if (conversation.unreadCount > 0) ...[
                         const SizedBox(height: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -129,7 +214,7 @@ class ConversationListPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            '${conversation['unreadCount']}',
+                            '${conversation.unreadCount}',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onPrimary,
                               fontSize: 12,
@@ -147,9 +232,9 @@ class ConversationListPage extends StatelessWidget {
                         builder: (context) => BlocProvider.value(
                           value: context.read<MessageBloc>(),
                           child: ChatPage(
-                            conversationUserId: conversation['userId'] as String,
-                            conversationUserName: conversation['name'] as String,
-                            deviceId: conversation['deviceId'] as String,
+                            conversationUserId: conversation.userId,
+                            conversationUserName: conversation.username,
+                            deviceId: '', // Will be resolved by chat page
                           ),
                         ),
                       ),
@@ -160,7 +245,10 @@ class ConversationListPage extends StatelessWidget {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Implement new conversation
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const UserSearchPage()),
+          );
         },
         child: const Icon(Icons.edit),
       ),

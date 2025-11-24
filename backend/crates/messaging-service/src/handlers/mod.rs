@@ -2,6 +2,7 @@
 pub mod send_message;
 pub mod send_message_e2ee;
 pub mod get_messages;
+pub mod get_conversations;
 pub mod mark_as_read;
 pub mod delete_message;
 pub mod receive_messages;
@@ -17,6 +18,7 @@ pub mod get_group_messages;
 pub use send_message::send_message;
 pub use send_message_e2ee::send_message_e2ee;
 pub use get_messages::get_messages;
+pub use get_conversations::get_conversations;
 pub use mark_as_read::mark_as_read;
 pub use delete_message::delete_message;
 pub use receive_messages::receive_messages;

@@ -147,6 +147,25 @@ class MessageRemoteDatasource {
     }
   }
 
+  /// Get conversations list via gRPC
+  Future<List<proto.Conversation>> getConversations({
+    required String accessToken,
+    int limit = 50,
+  }) async {
+    final request = proto.GetConversationsRequest(
+      accessToken: accessToken,
+      limit: limit,
+    );
+
+    final response = await _messagingClient.getConversations(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.conversations;
+  }
+
   // Helper methods
 
   String _generateMessageId() {

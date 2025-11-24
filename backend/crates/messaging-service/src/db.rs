@@ -453,6 +453,177 @@ impl DatabaseClient {
         Ok(messages)
     }
 
+    /// Get recent conversations for a user
+    /// Returns a list of conversations with the last message in each
+    pub async fn get_recent_conversations(
+        &self,
+        user_id: &str,
+        limit: i32,
+    ) -> Result<Vec<crate::proto::messaging::Conversation>> {
+        // For MVP, we'll query messages table and group by conversation_id
+        // In production, this should use a materialized view or separate conversations table
+
+        let query = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
+                            recipient_user_id, recipient_device_id, encrypted_content, \
+                            message_type, server_timestamp, client_timestamp, \
+                            delivery_status, is_deleted \
+                     FROM guardyn.messages 
+                     WHERE sender_user_id = ? OR recipient_user_id = ? 
+                     LIMIT ? 
+                     ALLOW FILTERING";
+
+        let rows = self
+            .scylla
+            .query_unpaged(query, (user_id.to_string(), user_id.to_string(), limit * 10))
+            .await
+            .context("Failed to fetch conversations from ScyllaDB")?;
+
+        use std::collections::HashMap;
+        let mut conversations_map: HashMap<String, crate::proto::messaging::Conversation> = HashMap::new();
+
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                let conversation_id = row.columns.get(0)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+
+                let message_id = row.columns.get(1)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+
+                let sender_user_id = row.columns.get(2)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
+                let sender_device_id = row.columns.get(3)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
+                let recipient_user_id = row.columns.get(4)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
+                let recipient_device_id = row.columns.get(5)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
+                let encrypted_content = row.columns.get(6)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_blob())
+                    .map(|b| b.to_vec())
+                    .unwrap_or_default();
+
+                let message_type = row.columns.get(7)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_int())
+                    .unwrap_or(0);
+
+                let server_timestamp = row.columns.get(8)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_cql_timestamp())
+                    .map(|ts| ts.0) // CqlTimestamp.0 is milliseconds
+                    .unwrap_or(0);
+
+                let client_timestamp = row.columns.get(9)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_bigint())
+                    .unwrap_or(0);
+
+                let delivery_status = row.columns.get(10)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_int())
+                    .unwrap_or(0);
+
+                let is_deleted = row.columns.get(11)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_boolean())
+                    .unwrap_or(false);
+
+                // Determine the other user in the conversation
+                let other_user_id = if sender_user_id == user_id {
+                    recipient_user_id.clone()
+                } else {
+                    sender_user_id.clone()
+                };
+
+                // Create message proto
+                let message = crate::proto::messaging::Message {
+                    message_id,
+                    sender_user_id,
+                    sender_device_id,
+                    recipient_user_id,
+                    recipient_device_id,
+                    encrypted_content,
+                    message_type,
+                    client_message_id: String::new(), // Not stored in messages table
+                    client_timestamp: Some(crate::proto::common::Timestamp {
+                        seconds: client_timestamp / 1000,
+                        nanos: ((client_timestamp % 1000) * 1_000_000) as i32,
+                    }),
+                    server_timestamp: Some(crate::proto::common::Timestamp {
+                        seconds: server_timestamp / 1000,
+                        nanos: ((server_timestamp % 1000) * 1_000_000) as i32,
+                    }),
+                    delivery_status,
+                    media_id: String::new(),
+                    is_deleted,
+                };
+
+                // Update or create conversation
+                conversations_map
+                    .entry(conversation_id.clone())
+                    .and_modify(|conv| {
+                        // Update with more recent message
+                        if let (Some(existing_ts), Some(new_ts)) = (
+                            conv.last_message.as_ref().and_then(|m| m.server_timestamp.as_ref()),
+                            message.server_timestamp.as_ref(),
+                        ) {
+                            if new_ts.seconds > existing_ts.seconds {
+                                conv.last_message = Some(message.clone());
+                                conv.updated_at = message.server_timestamp.clone();
+                            }
+                        }
+                    })
+                    .or_insert_with(|| crate::proto::messaging::Conversation {
+                        conversation_id: conversation_id.clone(),
+                        user_id: other_user_id.clone(),
+                        username: other_user_id, // Will need to fetch actual username from auth service
+                        last_message: Some(message.clone()),
+                        unread_count: 0, // TODO: Calculate actual unread count
+                        updated_at: message.server_timestamp,
+                    });
+
+                if conversations_map.len() >= limit as usize {
+                    break;
+                }
+            }
+        }
+
+        let mut conversations: Vec<_> = conversations_map.into_values().collect();
+        
+        // Sort by last activity
+        conversations.sort_by(|a, b| {
+            let a_ts = a.updated_at.as_ref().map(|t| t.seconds).unwrap_or(0);
+            let b_ts = b.updated_at.as_ref().map(|t| t.seconds).unwrap_or(0);
+            b_ts.cmp(&a_ts)
+        });
+
+        conversations.truncate(limit as usize);
+        Ok(conversations)
+    }
+
     /// Mark message as deleted
     pub async fn delete_message(&self, conversation_id: &str, message_id: &str) -> Result<()> {
         let query = "UPDATE guardyn.messages 
