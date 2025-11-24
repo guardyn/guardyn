@@ -131,19 +131,52 @@ Build scripts are provided to compile the app for all platforms with warnings su
 
 ### Running the App
 
-1. **Start k3d cluster and port-forward services:**
+1. **Start k3d cluster:**
 
    ```bash
    cd ../infra
    just kube-create
    just kube-bootstrap
    just k8s-deploy auth
+   just k8s-deploy messaging
+   ```
 
-   # Port-forward auth service
+2. **Port-forward backend services:**
+
+   **Platform requirements:**
+   
+   | Platform | Envoy (8080) | Auth (50051) | Messaging (50052) |
+   |----------|--------------|--------------|-------------------|
+   | **Chrome/Firefox/Safari** | ✅ Required | ✅ Required | ✅ Required |
+   | **Android/iOS native** | ❌ Not needed | ✅ Required | ✅ Required |
+   | **Linux/macOS/Windows** | ❌ Not needed | ✅ Required | ✅ Required |
+
+   **Terminal 1: Envoy Proxy (Web browsers ONLY)**
+   
+   ```bash
+   kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+   ```
+   
+   **Required for**: Chrome, Firefox, Safari (any web browser)  
+   **Not needed for**: Android, iOS, Linux, macOS, Windows desktop apps
+   
+   **Why Envoy?** Browsers cannot create TCP sockets directly (security sandbox), so they cannot use native gRPC. Envoy translates gRPC-Web (HTTP/1.1 or HTTP/2 via browser `fetch` API) to native gRPC (HTTP/2 with gRPC framing).
+
+   **Terminal 2: Auth Service (All platforms)**
+   
+   ```bash
    kubectl port-forward -n apps svc/auth-service 50051:50051
    ```
 
-2. **Run Flutter app:**
+   **Terminal 3: Messaging Service (All platforms)**
+   
+   ```bash
+   kubectl port-forward -n apps svc/messaging-service 50052:50052
+   ```
+
+   **Keep these terminals running throughout testing!**
+
+3. **Run Flutter app:**
 
    ```bash
    flutter run
@@ -153,10 +186,21 @@ Build scripts are provided to compile the app for all platforms with warnings su
 
    ```bash
    flutter devices  # List available devices
-   flutter run -d <device-id>
+   flutter run -d chrome        # Web browser (needs Envoy)
+   flutter run -d linux         # Linux desktop (no Envoy needed)
+   flutter run -d <device-id>   # Android emulator (no Envoy needed)
    ```
 
 ## Testing
+
+**📖 For comprehensive testing guide, see [CLIENT_TESTING_GUIDE.md](../docs/CLIENT_TESTING_GUIDE.md)**
+
+The testing guide includes:
+- Detailed setup instructions for all platforms
+- Envoy proxy configuration for web browsers
+- Manual testing scenarios and test cases
+- Automated testing scripts
+- Troubleshooting common issues
 
 ### Unit Tests (41 tests - 100% passing)
 
@@ -182,10 +226,18 @@ Integration tests simulate two users exchanging messages programmatically.
 # 1. Ensure backend is running
 kubectl get pods -n apps
 
-# 2. Port-forward services (Terminal 1 & 2)
+# 2. Port-forward services
+# Terminal 1: Envoy (web browsers only)
+kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+
+# Terminal 2: Auth service (all platforms)
 kubectl port-forward -n apps svc/auth-service 50051:50051
+
+# Terminal 3: Messaging service (all platforms)
 kubectl port-forward -n apps svc/messaging-service 50052:50052
 ```
+
+**Note**: Envoy (port 8080) is only required when testing on Chrome/web browsers. Native platforms (Android, Linux, iOS, macOS, Windows) connect directly to services on ports 50051/50052.
 
 **Run integration tests:**
 ```bash
@@ -340,11 +392,35 @@ Tokens are stored using platform-specific secure storage:
    ```bash
    kubectl get pods -n apps
    ```
+
 2. Verify port-forwarding is active:
+   
+   **For web browsers (Chrome/Firefox/Safari):**
    ```bash
+   # Check Envoy is running
+   lsof -i :8080
+   kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+   
+   # Check backend services
+   lsof -i :50051
    kubectl port-forward -n apps svc/auth-service 50051:50051
+   kubectl port-forward -n apps svc/messaging-service 50052:50052
    ```
-3. Check firewall settings
+   
+   **For native platforms (Android/iOS/Desktop):**
+   ```bash
+   # Envoy not needed, only backend services
+   lsof -i :50051
+   kubectl port-forward -n apps svc/auth-service 50051:50051
+   kubectl port-forward -n apps svc/messaging-service 50052:50052
+   ```
+
+3. Check platform-specific configuration:
+   - **Web browsers**: Must use Envoy on port 8080 (gRPC-Web)
+   - **Android emulator**: Uses `10.0.2.2:50051` to reach host machine
+   - **Linux/Desktop**: Uses `localhost:50051` directly
+
+4. Check firewall settings
 
 ### Proto Generation Errors
 

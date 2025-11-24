@@ -275,7 +275,10 @@ run_integration_tests() {
 
   # Determine device if not specified
   if [ -z "$DEVICE" ]; then
-    DEVICE=$(flutter devices 2>/dev/null | grep -E "emulator|chrome|linux" | head -n 1 | awk '{print $2}' || echo "")
+    # Extract device ID from flutter devices output
+    # Format: "Device Name (type) • device-id • platform • details"
+    # We need the device-id field (4th column)
+    DEVICE=$(flutter devices 2>/dev/null | grep -E "emulator|chrome|linux" | head -n 1 | awk '{print $4}' || echo "")
     if [ -z "$DEVICE" ]; then
       log_warning "No device specified and none detected"
       log_info "Available devices:"
