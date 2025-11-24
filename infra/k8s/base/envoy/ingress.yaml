@@ -1,0 +1,28 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: guardyn-envoy
+  namespace: apps
+  labels:
+    app: guardyn-envoy
+    guardyn.io/stage: poc
+  annotations:
+    # Allow gRPC-Web traffic
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    # Increase timeouts for streaming
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: envoy.guardyn.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: guardyn-envoy
+            port:
+              number: 8080
