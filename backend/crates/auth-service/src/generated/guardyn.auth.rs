@@ -382,6 +382,47 @@ pub struct GetMlsKeyPackageSuccess {
     #[prost(string, tag = "4")]
     pub package_id: ::prost::alloc::string::String,
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchUsersRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Search query (username)
+    #[prost(string, tag = "2")]
+    pub query: ::prost::alloc::string::String,
+    /// Max results (default: 20, max: 100)
+    #[prost(uint32, tag = "3")]
+    pub limit: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchUsersResponse {
+    #[prost(oneof = "search_users_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<search_users_response::Result>,
+}
+/// Nested message and enum types in `SearchUsersResponse`.
+pub mod search_users_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::SearchUsersSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchUsersSuccess {
+    #[prost(message, repeated, tag = "1")]
+    pub users: ::prost::alloc::vec::Vec<UserSearchResult>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserSearchResult {
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub username: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "3")]
+    pub created_at: ::core::option::Option<super::common::Timestamp>,
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct HealthRequest {}
 /// Generated client implementations.
@@ -696,6 +737,31 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetMlsKeyPackage"));
             self.inner.unary(req, path, codec).await
         }
+        /// Search for users by username
+        pub async fn search_users(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SearchUsersRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SearchUsersResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/SearchUsers",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "SearchUsers"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Health check
         pub async fn health(
             &mut self,
@@ -800,6 +866,14 @@ pub mod auth_service_server {
             request: tonic::Request<super::GetMlsKeyPackageRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetMlsKeyPackageResponse>,
+            tonic::Status,
+        >;
+        /// Search for users by username
+        async fn search_users(
+            &self,
+            request: tonic::Request<super::SearchUsersRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SearchUsersResponse>,
             tonic::Status,
         >;
         /// Health check
@@ -1277,6 +1351,51 @@ pub mod auth_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetMlsKeyPackageSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/SearchUsers" => {
+                    #[allow(non_camel_case_types)]
+                    struct SearchUsersSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::SearchUsersRequest>
+                    for SearchUsersSvc<T> {
+                        type Response = super::SearchUsersResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SearchUsersRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::search_users(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SearchUsersSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

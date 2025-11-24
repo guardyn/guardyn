@@ -40,6 +40,7 @@ use proto::messaging::{
     SendMessageRequest, SendMessageResponse,
     ReceiveMessagesRequest, Message,
     GetMessagesRequest, GetMessagesResponse,
+    GetConversationsRequest, GetConversationsResponse,
     MarkAsReadRequest, MarkAsReadResponse,
     DeleteMessageRequest, DeleteMessageResponse,
     TypingIndicatorRequest, TypingIndicatorResponse,
@@ -103,6 +104,13 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<GetMessagesRequest>,
     ) -> Result<Response<GetMessagesResponse>, Status> {
         handlers::get_messages(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn get_conversations(
+        &self,
+        request: Request<GetConversationsRequest>,
+    ) -> Result<Response<GetConversationsResponse>, Status> {
+        handlers::get_conversations(request.into_inner(), self.db.clone()).await
     }
 
     async fn mark_as_read(

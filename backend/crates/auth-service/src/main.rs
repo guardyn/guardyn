@@ -37,6 +37,7 @@ use proto::auth::{
     UploadPreKeysRequest, UploadPreKeysResponse,
     UploadMlsKeyPackageRequest, UploadMlsKeyPackageResponse,
     GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
+    SearchUsersRequest, SearchUsersResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -118,6 +119,18 @@ impl AuthService for AuthServiceImpl {
     ) -> Result<Response<GetMlsKeyPackageResponse>, Status> {
         let db = std::sync::Arc::new(self.db.clone());
         handlers::mls_key_package::get_mls_key_package(request, db).await
+    }
+
+    async fn search_users(
+        &self,
+        request: Request<SearchUsersRequest>,
+    ) -> Result<Response<SearchUsersResponse>, Status> {
+        let response = handlers::search_users::handle_search_users(
+            request.into_inner(),
+            self.db.clone(),
+        )
+        .await;
+        Ok(Response::new(response))
     }
 
     async fn health(

@@ -129,6 +129,41 @@ impl DatabaseClient {
         Ok(Some(profile))
     }
 
+    /// Search users by username prefix
+    pub async fn search_users_by_username(&self, query: &str, limit: u32) -> Result<Vec<UserProfile>> {
+        let query_lower = query.to_lowercase();
+        let prefix = format!("/users/username/").into_bytes();
+        
+        // Scan the username index
+        let keys = self.client.scan(prefix.clone()..prefix.clone(), limit).await?;
+        
+        let mut results = Vec::new();
+        
+        for kv in keys {
+            // Extract username from key
+            let key_bytes: &[u8] = (&kv.0).into();
+            let key_str = String::from_utf8_lossy(key_bytes);
+            if let Some(username) = key_str.strip_prefix("/users/username/") {
+                // Case-insensitive prefix match
+                if username.to_lowercase().starts_with(&query_lower) {
+                    // Get user_id from value
+                    let user_id = String::from_utf8(kv.1)?;
+                    
+                    // Get user profile
+                    if let Some(profile) = self.get_user_by_id(&user_id).await? {
+                        results.push(profile);
+                        
+                        if results.len() >= limit as usize {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(results)
+    }
+
     /// Store device
     pub async fn create_device(&self, device: &Device) -> Result<()> {
         let key = format!("/devices/{}/{}", device.user_id, device.device_id).into_bytes();
