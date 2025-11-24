@@ -87,6 +87,23 @@ unzip chromedriver-linux64.zip
 chmod +x chromedriver-linux64/chromedriver
 ```
 
+#### Port-forward after Envoy restart
+
+**⚠️ IMPORTANT:** If you restart the Envoy deployment (e.g., after configuration changes), you **MUST restart port-forwarding**:
+
+```bash
+# Kill existing port-forward
+pkill -f "kubectl port-forward.*guardyn-envoy"
+
+# Restart port-forward
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
+
+# Verify it's working
+sleep 2 && curl -s -I http://localhost:18080 | head -5
+```
+
+**Why this matters:** When `kubectl rollout restart` kills the old Envoy pod, the port-forward connection breaks. You won't get an error, but requests will fail silently.
+
 ### 4. Android Emulator Running
 
 ```bash
