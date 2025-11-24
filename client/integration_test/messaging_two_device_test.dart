@@ -1,36 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
+import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/main.dart' as app;
 import 'package:integration_test/integration_test.dart';
 
 /// Integration test for two-device messaging flow
-/// 
+///
 /// This test simulates two users (Alice and Bob) exchanging messages
 /// Tests the complete flow: registration → login → send message → receive message
-/// 
+///
 /// Prerequisites:
 /// - Backend services running (auth-service, messaging-service)
 /// - Port-forwarding active: localhost:50051 (auth), localhost:50052 (messaging)
-/// 
+///
 /// Run with:
 /// flutter test integration_test/messaging_two_device_test.dart
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('Two-Device Messaging Flow', () {
-    testWidgets('Alice and Bob can exchange messages', (WidgetTester tester) async {
+    setUp(() async {
+      // Reset GetIt before each test
+      await GetIt.instance.reset();
+
+      // Clear any stored authentication data
+      try {
+        final storage = SecureStorage();
+        await storage.clearAll();
+      } catch (e) {
+        // Ignore if storage doesn't exist yet
+        print('⚠️  Failed to clear storage: $e');
+      }
+    });
+
+    tearDown(() async {
+      // Clean up after each test
+      await GetIt.instance.reset();
+    });
+
+    testWidgets('Alice and Bob can exchange messages', (
+      WidgetTester tester,
+    ) async {
       // ============================================================
       // DEVICE 1: ALICE REGISTRATION
       // ============================================================
-      
+
       print('\n🔵 DEVICE 1: Alice registration starting...');
-      
+
       // Launch app (Device 1 - Alice)
       app.main();
       await tester.pumpAndSettle();
 
-      // Verify we're on LoginPage
-      expect(find.text('Login'), findsOneWidget);
+      // Verify we're on LoginPage (Login appears in AppBar + Button)
+      expect(find.text('Login'), findsNWidgets(2));
       expect(find.text("Don't have an account? Register"), findsOneWidget);
 
       // Navigate to registration
@@ -57,12 +80,12 @@ void main() {
 
       // Submit registration
       await tester.tap(find.widgetWithText(ElevatedButton, 'Register'));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pumpAndSettle(const Duration(seconds: 5));
 
       // Verify navigation to HomePage
-      expect(find.text('Welcome to Guardyn'), findsOneWidget);
+      expect(find.text('Welcome to Guardyn!'), findsOneWidget);
       expect(find.text('alice_test'), findsOneWidget);
-      
+
       print('✅ Alice registered successfully');
 
       // Save Alice's user ID for later
@@ -70,7 +93,7 @@ void main() {
       expect(aliceUserIdFinder, findsOneWidget);
       final aliceUserIdText = (tester.widget(aliceUserIdFinder) as Text).data!;
       final aliceUserId = aliceUserIdText.split('User ID: ')[1];
-      
+
       print('📝 Alice User ID: $aliceUserId');
 
       // Navigate to Messages
@@ -79,18 +102,18 @@ void main() {
 
       // Verify ConversationListPage opened
       expect(find.text('Messages'), findsOneWidget);
-      
+
       print('✅ Alice navigated to Messages screen');
 
       // ============================================================
       // DEVICE 2: BOB REGISTRATION (Simulated)
       // ============================================================
-      
+
       print('\n🟢 DEVICE 2: Bob registration starting...');
-      
+
       // In a real two-device test, this would run on a separate device
       // For integration test, we'll logout Alice and register Bob
-      
+
       // Go back to HomePage
       await tester.pageBack();
       await tester.pumpAndSettle();
@@ -131,7 +154,7 @@ void main() {
       // Verify Bob is logged in
       expect(find.text('Welcome to Guardyn'), findsOneWidget);
       expect(find.text('bob_test'), findsOneWidget);
-      
+
       print('✅ Bob registered successfully');
 
       // Save Bob's user ID
@@ -139,13 +162,13 @@ void main() {
       expect(bobUserIdFinder, findsOneWidget);
       final bobUserIdText = (tester.widget(bobUserIdFinder) as Text).data!;
       final bobUserId = bobUserIdText.split('User ID: ')[1];
-      
+
       print('📝 Bob User ID: $bobUserId');
 
       // ============================================================
       // MESSAGING TEST: Alice sends to Bob
       // ============================================================
-      
+
       print('\n💬 Testing messaging: Alice → Bob');
 
       // Logout Bob, login as Alice
@@ -165,7 +188,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 3));
 
       expect(find.text('alice_test'), findsOneWidget);
-      
+
       print('✅ Alice logged in');
 
       // Navigate to Messages
@@ -175,19 +198,21 @@ void main() {
       // Open ChatPage (in real app, would select conversation or create new chat)
       // For this test, we'll need to navigate to ChatPage with Bob's ID
       // This requires modifying the navigation to accept recipientId parameter
-      
+
       // Note: The current implementation doesn't have a way to start new chat from UI
       // In a real test, you would:
       // 1. Tap "New Chat" button
       // 2. Enter Bob's user ID
       // 3. Navigate to ChatPage
-      
-      print('⚠️  Note: Full navigation to ChatPage requires UI for "New Chat" flow');
+
+      print(
+        '⚠️  Note: Full navigation to ChatPage requires UI for "New Chat" flow',
+      );
       print('   This would be implemented in the actual ConversationListPage');
 
       // For now, verify that we can at least see the Messages screen
       expect(find.text('Messages'), findsOneWidget);
-      
+
       print('\n✅ Integration test completed successfully');
       print('📊 Test Summary:');
       print('   - Alice registration: ✅');
@@ -196,10 +221,12 @@ void main() {
       print('   - Message sending: ⏳ (requires "New Chat" UI implementation)');
     });
 
-    testWidgets('User can send message to self (loopback test)', (WidgetTester tester) async {
+    testWidgets('User can send message to self (loopback test)', (
+      WidgetTester tester,
+    ) async {
       // This test verifies the messaging infrastructure works
       // by having a user send a message to themselves
-      
+
       print('\n🔄 Loopback Test: User sends message to self');
 
       // Launch app
@@ -231,10 +258,10 @@ void main() {
 
       // Submit registration
       await tester.tap(find.widgetWithText(ElevatedButton, 'Register'));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pumpAndSettle(const Duration(seconds: 5));
 
       // Verify registration success
-      expect(find.text('Welcome to Guardyn'), findsOneWidget);
+      expect(find.text('Welcome to Guardyn!'), findsOneWidget);
       expect(find.text(username), findsOneWidget);
 
       // Get user ID
@@ -242,7 +269,7 @@ void main() {
       expect(userIdFinder, findsOneWidget);
       final userIdText = (tester.widget(userIdFinder) as Text).data!;
       final userId = userIdText.split('User ID: ')[1];
-      
+
       print('📝 User ID: $userId');
       print('✅ User registered for loopback test');
 
@@ -251,16 +278,18 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Messages'), findsOneWidget);
-      
+
       print('✅ Loopback test setup complete');
-      print('⚠️  Full message send requires ChatPage navigation implementation');
+      print(
+        '⚠️  Full message send requires ChatPage navigation implementation',
+      );
     });
   });
 
   group('Messaging Service Health Check', () {
     testWidgets('Can connect to backend services', (WidgetTester tester) async {
       // This test verifies backend connectivity
-      
+
       print('\n🏥 Health Check: Backend services connectivity');
 
       // Launch app
@@ -271,7 +300,8 @@ void main() {
       await tester.tap(find.text("Don't have an account? Register"));
       await tester.pumpAndSettle();
 
-      final testUsername = 'health_check_${DateTime.now().millisecondsSinceEpoch}';
+      final testUsername =
+          'health_check_${DateTime.now().millisecondsSinceEpoch}';
       await tester.enterText(
         find.widgetWithText(TextField, 'Username'),
         testUsername,
@@ -291,20 +321,20 @@ void main() {
 
       // Submit registration
       await tester.tap(find.widgetWithText(ElevatedButton, 'Register'));
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+      await tester.pumpAndSettle(const Duration(seconds: 5));
 
       // If we can register, auth-service is working
       final hasError = find.textContaining('Error');
       if (hasError.evaluate().isEmpty) {
         print('✅ Auth service: Connected and working');
-        
+
         // Verify HomePage loaded
-        expect(find.text('Welcome to Guardyn'), findsOneWidget);
-        
+        expect(find.text('Welcome to Guardyn!'), findsOneWidget);
+
         // Try to navigate to Messages (tests messaging-service indirectly)
         await tester.tap(find.text('Open Messages'));
         await tester.pumpAndSettle();
-        
+
         if (find.text('Messages').evaluate().isNotEmpty) {
           print('✅ Messaging service: Connected');
         } else {
@@ -314,7 +344,9 @@ void main() {
         print('❌ Auth service: Connection failed');
         print('   Make sure port-forwarding is active:');
         print('   kubectl port-forward -n apps svc/auth-service 50051:50051');
-        print('   kubectl port-forward -n apps svc/messaging-service 50052:50052');
+        print(
+          '   kubectl port-forward -n apps svc/messaging-service 50052:50052',
+        );
       }
     });
   });
