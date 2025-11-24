@@ -22,5 +22,5 @@ codeql-database/
 **/.codeqlmanifest
 .playwright-mcp
 .vscode/
-
+landing/media/video/
 
