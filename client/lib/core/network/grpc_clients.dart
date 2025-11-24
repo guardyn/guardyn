@@ -35,6 +35,10 @@ class GrpcClients {
         port: port,
         options: const ChannelOptions(
           credentials: ChannelCredentials.insecure(),
+          // Connection timeout for initial connection
+          connectionTimeout: Duration(seconds: 10),
+          // Idle timeout to close unused connections
+          idleTimeout: Duration(minutes: 5),
         ),
       );
     }

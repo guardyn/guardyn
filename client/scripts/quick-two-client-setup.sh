@@ -52,17 +52,15 @@ AUTH_PID=$!
 kubectl port-forward -n apps svc/messaging-service 50052:50052 > /tmp/pf-messaging.log 2>&1 &
 MESSAGING_PID=$!
 
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 > /tmp/pf-envoy.log 2>&1 &
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 > /tmp/pf-envoy.log 2>&1 &
 ENVOY_PID=$!
 
 sleep 3
 
 log_success "Port-forwarding started:"
 log_success "  Auth (50051): PID $AUTH_PID"
-log_success "  Messaging (50052): PID $MESSAGING_PID"
-log_success "  Envoy (8080): PID $ENVOY_PID"
-
-# Check emulator
+log_success "  Messaging (50052): PID $MESSAGING_PID"  
+log_success "  Envoy (18080->8080): PID $ENVOY_PID"# Check emulator
 log_header "Device Setup"
 
 EMULATOR_COUNT=$(flutter devices 2>/dev/null | grep -c "emulator" || echo "0")

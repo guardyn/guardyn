@@ -98,7 +98,21 @@ Future<void> _testAndroidClient(WidgetTester tester) async {
   // Submit registration
   print('📱 Submitting registration...');
   await tester.tap(find.widgetWithText(ElevatedButton, 'Register'));
-  await tester.pumpAndSettle(const Duration(seconds: 5));
+  
+  // Wait for registration to complete (crypto operations can take time)
+  print('📱 Waiting for registration... (up to 30 seconds)');
+  await tester.pumpAndSettle(const Duration(seconds: 3));
+  for (var i = 0; i < 27; i++) {
+    await Future.delayed(const Duration(seconds: 1));
+    await tester.pump();
+    if (find.text('Welcome to Guardyn!').evaluate().isNotEmpty) {
+      print('📱 Registration completed after ${i + 3} seconds');
+      break;
+    }
+    if (i % 5 == 0) {
+      print('📱 Still waiting... (${i + 3}s elapsed)');
+    }
+  }
 
   // Verify registration success
   print('📱 Verifying registration success...');

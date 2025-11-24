@@ -12,7 +12,14 @@ class AppConfig {
   /// Get platform-specific gRPC host
   /// - Android Emulator: 10.0.2.2 (host machine from emulator)
   /// - iOS Simulator, Chrome, Desktop: localhost
+  /// Can be overridden with --dart-define=GRPC_HOST=<host>
   static String get authHost {
+    // Allow override via dart-define for testing
+    const testHost = String.fromEnvironment('GRPC_HOST');
+    if (testHost.isNotEmpty) {
+      return testHost;
+    }
+    
     if (kIsWeb) {
       // Web (Chrome, Firefox, etc.) - use localhost
       return 'localhost';
@@ -31,13 +38,14 @@ class AppConfig {
   static const int messagingPort = 50052;
 
   // Web-specific ports for Envoy gRPC-Web proxy
-  static const int webProxyPort = 8080;
+  // Note: Using port 18080 to avoid conflict with k3d loadbalancer on 8080
+  static const int webProxyPort = 18080;
 
   /// Get platform-specific gRPC URI for web
   /// Web platforms need http:// or https:// URIs for gRPC-Web via Envoy proxy
   static Uri getAuthUri() {
     if (kIsWeb) {
-      // Use Envoy proxy on port 8080 which translates gRPC-Web to gRPC
+      // Use Envoy proxy on port 18080 which translates gRPC-Web to gRPC
       return Uri.parse('http://$authHost:$webProxyPort');
     }
     throw UnsupportedError('getAuthUri is only for web platforms');
@@ -45,7 +53,7 @@ class AppConfig {
 
   static Uri getMessagingUri() {
     if (kIsWeb) {
-      // Use Envoy proxy on port 8080 which translates gRPC-Web to gRPC
+      // Use Envoy proxy on port 18080 which translates gRPC-Web to gRPC
       return Uri.parse('http://$messagingHost:$webProxyPort');
     }
     throw UnsupportedError('getMessagingUri is only for web platforms');
