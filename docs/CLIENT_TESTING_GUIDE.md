@@ -64,7 +64,7 @@ messaging-service-xxx                 3/3     Running   0          10m
 #### Terminal 1: Envoy Proxy (Web browsers ONLY)
 
 ```bash
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 ```
 
 **Required for**: Chrome, Firefox, Safari (any web browser)  
@@ -84,7 +84,7 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 
 **Keep these terminals running throughout testing!**
 
-**Note**: Native platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052. Web browsers connect via Envoy on port 8080.
+**Note**: Native platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052. Web browsers connect via Envoy on port 18080.
 
 ### Envoy Proxy Requirements
 
@@ -93,37 +93,38 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 #### Why Envoy is Needed
 
 Browsers cannot create TCP sockets directly (security sandbox), so they cannot use native gRPC. Envoy translates between:
+
 - **gRPC-Web** (HTTP/1.1 or HTTP/2 via browser `fetch` API)
 - **Native gRPC** (HTTP/2 with gRPC framing)
 
 ```
 ❌ Chrome → gRPC Backend
    Error: "Unsupported operation: Socket constructor"
-   
-✅ Chrome → Envoy (Port 8080) → gRPC Backend
+
+✅ Chrome → Envoy (Port 18080) → gRPC Backend
    Works! Envoy translates protocols
 ```
 
 #### Platform Requirements
 
-| Platform | Native gRPC Support | Needs Envoy? |
-|----------|-------------------|-------------|
-| **Chrome/Firefox/Safari** | ❌ No | ✅ **Yes** |
-| **Android/iOS native** | ✅ Yes | ❌ No |
-| **Linux/macOS/Windows desktop** | ✅ Yes | ❌ No |
+| Platform                        | Native gRPC Support | Needs Envoy? |
+| ------------------------------- | ------------------- | ------------ |
+| **Chrome/Firefox/Safari**       | ❌ No               | ✅ **Yes**   |
+| **Android/iOS native**          | ✅ Yes              | ❌ No        |
+| **Linux/macOS/Windows desktop** | ✅ Yes              | ❌ No        |
 
 #### Starting Envoy Proxy
 
 **Option 1: Port-forward to Kubernetes** (Recommended):
 
 ```bash
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 ```
 
 Verify Envoy is running:
 
 ```bash
-lsof -i :8080
+lsof -i :18080
 # Should show kubectl port-forward to guardyn-envoy
 ```
 
@@ -135,6 +136,63 @@ docker run -p 8080:8080 -v $(pwd)/envoy-grpc-web.yaml:/etc/envoy/envoy.yaml envo
 ```
 
 **Note**: Linux desktop and Android emulator use native gRPC and don't need Envoy.
+
+### ChromeDriver Requirements (Chrome integration tests)
+
+**⚠️ Chrome integration tests require ChromeDriver for `flutter drive`**
+
+#### Why ChromeDriver is Needed
+
+Flutter integration tests on Chrome use WebDriver protocol, which requires ChromeDriver running on port 4444.
+
+#### Starting ChromeDriver
+
+**Check if running:**
+
+```bash
+pgrep -f chromedriver
+```
+
+**Start ChromeDriver:**
+
+```bash
+# If you have ChromeDriver in client/chromedriver/
+cd client
+chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
+
+# Or if ChromeDriver is in your PATH
+chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
+```
+
+**Verify it's ready:**
+
+```bash
+sleep 2 && curl -s http://localhost:4444/status | jq -r '.value.ready'
+# Should output: true
+```
+
+#### Installing ChromeDriver
+
+If you don't have ChromeDriver, download it from [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/):
+
+```bash
+cd client
+mkdir -p chromedriver
+cd chromedriver
+
+# Check your Chrome version first:
+google-chrome --version  # Example: Google Chrome 142.0.7444.175
+
+# Download matching ChromeDriver version
+wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.175/linux64/chromedriver-linux64.zip
+unzip chromedriver-linux64.zip
+chmod +x chromedriver-linux64/chromedriver
+
+# Test it
+./chromedriver-linux64/chromedriver --version
+```
+
+**Note**: ChromeDriver version must match your Chrome browser version.
 
 ---
 
@@ -995,7 +1053,39 @@ cd client
 ./scripts/test-client.sh envoy
 
 # Verify it's running
-lsof -i :8080
+lsof -i :18080
+```
+
+---
+
+### "Unable to start a WebDriver session" (Chrome integration tests)
+
+Chrome integration tests (`flutter drive`) require ChromeDriver:
+
+```bash
+# Check if ChromeDriver is running
+pgrep -f chromedriver
+
+# If not running, start it:
+chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
+
+# Verify it's ready
+sleep 2 && curl -s http://localhost:4444/status | jq -r '.value.ready'
+# Should output: true
+```
+
+**If ChromeDriver is not installed:**
+
+```bash
+cd client
+mkdir -p chromedriver
+cd chromedriver
+
+# Download ChromeDriver matching your Chrome version
+google-chrome --version  # Check version first
+wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.175/linux64/chromedriver-linux64.zip
+unzip chromedriver-linux64.zip
+chmod +x chromedriver-linux64/chromedriver
 ```
 
 ---

@@ -70,10 +70,10 @@ pkill -f "port-forward"
 ### Envoy proxy not running (web clients)
 ```bash
 # Port-forward Envoy for web browsers
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 
 # Verify
-lsof -i :8080
+lsof -i :18080
 ```
 
 ### Services not running

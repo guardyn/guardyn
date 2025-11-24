@@ -24,7 +24,7 @@ All tests require:
 
 ```bash
 # Required for web browsers (Chrome/Firefox)
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 
 # Required for all platforms
 kubectl port-forward -n apps svc/auth-service 50051:50051

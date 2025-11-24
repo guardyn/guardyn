@@ -26,7 +26,7 @@ This validates cross-platform E2EE messaging, key exchange, and real-time commun
     │      Backend Services (k8s)        │
     │  - auth-service (port 50051)       │
     │  - messaging-service (port 50052)  │
-    │  - Envoy proxy (port 18080)         │
+    │  - Envoy proxy (port 18080)        │
     └────────────────────────────────────┘
 ```
 
@@ -54,10 +54,40 @@ kubectl port-forward -n apps svc/auth-service 50051:50051 &
 kubectl port-forward -n apps svc/messaging-service 50052:50052 &
 
 # Envoy proxy (for Chrome gRPC-Web)
-kubectl port-forward -n apps svc/guardyn-envoy 18080:18080 &
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
 ```
 
-### 3. Android Emulator Running
+### 3. ChromeDriver Running (for Chrome integration tests)
+
+ChromeDriver is required for `flutter drive` integration tests on Chrome:
+
+```bash
+# Check if ChromeDriver is running
+pgrep -f chromedriver
+
+# If not running, start it:
+chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
+
+# Verify it's ready
+sleep 2 && curl -s http://localhost:4444/status | jq -r '.value.ready'
+# Should output: true
+```
+
+**Download ChromeDriver:**
+
+If you don't have ChromeDriver, download it from [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/):
+
+```bash
+cd client
+mkdir -p chromedriver
+cd chromedriver
+# Download matching your Chrome version
+wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.175/linux64/chromedriver-linux64.zip
+unzip chromedriver-linux64.zip
+chmod +x chromedriver-linux64/chromedriver
+```
+
+### 4. Android Emulator Running
 
 ```bash
 # List available AVDs
@@ -245,7 +275,7 @@ lsof -i :18080
 curl -v http://localhost:18080
 
 # 4. Restart Envoy port-forward
-kubectl port-forward -n apps svc/guardyn-envoy 18080:18080 &
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
 
 # 5. View Chrome test log
 tail -f /tmp/chrome_test.log
@@ -336,7 +366,7 @@ jobs:
         run: |
           kubectl port-forward -n apps svc/auth-service 50051:50051 &
           kubectl port-forward -n apps svc/messaging-service 50052:50052 &
-          kubectl port-forward -n apps svc/guardyn-envoy 18080:18080 &
+          kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
 
       - name: Start Android emulator
         uses: reactivecircus/android-emulator-runner@v2
