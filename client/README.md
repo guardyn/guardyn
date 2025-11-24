@@ -104,6 +104,31 @@ UI Widget → BLoC Event → Use Case → Repository → Remote Datasource (gRPC
    static const int authPort = 50051;
    ```
 
+### Building the App
+
+Build scripts are provided to compile the app for all platforms with warnings suppressed:
+
+**Build all platforms:**
+```bash
+./scripts/build-all.sh [debug|release]  # Default: debug
+```
+
+**Build specific platforms:**
+```bash
+./scripts/build-linux.sh [debug|release]
+./scripts/build-android.sh [debug|release]
+./scripts/build-web.sh [debug|release]
+```
+
+**Build artifacts:**
+- Linux: `build/linux/x64/debug/bundle/guardyn_client`
+- Android: `build/app/outputs/flutter-apk/app-debug.apk`
+- Web: `build/web`
+
+**Note**: Build scripts suppress known warnings:
+- Android: Java 8 deprecation warnings (using Java 11)
+- Web: Wasm compatibility warnings (building for JS, not Wasm)
+
 ### Running the App
 
 1. **Start k3d cluster and port-forward services:**
