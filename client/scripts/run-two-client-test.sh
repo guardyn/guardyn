@@ -135,28 +135,29 @@ log_success "Port-forwarding active"
 # Check Envoy proxy for Chrome
 log_info "Checking Envoy proxy..."
 
-if ! lsof -i :8080 > /dev/null 2>&1; then
-  log_error "Port 8080 not forwarded (Envoy proxy)"
-  log_info "Run: kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 &"
+if ! lsof -i :18080 > /dev/null 2>&1; then
+  log_error "Port 18080 not forwarded (Envoy proxy)"
+  log_info "Run: kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &"
   exit 1
 fi
 
-log_success "Envoy proxy active"
+log_success "Envoy proxy active (port 18080)"
 
 # Check Android emulator
 log_info "Checking Android emulator..."
 
-if ! flutter devices 2>/dev/null | grep -q "emulator"; then
+FLUTTER_DEVICES=$(flutter devices 2>/dev/null)
+if ! echo "$FLUTTER_DEVICES" | grep -q "emulator"; then
   log_error "No Android emulator running"
   log_info "Start emulator: \$HOME/Android/Sdk/emulator/emulator -avd <avd-name> &"
   exit 1
 fi
 
-EMULATOR_ID=$(flutter devices 2>/dev/null | grep "emulator" | awk '{print $4}' | head -n1)
+EMULATOR_ID=$(echo "$FLUTTER_DEVICES" | grep "emulator" | grep -oP 'emulator-\d+' | head -n1)
 log_success "Android emulator: $EMULATOR_ID"
 
 # Check Chrome
-if ! flutter devices 2>/dev/null | grep -q "chrome"; then
+if ! echo "$FLUTTER_DEVICES" | grep -q "chrome"; then
   log_error "Chrome not available"
   exit 1
 fi

@@ -26,7 +26,7 @@ This validates cross-platform E2EE messaging, key exchange, and real-time commun
     │      Backend Services (k8s)        │
     │  - auth-service (port 50051)       │
     │  - messaging-service (port 50052)  │
-    │  - Envoy proxy (port 8080)         │
+    │  - Envoy proxy (port 18080)         │
     └────────────────────────────────────┘
 ```
 
@@ -54,7 +54,7 @@ kubectl port-forward -n apps svc/auth-service 50051:50051 &
 kubectl port-forward -n apps svc/messaging-service 50052:50052 &
 
 # Envoy proxy (for Chrome gRPC-Web)
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 &
+kubectl port-forward -n apps svc/guardyn-envoy 18080:18080 &
 ```
 
 ### 3. Android Emulator Running
@@ -239,13 +239,13 @@ tail -f /tmp/android_test.log
 kubectl get pods -n apps -l app=guardyn-envoy
 
 # 2. Check Envoy port-forward
-lsof -i :8080
+lsof -i :18080
 
 # 3. Test Envoy connectivity
-curl -v http://localhost:8080
+curl -v http://localhost:18080
 
 # 4. Restart Envoy port-forward
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 &
+kubectl port-forward -n apps svc/guardyn-envoy 18080:18080 &
 
 # 5. View Chrome test log
 tail -f /tmp/chrome_test.log
@@ -336,7 +336,7 @@ jobs:
         run: |
           kubectl port-forward -n apps svc/auth-service 50051:50051 &
           kubectl port-forward -n apps svc/messaging-service 50052:50052 &
-          kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 &
+          kubectl port-forward -n apps svc/guardyn-envoy 18080:18080 &
 
       - name: Start Android emulator
         uses: reactivecircus/android-emulator-runner@v2
