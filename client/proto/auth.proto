@@ -36,6 +36,9 @@ service AuthService {
   // Get MLS key package for a user (used when adding to group)
   rpc GetMlsKeyPackage(GetMlsKeyPackageRequest) returns (GetMlsKeyPackageResponse);
 
+  // Search for users by username
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -270,6 +273,33 @@ message GetMlsKeyPackageSuccess {
   string device_id = 2;
   bytes key_package = 3; // Serialized MLS KeyPackage
   string package_id = 4;
+}
+
+// ============================================================================
+// User Search
+// ============================================================================
+
+message SearchUsersRequest {
+  string access_token = 1; // Authentication
+  string query = 2; // Search query (username)
+  uint32 limit = 3; // Max results (default: 20, max: 100)
+}
+
+message SearchUsersResponse {
+  oneof result {
+    SearchUsersSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SearchUsersSuccess {
+  repeated UserSearchResult users = 1;
+}
+
+message UserSearchResult {
+  string user_id = 1;
+  string username = 2;
+  common.Timestamp created_at = 3;
 }
 
 // ============================================================================
