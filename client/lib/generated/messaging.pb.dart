@@ -927,6 +927,338 @@ class GetMessagesSuccess extends $pb.GeneratedMessage {
   void clearHasMore() => $_clearField(3);
 }
 
+class GetConversationsRequest extends $pb.GeneratedMessage {
+  factory GetConversationsRequest({
+    $core.String? accessToken,
+    $core.int? limit,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (limit != null) result.limit = limit;
+    return result;
+  }
+
+  GetConversationsRequest._();
+
+  factory GetConversationsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetConversationsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetConversationsRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aI(2, _omitFieldNames ? '' : 'limit', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetConversationsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetConversationsRequest copyWith(
+          void Function(GetConversationsRequest) updates) =>
+      super.copyWith((message) => updates(message as GetConversationsRequest))
+          as GetConversationsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetConversationsRequest create() => GetConversationsRequest._();
+  @$core.override
+  GetConversationsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetConversationsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetConversationsRequest>(create);
+  static GetConversationsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get limit => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set limit($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLimit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLimit() => $_clearField(2);
+}
+
+enum GetConversationsResponse_Result { success, error, notSet }
+
+class GetConversationsResponse extends $pb.GeneratedMessage {
+  factory GetConversationsResponse({
+    GetConversationsSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetConversationsResponse._();
+
+  factory GetConversationsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetConversationsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, GetConversationsResponse_Result>
+      _GetConversationsResponse_ResultByTag = {
+    1: GetConversationsResponse_Result.success,
+    2: GetConversationsResponse_Result.error,
+    0: GetConversationsResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetConversationsResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<GetConversationsSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: GetConversationsSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetConversationsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetConversationsResponse copyWith(
+          void Function(GetConversationsResponse) updates) =>
+      super.copyWith((message) => updates(message as GetConversationsResponse))
+          as GetConversationsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetConversationsResponse create() => GetConversationsResponse._();
+  @$core.override
+  GetConversationsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetConversationsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetConversationsResponse>(create);
+  static GetConversationsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  GetConversationsResponse_Result whichResult() =>
+      _GetConversationsResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  GetConversationsSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(GetConversationsSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  GetConversationsSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class GetConversationsSuccess extends $pb.GeneratedMessage {
+  factory GetConversationsSuccess({
+    $core.Iterable<Conversation>? conversations,
+  }) {
+    final result = create();
+    if (conversations != null) result.conversations.addAll(conversations);
+    return result;
+  }
+
+  GetConversationsSuccess._();
+
+  factory GetConversationsSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetConversationsSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetConversationsSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..pPM<Conversation>(1, _omitFieldNames ? '' : 'conversations',
+        subBuilder: Conversation.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetConversationsSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetConversationsSuccess copyWith(
+          void Function(GetConversationsSuccess) updates) =>
+      super.copyWith((message) => updates(message as GetConversationsSuccess))
+          as GetConversationsSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetConversationsSuccess create() => GetConversationsSuccess._();
+  @$core.override
+  GetConversationsSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetConversationsSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetConversationsSuccess>(create);
+  static GetConversationsSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Conversation> get conversations => $_getList(0);
+}
+
+class Conversation extends $pb.GeneratedMessage {
+  factory Conversation({
+    $core.String? conversationId,
+    $core.String? userId,
+    $core.String? username,
+    Message? lastMessage,
+    $core.int? unreadCount,
+    $1.Timestamp? updatedAt,
+  }) {
+    final result = create();
+    if (conversationId != null) result.conversationId = conversationId;
+    if (userId != null) result.userId = userId;
+    if (username != null) result.username = username;
+    if (lastMessage != null) result.lastMessage = lastMessage;
+    if (unreadCount != null) result.unreadCount = unreadCount;
+    if (updatedAt != null) result.updatedAt = updatedAt;
+    return result;
+  }
+
+  Conversation._();
+
+  factory Conversation.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Conversation.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Conversation',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'conversationId')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..aOS(3, _omitFieldNames ? '' : 'username')
+    ..aOM<Message>(4, _omitFieldNames ? '' : 'lastMessage',
+        subBuilder: Message.create)
+    ..aI(5, _omitFieldNames ? '' : 'unreadCount',
+        fieldType: $pb.PbFieldType.OU3)
+    ..aOM<$1.Timestamp>(6, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Conversation clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Conversation copyWith(void Function(Conversation) updates) =>
+      super.copyWith((message) => updates(message as Conversation))
+          as Conversation;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Conversation create() => Conversation._();
+  @$core.override
+  Conversation createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Conversation getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Conversation>(create);
+  static Conversation? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get conversationId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set conversationId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasConversationId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearConversationId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get username => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set username($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUsername() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUsername() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  Message get lastMessage => $_getN(3);
+  @$pb.TagNumber(4)
+  set lastMessage(Message value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLastMessage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLastMessage() => $_clearField(4);
+  @$pb.TagNumber(4)
+  Message ensureLastMessage() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $core.int get unreadCount => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set unreadCount($core.int value) => $_setUnsignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasUnreadCount() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUnreadCount() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $1.Timestamp get updatedAt => $_getN(5);
+  @$pb.TagNumber(6)
+  set updatedAt($1.Timestamp value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasUpdatedAt() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearUpdatedAt() => $_clearField(6);
+  @$pb.TagNumber(6)
+  $1.Timestamp ensureUpdatedAt() => $_ensure(5);
+}
+
 class MarkAsReadRequest extends $pb.GeneratedMessage {
   factory MarkAsReadRequest({
     $core.String? accessToken,

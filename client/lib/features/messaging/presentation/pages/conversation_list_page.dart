@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/message_bloc.dart';
 import 'chat_page.dart';
+import 'user_search_page.dart';
 
 class ConversationListPage extends StatelessWidget {
   const ConversationListPage({super.key});
@@ -44,7 +45,12 @@ class ConversationListPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Implement search
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UserSearchPage(),
+                ),
+              );
             },
           ),
           IconButton(

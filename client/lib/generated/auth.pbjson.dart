@@ -783,6 +783,98 @@ final $typed_data.Uint8List getMlsKeyPackageSuccessDescriptor = $convert.base64D
     'V2aWNlX2lkGAIgASgJUghkZXZpY2VJZBIfCgtrZXlfcGFja2FnZRgDIAEoDFIKa2V5UGFja2Fn'
     'ZRIdCgpwYWNrYWdlX2lkGAQgASgJUglwYWNrYWdlSWQ=');
 
+@$core.Deprecated('Use searchUsersRequestDescriptor instead')
+const SearchUsersRequest$json = {
+  '1': 'SearchUsersRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'query', '3': 2, '4': 1, '5': 9, '10': 'query'},
+    {'1': 'limit', '3': 3, '4': 1, '5': 13, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `SearchUsersRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List searchUsersRequestDescriptor = $convert.base64Decode(
+    'ChJTZWFyY2hVc2Vyc1JlcXVlc3QSIQoMYWNjZXNzX3Rva2VuGAEgASgJUgthY2Nlc3NUb2tlbh'
+    'IUCgVxdWVyeRgCIAEoCVIFcXVlcnkSFAoFbGltaXQYAyABKA1SBWxpbWl0');
+
+@$core.Deprecated('Use searchUsersResponseDescriptor instead')
+const SearchUsersResponse$json = {
+  '1': 'SearchUsersResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.SearchUsersSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `SearchUsersResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List searchUsersResponseDescriptor = $convert.base64Decode(
+    'ChNTZWFyY2hVc2Vyc1Jlc3BvbnNlEjwKB3N1Y2Nlc3MYASABKAsyIC5ndWFyZHluLmF1dGguU2'
+    'VhcmNoVXNlcnNTdWNjZXNzSABSB3N1Y2Nlc3MSNQoFZXJyb3IYAiABKAsyHS5ndWFyZHluLmNv'
+    'bW1vbi5FcnJvclJlc3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use searchUsersSuccessDescriptor instead')
+const SearchUsersSuccess$json = {
+  '1': 'SearchUsersSuccess',
+  '2': [
+    {
+      '1': 'users',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.guardyn.auth.UserSearchResult',
+      '10': 'users'
+    },
+  ],
+};
+
+/// Descriptor for `SearchUsersSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List searchUsersSuccessDescriptor = $convert.base64Decode(
+    'ChJTZWFyY2hVc2Vyc1N1Y2Nlc3MSNAoFdXNlcnMYASADKAsyHi5ndWFyZHluLmF1dGguVXNlcl'
+    'NlYXJjaFJlc3VsdFIFdXNlcnM=');
+
+@$core.Deprecated('Use userSearchResultDescriptor instead')
+const UserSearchResult$json = {
+  '1': 'UserSearchResult',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'username', '3': 2, '4': 1, '5': 9, '10': 'username'},
+    {
+      '1': 'created_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'createdAt'
+    },
+  ],
+};
+
+/// Descriptor for `UserSearchResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List userSearchResultDescriptor = $convert.base64Decode(
+    'ChBVc2VyU2VhcmNoUmVzdWx0EhcKB3VzZXJfaWQYASABKAlSBnVzZXJJZBIaCgh1c2VybmFtZR'
+    'gCIAEoCVIIdXNlcm5hbWUSOAoKY3JlYXRlZF9hdBgDIAEoCzIZLmd1YXJkeW4uY29tbW9uLlRp'
+    'bWVzdGFtcFIJY3JlYXRlZEF0');
+
 @$core.Deprecated('Use healthRequestDescriptor instead')
 const HealthRequest$json = {
   '1': 'HealthRequest',

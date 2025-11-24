@@ -18,6 +18,9 @@ service MessagingService {
   // Get message history
   rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
 
+  // Get list of conversations
+  rpc GetConversations(GetConversationsRequest) returns (GetConversationsResponse);
+
   // Mark message as read (send read receipt)
   rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
 
@@ -162,6 +165,35 @@ message GetMessagesSuccess {
   repeated Message messages = 1;
   common.PaginationResponse pagination = 2;
   bool has_more = 3; // True if there are more messages available
+}
+
+// ============================================================================
+// Conversations List
+// ============================================================================
+
+message GetConversationsRequest {
+  string access_token = 1;
+  uint32 limit = 2; // Max results (default: 50, max: 100)
+}
+
+message GetConversationsResponse {
+  oneof result {
+    GetConversationsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetConversationsSuccess {
+  repeated Conversation conversations = 1;
+}
+
+message Conversation {
+  string conversation_id = 1;
+  string user_id = 2; // The other user in the conversation
+  string username = 3; // Username of the other user
+  Message last_message = 4; // Last message in conversation
+  uint32 unread_count = 5; // Number of unread messages
+  common.Timestamp updated_at = 6; // Last activity timestamp
 }
 
 // ============================================================================

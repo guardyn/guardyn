@@ -373,6 +373,111 @@ final $typed_data.Uint8List getMessagesSuccessDescriptor = $convert.base64Decode
     'b24uUGFnaW5hdGlvblJlc3BvbnNlUgpwYWdpbmF0aW9uEhkKCGhhc19tb3JlGAMgASgIUgdoYX'
     'NNb3Jl');
 
+@$core.Deprecated('Use getConversationsRequestDescriptor instead')
+const GetConversationsRequest$json = {
+  '1': 'GetConversationsRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'limit', '3': 2, '4': 1, '5': 13, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `GetConversationsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getConversationsRequestDescriptor =
+    $convert.base64Decode(
+        'ChdHZXRDb252ZXJzYXRpb25zUmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1'
+        'Rva2VuEhQKBWxpbWl0GAIgASgNUgVsaW1pdA==');
+
+@$core.Deprecated('Use getConversationsResponseDescriptor instead')
+const GetConversationsResponse$json = {
+  '1': 'GetConversationsResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.GetConversationsSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `GetConversationsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getConversationsResponseDescriptor = $convert.base64Decode(
+    'ChhHZXRDb252ZXJzYXRpb25zUmVzcG9uc2USRgoHc3VjY2VzcxgBIAEoCzIqLmd1YXJkeW4ubW'
+    'Vzc2FnaW5nLkdldENvbnZlcnNhdGlvbnNTdWNjZXNzSABSB3N1Y2Nlc3MSNQoFZXJyb3IYAiAB'
+    'KAsyHS5ndWFyZHluLmNvbW1vbi5FcnJvclJlc3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use getConversationsSuccessDescriptor instead')
+const GetConversationsSuccess$json = {
+  '1': 'GetConversationsSuccess',
+  '2': [
+    {
+      '1': 'conversations',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.guardyn.messaging.Conversation',
+      '10': 'conversations'
+    },
+  ],
+};
+
+/// Descriptor for `GetConversationsSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getConversationsSuccessDescriptor =
+    $convert.base64Decode(
+        'ChdHZXRDb252ZXJzYXRpb25zU3VjY2VzcxJFCg1jb252ZXJzYXRpb25zGAEgAygLMh8uZ3Vhcm'
+        'R5bi5tZXNzYWdpbmcuQ29udmVyc2F0aW9uUg1jb252ZXJzYXRpb25z');
+
+@$core.Deprecated('Use conversationDescriptor instead')
+const Conversation$json = {
+  '1': 'Conversation',
+  '2': [
+    {'1': 'conversation_id', '3': 1, '4': 1, '5': 9, '10': 'conversationId'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'username', '3': 3, '4': 1, '5': 9, '10': 'username'},
+    {
+      '1': 'last_message',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.Message',
+      '10': 'lastMessage'
+    },
+    {'1': 'unread_count', '3': 5, '4': 1, '5': 13, '10': 'unreadCount'},
+    {
+      '1': 'updated_at',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'updatedAt'
+    },
+  ],
+};
+
+/// Descriptor for `Conversation`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List conversationDescriptor = $convert.base64Decode(
+    'CgxDb252ZXJzYXRpb24SJwoPY29udmVyc2F0aW9uX2lkGAEgASgJUg5jb252ZXJzYXRpb25JZB'
+    'IXCgd1c2VyX2lkGAIgASgJUgZ1c2VySWQSGgoIdXNlcm5hbWUYAyABKAlSCHVzZXJuYW1lEj0K'
+    'DGxhc3RfbWVzc2FnZRgEIAEoCzIaLmd1YXJkeW4ubWVzc2FnaW5nLk1lc3NhZ2VSC2xhc3RNZX'
+    'NzYWdlEiEKDHVucmVhZF9jb3VudBgFIAEoDVILdW5yZWFkQ291bnQSOAoKdXBkYXRlZF9hdBgG'
+    'IAEoCzIZLmd1YXJkeW4uY29tbW9uLlRpbWVzdGFtcFIJdXBkYXRlZEF0');
+
 @$core.Deprecated('Use markAsReadRequestDescriptor instead')
 const MarkAsReadRequest$json = {
   '1': 'MarkAsReadRequest',

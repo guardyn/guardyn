@@ -2538,6 +2538,303 @@ class GetMlsKeyPackageSuccess extends $pb.GeneratedMessage {
   void clearPackageId() => $_clearField(4);
 }
 
+class SearchUsersRequest extends $pb.GeneratedMessage {
+  factory SearchUsersRequest({
+    $core.String? accessToken,
+    $core.String? query,
+    $core.int? limit,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (query != null) result.query = query;
+    if (limit != null) result.limit = limit;
+    return result;
+  }
+
+  SearchUsersRequest._();
+
+  factory SearchUsersRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SearchUsersRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SearchUsersRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'query')
+    ..aI(3, _omitFieldNames ? '' : 'limit', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SearchUsersRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SearchUsersRequest copyWith(void Function(SearchUsersRequest) updates) =>
+      super.copyWith((message) => updates(message as SearchUsersRequest))
+          as SearchUsersRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SearchUsersRequest create() => SearchUsersRequest._();
+  @$core.override
+  SearchUsersRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SearchUsersRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SearchUsersRequest>(create);
+  static SearchUsersRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get query => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set query($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasQuery() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearQuery() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get limit => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set limit($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLimit() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLimit() => $_clearField(3);
+}
+
+enum SearchUsersResponse_Result { success, error, notSet }
+
+class SearchUsersResponse extends $pb.GeneratedMessage {
+  factory SearchUsersResponse({
+    SearchUsersSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  SearchUsersResponse._();
+
+  factory SearchUsersResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SearchUsersResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, SearchUsersResponse_Result>
+      _SearchUsersResponse_ResultByTag = {
+    1: SearchUsersResponse_Result.success,
+    2: SearchUsersResponse_Result.error,
+    0: SearchUsersResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SearchUsersResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<SearchUsersSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: SearchUsersSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SearchUsersResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SearchUsersResponse copyWith(void Function(SearchUsersResponse) updates) =>
+      super.copyWith((message) => updates(message as SearchUsersResponse))
+          as SearchUsersResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SearchUsersResponse create() => SearchUsersResponse._();
+  @$core.override
+  SearchUsersResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SearchUsersResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SearchUsersResponse>(create);
+  static SearchUsersResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  SearchUsersResponse_Result whichResult() =>
+      _SearchUsersResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  SearchUsersSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(SearchUsersSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  SearchUsersSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class SearchUsersSuccess extends $pb.GeneratedMessage {
+  factory SearchUsersSuccess({
+    $core.Iterable<UserSearchResult>? users,
+  }) {
+    final result = create();
+    if (users != null) result.users.addAll(users);
+    return result;
+  }
+
+  SearchUsersSuccess._();
+
+  factory SearchUsersSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SearchUsersSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SearchUsersSuccess',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..pPM<UserSearchResult>(1, _omitFieldNames ? '' : 'users',
+        subBuilder: UserSearchResult.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SearchUsersSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SearchUsersSuccess copyWith(void Function(SearchUsersSuccess) updates) =>
+      super.copyWith((message) => updates(message as SearchUsersSuccess))
+          as SearchUsersSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SearchUsersSuccess create() => SearchUsersSuccess._();
+  @$core.override
+  SearchUsersSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SearchUsersSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SearchUsersSuccess>(create);
+  static SearchUsersSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<UserSearchResult> get users => $_getList(0);
+}
+
+class UserSearchResult extends $pb.GeneratedMessage {
+  factory UserSearchResult({
+    $core.String? userId,
+    $core.String? username,
+    $1.Timestamp? createdAt,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (username != null) result.username = username;
+    if (createdAt != null) result.createdAt = createdAt;
+    return result;
+  }
+
+  UserSearchResult._();
+
+  factory UserSearchResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UserSearchResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UserSearchResult',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aOS(2, _omitFieldNames ? '' : 'username')
+    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserSearchResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserSearchResult copyWith(void Function(UserSearchResult) updates) =>
+      super.copyWith((message) => updates(message as UserSearchResult))
+          as UserSearchResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UserSearchResult create() => UserSearchResult._();
+  @$core.override
+  UserSearchResult createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UserSearchResult getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UserSearchResult>(create);
+  static UserSearchResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get username => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set username($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUsername() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUsername() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $1.Timestamp get createdAt => $_getN(2);
+  @$pb.TagNumber(3)
+  set createdAt($1.Timestamp value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreatedAt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreatedAt() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $1.Timestamp ensureCreatedAt() => $_ensure(2);
+}
+
 class HealthRequest extends $pb.GeneratedMessage {
   factory HealthRequest() => create();
 

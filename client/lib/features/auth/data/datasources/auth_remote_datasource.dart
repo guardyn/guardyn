@@ -128,6 +128,43 @@ class AuthRemoteDatasource {
     }
   }
 
+  /// Search for users by username
+  Future<List<UserSearchResult>> searchUsers({
+    required String accessToken,
+    required String query,
+    int limit = 20,
+  }) async {
+    try {
+      final request = SearchUsersRequest()
+        ..accessToken = accessToken
+        ..query = query
+        ..limit = limit;
+
+      final response = await grpcClients.authClient.searchUsers(request);
+
+      if (response.hasSuccess()) {
+        logger.i('User search successful, found ${response.success.users.length} results');
+        return response.success.users;
+      } else if (response.hasError()) {
+        throw AuthException(
+          response.error.message,
+          code: response.error.code.toString(),
+        );
+      } else {
+        throw AuthException('Unknown error during user search');
+      }
+    } on GrpcError catch (e) {
+      logger.e('gRPC error during user search: ${e.message}');
+      throw AuthException(
+        'Network error: ${e.message}',
+        code: e.code.toString(),
+      );
+    } catch (e) {
+      logger.e('Unexpected error during user search: $e');
+      throw AuthException('User search failed: $e');
+    }
+  }
+
   /// Generate placeholder KeyBundle (temporary until real crypto is implemented)
   /// TODO: Replace with real X3DH key generation
   common.KeyBundle _generatePlaceholderKeyBundle() {

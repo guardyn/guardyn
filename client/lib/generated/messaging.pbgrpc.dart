@@ -59,6 +59,14 @@ class MessagingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getMessages, request, options: options);
   }
 
+  /// Get list of conversations
+  $grpc.ResponseFuture<$0.GetConversationsResponse> getConversations(
+    $0.GetConversationsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getConversations, request, options: options);
+  }
+
   /// Mark message as read (send read receipt)
   $grpc.ResponseFuture<$0.MarkAsReadResponse> markAsRead(
     $0.MarkAsReadRequest request, {
@@ -148,6 +156,11 @@ class MessagingServiceClient extends $grpc.Client {
           '/guardyn.messaging.MessagingService/GetMessages',
           ($0.GetMessagesRequest value) => value.writeToBuffer(),
           $0.GetMessagesResponse.fromBuffer);
+  static final _$getConversations = $grpc.ClientMethod<
+          $0.GetConversationsRequest, $0.GetConversationsResponse>(
+      '/guardyn.messaging.MessagingService/GetConversations',
+      ($0.GetConversationsRequest value) => value.writeToBuffer(),
+      $0.GetConversationsResponse.fromBuffer);
   static final _$markAsRead =
       $grpc.ClientMethod<$0.MarkAsReadRequest, $0.MarkAsReadResponse>(
           '/guardyn.messaging.MessagingService/MarkAsRead',
@@ -225,6 +238,15 @@ abstract class MessagingServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.GetMessagesRequest.fromBuffer(value),
             ($0.GetMessagesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetConversationsRequest,
+            $0.GetConversationsResponse>(
+        'GetConversations',
+        getConversations_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetConversationsRequest.fromBuffer(value),
+        ($0.GetConversationsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.MarkAsReadRequest, $0.MarkAsReadResponse>(
         'MarkAsRead',
         markAsRead_Pre,
@@ -327,6 +349,15 @@ abstract class MessagingServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetMessagesResponse> getMessages(
       $grpc.ServiceCall call, $0.GetMessagesRequest request);
+
+  $async.Future<$0.GetConversationsResponse> getConversations_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetConversationsRequest> $request) async {
+    return getConversations($call, await $request);
+  }
+
+  $async.Future<$0.GetConversationsResponse> getConversations(
+      $grpc.ServiceCall call, $0.GetConversationsRequest request);
 
   $async.Future<$0.MarkAsReadResponse> markAsRead_Pre($grpc.ServiceCall $call,
       $async.Future<$0.MarkAsReadRequest> $request) async {
