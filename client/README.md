@@ -109,11 +109,13 @@ UI Widget → BLoC Event → Use Case → Repository → Remote Datasource (gRPC
 Build scripts are provided to compile the app for all platforms with warnings suppressed:
 
 **Build all platforms:**
+
 ```bash
 ./scripts/build-all.sh [debug|release]  # Default: debug
 ```
 
 **Build specific platforms:**
+
 ```bash
 ./scripts/build-linux.sh [debug|release]
 ./scripts/build-android.sh [debug|release]
@@ -121,11 +123,13 @@ Build scripts are provided to compile the app for all platforms with warnings su
 ```
 
 **Build artifacts:**
+
 - Linux: `build/linux/x64/debug/bundle/guardyn_client`
 - Android: `build/app/outputs/flutter-apk/app-debug.apk`
 - Web: `build/web`
 
 **Note**: Build scripts suppress known warnings:
+
 - Android: Java 8 deprecation warnings (using Java 11)
 - Web: Wasm compatibility warnings (building for JS, not Wasm)
 
@@ -144,32 +148,32 @@ Build scripts are provided to compile the app for all platforms with warnings su
 2. **Port-forward backend services:**
 
    **Platform requirements:**
-   
-   | Platform | Envoy (8080) | Auth (50051) | Messaging (50052) |
-   |----------|--------------|--------------|-------------------|
-   | **Chrome/Firefox/Safari** | ✅ Required | ✅ Required | ✅ Required |
-   | **Android/iOS native** | ❌ Not needed | ✅ Required | ✅ Required |
-   | **Linux/macOS/Windows** | ❌ Not needed | ✅ Required | ✅ Required |
+
+   | Platform                  | Envoy (8080)  | Auth (50051) | Messaging (50052) |
+   | ------------------------- | ------------- | ------------ | ----------------- |
+   | **Chrome/Firefox/Safari** | ✅ Required   | ✅ Required  | ✅ Required       |
+   | **Android/iOS native**    | ❌ Not needed | ✅ Required  | ✅ Required       |
+   | **Linux/macOS/Windows**   | ❌ Not needed | ✅ Required  | ✅ Required       |
 
    **Terminal 1: Envoy Proxy (Web browsers ONLY)**
-   
+
    ```bash
    kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
    ```
-   
+
    **Required for**: Chrome, Firefox, Safari (any web browser)  
    **Not needed for**: Android, iOS, Linux, macOS, Windows desktop apps
-   
+
    **Why Envoy?** Browsers cannot create TCP sockets directly (security sandbox), so they cannot use native gRPC. Envoy translates gRPC-Web (HTTP/1.1 or HTTP/2 via browser `fetch` API) to native gRPC (HTTP/2 with gRPC framing).
 
    **Terminal 2: Auth Service (All platforms)**
-   
+
    ```bash
    kubectl port-forward -n apps svc/auth-service 50051:50051
    ```
 
    **Terminal 3: Messaging Service (All platforms)**
-   
+
    ```bash
    kubectl port-forward -n apps svc/messaging-service 50052:50052
    ```
@@ -196,6 +200,7 @@ Build scripts are provided to compile the app for all platforms with warnings su
 **📖 For comprehensive testing guide, see [CLIENT_TESTING_GUIDE.md](../docs/CLIENT_TESTING_GUIDE.md)**
 
 The testing guide includes:
+
 - Detailed setup instructions for all platforms
 - Envoy proxy configuration for web browsers
 - Manual testing scenarios and test cases
@@ -212,8 +217,9 @@ flutter test
 ```
 
 **Test Coverage:**
+
 - AuthBloc: 18 tests
-- RegisterUser use case: 11 tests  
+- RegisterUser use case: 11 tests
 - LoginUser use case: 6 tests
 - LogoutUser use case: 6 tests
 
@@ -222,6 +228,7 @@ flutter test
 Integration tests simulate two users exchanging messages programmatically.
 
 **Prerequisites:**
+
 ```bash
 # 1. Ensure backend is running
 kubectl get pods -n apps
@@ -240,18 +247,42 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 **Note**: Envoy (port 8080) is only required when testing on Chrome/web browsers. Native platforms (Android, Linux, iOS, macOS, Windows) connect directly to services on ports 50051/50052.
 
 **Run integration tests:**
-```bash
-# Using helper script (recommended)
-cd client
-./scripts/run_integration_tests.sh
 
-# Or manually
-flutter test integration_test/messaging_two_device_test.dart
+**Single-device test (simulated):**
+
+```bash
+cd client
+./scripts/test-client.sh integration
+```
+
+**Two-client test (Android + Chrome):**
+
+This tests real cross-platform messaging between Android and Chrome:
+
+```bash
+# Quick setup (manual testing)
+cd client
+./scripts/quick-two-client-setup.sh
+
+# Follow on-screen instructions to run:
+# Terminal 1: flutter run -d emulator-5554  (Alice on Android)
+# Terminal 2: flutter run -d chrome (Bob on Chrome)
+```
+
+**Automated two-client test:**
+
+```bash
+cd client
+./scripts/run-two-client-test.sh
+```
+
+See [Two-Client Testing Guide](../docs/TWO_CLIENT_TESTING.md) for detailed instructions
 
 # Run on specific device
-flutter test integration_test/ -d chrome
-flutter test integration_test/ -d emulator-5554
-```
+
+flutter test integration_test/ -d chrome flutter test integration_test/ -d emulator-5554
+
+````
 
 **What gets tested:**
 - ✅ User registration (Alice and Bob)
@@ -274,13 +305,14 @@ For comprehensive UI testing with real devices/emulators, see detailed guide:
    ```bash
    emulator -avd Pixel_6_API_33 &
    emulator -avd Pixel_7_API_34 &
-   ```
+````
 
 2. **Run Flutter on both devices:**
+
    ```bash
    # Terminal 3
    flutter run -d emulator-5554
-   
+
    # Terminal 4
    flutter run -d emulator-5556
    ```
@@ -293,6 +325,7 @@ For comprehensive UI testing with real devices/emulators, see detailed guide:
    - Test bidirectional conversation
 
 **18 comprehensive test cases** covering:
+
 - Authentication (13 tests)
 - Two-device messaging (8 tests)
 - Error handling, offline scenarios, rapid sending
@@ -300,8 +333,9 @@ For comprehensive UI testing with real devices/emulators, see detailed guide:
 ### Test Results Summary
 
 Run the manual testing checklist and report:
+
 - ✅ Test case results
-- 🐛 Issues encountered  
+- 🐛 Issues encountered
 - 📸 Screenshots/recordings
 - 💡 UX feedback
 
@@ -389,25 +423,28 @@ Tokens are stored using platform-specific secure storage:
 **Solution**:
 
 1. Verify backend services are running:
+
    ```bash
    kubectl get pods -n apps
    ```
 
 2. Verify port-forwarding is active:
-   
+
    **For web browsers (Chrome/Firefox/Safari):**
+
    ```bash
    # Check Envoy is running
    lsof -i :8080
    kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
-   
+
    # Check backend services
    lsof -i :50051
    kubectl port-forward -n apps svc/auth-service 50051:50051
    kubectl port-forward -n apps svc/messaging-service 50052:50052
    ```
-   
+
    **For native platforms (Android/iOS/Desktop):**
+
    ```bash
    # Envoy not needed, only backend services
    lsof -i :50051
@@ -416,6 +453,7 @@ Tokens are stored using platform-specific secure storage:
    ```
 
 3. Check platform-specific configuration:
+
    - **Web browsers**: Must use Envoy on port 8080 (gRPC-Web)
    - **Android emulator**: Uses `10.0.2.2:50051` to reach host machine
    - **Linux/Desktop**: Uses `localhost:50051` directly
