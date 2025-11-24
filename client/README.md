@@ -149,7 +149,7 @@ Build scripts are provided to compile the app for all platforms with warnings su
 
    **Platform requirements:**
 
-   | Platform                  | Envoy (8080)  | Auth (50051) | Messaging (50052) |
+   | Platform                  | Envoy (18080) | Auth (50051) | Messaging (50052) |
    | ------------------------- | ------------- | ------------ | ----------------- |
    | **Chrome/Firefox/Safari** | ✅ Required   | ✅ Required  | ✅ Required       |
    | **Android/iOS native**    | ❌ Not needed | ✅ Required  | ✅ Required       |
@@ -158,7 +158,7 @@ Build scripts are provided to compile the app for all platforms with warnings su
    **Terminal 1: Envoy Proxy (Web browsers ONLY)**
 
    ```bash
-   kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+   kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
    ```
 
    **Required for**: Chrome, Firefox, Safari (any web browser)  
@@ -235,7 +235,7 @@ kubectl get pods -n apps
 
 # 2. Port-forward services
 # Terminal 1: Envoy (web browsers only)
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 
 # Terminal 2: Auth service (all platforms)
 kubectl port-forward -n apps svc/auth-service 50051:50051
@@ -244,7 +244,7 @@ kubectl port-forward -n apps svc/auth-service 50051:50051
 kubectl port-forward -n apps svc/messaging-service 50052:50052
 ```
 
-**Note**: Envoy (port 8080) is only required when testing on Chrome/web browsers. Native platforms (Android, Linux, iOS, macOS, Windows) connect directly to services on ports 50051/50052.
+**Note**: Envoy (port 18080) is only required when testing on Chrome/web browsers. Native platforms (Android, Linux, iOS, macOS, Windows) connect directly to services on ports 50051/50052.
 
 **Run integration tests:**
 
@@ -434,8 +434,8 @@ Tokens are stored using platform-specific secure storage:
 
    ```bash
    # Check Envoy is running
-   lsof -i :8080
-   kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+   lsof -i :18080
+   kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 
    # Check backend services
    lsof -i :50051
@@ -454,7 +454,7 @@ Tokens are stored using platform-specific secure storage:
 
 3. Check platform-specific configuration:
 
-   - **Web browsers**: Must use Envoy on port 8080 (gRPC-Web)
+   - **Web browsers**: Must use Envoy on port 18080 (gRPC-Web)
    - **Android emulator**: Uses `10.0.2.2:50051` to reach host machine
    - **Linux/Desktop**: Uses `localhost:50051` directly
 

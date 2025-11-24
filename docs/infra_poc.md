@@ -110,11 +110,11 @@ Browsers cannot create TCP sockets (security sandbox), so they cannot use native
 **Port-forward for testing**:
 
 ```bash
-kubectl port-forward -n apps svc/guardyn-envoy 8080:8080
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 ```
 
 **Platform requirements**:
-- Web browsers (Chrome/Firefox/Safari): **Require Envoy** (port 8080)
+- Web browsers (Chrome/Firefox/Safari): **Require Envoy** (port 18080)
 - Android/iOS/Desktop apps: **Direct gRPC** (ports 50051/50052, no Envoy needed)
 
 ### 4.4 Deploy Data Stores

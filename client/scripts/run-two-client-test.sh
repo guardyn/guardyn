@@ -8,8 +8,9 @@
 #
 # Prerequisites:
 # - Backend services running (kubectl get pods -n apps)
-# - Port-forwarding active (localhost:50051, localhost:50052)
-# - Envoy proxy running (localhost:8080) for Chrome gRPC-Web
+# - Port-forwarding active (localhost:50051, localhost:50052, localhost:18080)
+# - Envoy proxy running (localhost:18080) for Chrome gRPC-Web
+# - ChromeDriver running (localhost:4444) for Chrome integration tests
 # - Android emulator running
 # - Chrome browser available
 #
@@ -142,6 +143,45 @@ if ! lsof -i :18080 > /dev/null 2>&1; then
 fi
 
 log_success "Envoy proxy active (port 18080)"
+
+# Check ChromeDriver for Chrome integration tests
+log_info "Checking ChromeDriver..."
+
+if ! lsof -i :4444 > /dev/null 2>&1; then
+  log_info "ChromeDriver not running, attempting to start..."
+  
+  # Try to find chromedriver
+  CHROMEDRIVER_PATH=""
+  if [ -f "$CLIENT_DIR/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver" ]; then
+    CHROMEDRIVER_PATH="$CLIENT_DIR/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver"
+  elif command -v chromedriver &> /dev/null; then
+    CHROMEDRIVER_PATH=$(command -v chromedriver)
+  fi
+  
+  if [ -z "$CHROMEDRIVER_PATH" ]; then
+    log_error "ChromeDriver not found"
+    log_info "Please install ChromeDriver or place it in client/chromedriver/"
+    log_info "Download from: https://googlechromelabs.github.io/chrome-for-testing/"
+    exit 1
+  fi
+  
+  # Start ChromeDriver in background
+  "$CHROMEDRIVER_PATH" --port=4444 > /tmp/chromedriver.log 2>&1 &
+  CHROMEDRIVER_PID=$!
+  
+  # Wait for ChromeDriver to be ready
+  sleep 2
+  
+  if curl -s http://localhost:4444/status | jq -r '.value.ready' 2>/dev/null | grep -q "true"; then
+    log_success "ChromeDriver started (PID: $CHROMEDRIVER_PID, port: 4444)"
+  else
+    log_error "ChromeDriver failed to start"
+    log_info "Check log: /tmp/chromedriver.log"
+    exit 1
+  fi
+else
+  log_success "ChromeDriver active (port 4444)"
+fi
 
 # Check Android emulator
 log_info "Checking Android emulator..."
