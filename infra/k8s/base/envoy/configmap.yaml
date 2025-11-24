@@ -41,7 +41,7 @@ data:
                   routes:
                   # Auth service routes
                   - match:
-                      prefix: "/guardyn.auth.v1.AuthService"
+                      prefix: "/guardyn.auth.AuthService"
                     route:
                       cluster: auth_service
                       timeout: 0s
@@ -58,7 +58,7 @@ data:
                         expose_headers: custom-header-1,grpc-status,grpc-message
                   # Messaging service routes
                   - match:
-                      prefix: "/guardyn.messaging.v1.MessagingService"
+                      prefix: "/guardyn.messaging.MessagingService"
                     route:
                       cluster: messaging_service
                       timeout: 0s
