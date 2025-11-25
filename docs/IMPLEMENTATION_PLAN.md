@@ -9,11 +9,20 @@
 - **Security-First**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
 - **Infrastructure**: Kubernetes-native with TiKV, ScyllaDB, NATS JetStream
 
-## 🎯 Current Status (Updated: November 15, 2025 - MVP Operational)
+## 🎯 Current Status (Updated: November 24, 2025 - Backend API Integration)
 
-### 🎉 **MVP FULLY DEPLOYED AND OPERATIONAL IN KUBERNETES CLUSTER!**
+### 🎉 **MVP DEPLOYED + BACKEND API ENHANCEMENTS IN PROGRESS**
 
-All core MVP features are deployed, tested, and production-ready:
+All core MVP features are deployed, tested, and production-ready. Currently adding missing backend APIs for Flutter client:
+
+**Latest Work (November 24, 2025)**:
+- ✅ SearchUsers RPC added to auth-service (TiKV prefix scan)
+- ✅ GetConversations RPC added to messaging-service (ScyllaDB OR query)
+- ✅ Flutter client updated with UserSearchPage and real conversation list
+- ⚙️ Docker build in progress (fixing OpenSSL static linking)
+- ⏳ Deployment to Kubernetes pending
+
+**Deployed Services**:
 
 - **✅ Messaging service DEPLOYED** (3/3 replicas running in Kubernetes)
 - **✅ All E2E tests PASSING** (8/8 integration tests successful)
@@ -65,20 +74,22 @@ All core MVP features are deployed, tested, and production-ready:
 
 ### 🎉 **Backend Services Fully Operational (Phase 4 Complete + Deployed)**
 
-- **Auth Service**: ✅ PRODUCTION-READY & DEPLOYED
+- **Auth Service**: ✅ PRODUCTION-READY & DEPLOYED (⚙️ Updates in Progress)
 
   - User registration/login/logout ✅
   - Device management ✅
   - JWT token generation/validation ✅
+  - **SearchUsers RPC** ✅ (NEW - November 24) - Search users by username
   - TiKV integration ✅
   - MLS key package management ✅
   - Kubernetes deployment complete ✅
-  - **Status**: 2/2 replicas running, healthy
+  - **Status**: 2/2 replicas running (redeployment pending with new APIs)
 
-- **Messaging Service**: ✅ PRODUCTION-READY & DEPLOYED
+- **Messaging Service**: ✅ PRODUCTION-READY & DEPLOYED (⚙️ Updates in Progress)
   - 1-on-1 messaging (plaintext + E2EE) ✅
   - SendMessage/GetMessages/ReceiveMessages ✅
   - MarkAsRead/DeleteMessage ✅
+  - **GetConversations RPC** ✅ (NEW - November 24) - List user's conversations
   - Group chat (CreateGroup, SendGroupMessage, GetGroupMessages) ✅
   - Group chat with MLS encryption ✅
   - Member management (AddGroupMember, RemoveGroupMember) ✅
@@ -88,7 +99,7 @@ All core MVP features are deployed, tested, and production-ready:
   - JWT validation ✅
   - Integration tests (8/8 E2E scenarios) ✅
   - Kubernetes deployment complete ✅
-  - **Status**: 3/3 replicas running, healthy
+  - **Status**: 3/3 replicas running (redeployment pending with new APIs)
   - **Build**: Zero compilation errors, clean release build
 
 ### 🔐 **Cryptography Implementation (Phase 6) - COMPLETE** ✅
