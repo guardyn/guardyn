@@ -89,8 +89,8 @@ pub async fn send_message(
     };
 
     // Debug: log stored message before saving
-    tracing::debug!("Attempting to store message: conversation_id={}, message_id={}, sender={}, recipient={}", 
-        stored_msg.conversation_id, stored_msg.message_id, 
+    tracing::debug!("Attempting to store message: conversation_id={}, message_id={}, sender={}, recipient={}",
+        stored_msg.conversation_id, stored_msg.message_id,
         stored_msg.sender_user_id, stored_msg.recipient_user_id);
 
     // Store message in ScyllaDB
@@ -124,6 +124,43 @@ pub async fn send_message(
     if let Err(e) = db.store_delivery_state(&delivery_state).await {
         tracing::error!("Failed to store delivery state: {}", e);
         // Continue anyway - message is stored
+    }
+
+    // Update conversations table for both sender and recipient
+    // This enables efficient conversation list queries
+    let message_preview = if stored_msg.encrypted_content.len() > 100 {
+        "[Encrypted message]".to_string()
+    } else {
+        "[Message]".to_string()
+    };
+    let server_timestamp_ms = server_timestamp * 1000; // Convert to milliseconds
+
+    // Update sender's conversation view (unread_count = 0 for sender)
+    if let Err(e) = db.upsert_conversation(
+        &sender_user_id,
+        &conversation_id,
+        &request.recipient_user_id,
+        &request.recipient_user_id, // TODO: Get actual username from auth service
+        &message_id,
+        &message_preview,
+        server_timestamp_ms,
+        false, // sender doesn't increment unread
+    ).await {
+        tracing::warn!("Failed to update sender conversation: {}", e);
+    }
+
+    // Update recipient's conversation view (increment unread_count)
+    if let Err(e) = db.upsert_conversation(
+        &request.recipient_user_id,
+        &conversation_id,
+        &sender_user_id,
+        &sender_user_id, // TODO: Get actual username from auth service
+        &message_id,
+        &message_preview,
+        server_timestamp_ms,
+        true, // recipient increments unread
+    ).await {
+        tracing::warn!("Failed to update recipient conversation: {}", e);
     }
 
     // Publish to NATS for real-time delivery

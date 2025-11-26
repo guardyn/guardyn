@@ -95,7 +95,28 @@ impl DatabaseClient {
             .await
             .context("Failed to create group_messages table")?;
 
-        tracing::info!("ScyllaDB schema initialized (messages + group_messages)");
+        // Create conversations table for efficient conversation list queries
+        // Partition by user_id allows single-query retrieval of all conversations
+        // Stores conversation metadata for both participants (denormalized for read performance)
+        session
+            .query_unpaged(
+                "CREATE TABLE IF NOT EXISTS guardyn.conversations (
+                    user_id TEXT,
+                    conversation_id UUID,
+                    other_user_id TEXT,
+                    other_username TEXT,
+                    last_message_id UUID,
+                    last_message_preview TEXT,
+                    last_message_time TIMESTAMP,
+                    unread_count INT,
+                    PRIMARY KEY (user_id, last_message_time, conversation_id)
+                ) WITH CLUSTERING ORDER BY (last_message_time DESC, conversation_id ASC)",
+                &[],
+            )
+            .await
+            .context("Failed to create conversations table")?;
+
+        tracing::info!("ScyllaDB schema initialized (messages + group_messages + conversations)");
         Ok(())
     }
 
@@ -660,6 +681,209 @@ impl DatabaseClient {
             .await
             .context("Failed to delete message")?;
 
+        Ok(())
+    }
+
+    // ========================================================================
+    // Conversation Operations (ScyllaDB - conversations table)
+    // ========================================================================
+
+    /// Update conversation for a user (upsert)
+    /// This is called for both sender and recipient when a message is sent
+    pub async fn upsert_conversation(
+        &self,
+        user_id: &str,
+        conversation_id: &str,
+        other_user_id: &str,
+        other_username: &str,
+        last_message_id: &str,
+        last_message_preview: &str,
+        last_message_time_ms: i64,
+        increment_unread: bool,
+    ) -> Result<()> {
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
+        let message_uuid = uuid::Uuid::parse_str(last_message_id)?;
+        
+        // ScyllaDB timestamp is in milliseconds
+        let timestamp = scylla::frame::value::CqlTimestamp(last_message_time_ms);
+        
+        // Truncate preview to 100 chars
+        let preview: String = last_message_preview.chars().take(100).collect();
+        
+        // First, try to delete old entry for this conversation (if exists)
+        // We need to do this because last_message_time is part of clustering key
+        let delete_query = "DELETE FROM guardyn.conversations 
+                           WHERE user_id = ? AND conversation_id = ?";
+        
+        // Note: This won't work as-is because conversation_id is not the partition key
+        // We need a different approach - using a separate lookup or accepting duplicates
+        // For MVP, we'll just insert and accept that old entries remain (they'll be filtered)
+        
+        // Insert new conversation entry
+        let insert_query = if increment_unread {
+            "INSERT INTO guardyn.conversations 
+             (user_id, conversation_id, other_user_id, other_username, 
+              last_message_id, last_message_preview, last_message_time, unread_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
+        } else {
+            "INSERT INTO guardyn.conversations 
+             (user_id, conversation_id, other_user_id, other_username, 
+              last_message_id, last_message_preview, last_message_time, unread_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0)"
+        };
+
+        self.scylla
+            .query_unpaged(
+                insert_query,
+                (
+                    user_id.to_string(),
+                    conversation_uuid,
+                    other_user_id.to_string(),
+                    other_username.to_string(),
+                    message_uuid,
+                    preview,
+                    timestamp,
+                ),
+            )
+            .await
+            .context("Failed to upsert conversation")?;
+
+        tracing::debug!(
+            "Upserted conversation for user {} with {}", 
+            user_id, other_user_id
+        );
+        
+        Ok(())
+    }
+
+    /// Get conversations for a user using the optimized conversations table
+    /// Returns conversations sorted by last_message_time DESC
+    pub async fn get_user_conversations(
+        &self,
+        user_id: &str,
+        limit: i32,
+    ) -> Result<Vec<crate::proto::messaging::Conversation>> {
+        let query = "SELECT conversation_id, other_user_id, other_username, 
+                            last_message_id, last_message_preview, last_message_time, unread_count
+                     FROM guardyn.conversations 
+                     WHERE user_id = ? 
+                     LIMIT ?";
+
+        let rows = self
+            .scylla
+            .query_unpaged(query, (user_id.to_string(), limit))
+            .await
+            .context("Failed to fetch conversations")?;
+
+        let mut conversations = Vec::new();
+        let mut seen_conversations = std::collections::HashSet::new();
+
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                let conversation_id = row.columns.get(0)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+
+                // Skip duplicates (old entries for same conversation)
+                if seen_conversations.contains(&conversation_id) {
+                    continue;
+                }
+                seen_conversations.insert(conversation_id.clone());
+
+                let other_user_id = row.columns.get(1)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
+                let other_username = row.columns.get(2)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| other_user_id.clone());
+
+                let last_message_id = row.columns.get(3)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid())
+                    .map(|u| u.to_string())
+                    .unwrap_or_default();
+
+                let last_message_preview = row.columns.get(4)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
+                let last_message_time = row.columns.get(5)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_cql_timestamp())
+                    .map(|ts| ts.0) // milliseconds
+                    .unwrap_or(0);
+
+                let unread_count = row.columns.get(6)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_int())
+                    .unwrap_or(0) as u32;
+
+                // Create a placeholder last_message with preview
+                let last_message = crate::proto::messaging::Message {
+                    message_id: last_message_id,
+                    sender_user_id: String::new(),
+                    sender_device_id: String::new(),
+                    recipient_user_id: String::new(),
+                    recipient_device_id: String::new(),
+                    encrypted_content: last_message_preview.into_bytes(),
+                    message_type: 0,
+                    client_message_id: String::new(),
+                    client_timestamp: None,
+                    server_timestamp: Some(crate::proto::common::Timestamp {
+                        seconds: last_message_time / 1000,
+                        nanos: ((last_message_time % 1000) * 1_000_000) as i32,
+                    }),
+                    delivery_status: 0,
+                    media_id: String::new(),
+                    is_deleted: false,
+                };
+
+                let conversation = crate::proto::messaging::Conversation {
+                    conversation_id,
+                    user_id: other_user_id,
+                    username: other_username,
+                    last_message: Some(last_message),
+                    unread_count,
+                    updated_at: Some(crate::proto::common::Timestamp {
+                        seconds: last_message_time / 1000,
+                        nanos: ((last_message_time % 1000) * 1_000_000) as i32,
+                    }),
+                };
+
+                conversations.push(conversation);
+
+                if conversations.len() >= limit as usize {
+                    break;
+                }
+            }
+        }
+
+        Ok(conversations)
+    }
+
+    /// Reset unread count for a conversation
+    pub async fn reset_unread_count(&self, user_id: &str, conversation_id: &str) -> Result<()> {
+        // Since last_message_time is part of the clustering key, we can't just UPDATE
+        // For MVP, we'll need to read and rewrite the row
+        // In production, consider a separate table for unread counts
+        
+        tracing::debug!(
+            "Reset unread count requested for user {} conversation {}", 
+            user_id, conversation_id
+        );
+        
+        // TODO: Implement proper unread count reset
+        // This requires finding the row by conversation_id and rewriting it
+        
         Ok(())
     }
 
