@@ -32,5 +32,6 @@
         }
     },
     "terminal.integrated.defaultProfile.linux": "zsh",
-    "terminal.integrated.inheritEnv": false
+    "terminal.integrated.inheritEnv": false,
+    "codeQL.createQuery.qlPackLocation": "/home/anry/projects/guardyn/guardyn"
 }
