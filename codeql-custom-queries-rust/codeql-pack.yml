@@ -1,0 +1,7 @@
+---
+library: false
+warnOnImplicitThis: false
+name: getting-started/codeql-extra-queries-rust
+version: 1.0.0
+dependencies:
+  codeql/rust-all: ^0.1.20

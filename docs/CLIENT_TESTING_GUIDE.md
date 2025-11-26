@@ -59,9 +59,25 @@ messaging-service-xxx                 3/3     Running   0          10m
 
 ### Port-Forwarding Setup
 
-**You need THREE terminal windows for web testing (or TWO for native platforms):**
+**You need THREE terminal windows (or background processes):**
 
-#### Terminal 1: Envoy Proxy (Web browsers ONLY)
+#### Terminal 1: Auth Service (All platforms)
+
+```bash
+kubectl port-forward -n apps svc/auth-service 50051:50051
+```
+
+**Required for**: All platforms (Android, iOS, Linux, macOS, Windows, Chrome)
+
+#### Terminal 2: Messaging Service (All platforms)
+
+```bash
+kubectl port-forward -n apps svc/messaging-service 50052:50052
+```
+
+**Required for**: All platforms
+
+#### Terminal 3: Envoy Proxy (Web browsers ONLY)
 
 ```bash
 kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
@@ -70,19 +86,16 @@ kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 **Required for**: Chrome, Firefox, Safari (any web browser)  
 **Not needed for**: Android, iOS, Linux, macOS, Windows desktop apps
 
-#### Terminal 2: Auth Service (All platforms)
-
-```bash
-kubectl port-forward -n apps svc/auth-service 50051:50051
-```
-
-#### Terminal 3: Messaging Service (All platforms)
-
-```bash
-kubectl port-forward -n apps svc/messaging-service 50052:50052
-```
-
 **Keep these terminals running throughout testing!**
+
+**Run in background** (optional):
+```bash
+kubectl port-forward -n apps svc/auth-service 50051:50051 > /tmp/auth-pf.log 2>&1 &
+kubectl port-forward -n apps svc/messaging-service 50052:50052 > /tmp/msg-pf.log 2>&1 &
+kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 > /tmp/envoy-pf.log 2>&1 &
+```
+
+**⚠️ CRITICAL**: Port-forwarding MUST be restarted after backend pod restarts or Kubernetes cluster restarts!
 
 **Note**: Native platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052. Web browsers connect via Envoy on port 18080.
 
