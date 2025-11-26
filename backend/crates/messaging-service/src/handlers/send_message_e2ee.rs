@@ -1,5 +1,5 @@
 /// E2EE-enabled message sending handler (migration version)
-/// 
+///
 /// This handler integrates X3DH key exchange and Double Ratchet encryption
 /// for end-to-end encrypted messaging.
 ///
@@ -197,6 +197,38 @@ pub async fn send_message_e2ee(
 
     if let Err(e) = db.store_delivery_state(&delivery_state).await {
         tracing::error!("Failed to store delivery state: {}", e);
+    }
+
+    // Update conversations table for both sender and recipient
+    let message_preview = "[E2EE Message]".to_string();
+    let server_timestamp_ms = server_timestamp * 1000;
+
+    // Update sender's conversation view
+    if let Err(e) = db.upsert_conversation(
+        &sender_user_id,
+        &conversation_id,
+        &request.recipient_user_id,
+        &request.recipient_user_id,
+        &message_id,
+        &message_preview,
+        server_timestamp_ms,
+        false,
+    ).await {
+        tracing::warn!("Failed to update sender conversation: {}", e);
+    }
+
+    // Update recipient's conversation view
+    if let Err(e) = db.upsert_conversation(
+        &request.recipient_user_id,
+        &conversation_id,
+        &sender_user_id,
+        &sender_user_id,
+        &message_id,
+        &message_preview,
+        server_timestamp_ms,
+        true,
+    ).await {
+        tracing::warn!("Failed to update recipient conversation: {}", e);
     }
 
     // Publish to NATS for real-time delivery

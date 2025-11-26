@@ -36,9 +36,10 @@ pub async fn get_conversations(
         user_id, limit
     );
 
-    match db.get_recent_conversations(&user_id, limit as i32).await {
-        Ok(conversations) => {
-            info!("Successfully fetched {} conversations", conversations.len());
+    // Try new optimized conversations table first
+    match db.get_user_conversations(&user_id, limit as i32).await {
+        Ok(conversations) if !conversations.is_empty() => {
+            info!("Successfully fetched {} conversations from conversations table", conversations.len());
             Ok(Response::new(GetConversationsResponse {
                 result: Some(get_conversations_response::Result::Success(
                     GetConversationsSuccess {
@@ -46,6 +47,33 @@ pub async fn get_conversations(
                     },
                 )),
             }))
+        }
+        Ok(_) => {
+            // No conversations in new table, fall back to old method for backward compatibility
+            info!("No conversations in optimized table, falling back to messages scan");
+            match db.get_recent_conversations(&user_id, limit as i32).await {
+                Ok(conversations) => {
+                    info!("Successfully fetched {} conversations via fallback", conversations.len());
+                    Ok(Response::new(GetConversationsResponse {
+                        result: Some(get_conversations_response::Result::Success(
+                            GetConversationsSuccess {
+                                conversations,
+                            },
+                        )),
+                    }))
+                }
+                Err(err) => {
+                    error!("Failed to fetch conversations (fallback): {}", err);
+                    // Return empty list instead of error for new users
+                    Ok(Response::new(GetConversationsResponse {
+                        result: Some(get_conversations_response::Result::Success(
+                            GetConversationsSuccess {
+                                conversations: vec![],
+                            },
+                        )),
+                    }))
+                }
+            }
         }
         Err(err) => {
             error!("Failed to fetch conversations: {}", err);
