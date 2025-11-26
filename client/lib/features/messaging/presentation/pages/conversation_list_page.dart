@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/network/grpc_clients.dart';
 import '../../../../generated/messaging.pb.dart' as proto;
 import '../../data/datasources/message_remote_datasource.dart';
@@ -44,7 +45,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
         return;
       }
 
-      final grpcClients = context.read<GrpcClients>();
+      final grpcClients = getIt<GrpcClients>();
       final datasource = MessageRemoteDatasource(grpcClients);
 
       final conversations = await datasource.getConversations(
@@ -75,7 +76,12 @@ class _ConversationListPageState extends State<ConversationListPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const UserSearchPage()),
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider.value(
+                    value: context.read<MessageBloc>(),
+                    child: const UserSearchPage(),
+                  ),
+                ),
               );
             },
           ),
@@ -151,7 +157,10 @@ class _ConversationListPageState extends State<ConversationListPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const UserSearchPage(),
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<MessageBloc>(),
+                              child: const UserSearchPage(),
+                            ),
                           ),
                         );
                       },
@@ -251,7 +260,12 @@ class _ConversationListPageState extends State<ConversationListPage> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const UserSearchPage()),
+            MaterialPageRoute(
+              builder: (_) => BlocProvider.value(
+                value: context.read<MessageBloc>(),
+                child: const UserSearchPage(),
+              ),
+            ),
           );
         },
         child: const Icon(Icons.edit),
