@@ -462,27 +462,50 @@ impl DatabaseClient {
     ) -> Result<Vec<crate::proto::messaging::Conversation>> {
         // For MVP, we'll query messages table and group by conversation_id
         // In production, this should use a materialized view or separate conversations table
+        // ScyllaDB doesn't support OR in WHERE clause, so we run two separate queries
 
-        let query = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
+        let query_sender = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
                             recipient_user_id, recipient_device_id, encrypted_content, \
                             message_type, server_timestamp, client_timestamp, \
                             delivery_status, is_deleted \
-                     FROM guardyn.messages 
-                     WHERE sender_user_id = ? OR recipient_user_id = ? 
-                     LIMIT ? 
+                     FROM guardyn.messages \
+                     WHERE sender_user_id = ? \
+                     LIMIT ? \
                      ALLOW FILTERING";
 
-        let rows = self
-            .scylla
-            .query_unpaged(query, (user_id.to_string(), user_id.to_string(), limit * 10))
-            .await
-            .context("Failed to fetch conversations from ScyllaDB")?;
+        let query_recipient = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
+                            recipient_user_id, recipient_device_id, encrypted_content, \
+                            message_type, server_timestamp, client_timestamp, \
+                            delivery_status, is_deleted \
+                     FROM guardyn.messages \
+                     WHERE recipient_user_id = ? \
+                     LIMIT ? \
+                     ALLOW FILTERING";
+
+        // Run both queries concurrently
+        let (sender_result, recipient_result) = tokio::join!(
+            self.scylla.query_unpaged(query_sender, (user_id.to_string(), limit * 5)),
+            self.scylla.query_unpaged(query_recipient, (user_id.to_string(), limit * 5))
+        );
+
+        let sender_rows = sender_result
+            .context("Failed to fetch sender conversations from ScyllaDB")?;
+        let recipient_rows = recipient_result
+            .context("Failed to fetch recipient conversations from ScyllaDB")?;
+
+        // Combine rows from both queries
+        let mut all_rows = Vec::new();
+        if let Some(rows) = sender_rows.rows {
+            all_rows.extend(rows);
+        }
+        if let Some(rows) = recipient_rows.rows {
+            all_rows.extend(rows);
+        }
 
         use std::collections::HashMap;
         let mut conversations_map: HashMap<String, crate::proto::messaging::Conversation> = HashMap::new();
 
-        if let Some(rows) = rows.rows {
-            for row in rows {
+        for row in all_rows {
                 let conversation_id = row.columns.get(0)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid())
@@ -609,7 +632,6 @@ impl DatabaseClient {
                     break;
                 }
             }
-        }
 
         let mut conversations: Vec<_> = conversations_map.into_values().collect();
         
