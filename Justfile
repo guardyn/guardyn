@@ -25,3 +25,21 @@ verify-kube:
 teardown:
 	@echo "[teardown] Destroying cluster and cleaning up"
 	just kube-delete
+
+# Port-forwarding with auto-restart watchdog
+port-forward:
+	@echo "[port-forward] Starting port-forward watchdog (Ctrl+C to stop)"
+	bash infra/scripts/port-forward-watchdog.sh
+
+# Port-forwarding without Envoy (for native apps only)
+port-forward-native:
+	@echo "[port-forward] Starting port-forward watchdog for native apps"
+	bash infra/scripts/port-forward-watchdog.sh --no-envoy --no-chromedriver
+
+# Port-forwarding status check
+port-forward-status:
+	bash infra/scripts/port-forward-watchdog.sh --status
+
+# Stop all port-forwards
+port-forward-stop:
+	bash infra/scripts/port-forward-watchdog.sh --stop

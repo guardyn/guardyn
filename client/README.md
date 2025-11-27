@@ -147,6 +147,19 @@ Build scripts are provided to compile the app for all platforms with warnings su
 
 2. **Port-forward backend services:**
 
+   **Recommended: Use Port-Forward Watchdog** (auto-restarts on failure):
+
+   ```bash
+   # Start watchdog with auto-restart (Ctrl+C to stop)
+   just port-forward
+
+   # Or check status
+   just port-forward-status
+
+   # Stop all port-forwards
+   just port-forward-stop
+   ```
+
    **Platform requirements:**
 
    | Platform                  | Envoy (18080) | Auth (50051) | Messaging (50052) |
@@ -154,6 +167,8 @@ Build scripts are provided to compile the app for all platforms with warnings su
    | **Chrome/Firefox/Safari** | ✅ Required   | ✅ Required  | ✅ Required       |
    | **Android/iOS native**    | ❌ Not needed | ✅ Required  | ✅ Required       |
    | **Linux/macOS/Windows**   | ❌ Not needed | ✅ Required  | ✅ Required       |
+
+   **Alternative: Manual Port-Forwarding**
 
    **Terminal 1: Envoy Proxy (Web browsers ONLY)**
 
@@ -178,7 +193,7 @@ Build scripts are provided to compile the app for all platforms with warnings su
    kubectl port-forward -n apps svc/messaging-service 50052:50052
    ```
 
-   **Keep these terminals running throughout testing!**
+   **⚠️ Note**: Manual port-forwards can die unexpectedly. Use the watchdog script for reliable testing.
 
 3. **Run Flutter app:**
 
