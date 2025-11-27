@@ -24,10 +24,19 @@ static_resources:
             - name: local_service
               domains: ["*"]
               routes:
+              # Auth service routes
               - match:
-                  prefix: "/"
+                  prefix: "/guardyn.auth.AuthService"
                 route:
-                  cluster: grpc_backend
+                  cluster: auth_service
+                  timeout: 0s
+                  max_stream_duration:
+                    grpc_timeout_header_max: 0s
+              # Messaging service routes (streaming enabled)
+              - match:
+                  prefix: "/guardyn.messaging.MessagingService"
+                route:
+                  cluster: messaging_service
                   timeout: 0s
                   max_stream_duration:
                     grpc_timeout_header_max: 0s
@@ -50,13 +59,13 @@ static_resources:
               "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-  - name: grpc_backend
+  - name: auth_service
     connect_timeout: 0.25s
     type: LOGICAL_DNS
     http2_protocol_options: {}
     lb_policy: ROUND_ROBIN
     load_assignment:
-      cluster_name: grpc_backend
+      cluster_name: auth_service
       endpoints:
       - lb_endpoints:
         - endpoint:
@@ -64,3 +73,18 @@ static_resources:
               socket_address:
                 address: host.docker.internal
                 port_value: 50051
+  
+  - name: messaging_service
+    connect_timeout: 0.25s
+    type: LOGICAL_DNS
+    http2_protocol_options: {}
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: messaging_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: host.docker.internal
+                port_value: 50052

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../../../core/di/injection.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
@@ -19,6 +21,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final MarkAsRead markAsRead;
 
   StreamSubscription<dynamic>? _messageStreamSubscription;
+  
+  /// Currently open conversation user ID (to suppress notifications for active chat)
+  String? _activeConversationUserId;
 
   MessageBloc({
     required this.sendMessage,
@@ -32,6 +37,15 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<MessageMarkAsRead>(_onMarkAsRead);
     on<MessageDelete>(_onDeleteMessage);
     on<MessageSubscribeToStream>(_onSubscribeToStream);
+    on<MessageSetActiveConversation>(_onSetActiveConversation);
+  }
+  
+  /// Set the active conversation (to suppress notifications for current chat)
+  void _onSetActiveConversation(
+    MessageSetActiveConversation event,
+    Emitter<MessageState> emit,
+  ) {
+    _activeConversationUserId = event.userId;
   }
 
   Future<void> _onLoadHistory(
@@ -103,6 +117,41 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       // Add new message to the list
       final updatedMessages = [event.message, ...currentMessages];
       emit(MessageLoaded(messages: updatedMessages));
+      
+      // Show notification if message is not from the active conversation
+      // (i.e., the chat that is currently open)
+      final isFromActiveConversation = 
+          _activeConversationUserId != null && 
+          event.message.senderUserId == _activeConversationUserId;
+      
+      // Only notify for messages received from others, not sent by current user
+      final isReceivedMessage = !event.message.isSentByMe;
+      
+      if (isReceivedMessage && !isFromActiveConversation) {
+        _showNotification(event.message);
+      }
+    }
+  }
+  
+  /// Show notification for incoming message
+  void _showNotification(Message message) {
+    try {
+      final notificationService = getIt<NotificationService>();
+      
+      // Construct notification title and body
+      final senderName = message.senderUserId; // TODO: Get username from user cache
+      final messagePreview = message.textContent.length > 50
+          ? '${message.textContent.substring(0, 50)}...'
+          : message.textContent;
+      
+      notificationService.showMessageNotification(
+        title: 'New message from $senderName',
+        body: messagePreview,
+        payload: message.conversationId,
+      );
+    } catch (e) {
+      // ignore: avoid_print
+      print('Failed to show notification: $e');
     }
   }
 
