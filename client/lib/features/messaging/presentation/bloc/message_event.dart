@@ -74,8 +74,7 @@ class MessageSubscribeToStream extends MessageEvent {
   const MessageSubscribeToStream();
 }
 
-/// Event to set the currently active conversation
-/// Used to suppress notifications for messages in the currently open chat
+/// Set the active conversation (to suppress notifications for current chat)
 class MessageSetActiveConversation extends MessageEvent {
   final String? userId;
 
@@ -85,8 +84,7 @@ class MessageSetActiveConversation extends MessageEvent {
   List<Object?> get props => [userId];
 }
 
-/// Event to start periodic polling for new messages
-/// This is used as a fallback when gRPC streaming fails
+/// Start polling for new messages (fallback for gRPC streaming issues)
 class MessageStartPolling extends MessageEvent {
   final String conversationUserId;
   final String? conversationId;
@@ -102,7 +100,7 @@ class MessageStartPolling extends MessageEvent {
   List<Object?> get props => [conversationUserId, conversationId, interval];
 }
 
-/// Event to stop polling for new messages
+/// Stop polling for new messages
 class MessageStopPolling extends MessageEvent {
   const MessageStopPolling();
 }

@@ -45,10 +45,8 @@ dependencies:
   # SVG Support
   flutter_svg: ^2.0.9
 
-  # Notifications
+  # Notifications & Audio
   flutter_local_notifications: ^19.0.0
-
-  # Audio (for notification sounds)
   audioplayers: ^6.1.0
 
 dev_dependencies:
