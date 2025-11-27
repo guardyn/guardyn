@@ -184,22 +184,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       (either) {
         either.fold(
           (failure) {
-            // Handle stream errors
-            add(MessageReceived(
-              Message(
-                messageId: 'error-${DateTime.now().millisecondsSinceEpoch}',
-                conversationId: 'error',
-                senderUserId: 'system',
-                senderDeviceId: 'system',
-                recipientUserId: '',
-                recipientDeviceId: '',
-                messageType: MessageType.text,
-                textContent: 'Stream error: ${failure.message}',
-                metadata: const {},
-                timestamp: DateTime.now(),
-                deliveryStatus: DeliveryStatus.failed,
-              ),
-            ));
+            // Log stream errors but don't show them as messages to user
+            // Stream errors are expected when connection is interrupted
+            // The UI will show existing messages and user can retry
+            // ignore: avoid_print
+            print('Message stream error: ${failure.message}');
           },
           (message) {
             // Add received message to state
@@ -208,7 +197,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         );
       },
       onError: (error) {
-        // Handle stream errors
+        // Handle stream errors silently - connection issues are transient
+        // ignore: avoid_print
+        print('Message stream connection error: $error');
       },
     );
   }

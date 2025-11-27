@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/utils/conversation_utils.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/message_repository.dart';
 import '../datasources/message_remote_datasource.dart';
@@ -91,12 +92,19 @@ class MessageRepositoryImpl implements MessageRepository {
 
       // Get current user ID for determining sent/received
       final currentUserId = await secureStorage.getUserId();
+      
+      // Generate conversation ID if not provided
+      // Backend requires conversation_id for GetMessages
+      final effectiveConversationId = conversationId ?? 
+          (currentUserId != null 
+              ? _deriveConversationId(currentUserId, conversationUserId)
+              : null);
 
       // Fetch messages via datasource
       final messages = await remoteDatasource.getMessages(
         accessToken: accessToken,
         conversationUserId: conversationUserId,
-        conversationId: conversationId,
+        conversationId: effectiveConversationId,
         limit: limit,
         beforeMessageId: beforeMessageId,
         currentUserId: currentUserId,
@@ -196,9 +204,10 @@ class MessageRepositoryImpl implements MessageRepository {
 
   // Helper methods
 
+  /// Generate deterministic conversation ID using UUID v5.
+  /// This matches the backend implementation.
   String _deriveConversationId(String userId1, String userId2) {
-    final users = [userId1, userId2]..sort();
-    return '${users[0]}:${users[1]}';
+    return ConversationUtils.generateConversationId(userId1, userId2);
   }
 
   Failure _handleGrpcError(GrpcError error) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/utils/conversation_utils.dart';
 import '../bloc/message_bloc.dart';
 import '../bloc/message_event.dart';
 import '../bloc/message_state.dart';
@@ -25,16 +27,43 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
+  final _secureStorage = const FlutterSecureStorage();
+  String? _conversationId;
 
   @override
   void initState() {
     super.initState();
-    // Load message history
-    context.read<MessageBloc>().add(MessageLoadHistory(
-          conversationUserId: widget.conversationUserId,
-        ));
+    _loadMessagesWithConversationId();
     // Subscribe to real-time messages
     context.read<MessageBloc>().add(const MessageSubscribeToStream());
+  }
+
+  Future<void> _loadMessagesWithConversationId() async {
+    // Get current user ID to generate conversation ID
+    final currentUserId = await _secureStorage.read(key: 'user_id');
+    
+    if (currentUserId != null && currentUserId.isNotEmpty) {
+      // Generate deterministic conversation ID matching backend
+      _conversationId = ConversationUtils.generateConversationId(
+        currentUserId,
+        widget.conversationUserId,
+      );
+      
+      // Load message history with conversation ID
+      if (mounted) {
+        context.read<MessageBloc>().add(MessageLoadHistory(
+          conversationUserId: widget.conversationUserId,
+          conversationId: _conversationId,
+        ));
+      }
+    } else {
+      // Fallback: try loading without conversation ID
+      if (mounted) {
+        context.read<MessageBloc>().add(MessageLoadHistory(
+          conversationUserId: widget.conversationUserId,
+        ));
+      }
+    }
   }
 
   @override
@@ -168,9 +197,8 @@ class _ChatPageState extends State<ChatPage> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
-                            context.read<MessageBloc>().add(MessageLoadHistory(
-                                  conversationUserId: widget.conversationUserId,
-                                ));
+                            // Reload messages with conversation ID
+                            _loadMessagesWithConversationId();
                           },
                           child: const Text('Retry'),
                         ),
