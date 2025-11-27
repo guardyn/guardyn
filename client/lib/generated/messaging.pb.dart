@@ -31,6 +31,7 @@ class SendMessageRequest extends $pb.GeneratedMessage {
     $core.String? clientMessageId,
     $1.Timestamp? clientTimestamp,
     $core.String? mediaId,
+    $core.String? recipientUsername,
   }) {
     final result = create();
     if (accessToken != null) result.accessToken = accessToken;
@@ -41,6 +42,7 @@ class SendMessageRequest extends $pb.GeneratedMessage {
     if (clientMessageId != null) result.clientMessageId = clientMessageId;
     if (clientTimestamp != null) result.clientTimestamp = clientTimestamp;
     if (mediaId != null) result.mediaId = mediaId;
+    if (recipientUsername != null) result.recipientUsername = recipientUsername;
     return result;
   }
 
@@ -69,6 +71,7 @@ class SendMessageRequest extends $pb.GeneratedMessage {
     ..aOM<$1.Timestamp>(7, _omitFieldNames ? '' : 'clientTimestamp',
         subBuilder: $1.Timestamp.create)
     ..aOS(8, _omitFieldNames ? '' : 'mediaId')
+    ..aOS(9, _omitFieldNames ? '' : 'recipientUsername')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -166,6 +169,16 @@ class SendMessageRequest extends $pb.GeneratedMessage {
   $core.bool hasMediaId() => $_has(7);
   @$pb.TagNumber(8)
   void clearMediaId() => $_clearField(8);
+
+  /// Recipient username for display (used in conversation list)
+  @$pb.TagNumber(9)
+  $core.String get recipientUsername => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set recipientUsername($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasRecipientUsername() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearRecipientUsername() => $_clearField(9);
 }
 
 enum SendMessageResponse_Result { success, error, notSet }

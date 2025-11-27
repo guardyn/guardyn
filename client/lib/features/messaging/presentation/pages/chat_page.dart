@@ -57,6 +57,7 @@ class _ChatPageState extends State<ChatPage> {
     context.read<MessageBloc>().add(MessageSend(
           recipientUserId: widget.conversationUserId,
           recipientDeviceId: widget.deviceId,
+          recipientUsername: widget.conversationUserName,
           textContent: text,
         ));
     // Scroll to bottom after sending

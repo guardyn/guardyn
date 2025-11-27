@@ -39,6 +39,9 @@ service AuthService {
   // Search for users by username
   rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
 
+  // Get user profile by user ID (internal service-to-service)
+  rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -300,6 +303,21 @@ message UserSearchResult {
   string user_id = 1;
   string username = 2;
   common.Timestamp created_at = 3;
+}
+
+// ============================================================================
+// Get User Profile (Internal)
+// ============================================================================
+
+message GetUserProfileRequest {
+  string user_id = 1; // UUID of the user to lookup
+}
+
+message GetUserProfileResponse {
+  oneof result {
+    UserProfile success = 1; // Reuse existing UserProfile message
+    common.ErrorResponse error = 2;
+  }
 }
 
 // ============================================================================

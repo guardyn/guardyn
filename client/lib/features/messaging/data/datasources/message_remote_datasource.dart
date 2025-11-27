@@ -24,6 +24,7 @@ class MessageRemoteDatasource {
     required String accessToken,
     required String recipientUserId,
     required String recipientDeviceId,
+    required String recipientUsername,
     required String textContent,
     Map<String, String>? metadata,
   }) async {
@@ -31,6 +32,7 @@ class MessageRemoteDatasource {
       accessToken: accessToken,
       recipientUserId: recipientUserId,
       recipientDeviceId: recipientDeviceId,
+      recipientUsername: recipientUsername,
       encryptedContent: textContent.codeUnits,
       messageType: proto.MessageType.TEXT,
       clientMessageId: _generateMessageId(),

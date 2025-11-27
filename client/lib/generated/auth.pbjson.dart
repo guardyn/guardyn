@@ -875,6 +875,53 @@ final $typed_data.Uint8List userSearchResultDescriptor = $convert.base64Decode(
     'gCIAEoCVIIdXNlcm5hbWUSOAoKY3JlYXRlZF9hdBgDIAEoCzIZLmd1YXJkeW4uY29tbW9uLlRp'
     'bWVzdGFtcFIJY3JlYXRlZEF0');
 
+@$core.Deprecated('Use getUserProfileRequestDescriptor instead')
+const GetUserProfileRequest$json = {
+  '1': 'GetUserProfileRequest',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+  ],
+};
+
+/// Descriptor for `GetUserProfileRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getUserProfileRequestDescriptor =
+    $convert.base64Decode(
+        'ChVHZXRVc2VyUHJvZmlsZVJlcXVlc3QSFwoHdXNlcl9pZBgBIAEoCVIGdXNlcklk');
+
+@$core.Deprecated('Use getUserProfileResponseDescriptor instead')
+const GetUserProfileResponse$json = {
+  '1': 'GetUserProfileResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.UserProfile',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `GetUserProfileResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getUserProfileResponseDescriptor = $convert.base64Decode(
+    'ChZHZXRVc2VyUHJvZmlsZVJlc3BvbnNlEjUKB3N1Y2Nlc3MYASABKAsyGS5ndWFyZHluLmF1dG'
+    'guVXNlclByb2ZpbGVIAFIHc3VjY2VzcxI1CgVlcnJvchgCIAEoCzIdLmd1YXJkeW4uY29tbW9u'
+    'LkVycm9yUmVzcG9uc2VIAFIFZXJyb3JCCAoGcmVzdWx0');
+
 @$core.Deprecated('Use healthRequestDescriptor instead')
 const HealthRequest$json = {
   '1': 'HealthRequest',

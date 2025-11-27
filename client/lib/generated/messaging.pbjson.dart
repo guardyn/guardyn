@@ -88,6 +88,13 @@ const SendMessageRequest$json = {
       '10': 'clientTimestamp'
     },
     {'1': 'media_id', '3': 8, '4': 1, '5': 9, '10': 'mediaId'},
+    {
+      '1': 'recipient_username',
+      '3': 9,
+      '4': 1,
+      '5': 9,
+      '10': 'recipientUsername'
+    },
   ],
 };
 
@@ -100,7 +107,8 @@ final $typed_data.Uint8List sendMessageRequestDescriptor = $convert.base64Decode
     'eW4ubWVzc2FnaW5nLk1lc3NhZ2VUeXBlUgttZXNzYWdlVHlwZRIqChFjbGllbnRfbWVzc2FnZV'
     '9pZBgGIAEoCVIPY2xpZW50TWVzc2FnZUlkEkQKEGNsaWVudF90aW1lc3RhbXAYByABKAsyGS5n'
     'dWFyZHluLmNvbW1vbi5UaW1lc3RhbXBSD2NsaWVudFRpbWVzdGFtcBIZCghtZWRpYV9pZBgIIA'
-    'EoCVIHbWVkaWFJZA==');
+    'EoCVIHbWVkaWFJZBItChJyZWNpcGllbnRfdXNlcm5hbWUYCSABKAlSEXJlY2lwaWVudFVzZXJu'
+    'YW1l');
 
 @$core.Deprecated('Use sendMessageResponseDescriptor instead')
 const SendMessageResponse$json = {

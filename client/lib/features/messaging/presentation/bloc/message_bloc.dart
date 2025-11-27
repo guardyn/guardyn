@@ -70,6 +70,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     final result = await sendMessage(SendMessageParams(
       recipientUserId: event.recipientUserId,
       recipientDeviceId: event.recipientDeviceId,
+      recipientUsername: event.recipientUsername,
       textContent: event.textContent,
       metadata: event.metadata,
     ));

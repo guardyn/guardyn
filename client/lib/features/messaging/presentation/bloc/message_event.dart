@@ -27,18 +27,20 @@ class MessageLoadHistory extends MessageEvent {
 class MessageSend extends MessageEvent {
   final String recipientUserId;
   final String recipientDeviceId;
+  final String recipientUsername;
   final String textContent;
   final Map<String, String>? metadata;
 
   const MessageSend({
     required this.recipientUserId,
     required this.recipientDeviceId,
+    required this.recipientUsername,
     required this.textContent,
     this.metadata,
   });
 
   @override
-  List<Object?> get props => [recipientUserId, recipientDeviceId, textContent, metadata];
+  List<Object?> get props => [recipientUserId, recipientDeviceId, recipientUsername, textContent, metadata];
 }
 
 class MessageReceived extends MessageEvent {

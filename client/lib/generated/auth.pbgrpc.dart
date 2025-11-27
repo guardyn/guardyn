@@ -113,6 +113,14 @@ class AuthServiceClient extends $grpc.Client {
     return $createUnaryCall(_$searchUsers, request, options: options);
   }
 
+  /// Get user profile by user ID (internal service-to-service)
+  $grpc.ResponseFuture<$0.GetUserProfileResponse> getUserProfile(
+    $0.GetUserProfileRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getUserProfile, request, options: options);
+  }
+
   /// Health check
   $grpc.ResponseFuture<$1.HealthStatus> health(
     $0.HealthRequest request, {
@@ -172,6 +180,11 @@ class AuthServiceClient extends $grpc.Client {
           '/guardyn.auth.AuthService/SearchUsers',
           ($0.SearchUsersRequest value) => value.writeToBuffer(),
           $0.SearchUsersResponse.fromBuffer);
+  static final _$getUserProfile =
+      $grpc.ClientMethod<$0.GetUserProfileRequest, $0.GetUserProfileResponse>(
+          '/guardyn.auth.AuthService/GetUserProfile',
+          ($0.GetUserProfileRequest value) => value.writeToBuffer(),
+          $0.GetUserProfileResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.auth.AuthService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -267,6 +280,15 @@ abstract class AuthServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.SearchUsersRequest.fromBuffer(value),
             ($0.SearchUsersResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetUserProfileRequest,
+            $0.GetUserProfileResponse>(
+        'GetUserProfile',
+        getUserProfile_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetUserProfileRequest.fromBuffer(value),
+        ($0.GetUserProfileResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -361,6 +383,15 @@ abstract class AuthServiceBase extends $grpc.Service {
 
   $async.Future<$0.SearchUsersResponse> searchUsers(
       $grpc.ServiceCall call, $0.SearchUsersRequest request);
+
+  $async.Future<$0.GetUserProfileResponse> getUserProfile_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetUserProfileRequest> $request) async {
+    return getUserProfile($call, await $request);
+  }
+
+  $async.Future<$0.GetUserProfileResponse> getUserProfile(
+      $grpc.ServiceCall call, $0.GetUserProfileRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {
