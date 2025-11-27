@@ -84,3 +84,25 @@ class MessageSetActiveConversation extends MessageEvent {
   @override
   List<Object?> get props => [userId];
 }
+
+/// Event to start periodic polling for new messages
+/// This is used as a fallback when gRPC streaming fails
+class MessageStartPolling extends MessageEvent {
+  final String conversationUserId;
+  final String? conversationId;
+  final Duration interval;
+
+  const MessageStartPolling({
+    required this.conversationUserId,
+    this.conversationId,
+    this.interval = const Duration(seconds: 2),
+  });
+
+  @override
+  List<Object?> get props => [conversationUserId, conversationId, interval];
+}
+
+/// Event to stop polling for new messages
+class MessageStopPolling extends MessageEvent {
+  const MessageStopPolling();
+}
