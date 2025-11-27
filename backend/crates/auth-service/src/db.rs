@@ -130,12 +130,23 @@ impl DatabaseClient {
     }
 
     /// Search users by username prefix
-    pub async fn search_users_by_username(&self, query: &str, limit: u32) -> Result<Vec<UserProfile>> {
+    /// If exclude_user_id is provided, the user with that ID will be excluded from results
+    pub async fn search_users_by_username(&self, query: &str, limit: u32, exclude_user_id: Option<&str>) -> Result<Vec<UserProfile>> {
         let query_lower = query.to_lowercase();
-        let prefix = format!("/users/username/").into_bytes();
         
-        // Scan the username index
-        let keys = self.client.scan(prefix.clone()..prefix.clone(), limit).await?;
+        // Create key range for scanning
+        // Start: /users/username/ (include all usernames)
+        // End: /users/username0 (0 is next char after /, ensuring we get all usernames)
+        let start_key = format!("/users/username/").into_bytes();
+        let mut end_key = start_key.clone();
+        // Increment the last byte to get exclusive upper bound for the prefix
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1; // '/' + 1 = '0', so we scan /users/username/* up to /users/username0
+        }
+        
+        // Scan the username index - request extra to account for potential exclusion
+        let scan_limit = if exclude_user_id.is_some() { limit + 1 } else { limit };
+        let keys = self.client.scan(start_key..end_key, scan_limit).await?;
         
         let mut results = Vec::new();
         
@@ -148,6 +159,13 @@ impl DatabaseClient {
                 if username.to_lowercase().starts_with(&query_lower) {
                     // Get user_id from value
                     let user_id = String::from_utf8(kv.1)?;
+                    
+                    // Skip if this is the user to exclude
+                    if let Some(exclude_id) = exclude_user_id {
+                        if user_id == exclude_id {
+                            continue;
+                        }
+                    }
                     
                     // Get user profile
                     if let Some(profile) = self.get_user_by_id(&user_id).await? {

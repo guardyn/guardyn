@@ -128,6 +128,7 @@ impl AuthService for AuthServiceImpl {
         let response = handlers::search_users::handle_search_users(
             request.into_inner(),
             self.db.clone(),
+            &self.jwt_secret,
         )
         .await;
         Ok(Response::new(response))
