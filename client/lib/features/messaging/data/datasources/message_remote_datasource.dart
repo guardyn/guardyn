@@ -79,7 +79,8 @@ class MessageRemoteDatasource {
       limit: limit,
     );
 
-    if (conversationId != null) {
+    // Always set conversation_id if provided - backend requires it
+    if (conversationId != null && conversationId.isNotEmpty) {
       request.conversationId = conversationId;
     }
 
