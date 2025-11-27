@@ -19,8 +19,8 @@ pub async fn send_message(
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
-    let (sender_user_id, sender_device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok((user_id, device_id)) => (user_id, device_id),
+    let (sender_user_id, sender_device_id, sender_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+        Ok((user_id, device_id, username)) => (user_id, device_id, username),
         Err(_) => {
             return Ok(Response::new(SendMessageResponse {
                 result: Some(send_message_response::Result::Error(ErrorResponse {
@@ -140,7 +140,7 @@ pub async fn send_message(
         &sender_user_id,
         &conversation_id,
         &request.recipient_user_id,
-        &request.recipient_user_id, // TODO: Get actual username from auth service
+        &request.recipient_username, // Use recipient username from request
         &message_id,
         &message_preview,
         server_timestamp_ms,
@@ -154,7 +154,7 @@ pub async fn send_message(
         &request.recipient_user_id,
         &conversation_id,
         &sender_user_id,
-        &sender_user_id, // TODO: Get actual username from auth service
+        &sender_username, // Use sender username from JWT
         &message_id,
         &message_preview,
         server_timestamp_ms,

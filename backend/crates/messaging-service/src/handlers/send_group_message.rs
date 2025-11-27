@@ -18,7 +18,7 @@ pub async fn send_group_message(
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
-    let (sender_user_id, sender_device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+    let (sender_user_id, sender_device_id, _sender_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
         Ok(ids) => ids,
         Err(_) => {
             return Ok(Response::new(SendGroupMessageResponse {

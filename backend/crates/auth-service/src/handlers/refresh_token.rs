@@ -64,7 +64,7 @@ pub async fn handle(
     }
     
     // Generate new access token
-    let access_token = match jwt::generate_access_token(&claims.sub, &claims.device_id, &service.jwt_secret) {
+    let access_token = match jwt::generate_access_token(&claims.sub, &claims.device_id, &claims.username, &service.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
@@ -80,7 +80,7 @@ pub async fn handle(
     };
     
     // Generate new refresh token as well (rotation)
-    let new_refresh_token = match jwt::generate_refresh_token(&claims.sub, &claims.device_id, &service.jwt_secret) {
+    let new_refresh_token = match jwt::generate_refresh_token(&claims.sub, &claims.device_id, &claims.username, &service.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate new refresh token: {}", e);

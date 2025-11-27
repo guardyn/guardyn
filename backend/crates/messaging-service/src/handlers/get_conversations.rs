@@ -12,8 +12,8 @@ pub async fn get_conversations(
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
-    let (user_id, _device_id) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok((user_id, device_id)) => (user_id, device_id),
+    let (user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+        Ok((user_id, device_id, username)) => (user_id, device_id, username),
         Err(_) => {
             return Ok(Response::new(GetConversationsResponse {
                 result: Some(get_conversations_response::Result::Error(ErrorResponse {

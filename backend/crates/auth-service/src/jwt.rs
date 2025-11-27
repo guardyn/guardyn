@@ -22,6 +22,7 @@ pub enum TokenType {
 pub struct Claims {
     pub sub: String,       // user_id
     pub device_id: String, // device_id
+    pub username: String,  // username for display purposes
     pub exp: i64,          // expiration time
     pub iat: i64,          // issued at
     pub permissions: Vec<String>, // user permissions
@@ -33,6 +34,7 @@ pub struct Claims {
 pub fn generate_access_token(
     user_id: &str,
     device_id: &str,
+    username: &str,
     secret: &str,
 ) -> Result<String> {
     let now = std::time::SystemTime::now()
@@ -42,6 +44,7 @@ pub fn generate_access_token(
     let claims = Claims {
         sub: user_id.to_string(),
         device_id: device_id.to_string(),
+        username: username.to_string(),
         exp: now + 15 * 60, // 15 minutes
         iat: now,
         permissions: vec!["read".to_string(), "write".to_string()],
@@ -62,6 +65,7 @@ pub fn generate_access_token(
 pub fn generate_refresh_token(
     user_id: &str,
     device_id: &str,
+    username: &str,
     secret: &str,
 ) -> Result<String> {
     let now = std::time::SystemTime::now()
@@ -71,6 +75,7 @@ pub fn generate_refresh_token(
     let claims = Claims {
         sub: user_id.to_string(),
         device_id: device_id.to_string(),
+        username: username.to_string(),
         exp: now + 30 * 24 * 60 * 60, // 30 days
         iat: now,
         permissions: vec![],
@@ -133,29 +138,31 @@ mod tests {
 
     #[test]
     fn test_generate_access_token() {
-        let token = generate_access_token("user123", "device456", TEST_SECRET).unwrap();
+        let token = generate_access_token("user123", "device456", "testuser", TEST_SECRET).unwrap();
         assert!(!token.is_empty());
         
         let claims = validate_token(&token, TEST_SECRET).unwrap();
         assert_eq!(claims.sub, "user123");
         assert_eq!(claims.device_id, "device456");
+        assert_eq!(claims.username, "testuser");
         assert_eq!(get_token_type(&claims), TokenType::Access);
     }
 
     #[test]
     fn test_generate_refresh_token() {
-        let token = generate_refresh_token("user123", "device456", TEST_SECRET).unwrap();
+        let token = generate_refresh_token("user123", "device456", "testuser", TEST_SECRET).unwrap();
         assert!(!token.is_empty());
         
         let claims = validate_token(&token, TEST_SECRET).unwrap();
         assert_eq!(claims.sub, "user123");
         assert_eq!(claims.device_id, "device456");
+        assert_eq!(claims.username, "testuser");
         assert_eq!(get_token_type(&claims), TokenType::Refresh);
     }
 
     #[test]
     fn test_invalid_secret() {
-        let token = generate_access_token("user123", "device456", TEST_SECRET).unwrap();
+        let token = generate_access_token("user123", "device456", "testuser", TEST_SECRET).unwrap();
         let result = validate_token(&token, "wrong-secret");
         assert!(result.is_err());
     }
@@ -164,7 +171,7 @@ mod tests {
     fn test_token_expiry() {
         // This test would need to mock time or use a very short expiry
         // For now, we just verify the expiry time is set correctly
-        let token = generate_access_token("user123", "device456", TEST_SECRET).unwrap();
+        let token = generate_access_token("user123", "device456", "testuser", TEST_SECRET).unwrap();
         let claims = validate_token(&token, TEST_SECRET).unwrap();
         
         let now = std::time::SystemTime::now()
