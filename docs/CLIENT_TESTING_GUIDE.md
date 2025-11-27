@@ -59,6 +59,33 @@ messaging-service-xxx                 3/3     Running   0          10m
 
 ### Port-Forwarding Setup
 
+#### Recommended: Port-Forward Watchdog (Auto-Restart)
+
+Use the watchdog script for reliable port-forwarding that automatically restarts on failure:
+
+```bash
+# Start watchdog (keeps running in foreground, Ctrl+C to stop)
+just port-forward
+
+# Or run as daemon in background
+nohup bash infra/scripts/port-forward-watchdog.sh --daemon > /dev/null 2>&1 &
+
+# Check status
+just port-forward-status
+
+# Stop all port-forwards
+just port-forward-stop
+```
+
+**Watchdog features:**
+- ✅ Auto-restarts port-forwards when they die
+- ✅ Health checks every 5 seconds
+- ✅ Exponential backoff on failures
+- ✅ Logs to `/tmp/guardyn-pf/`
+- ✅ Includes ChromeDriver for Chrome testing
+
+#### Alternative: Manual Port-Forwarding
+
 **You need THREE terminal windows (or background processes):**
 
 #### Terminal 1: Auth Service (All platforms)
@@ -95,7 +122,7 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052 > /tmp/msg-pf.log
 kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 > /tmp/envoy-pf.log 2>&1 &
 ```
 
-**⚠️ CRITICAL**: Port-forwarding MUST be restarted after backend pod restarts or Kubernetes cluster restarts!
+**⚠️ CRITICAL**: Manual port-forwarding MUST be restarted after backend pod restarts or Kubernetes cluster restarts! Use the watchdog script to avoid this issue.
 
 **Note**: Native platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052. Web browsers connect via Envoy on port 18080.
 
