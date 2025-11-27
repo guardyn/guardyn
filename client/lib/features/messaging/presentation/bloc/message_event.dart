@@ -73,3 +73,14 @@ class MessageDelete extends MessageEvent {
 class MessageSubscribeToStream extends MessageEvent {
   const MessageSubscribeToStream();
 }
+
+/// Event to set the currently active conversation
+/// Used to suppress notifications for messages in the currently open chat
+class MessageSetActiveConversation extends MessageEvent {
+  final String? userId;
+
+  const MessageSetActiveConversation(this.userId);
+
+  @override
+  List<Object?> get props => [userId];
+}

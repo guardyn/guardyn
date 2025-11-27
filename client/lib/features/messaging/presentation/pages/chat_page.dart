@@ -34,6 +34,8 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _loadMessagesWithConversationId();
+    // Set active conversation (to suppress notifications for current chat)
+    context.read<MessageBloc>().add(MessageSetActiveConversation(widget.conversationUserId));
     // Subscribe to real-time messages
     context.read<MessageBloc>().add(const MessageSubscribeToStream());
   }
@@ -68,6 +70,8 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    // Clear active conversation when leaving chat
+    context.read<MessageBloc>().add(const MessageSetActiveConversation(null));
     _scrollController.dispose();
     super.dispose();
   }

@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
+import 'package:guardyn_client/core/services/notification_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
@@ -18,6 +19,11 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   // Register core services
   getIt.registerLazySingleton<SecureStorage>(() => SecureStorage());
+
+  // Register notification service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  getIt.registerSingleton<NotificationService>(notificationService);
 
   // Register gRPC clients
   final grpcClients = GrpcClients();

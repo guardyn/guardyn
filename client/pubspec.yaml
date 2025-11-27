@@ -45,6 +45,12 @@ dependencies:
   # SVG Support
   flutter_svg: ^2.0.9
 
+  # Notifications
+  flutter_local_notifications: ^19.0.0
+
+  # Audio (for notification sounds)
+  audioplayers: ^6.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -68,6 +74,7 @@ flutter:
 
   assets:
     - assets/images/logo.svg
+    - assets/sounds/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
