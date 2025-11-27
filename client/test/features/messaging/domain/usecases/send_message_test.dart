@@ -20,7 +20,6 @@ void main() {
 
   final tRecipientUserId = 'user-123';
   final tRecipientDeviceId = 'device-456';
-  final tRecipientUsername = 'testuser';
   final tTextContent = 'Hello, World!';
 
   final tMessage = Message(
@@ -42,7 +41,6 @@ void main() {
     when(() => mockRepository.sendMessage(
           recipientUserId: any(named: 'recipientUserId'),
           recipientDeviceId: any(named: 'recipientDeviceId'),
-          recipientUsername: any(named: 'recipientUsername'),
           textContent: any(named: 'textContent'),
           metadata: any(named: 'metadata'),
         )).thenAnswer((_) async => Right(tMessage));
@@ -51,7 +49,6 @@ void main() {
     final result = await usecase(SendMessageParams(
       recipientUserId: tRecipientUserId,
       recipientDeviceId: tRecipientDeviceId,
-      recipientUsername: tRecipientUsername,
       textContent: tTextContent,
     ));
 
@@ -60,7 +57,6 @@ void main() {
     verify(() => mockRepository.sendMessage(
           recipientUserId: tRecipientUserId,
           recipientDeviceId: tRecipientDeviceId,
-          recipientUsername: tRecipientUsername,
           textContent: tTextContent,
           metadata: null,
         )).called(1);
@@ -73,7 +69,6 @@ void main() {
     when(() => mockRepository.sendMessage(
           recipientUserId: any(named: 'recipientUserId'),
           recipientDeviceId: any(named: 'recipientDeviceId'),
-          recipientUsername: any(named: 'recipientUsername'),
           textContent: any(named: 'textContent'),
           metadata: any(named: 'metadata'),
         )).thenAnswer((_) async => const Left(tFailure));
@@ -82,7 +77,6 @@ void main() {
     final result = await usecase(SendMessageParams(
       recipientUserId: tRecipientUserId,
       recipientDeviceId: tRecipientDeviceId,
-      recipientUsername: tRecipientUsername,
       textContent: tTextContent,
     ));
 
@@ -91,7 +85,6 @@ void main() {
     verify(() => mockRepository.sendMessage(
           recipientUserId: tRecipientUserId,
           recipientDeviceId: tRecipientDeviceId,
-          recipientUsername: tRecipientUsername,
           textContent: tTextContent,
           metadata: null,
         )).called(1);

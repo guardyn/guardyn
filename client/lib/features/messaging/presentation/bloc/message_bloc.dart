@@ -199,38 +199,25 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       final updatedMessages = [event.message, ...currentMessages];
       emit(MessageLoaded(messages: updatedMessages));
       
-      // Show notification if message is not from the active conversation
-      // (i.e., the chat that is currently open)
-      final isFromActiveConversation = 
-          _activeConversationUserId != null && 
-          event.message.senderUserId == _activeConversationUserId;
-      
-      // Only notify for messages received from others, not sent by current user
-      final isReceivedMessage = !event.message.isSentByMe;
-      
-      if (isReceivedMessage && !isFromActiveConversation) {
-        _showNotification(event.message);
+      // Show notification if message is from another user and not in active conversation
+      final message = event.message;
+      if (!message.isSentByMe && message.senderUserId != _activeConversationUserId) {
+        _showMessageNotification(message);
       }
     }
   }
   
   /// Show notification for incoming message
-  void _showNotification(Message message) {
+  void _showMessageNotification(Message message) {
     try {
       final notificationService = getIt<NotificationService>();
-      
-      // Construct notification title and body
-      final senderName = message.senderUserId; // TODO: Get username from user cache
-      final messagePreview = message.textContent.length > 50
-          ? '${message.textContent.substring(0, 50)}...'
-          : message.textContent;
-      
       notificationService.showMessageNotification(
-        title: 'New message from $senderName',
-        body: messagePreview,
-        payload: message.conversationId,
+        senderName: message.senderUserId, // TODO: Get actual username
+        messagePreview: message.textContent.isNotEmpty ? message.textContent : 'New message',
+        conversationId: message.conversationId,
       );
     } catch (e) {
+      // Silently fail if notification service is not available
       // ignore: avoid_print
       print('Failed to show notification: $e');
     }
