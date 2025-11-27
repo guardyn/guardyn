@@ -99,7 +99,7 @@ pub async fn handle(
     }
     
     // Generate JWT tokens
-    let access_token = match jwt::generate_access_token(&user.user_id, &device_id, &service.jwt_secret) {
+    let access_token = match jwt::generate_access_token(&user.user_id, &device_id, &user.username, &service.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
@@ -114,7 +114,7 @@ pub async fn handle(
         }
     };
     
-    let refresh_token = match jwt::generate_refresh_token(&user.user_id, &device_id, &service.jwt_secret) {
+    let refresh_token = match jwt::generate_refresh_token(&user.user_id, &device_id, &user.username, &service.jwt_secret) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate refresh token: {}", e);

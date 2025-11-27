@@ -32,7 +32,7 @@ pub async fn receive_messages(
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
-    let (user_id, device_id) = crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
+    let (user_id, device_id, _username) = crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
 
     tracing::info!("User {} ({}) connected to message stream", user_id, device_id);
 

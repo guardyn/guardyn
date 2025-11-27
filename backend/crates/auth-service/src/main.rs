@@ -38,6 +38,7 @@ use proto::auth::{
     UploadMlsKeyPackageRequest, UploadMlsKeyPackageResponse,
     GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
     SearchUsersRequest, SearchUsersResponse,
+    GetUserProfileRequest, GetUserProfileResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -129,6 +130,18 @@ impl AuthService for AuthServiceImpl {
             request.into_inner(),
             self.db.clone(),
             &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn get_user_profile(
+        &self,
+        request: Request<GetUserProfileRequest>,
+    ) -> Result<Response<GetUserProfileResponse>, Status> {
+        let response = handlers::get_user_profile::handle_get_user_profile(
+            request.into_inner(),
+            self.db.clone(),
         )
         .await;
         Ok(Response::new(response))

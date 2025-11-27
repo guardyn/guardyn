@@ -11,6 +11,8 @@ use tonic::Status;
 pub struct Claims {
     pub sub: String,       // user_id
     pub device_id: String, // device_id
+    #[serde(default)]
+    pub username: String,  // username for display purposes
     pub exp: i64,          // expiration time
     pub iat: i64,          // issued at
     pub permissions: Vec<String>, // user permissions
@@ -49,10 +51,10 @@ pub fn validate_token(token: &str, secret: &str) -> Result<Claims> {
     Ok(token_data.claims)
 }
 
-/// Validate token and extract user_id + device_id
+/// Validate token and extract user_id + device_id + username
 ///
-/// Returns (user_id, device_id) or gRPC Status error
-pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String), Status> {
+/// Returns (user_id, device_id, username) or gRPC Status error
+pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String, String), Status> {
     match validate_token(token, secret) {
         Ok(claims) => {
             // Verify it's an access token
@@ -60,7 +62,7 @@ pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String
                 return Err(Status::unauthenticated("Invalid token type"));
             }
             
-            Ok((claims.sub, claims.device_id))
+            Ok((claims.sub, claims.device_id, claims.username))
         }
         Err(e) => {
             tracing::warn!("Token validation failed: {}", e);
@@ -71,7 +73,7 @@ pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String
 
 /// Extract user_id from token (simplified version)
 pub fn extract_user_id(token: &str, secret: &str) -> Result<String, Status> {
-    let (user_id, _) = validate_and_extract(token, secret)?;
+    let (user_id, _, _) = validate_and_extract(token, secret)?;
     Ok(user_id)
 }
 
