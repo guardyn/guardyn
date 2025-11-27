@@ -11,6 +11,7 @@ abstract class MessageRepository {
   Future<Either<Failure, Message>> sendMessage({
     required String recipientUserId,
     required String recipientDeviceId,
+    required String recipientUsername,
     required String textContent,
     Map<String, String>? metadata,
   });

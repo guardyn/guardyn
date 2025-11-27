@@ -15,6 +15,7 @@ class SendMessage {
     return await repository.sendMessage(
       recipientUserId: params.recipientUserId,
       recipientDeviceId: params.recipientDeviceId,
+      recipientUsername: params.recipientUsername,
       textContent: params.textContent,
       metadata: params.metadata,
     );
@@ -24,12 +25,14 @@ class SendMessage {
 class SendMessageParams {
   final String recipientUserId;
   final String recipientDeviceId;
+  final String recipientUsername;
   final String textContent;
   final Map<String, String>? metadata;
 
   SendMessageParams({
     required this.recipientUserId,
     required this.recipientDeviceId,
+    required this.recipientUsername,
     required this.textContent,
     this.metadata,
   });

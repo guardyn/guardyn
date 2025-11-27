@@ -68,6 +68,9 @@ message SendMessageRequest {
 
   // Optional: media attachment reference
   string media_id = 8; // Reference to media uploaded via Media Service
+
+  // Recipient username for display (used in conversation list)
+  string recipient_username = 9;
 }
 
 enum MessageType {

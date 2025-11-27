@@ -2835,6 +2835,151 @@ class UserSearchResult extends $pb.GeneratedMessage {
   $1.Timestamp ensureCreatedAt() => $_ensure(2);
 }
 
+class GetUserProfileRequest extends $pb.GeneratedMessage {
+  factory GetUserProfileRequest({
+    $core.String? userId,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    return result;
+  }
+
+  GetUserProfileRequest._();
+
+  factory GetUserProfileRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetUserProfileRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetUserProfileRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUserProfileRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUserProfileRequest copyWith(
+          void Function(GetUserProfileRequest) updates) =>
+      super.copyWith((message) => updates(message as GetUserProfileRequest))
+          as GetUserProfileRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetUserProfileRequest create() => GetUserProfileRequest._();
+  @$core.override
+  GetUserProfileRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetUserProfileRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetUserProfileRequest>(create);
+  static GetUserProfileRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+}
+
+enum GetUserProfileResponse_Result { success, error, notSet }
+
+class GetUserProfileResponse extends $pb.GeneratedMessage {
+  factory GetUserProfileResponse({
+    UserProfile? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetUserProfileResponse._();
+
+  factory GetUserProfileResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetUserProfileResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, GetUserProfileResponse_Result>
+      _GetUserProfileResponse_ResultByTag = {
+    1: GetUserProfileResponse_Result.success,
+    2: GetUserProfileResponse_Result.error,
+    0: GetUserProfileResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetUserProfileResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<UserProfile>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: UserProfile.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUserProfileResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetUserProfileResponse copyWith(
+          void Function(GetUserProfileResponse) updates) =>
+      super.copyWith((message) => updates(message as GetUserProfileResponse))
+          as GetUserProfileResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetUserProfileResponse create() => GetUserProfileResponse._();
+  @$core.override
+  GetUserProfileResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetUserProfileResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetUserProfileResponse>(create);
+  static GetUserProfileResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  GetUserProfileResponse_Result whichResult() =>
+      _GetUserProfileResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  UserProfile get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(UserProfile value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  UserProfile ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
 class HealthRequest extends $pb.GeneratedMessage {
   factory HealthRequest() => create();
 

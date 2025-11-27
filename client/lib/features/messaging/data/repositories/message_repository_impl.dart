@@ -20,6 +20,7 @@ class MessageRepositoryImpl implements MessageRepository {
   Future<Either<Failure, Message>> sendMessage({
     required String recipientUserId,
     required String recipientDeviceId,
+    required String recipientUsername,
     required String textContent,
     Map<String, String>? metadata,
   }) async {
@@ -43,6 +44,7 @@ class MessageRepositoryImpl implements MessageRepository {
         accessToken: accessToken,
         recipientUserId: recipientUserId,
         recipientDeviceId: recipientDeviceId,
+        recipientUsername: recipientUsername,
         textContent: textContent,
         metadata: metadata,
       );

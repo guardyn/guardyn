@@ -52,7 +52,7 @@ pub async fn handle_get_user_profile(
                         nanos: 0,
                     }),
                     last_seen: Some(Timestamp {
-                        seconds: user.last_seen.unwrap_or(user.created_at),
+                        seconds: user.last_seen,
                         nanos: 0,
                     }),
                 })),
