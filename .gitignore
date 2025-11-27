@@ -23,4 +23,5 @@ codeql-database/
 .playwright-mcp
 .vscode/
 landing/media/video/
-
+client/assets/sounds/call/
+client/assets/sounds/notify/
