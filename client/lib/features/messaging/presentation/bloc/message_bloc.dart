@@ -21,6 +21,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final MarkAsRead markAsRead;
 
   StreamSubscription<dynamic>? _messageStreamSubscription;
+  Timer? _pollingTimer;
+  String? _pollingConversationUserId;
+  String? _pollingConversationId;
   
   /// Currently open conversation user ID (to suppress notifications for active chat)
   String? _activeConversationUserId;
@@ -38,6 +41,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<MessageDelete>(_onDeleteMessage);
     on<MessageSubscribeToStream>(_onSubscribeToStream);
     on<MessageSetActiveConversation>(_onSetActiveConversation);
+    on<MessageStartPolling>(_onStartPolling);
+    on<MessageStopPolling>(_onStopPolling);
   }
   
   /// Set the active conversation (to suppress notifications for current chat)
@@ -46,6 +51,82 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) {
     _activeConversationUserId = event.userId;
+  }
+  
+  /// Start polling for new messages (fallback for gRPC streaming)
+  void _onStartPolling(
+    MessageStartPolling event,
+    Emitter<MessageState> emit,
+  ) {
+    // Cancel existing polling timer
+    _pollingTimer?.cancel();
+    
+    _pollingConversationUserId = event.conversationUserId;
+    _pollingConversationId = event.conversationId;
+    
+    // ignore: avoid_print
+    print('📡 Starting message polling for conversation: ${event.conversationUserId}');
+    
+    // Start periodic polling
+    _pollingTimer = Timer.periodic(event.interval, (_) {
+      _pollForNewMessages();
+    });
+    
+    // Also poll immediately
+    _pollForNewMessages();
+  }
+  
+  /// Stop polling for new messages
+  void _onStopPolling(
+    MessageStopPolling event,
+    Emitter<MessageState> emit,
+  ) {
+    // ignore: avoid_print
+    print('📡 Stopping message polling');
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+    _pollingConversationUserId = null;
+    _pollingConversationId = null;
+  }
+  
+  /// Poll for new messages
+  Future<void> _pollForNewMessages() async {
+    if (_pollingConversationUserId == null) return;
+    
+    final result = await getMessages(GetMessagesParams(
+      conversationUserId: _pollingConversationUserId!,
+      conversationId: _pollingConversationId,
+      limit: 20,
+    ));
+    
+    result.fold(
+      (failure) {
+        // ignore: avoid_print
+        print('📡 Polling error: ${failure.message}');
+      },
+      (messages) {
+        if (messages.isEmpty) return;
+        
+        // Get current messages
+        final currentMessages = state is MessageLoaded
+            ? (state as MessageLoaded).messages
+            : <Message>[];
+        
+        // Find new messages (not already in current list)
+        final currentIds = currentMessages.map((m) => m.messageId).toSet();
+        final newMessages = messages.where((m) => !currentIds.contains(m.messageId)).toList();
+        
+        if (newMessages.isNotEmpty) {
+          // ignore: avoid_print
+          print('📡 Found ${newMessages.length} new messages via polling');
+          
+          // Add each new message via MessageReceived event
+          for (final message in newMessages) {
+            add(MessageReceived(message));
+          }
+        }
+      },
+    );
   }
 
   Future<void> _onLoadHistory(
@@ -255,6 +336,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
   @override
   Future<void> close() {
+    _pollingTimer?.cancel();
     _messageStreamSubscription?.cancel();
     return super.close();
   }

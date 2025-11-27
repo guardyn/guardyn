@@ -36,8 +36,10 @@ class _ChatPageState extends State<ChatPage> {
     _loadMessagesWithConversationId();
     // Set active conversation (to suppress notifications for current chat)
     context.read<MessageBloc>().add(MessageSetActiveConversation(widget.conversationUserId));
-    // Subscribe to real-time messages
+    // Subscribe to real-time messages (streaming - may not work reliably via gRPC-Web)
     context.read<MessageBloc>().add(const MessageSubscribeToStream());
+    // Start polling as fallback for reliable message delivery
+    context.read<MessageBloc>().add(MessageStartPolling(conversationUserId: widget.conversationUserId));
   }
 
   Future<void> _loadMessagesWithConversationId() async {
@@ -70,6 +72,8 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    // Stop polling when leaving chat
+    context.read<MessageBloc>().add(const MessageStopPolling());
     // Clear active conversation when leaving chat
     context.read<MessageBloc>().add(const MessageSetActiveConversation(null));
     _scrollController.dispose();
