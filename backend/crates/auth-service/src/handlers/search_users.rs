@@ -1,6 +1,7 @@
 /// Search users by username handler
 use crate::{
     db::DatabaseClient, 
+    jwt,
     proto::auth::*, 
     proto::common::{error_response::ErrorCode, *}
 };
@@ -12,7 +13,23 @@ const MAX_SEARCH_LIMIT: u32 = 100;
 pub async fn handle_search_users(
     request: SearchUsersRequest,
     db: DatabaseClient,
+    jwt_secret: &str,
 ) -> SearchUsersResponse {
+    // Validate access token and extract current user_id
+    let current_user_id = match jwt::validate_token(&request.access_token, jwt_secret) {
+        Ok(claims) => claims.sub,
+        Err(e) => {
+            warn!("Invalid access token for search: {}", e);
+            return SearchUsersResponse {
+                result: Some(search_users_response::Result::Error(ErrorResponse {
+                    code: ErrorCode::Unauthorized as i32,
+                    message: "Invalid or expired access token".to_string(),
+                    details: std::collections::HashMap::new(),
+                })),
+            };
+        }
+    };
+
     let query = request.query.trim();
 
     // Validate query
@@ -45,12 +62,12 @@ pub async fn handle_search_users(
         request.limit.min(MAX_SEARCH_LIMIT)
     };
 
-    info!("Searching users with query: '{}', limit: {}", query, limit);
+    info!("User {} searching users with query: '{}', limit: {}", current_user_id, query, limit);
 
-    // Search for users by username prefix
-    match db.search_users_by_username(query, limit).await {
+    // Search for users by username prefix, excluding the current user
+    match db.search_users_by_username(query, limit, Some(&current_user_id)).await {
         Ok(users) => {
-            info!("Found {} users matching query '{}'", users.len(), query);
+            info!("Found {} users matching query '{}' (excluding current user)", users.len(), query);
 
             let results = users
                 .into_iter()
