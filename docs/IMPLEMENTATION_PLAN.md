@@ -148,6 +148,78 @@ All core MVP features are deployed, tested, and production-ready. Currently addi
 10. ⏳ Media Service (upload/download, encryption, thumbnails)
 11. ⏳ Post-Quantum Cryptography (Kyber integration)
 
+### 🔄 **Real-Time Messaging: Polling → WebSocket Migration Roadmap**
+
+> **IMPORTANT**: This section documents the technical debt and migration path for real-time messaging.
+
+#### Current State (MVP)
+
+The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workaround for gRPC-Web streaming limitations:
+
+- **Problem**: gRPC streaming via Envoy/gRPC-Web disconnects immediately ("Client disconnected during streaming")
+- **Root Cause**: Envoy's gRPC-Web filter has known issues with long-lived streaming connections
+- **Workaround**: Polling fallback in `MessageBloc` with `Timer.periodic` (2 sec interval)
+- **Impact**: Higher latency (~2 sec), increased server load, not suitable for production scale
+
+#### Migration Timeline
+
+| Phase | Status | Description | User Scale |
+|-------|--------|-------------|------------|
+| MVP/PoC | ✅ Current | Polling works, sufficient for demo | <10 users |
+| Alpha | 🔄 Acceptable | Can keep polling if <100 users | <100 users |
+| Beta | ⚠️ Need to replace | WebSocket required for scale | 100-1000 users |
+| Production | ❌ Mandatory | WebSocket/SSE for all Web clients | 1000+ users |
+
+#### Priority Order (Post-MVP)
+
+1. ✅ **E2EE (X3DH/Double Ratchet)** — COMPLETE
+2. ⏳ **Voice/Video Calls (WebRTC)** — Requires WebSocket for signaling
+3. ⏳ **WebSocket for Messaging** — Combine with #2 (same infrastructure)
+4. ⏳ **Push Notifications (FCM/APNs)** — Reduces polling dependency
+5. ⏳ **Groups/MLS** — Basic support exists, needs full integration
+
+#### Technical Implementation Plan
+
+**WebSocket combines naturally with WebRTC signaling:**
+
+1. **Single WebSocket connection** handles:
+   - Real-time message delivery (replace polling)
+   - WebRTC call signaling (SDP exchange, ICE candidates)
+   - Presence updates (online/offline status)
+   - Typing indicators
+
+2. **Architecture**:
+
+   ```text
+   Flutter Client ←→ WebSocket Gateway (Rust/Axum) ←→ NATS JetStream ←→ Backend Services
+   ```
+
+3. **Implementation Steps**:
+   - [ ] Add `axum-tungstenite` WebSocket support to messaging-service
+   - [ ] Create WebSocket gateway service (or extend messaging-service)
+   - [ ] Implement connection management (heartbeat, reconnection)
+   - [ ] Add WebSocket client to Flutter (`web_socket_channel` package)
+   - [ ] Maintain polling as fallback for unreliable networks
+   - [ ] Migrate presence and typing indicators to WebSocket
+
+4. **Files to Modify**:
+   - `backend/crates/messaging-service/` — Add WebSocket handler
+   - `client/lib/features/messaging/data/datasources/` — WebSocket client
+   - `client/lib/features/messaging/presentation/bloc/message_bloc.dart` — WebSocket integration
+   - `infra/k8s/` — WebSocket service deployment
+
+#### Why Not Fix gRPC-Web Streaming?
+
+- Envoy's gRPC-Web filter is designed for unary calls, not long-lived streams
+- Alternative: Use `grpc-web-text` format or Server-Sent Events (SSE)
+- WebSocket is industry standard for real-time messaging and better supported
+
+#### Code References
+
+- **Polling implementation**: `client/lib/features/messaging/presentation/bloc/message_bloc.dart`
+- **Timer interval**: `Duration(seconds: 2)` in `_onStartPolling()`
+- **Backend streaming**: `backend/crates/messaging-service/src/handlers/stream.rs` (works with native gRPC)
+
 ---
 
 ## Phase 1: Foundation & Infrastructure ✅ (Partially Complete)
@@ -1328,6 +1400,6 @@ All core MVP features are deployed, tested, and production-ready. Currently addi
 
 ---
 
-**Last Updated**: 2025-11-03  
-**Plan Version**: 1.1  
-**Status**: Infrastructure operational, cryptography scaffolding complete, implementing core protocols
+**Last Updated**: 2025-11-25  
+**Plan Version**: 1.2  
+**Status**: MVP deployed, polling workaround active, WebSocket migration planned
