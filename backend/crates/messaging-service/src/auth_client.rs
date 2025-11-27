@@ -1,10 +1,11 @@
 /// gRPC client for Auth Service communication
 ///
 /// Provides methods to interact with the auth-service, primarily for
-/// fetching MLS key packages during group member addition.
+/// fetching MLS key packages during group member addition and user profile lookups.
 
 use crate::proto::auth::{
     auth_service_client::AuthServiceClient, GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
+    GetUserProfileRequest,
 };
 use anyhow::{Context, Result};
 use tonic::transport::Channel;
@@ -111,6 +112,64 @@ impl AuthClient {
             .context("gRPC call to GetMlsKeyPackage failed")?;
 
         Ok(response.into_inner())
+    }
+
+    /// Fetch user profile by user ID to get username
+    ///
+    /// # Arguments
+    /// * `user_id` - The user ID to look up
+    ///
+    /// # Returns
+    /// * `Ok(String)` - The username if found
+    /// * `Err(anyhow::Error)` - If the request fails or user not found
+    pub async fn get_username(&mut self, user_id: &str) -> Result<String> {
+        debug!("Fetching username for user_id={}", user_id);
+
+        let request = tonic::Request::new(GetUserProfileRequest {
+            user_id: user_id.to_string(),
+        });
+
+        let response = self
+            .client
+            .get_user_profile(request)
+            .await
+            .context("gRPC call to GetUserProfile failed")?;
+
+        let response_inner = response.into_inner();
+
+        match response_inner.result {
+            Some(crate::proto::auth::get_user_profile_response::Result::Success(success)) => {
+                info!("Successfully fetched username for {}: {}", user_id, success.username);
+                Ok(success.username)
+            }
+            Some(crate::proto::auth::get_user_profile_response::Result::Error(err)) => {
+                debug!("Auth service returned error for user {}: {}", user_id, err.message);
+                Err(anyhow::anyhow!("Failed to fetch user profile: {}", err.message))
+            }
+            None => {
+                debug!("Auth service returned empty response for user {}", user_id);
+                Err(anyhow::anyhow!("Empty response from auth service GetUserProfile"))
+            }
+        }
+    }
+
+    /// Fetch usernames for multiple user IDs
+    ///
+    /// Returns a HashMap of user_id -> username
+    /// For users that can't be found, their entry will not be in the map
+    pub async fn get_usernames(
+        &mut self,
+        user_ids: &[String],
+    ) -> std::collections::HashMap<String, String> {
+        let mut usernames = std::collections::HashMap::new();
+
+        for user_id in user_ids {
+            if let Ok(username) = self.get_username(user_id).await {
+                usernames.insert(user_id.clone(), username);
+            }
+        }
+
+        usernames
     }
 }
 
