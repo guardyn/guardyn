@@ -71,6 +71,18 @@ Guardyn aims to provide enterprise-grade secure communication with the same priv
 
 ---
 
+## 📱 Cross-Platform Applications
+
+<p align="center">
+  <img src="docs/images/flutter_apps.png" alt="Guardyn Apps - Android, iOS, Linux, macOS, Web" width="100%" style="max-width: 900px; border-radius: 12px;"/>
+</p>
+
+<p align="center">
+  <em>Guardyn running on Android, iOS, Linux, macOS, and Web — same encryption everywhere</em>
+</p>
+
+---
+
 ## 🔐 Why Guardyn?
 
 ### The Problem We're Solving
