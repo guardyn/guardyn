@@ -161,7 +161,7 @@ All core MVP features are deployed, tested, documented, and production-ready:
 7. ✅ **Observability complete (Prometheus, Loki, Grafana)**
 8. ✅ **Cryptography implementation complete (X3DH, Double Ratchet, MLS)** - **PHASE 6 COMPLETE**
 9. ⏳ Presence Service (online/offline status, typing indicators)
-10. ⏳ Media Service (upload/download, encryption, thumbnails)
+10. ✅ **Media Service DEPLOYED** (upload/download, S3/MinIO storage, 2/2 replicas running)
 11. ⏳ Post-Quantum Cryptography (Kyber integration)
 
 ### 🔄 **Real-Time Messaging: Polling → WebSocket Migration Roadmap**
@@ -481,7 +481,7 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 - [x] Read receipts
 
-### 4.4 Media Service ✅
+### 4.4 Media Service ✅ DEPLOYED
 
 - [x] Create service scaffold
 
@@ -489,9 +489,11 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 - [x] Configure persistent storage
 
-- [ ] File upload/download handling
+- [x] File upload/download handling
 
-- [ ] Media storage (S3-compatible/MinIO)
+- [x] Media storage (S3-compatible/MinIO)
+
+- [x] AWS SDK fix (behavior-version-latest)
 
 - [ ] Thumbnail generation
 

@@ -1,0 +1,233 @@
+syntax = "proto3";
+
+package guardyn.media;
+
+option java_package = "io.guardyn.proto.media";
+option java_multiple_files = true;
+
+import "common.proto";
+
+// Media Service - handles file uploads, downloads, thumbnails, and encryption
+service MediaService {
+  // Upload a media file (images, videos, audio, documents)
+  rpc UploadMedia(stream UploadMediaRequest) returns (UploadMediaResponse);
+
+  // Download a media file
+  rpc DownloadMedia(DownloadMediaRequest) returns (stream DownloadMediaResponse);
+
+  // Get media metadata without downloading the file
+  rpc GetMediaMetadata(GetMediaMetadataRequest) returns (GetMediaMetadataResponse);
+
+  // Delete a media file
+  rpc DeleteMedia(DeleteMediaRequest) returns (DeleteMediaResponse);
+
+  // Get a pre-signed URL for direct upload (bypassing gRPC for large files)
+  rpc GetUploadUrl(GetUploadUrlRequest) returns (GetUploadUrlResponse);
+
+  // Get a pre-signed URL for direct download
+  rpc GetDownloadUrl(GetDownloadUrlRequest) returns (GetDownloadUrlResponse);
+
+  // Generate thumbnail for image/video
+  rpc GenerateThumbnail(GenerateThumbnailRequest) returns (GenerateThumbnailResponse);
+
+  // List media files for a user or conversation
+  rpc ListMedia(ListMediaRequest) returns (ListMediaResponse);
+}
+
+// Media type enumeration
+enum MediaType {
+  MEDIA_TYPE_UNKNOWN = 0;
+  MEDIA_TYPE_IMAGE = 1;
+  MEDIA_TYPE_VIDEO = 2;
+  MEDIA_TYPE_AUDIO = 3;
+  MEDIA_TYPE_DOCUMENT = 4;
+  MEDIA_TYPE_OTHER = 5;
+}
+
+// Upload status
+enum UploadStatus {
+  UPLOAD_STATUS_UNKNOWN = 0;
+  UPLOAD_STATUS_PENDING = 1;
+  UPLOAD_STATUS_PROCESSING = 2;
+  UPLOAD_STATUS_COMPLETED = 3;
+  UPLOAD_STATUS_FAILED = 4;
+}
+
+// Media metadata stored in database
+message MediaMetadata {
+  string media_id = 1;
+  string owner_user_id = 2;
+  string filename = 3;
+  MediaType media_type = 4;
+  string mime_type = 5;
+  int64 size_bytes = 6;
+  string checksum_sha256 = 7;
+  int64 created_at = 8;
+  int64 updated_at = 9;
+  UploadStatus status = 10;
+
+  // Optional fields
+  int32 width = 11;        // For images/videos
+  int32 height = 12;       // For images/videos
+  int32 duration_ms = 13;  // For audio/video
+  string thumbnail_id = 14; // Reference to thumbnail media
+
+  // E2EE fields
+  bool is_encrypted = 15;
+  bytes encryption_key_id = 16;  // Key ID for E2EE (actual key stored client-side)
+  bytes iv = 17;                  // Initialization vector for encryption
+
+  // Context
+  string conversation_id = 18;  // Optional: which conversation this belongs to
+  string message_id = 19;       // Optional: which message this is attached to
+
+  // Storage info
+  string storage_path = 20;     // Internal path in object storage
+}
+
+// Upload request (streaming)
+message UploadMediaRequest {
+  oneof content {
+    UploadMediaHeader header = 1;
+    bytes chunk = 2;
+  }
+}
+
+// Header sent as first message in upload stream
+message UploadMediaHeader {
+  string filename = 1;
+  MediaType media_type = 2;
+  string mime_type = 3;
+  int64 size_bytes = 4;  // Expected total size
+  string checksum_sha256 = 5;  // Optional: for integrity verification
+
+  // E2EE fields (if file is client-side encrypted)
+  bool is_encrypted = 6;
+  bytes encryption_key_id = 7;
+  bytes iv = 8;
+
+  // Context
+  string conversation_id = 9;
+  string message_id = 10;
+}
+
+// Upload response
+message UploadMediaResponse {
+  string media_id = 1;
+  UploadStatus status = 2;
+  MediaMetadata metadata = 3;
+  string error_message = 4;
+}
+
+// Download request
+message DownloadMediaRequest {
+  string media_id = 1;
+
+  // Optional: request specific byte range (for resumable downloads)
+  int64 offset = 2;
+  int64 length = 3;  // 0 = full file
+}
+
+// Download response (streaming)
+message DownloadMediaResponse {
+  oneof content {
+    MediaMetadata metadata = 1;  // First message includes metadata
+    bytes chunk = 2;
+  }
+}
+
+// Get metadata request
+message GetMediaMetadataRequest {
+  string media_id = 1;
+}
+
+// Get metadata response
+message GetMediaMetadataResponse {
+  MediaMetadata metadata = 1;
+  guardyn.common.ErrorResponse error = 2;
+}
+
+// Delete media request
+message DeleteMediaRequest {
+  string media_id = 1;
+}
+
+// Delete media response
+message DeleteMediaResponse {
+  bool success = 1;
+  guardyn.common.ErrorResponse error = 2;
+}
+
+// Get upload URL for direct S3 upload
+message GetUploadUrlRequest {
+  string filename = 1;
+  string mime_type = 2;
+  int64 size_bytes = 3;
+  string conversation_id = 4;
+}
+
+// Upload URL response
+message GetUploadUrlResponse {
+  string upload_url = 1;       // Pre-signed URL for PUT request
+  string media_id = 2;         // Assigned media ID
+  int64 expires_at = 3;        // URL expiration timestamp
+  map<string, string> headers = 4;  // Required headers for upload
+  guardyn.common.ErrorResponse error = 5;
+}
+
+// Get download URL request
+message GetDownloadUrlRequest {
+  string media_id = 1;
+}
+
+// Download URL response
+message GetDownloadUrlResponse {
+  string download_url = 1;     // Pre-signed URL for GET request
+  int64 expires_at = 2;        // URL expiration timestamp
+  MediaMetadata metadata = 3;
+  guardyn.common.ErrorResponse error = 4;
+}
+
+// Generate thumbnail request
+message GenerateThumbnailRequest {
+  string media_id = 1;
+  int32 max_width = 2;    // Max thumbnail width (default: 256)
+  int32 max_height = 3;   // Max thumbnail height (default: 256)
+  string format = 4;      // Output format: "jpeg", "png", "webp" (default: jpeg)
+  int32 quality = 5;      // JPEG quality 1-100 (default: 80)
+}
+
+// Generate thumbnail response
+message GenerateThumbnailResponse {
+  string thumbnail_id = 1;      // Media ID of the generated thumbnail
+  MediaMetadata metadata = 2;   // Thumbnail metadata
+  guardyn.common.ErrorResponse error = 3;
+}
+
+// List media request
+message ListMediaRequest {
+  // Filter by owner
+  string user_id = 1;
+
+  // Filter by conversation
+  string conversation_id = 2;
+
+  // Filter by type
+  repeated MediaType media_types = 3;
+
+  // Pagination
+  int32 limit = 4;          // Max items to return (default: 50)
+  string cursor = 5;        // Pagination cursor from previous response
+
+  // Sort
+  string sort_by = 6;       // "created_at", "size_bytes", "filename"
+  bool ascending = 7;
+}
+
+// List media response
+message ListMediaResponse {
+  repeated MediaMetadata items = 1;
+  string next_cursor = 2;       // Cursor for next page
+  int32 total_count = 3;        // Total items matching filter
+  guardyn.common.ErrorResponse error = 4;
+}
