@@ -840,8 +840,6 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 **Known Limitations:**
 
 - Placeholder KeyBundle generation (uses random bytes instead of X3DH)
-- No messaging UI implemented yet
-- No group chat UI
 - No offline caching
 - No push notifications
 
@@ -864,7 +862,15 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
   - **Dependencies**: cryptography: ^2.7.0, pointycastle: ^3.7.3
 - [ ] **Two-device manual testing** ⏳ **NEXT PRIORITY**
 - [ ] ~~X3DH key generation (replace placeholder crypto)~~ ✅ **COMPLETED** (included in E2EE implementation)
-- [ ] Group chat UI
+- [x] **Group chat UI** ✅ **COMPLETED (Dec 24, 2025)**
+  - [x] Domain Layer: Group entities, repository interface, 6 use cases (CreateGroup, GetGroups, SendGroupMessage, GetGroupMessages, AddGroupMember, RemoveGroupMember)
+  - [x] Data Layer: GroupModel, GroupRemoteDatasource (gRPC), GroupRepositoryImpl with caching
+  - [x] Presentation Layer: GroupBloc with events/states, GroupListPage, GroupChatPage, GroupCreatePage
+  - [x] Widgets: GroupMessageBubble, GroupMessageInput
+  - [x] DI Integration: injection.dart with full dependency registration
+  - [x] Navigation: Routes in app.dart, Groups button on HomePage
+  - **Files Created**: 18 new files (~2,800 lines of code)
+  - **Architecture**: Clean Architecture following messaging feature patterns
 - [ ] Background service for push notifications
 - [ ] Media capture/playback
 - [ ] Offline message caching (SQLite)

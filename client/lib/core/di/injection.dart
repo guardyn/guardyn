@@ -12,6 +12,17 @@ import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.d
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
+// Groups feature imports
+import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
+import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
+import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 final getIt = GetIt.instance;
@@ -38,6 +49,9 @@ Future<void> configureDependencies() async {
 
   // Register messaging feature dependencies
   _registerMessagingDependencies();
+
+  // Register groups feature dependencies
+  _registerGroupsDependencies();
 }
 
 void _registerMessagingDependencies() {
@@ -82,3 +96,53 @@ void _registerMessagingDependencies() {
   );
 }
 
+void _registerGroupsDependencies() {
+  // Data layer
+  getIt.registerLazySingleton<GroupRemoteDatasource>(
+    () => GroupRemoteDatasource(getIt<GrpcClients>()),
+  );
+
+  getIt.registerLazySingleton<GroupRepository>(
+    () => GroupRepositoryImpl(
+      getIt<GroupRemoteDatasource>(),
+      getIt<SecureStorage>(),
+    ),
+  );
+
+  // Domain layer - Use cases
+  getIt.registerLazySingleton<CreateGroup>(
+    () => CreateGroup(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetGroups>(
+    () => GetGroups(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<SendGroupMessage>(
+    () => SendGroupMessage(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetGroupMessages>(
+    () => GetGroupMessages(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<AddGroupMember>(
+    () => AddGroupMember(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<RemoveGroupMember>(
+    () => RemoveGroupMember(getIt<GroupRepository>()),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<GroupBloc>(
+    () => GroupBloc(
+      createGroup: getIt<CreateGroup>(),
+      getGroups: getIt<GetGroups>(),
+      sendGroupMessage: getIt<SendGroupMessage>(),
+      getGroupMessages: getIt<GetGroupMessages>(),
+      addGroupMember: getIt<AddGroupMember>(),
+      removeGroupMember: getIt<RemoveGroupMember>(),
+    ),
+  );
+}
