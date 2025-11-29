@@ -2,6 +2,12 @@
 
 Comprehensive testing guide for Guardyn MVP: E2E tests, performance tests, and best practices.
 
+## 📚 Related Guides
+
+- **[Flutter Client Testing Guide](./CLIENT_TESTING_GUIDE.md)** - Complete Flutter client testing with manual and automated scenarios
+- **[Quick Start Testing](./QUICKSTART_TESTING.md)** - Быстрый старт для тестирования
+- **[Two Client Testing](./TWO_CLIENT_TESTING.md)** - Two-device messaging testing setup
+
 ## 🎯 Testing Strategy
 
 Guardyn MVP uses a layered testing approach:
@@ -11,6 +17,7 @@ Guardyn MVP uses a layered testing approach:
 3. **E2E Tests** - Full user workflows (auth → messaging)
 4. **Performance Tests** - Load testing with k6
 5. **Smoke Tests** - Post-deployment validation
+6. **Flutter Client Tests** - See [CLIENT_TESTING_GUIDE.md](./CLIENT_TESTING_GUIDE.md)
 
 ## 📋 Prerequisites
 
