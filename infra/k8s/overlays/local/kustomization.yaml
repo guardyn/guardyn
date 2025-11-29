@@ -7,5 +7,7 @@ bases:
   - ../../base/tikv
   - ../../base/scylladb
   - ../../base/envoy
+  - ../../base/minio
+  - ../../base/apps
 resources:
   - ../../base/monitoring

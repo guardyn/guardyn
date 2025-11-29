@@ -2,7 +2,59 @@
 name = "guardyn-media-service"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "guardyn-media-service"
+path = "src/main.rs"
 
 [dependencies]
 guardyn-common = { path = "../common" }
+
 tokio.workspace = true
+tonic.workspace = true
+prost.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+config.workspace = true
+
+# TiKV for metadata storage
+tikv-client.workspace = true
+
+# AWS SDK for S3/MinIO
+aws-sdk-s3 = { version = "1.115", features = ["behavior-version-latest"] }
+aws-config = { version = "1.8", features = ["behavior-version-latest"] }
+aws-credential-types = "1.2"
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# SHA2 for checksums
+sha2 = "0.10"
+
+# Hex encoding
+hex = "0.4"
+
+# Image processing for thumbnails
+image = "0.24"
+
+# Mime type detection
+mime_guess = "2.0"
+
+# Bytes for streaming
+bytes = "1.5"
+
+# Futures for async streams
+futures = "0.3"
+tokio-stream = "0.1"
+async-stream = "0.3"
+
+# JWT for authentication
+jsonwebtoken = "9.3"
+
+[build-dependencies]
+tonic-build.workspace = true

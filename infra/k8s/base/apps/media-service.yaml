@@ -1,3 +1,4 @@
+# Media Service - handles file uploads, downloads, and thumbnails
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,53 +20,81 @@ spec:
     spec:
       containers:
       - name: media-service
-        image: guardyn-registry:5000/media-service:latest
+        image: guardyn-media-service:latest
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 9090
+        - containerPort: 50054
           name: grpc
         env:
+        # Service configuration
+        - name: GUARDYN_SERVICE_NAME
+          value: "media-service"
+        - name: GUARDYN_HOST
+          value: "0.0.0.0"
+        - name: GUARDYN_PORT
+          value: "50054"
         - name: RUST_LOG
-          value: "info"
-        - name: SCYLLADB_URL
-          value: "guardyn-scylla-dc1-rack1-0.data.svc.cluster.local:9042"
-        - name: NATS_URL
+          value: "info,media_service=debug"
+        # Database configuration
+        - name: GUARDYN_DATABASE__TIKV_PD_ENDPOINTS
+          value: "pd.data.svc.cluster.local:2379"
+        - name: GUARDYN_DATABASE__SCYLLADB_NODES
+          value: "scylla.data.svc.cluster.local:9042"
+        - name: TIKV_PD_ENDPOINTS
+          value: "pd.data.svc.cluster.local:2379"
+        # Messaging configuration
+        - name: GUARDYN_MESSAGING__NATS_URL
           value: "nats://nats.messaging.svc.cluster.local:4222"
-        - name: STORAGE_PATH
-          value: "/var/lib/guardyn/media"
+        # Observability configuration
+        - name: GUARDYN_OBSERVABILITY__OTLP_ENDPOINT
+          value: "http://otel-collector.observability.svc.cluster.local:4317"
+        - name: GUARDYN_OBSERVABILITY__LOG_LEVEL
+          value: "info"
+        # S3/MinIO configuration
+        - name: S3_ENDPOINT
+          value: "http://minio.data.svc.cluster.local:9000"
+        - name: S3_REGION
+          value: "us-east-1"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: secret-key
+        - name: S3_BUCKET_NAME
+          value: "guardyn-media"
+        # File size limits
+        - name: MAX_FILE_SIZE_BYTES
+          value: "104857600"  # 100MB
+        - name: CHUNK_SIZE_BYTES
+          value: "1048576"    # 1MB
+        # JWT secret
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: guardyn-backend-secrets
+              key: jwt-secret
         resources:
           requests:
-            cpu: 200m
-            memory: 256Mi
+            cpu: 100m
+            memory: 128Mi
           limits:
-            cpu: 1000m
-            memory: 1Gi
+            cpu: 500m
+            memory: 512Mi
         livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
+          tcpSocket:
+            port: 50054
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
+          tcpSocket:
+            port: 50054
           initialDelaySeconds: 5
           periodSeconds: 5
-        volumeMounts:
-        - name: tls-certs
-          mountPath: /etc/ssl/certs/guardyn
-          readOnly: true
-        - name: media-storage
-          mountPath: /var/lib/guardyn/media
-      volumes:
-      - name: tls-certs
-        secret:
-          secretName: guardyn-backend-tls
-      - name: media-storage
-        persistentVolumeClaim:
-          claimName: media-storage
 ---
 apiVersion: v1
 kind: Service
@@ -79,25 +108,20 @@ spec:
   selector:
     app: media-service
   ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
   - name: grpc
-    port: 9090
-    targetPort: 9090
+    port: 50054
+    targetPort: 50054
 ---
+# MinIO credentials secret for media-service in apps namespace
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: Secret
 metadata:
-  name: media-storage
+  name: minio-credentials
   namespace: apps
   labels:
     app: media-service
     guardyn.io/stage: poc
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: local-path
+type: Opaque
+stringData:
+  access-key: "minioadmin"
+  secret-key: "minioadmin-secret-password"
