@@ -964,6 +964,53 @@ Messaging Test Results:
 
 ---
 
+## Success Criteria Checklist
+
+Mark each item as you verify:
+
+### Core Messaging
+
+- [ ] Messages send successfully between two devices
+- [ ] Messages appear on both sender and recipient clients
+- [ ] Real-time message delivery works (< 3 seconds with polling)
+- [ ] Message history loads correctly after app restart
+- [ ] Offline messages are delivered when user comes online
+
+### UI/UX
+
+- [ ] Timestamps display correctly and update format based on age
+- [ ] Sent messages show in primary color (blue)
+- [ ] Received messages show in secondary color (gray)
+- [ ] Delivery status icons display correctly:
+  - Clock icon for pending
+  - Single checkmark for sent
+  - Double checkmarks for delivered
+  - Blue double checkmarks for read
+- [ ] Chat auto-scrolls to newest message
+- [ ] Empty chat shows helpful prompt text
+
+### User Search
+
+- [ ] Search returns matching users
+- [ ] Search is case-insensitive
+- [ ] Current user is excluded from results
+- [ ] No results shows appropriate message
+
+### Error Handling
+
+- [ ] Network errors show user-friendly message
+- [ ] Invalid operations fail gracefully
+- [ ] App doesn't crash on edge cases
+
+### Performance
+
+- [ ] Messages load within 2 seconds
+- [ ] Search results appear within 1 second
+- [ ] No UI freezing during operations
+- [ ] Memory usage remains stable during extended use
+
+---
+
 ## Test Commands Reference
 
 ### Using the Unified Testing Script
@@ -1077,6 +1124,54 @@ adb emu kill
 # Stop Envoy proxy (if using Chrome)
 docker stop guardyn-envoy
 docker rm guardyn-envoy
+```
+
+---
+
+## Backend API Testing (grpcurl)
+
+Use grpcurl for direct API testing without the Flutter client:
+
+### Register User
+
+```bash
+grpcurl -plaintext -d '{"username":"testuser","password":"password12345","device_id":"device-001"}' \
+  localhost:50051 auth.AuthService/Register
+```
+
+### Login
+
+```bash
+grpcurl -plaintext -d '{"username":"testuser","password":"password12345","device_id":"device-001"}' \
+  localhost:50051 auth.AuthService/Login
+```
+
+### Search Users
+
+```bash
+grpcurl -plaintext -d '{"access_token":"<TOKEN>","query":"bob"}' \
+  localhost:50051 auth.AuthService/SearchUsers
+```
+
+### Send Message
+
+```bash
+grpcurl -plaintext -d '{"access_token":"<TOKEN>","recipient_user_id":"<USER_ID>","recipient_device_id":"<DEVICE_ID>","recipient_username":"bob","encrypted_content":"SGVsbG8=","message_type":"TEXT","client_message_id":"msg-001","client_timestamp":{"seconds":1732896000}}' \
+  localhost:50052 messaging.MessagingService/SendMessage
+```
+
+### Get Messages
+
+```bash
+grpcurl -plaintext -d '{"access_token":"<TOKEN>","conversation_user_id":"<USER_ID>","conversation_id":"<CONV_ID>","limit":50}' \
+  localhost:50052 messaging.MessagingService/GetMessages
+```
+
+### Get Conversations
+
+```bash
+grpcurl -plaintext -d '{"access_token":"<TOKEN>","limit":50}' \
+  localhost:50052 messaging.MessagingService/GetConversations
 ```
 
 ---
