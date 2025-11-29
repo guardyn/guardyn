@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:guardyn_client/core/crypto/double_ratchet.dart';
 import 'package:guardyn_client/core/crypto/crypto_exceptions.dart';
+import 'package:guardyn_client/core/crypto/double_ratchet.dart';
 
 void main() {
   group('X25519KeyPair', () {
