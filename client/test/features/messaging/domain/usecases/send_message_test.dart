@@ -41,6 +41,7 @@ void main() {
     when(() => mockRepository.sendMessage(
           recipientUserId: any(named: 'recipientUserId'),
           recipientDeviceId: any(named: 'recipientDeviceId'),
+          recipientUsername: any(named: 'recipientUsername'),
           textContent: any(named: 'textContent'),
           metadata: any(named: 'metadata'),
         )).thenAnswer((_) async => Right(tMessage));
@@ -49,6 +50,7 @@ void main() {
     final result = await usecase(SendMessageParams(
       recipientUserId: tRecipientUserId,
       recipientDeviceId: tRecipientDeviceId,
+      recipientUsername: 'bob',
       textContent: tTextContent,
     ));
 
@@ -57,6 +59,7 @@ void main() {
     verify(() => mockRepository.sendMessage(
           recipientUserId: tRecipientUserId,
           recipientDeviceId: tRecipientDeviceId,
+          recipientUsername: 'bob',
           textContent: tTextContent,
           metadata: null,
         )).called(1);
@@ -69,6 +72,7 @@ void main() {
     when(() => mockRepository.sendMessage(
           recipientUserId: any(named: 'recipientUserId'),
           recipientDeviceId: any(named: 'recipientDeviceId'),
+          recipientUsername: any(named: 'recipientUsername'),
           textContent: any(named: 'textContent'),
           metadata: any(named: 'metadata'),
         )).thenAnswer((_) async => const Left(tFailure));
@@ -77,6 +81,7 @@ void main() {
     final result = await usecase(SendMessageParams(
       recipientUserId: tRecipientUserId,
       recipientDeviceId: tRecipientDeviceId,
+      recipientUsername: 'bob',
       textContent: tTextContent,
     ));
 
@@ -85,6 +90,7 @@ void main() {
     verify(() => mockRepository.sendMessage(
           recipientUserId: tRecipientUserId,
           recipientDeviceId: tRecipientDeviceId,
+          recipientUsername: 'bob',
           textContent: tTextContent,
           metadata: null,
         )).called(1);

@@ -42,6 +42,10 @@ dependencies:
   intl: ^0.18.1
   uuid: ^4.0.0
 
+  # E2EE Cryptography
+  cryptography: ^2.7.0
+  pointycastle: ^3.7.3
+
   # SVG Support
   flutter_svg: ^2.0.9
 

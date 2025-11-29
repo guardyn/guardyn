@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
@@ -15,15 +16,19 @@ class MockMessageRemoteDatasource extends Mock
 
 class MockSecureStorage extends Mock implements SecureStorage {}
 
+class MockCryptoService extends Mock implements CryptoService {}
+
 void main() {
   late MessageRepositoryImpl repository;
   late MockMessageRemoteDatasource mockDatasource;
   late MockSecureStorage mockSecureStorage;
+  late MockCryptoService mockCryptoService;
 
   setUp(() {
     mockDatasource = MockMessageRemoteDatasource();
     mockSecureStorage = MockSecureStorage();
-    repository = MessageRepositoryImpl(mockDatasource, mockSecureStorage);
+    mockCryptoService = MockCryptoService();
+    repository = MessageRepositoryImpl(mockDatasource, mockSecureStorage, mockCryptoService);
   });
 
   const tAccessToken = 'test-access-token';

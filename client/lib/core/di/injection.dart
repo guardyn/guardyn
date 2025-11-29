@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
@@ -19,6 +20,11 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   // Register core services
   getIt.registerLazySingleton<SecureStorage>(() => SecureStorage());
+
+  // Register crypto service for E2EE
+  final cryptoService = CryptoService();
+  await cryptoService.initialize();
+  getIt.registerSingleton<CryptoService>(cryptoService);
 
   // Register notification service
   final notificationService = NotificationService();
@@ -44,6 +50,7 @@ void _registerMessagingDependencies() {
     () => MessageRepositoryImpl(
       getIt<MessageRemoteDatasource>(),
       getIt<SecureStorage>(),
+      getIt<CryptoService>(),
     ),
   );
 

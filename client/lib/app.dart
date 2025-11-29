@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
@@ -29,6 +30,7 @@ class GuardynApp extends StatelessWidget {
     // Setup dependencies
     final grpcClients = getIt<GrpcClients>();
     final secureStorage = getIt<SecureStorage>();
+    final cryptoService = getIt<CryptoService>();
 
     // Auth dependencies
     final remoteDatasource = AuthRemoteDatasource(grpcClients);
@@ -46,6 +48,7 @@ class GuardynApp extends StatelessWidget {
     final messageRepository = MessageRepositoryImpl(
       messageRemoteDatasource,
       secureStorage,
+      cryptoService,
     );
 
     final sendMessage = SendMessage(messageRepository);
