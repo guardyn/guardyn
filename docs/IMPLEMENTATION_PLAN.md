@@ -473,11 +473,11 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 - [x] Deploy Kubernetes manifests
 
-- [ ] Online/offline status tracking
+- [x] Online/offline status tracking
 
-- [ ] Last seen timestamps
+- [x] Last seen timestamps
 
-- [ ] Typing indicators
+- [x] Typing indicators
 
 - [ ] Read receipts
 
