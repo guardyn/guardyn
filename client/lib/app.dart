@@ -14,6 +14,18 @@ import 'package:guardyn_client/features/auth/presentation/pages/login_page.dart'
 import 'package:guardyn_client/features/auth/presentation/pages/registration_page.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/splash_page.dart';
 import 'package:guardyn_client/features/chat/presentation/pages/home_page.dart';
+import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
+import 'package:guardyn_client/features/groups/presentation/pages/group_chat_page.dart';
+import 'package:guardyn_client/features/groups/presentation/pages/group_create_page.dart';
+import 'package:guardyn_client/features/groups/presentation/pages/group_list_page.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
@@ -56,6 +68,20 @@ class GuardynApp extends StatelessWidget {
     final receiveMessages = ReceiveMessages(messageRepository);
     final markAsRead = MarkAsRead(messageRepository);
 
+    // Groups dependencies
+    final groupRemoteDatasource = GroupRemoteDatasource(grpcClients);
+    final groupRepository = GroupRepositoryImpl(
+      groupRemoteDatasource,
+      secureStorage,
+    );
+
+    final createGroup = CreateGroup(groupRepository);
+    final getGroups = GetGroups(groupRepository);
+    final sendGroupMessage = SendGroupMessage(groupRepository);
+    final getGroupMessages = GetGroupMessages(groupRepository);
+    final addGroupMember = AddGroupMember(groupRepository);
+    final removeGroupMember = RemoveGroupMember(groupRepository);
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -74,6 +100,16 @@ class GuardynApp extends StatelessWidget {
             markAsRead: markAsRead,
           ),
         ),
+        BlocProvider(
+          create: (context) => GroupBloc(
+            createGroup: createGroup,
+            getGroups: getGroups,
+            sendGroupMessage: sendGroupMessage,
+            getGroupMessages: getGroupMessages,
+            addGroupMember: addGroupMember,
+            removeGroupMember: removeGroupMember,
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Guardyn',
@@ -84,6 +120,21 @@ class GuardynApp extends StatelessWidget {
           '/login': (context) => const LoginPage(),
           '/register': (context) => const RegistrationPage(),
           '/home': (context) => const HomePage(),
+          '/groups': (context) => const GroupListPage(),
+          '/groups/create': (context) => const GroupCreatePage(),
+        },
+        onGenerateRoute: (settings) {
+          // Handle dynamic routes for group chat
+          if (settings.name == '/groups/chat') {
+            final args = settings.arguments as Map<String, String>;
+            return MaterialPageRoute(
+              builder: (context) => GroupChatPage(
+                groupId: args['groupId']!,
+                groupName: args['groupName']!,
+              ),
+            );
+          }
+          return null;
         },
       ),
     );
