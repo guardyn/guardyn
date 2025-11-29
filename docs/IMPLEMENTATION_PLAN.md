@@ -479,7 +479,7 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 - [x] Typing indicators
 
-- [ ] Read receipts
+- [x] Read receipts
 
 ### 4.4 Media Service ✅
 
