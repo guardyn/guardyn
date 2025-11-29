@@ -16,6 +16,7 @@
 All core MVP features are deployed, tested, documented, and production-ready:
 
 **Latest Work (November 30, 2025)**:
+
 - ✅ **Flutter E2EE Crypto Implementation** - Real Double Ratchet + X3DH encryption (replaces base64 placeholder)
   - Double Ratchet protocol (~400 lines) - Signal Protocol compatible
   - X3DH key exchange protocol (~350 lines) - Ed25519/X25519
@@ -24,12 +25,14 @@ All core MVP features are deployed, tested, documented, and production-ready:
   - Integrated into MessageRepositoryImpl for transparent encryption
 
 **Previous Work (November 29, 2025)**:
+
 - ✅ Unit tests completed for messaging feature (GetMessages, MessageRepositoryImpl, MessageBloc)
 - ✅ Manual testing guide created (`client/MESSAGING_MANUAL_TESTING_GUIDE.md`)
 - ✅ All implementation plan tasks marked complete
 - ✅ MESSAGING_UI_IMPLEMENTATION_PLAN.md - 100% finished
 
 **Previous Work (November 27, 2025)**:
+
 - ✅ SearchUsers RPC deployed to auth-service (TiKV prefix scan)
 - ✅ GetConversations RPC deployed to messaging-service (ScyllaDB OR query)
 - ✅ Flutter client fully integrated with real backend APIs
@@ -176,12 +179,12 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 #### Migration Timeline
 
-| Phase | Status | Description | User Scale |
-|-------|--------|-------------|------------|
-| MVP/PoC | ✅ Current | Polling works, sufficient for demo | <10 users |
-| Alpha | 🔄 Acceptable | Can keep polling if <100 users | <100 users |
-| Beta | ⚠️ Need to replace | WebSocket required for scale | 100-1000 users |
-| Production | ❌ Mandatory | WebSocket/SSE for all Web clients | 1000+ users |
+| Phase      | Status             | Description                        | User Scale     |
+| ---------- | ------------------ | ---------------------------------- | -------------- |
+| MVP/PoC    | ✅ Current         | Polling works, sufficient for demo | <10 users      |
+| Alpha      | 🔄 Acceptable      | Can keep polling if <100 users     | <100 users     |
+| Beta       | ⚠️ Need to replace | WebSocket required for scale       | 100-1000 users |
+| Production | ❌ Mandatory       | WebSocket/SSE for all Web clients  | 1000+ users    |
 
 #### Priority Order (Post-MVP)
 
@@ -196,6 +199,7 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 **WebSocket combines naturally with WebRTC signaling:**
 
 1. **Single WebSocket connection** handles:
+
    - Real-time message delivery (replace polling)
    - WebRTC call signaling (SDP exchange, ICE candidates)
    - Presence updates (online/offline status)
@@ -208,6 +212,7 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
    ```
 
 3. **Implementation Steps**:
+
    - [ ] Add `axum-tungstenite` WebSocket support to messaging-service
    - [ ] Create WebSocket gateway service (or extend messaging-service)
    - [ ] Implement connection management (heartbeat, reconnection)
@@ -826,6 +831,7 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 - [x] **Manual testing guide created** (client/MANUAL_TESTING_GUIDE.md) ✅ **NEW**
 
 **Test Coverage:**
+
 - Unit Tests: 41/41 passing (AuthBloc, use cases)
 - Test Frameworks: bloc_test, mocktail
 - Manual Testing: Ready for execution (13 test cases documented)
@@ -860,7 +866,14 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
   - [x] Unit tests for crypto module (26 tests passing)
   - **Algorithms**: Ed25519 (identity), X25519 (DH), AES-256-GCM (encryption), HKDF-SHA256 (key derivation)
   - **Dependencies**: cryptography: ^2.7.0, pointycastle: ^3.7.3
-- [ ] **Two-device manual testing** ⏳ **NEXT PRIORITY**
+- [ ] **Two-device manual testing** ✅ **INFRASTRUCTURE READY (Dec 24, 2025)**
+  - [x] Integration test: `client/integration_test/two_client_messaging_test.dart`
+  - [x] Test runner script: `client/scripts/run-two-client-test.sh`
+  - [x] Quick setup script: `client/scripts/quick-two-client-setup.sh`
+  - [x] Documentation: `docs/TWO_CLIENT_TESTING.md`
+  - [x] All prerequisites verified (backend services, port-forwarding, ChromeDriver)
+  - **Status**: Ready for execution when Android emulator + Chrome available
+  - **Commands**: `./scripts/run-two-client-test.sh` or `./scripts/test-client.sh two-device chrome`
 - [ ] ~~X3DH key generation (replace placeholder crypto)~~ ✅ **COMPLETED** (included in E2EE implementation)
 - [x] **Group chat UI** ✅ **COMPLETED (Dec 24, 2025)**
   - [x] Domain Layer: Group entities, repository interface, 6 use cases (CreateGroup, GetGroups, SendGroupMessage, GetGroupMessages, AddGroupMember, RemoveGroupMember)
