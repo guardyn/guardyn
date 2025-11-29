@@ -3,6 +3,17 @@ import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
+// Groups feature imports
+import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
+import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
@@ -12,17 +23,6 @@ import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.d
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
-// Groups feature imports
-import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
-import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
-import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
-import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
-import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
-import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
-import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
-import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
-import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
-import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 final getIt = GetIt.instance;
