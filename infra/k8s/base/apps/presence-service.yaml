@@ -19,19 +19,27 @@ spec:
     spec:
       containers:
       - name: presence-service
-        image: guardyn-registry:5000/presence-service:latest
+        image: guardyn-presence-service:latest
+        imagePullPolicy: Never
         ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 9090
+        - containerPort: 50053
           name: grpc
         env:
         - name: RUST_LOG
           value: "info"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: GRPC_PORT
+          value: "50053"
         - name: NATS_URL
           value: "nats://nats.messaging.svc.cluster.local:4222"
-        - name: SCYLLADB_URL
-          value: "guardyn-scylla-dc1-rack1-0.data.svc.cluster.local:9042"
+        - name: TIKV_PD_ENDPOINTS
+          value: "pd-0.pd.data.svc.cluster.local:2379"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: guardyn-backend-secrets
+              key: jwt-secret
         resources:
           requests:
             cpu: 100m
@@ -40,25 +48,15 @@ spec:
             cpu: 500m
             memory: 512Mi
         livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
+          tcpSocket:
+            port: 50053
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
+          tcpSocket:
+            port: 50053
           initialDelaySeconds: 5
           periodSeconds: 5
-        volumeMounts:
-        - name: tls-certs
-          mountPath: /etc/ssl/certs/guardyn
-          readOnly: true
-      volumes:
-      - name: tls-certs
-        secret:
-          secretName: guardyn-backend-tls
 ---
 apiVersion: v1
 kind: Service
@@ -72,9 +70,6 @@ spec:
   selector:
     app: presence-service
   ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
   - name: grpc
-    port: 9090
-    targetPort: 9090
+    port: 50053
+    targetPort: 50053

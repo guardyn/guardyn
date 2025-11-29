@@ -99,6 +99,46 @@ pub struct PresenceUpdate {
     pub typing_in_conversation_with: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBulkStatusRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// List of user IDs to query (max 100)
+    #[prost(string, repeated, tag = "2")]
+    pub user_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBulkStatusResponse {
+    #[prost(oneof = "get_bulk_status_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<get_bulk_status_response::Result>,
+}
+/// Nested message and enum types in `GetBulkStatusResponse`.
+pub mod get_bulk_status_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::GetBulkStatusSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBulkStatusSuccess {
+    #[prost(message, repeated, tag = "1")]
+    pub presences: ::prost::alloc::vec::Vec<UserPresence>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserPresence {
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    #[prost(enumeration = "UserStatus", tag = "2")]
+    pub status: i32,
+    #[prost(string, tag = "3")]
+    pub custom_status_text: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "4")]
+    pub last_seen: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateLastSeenRequest {
     #[prost(string, tag = "1")]
     pub access_token: ::prost::alloc::string::String,
@@ -122,6 +162,38 @@ pub mod update_last_seen_response {
 pub struct UpdateLastSeenSuccess {
     #[prost(message, optional, tag = "1")]
     pub last_seen: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetTypingRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// User ID of the conversation partner
+    #[prost(string, tag = "2")]
+    pub conversation_user_id: ::prost::alloc::string::String,
+    /// true when started typing, false when stopped
+    #[prost(bool, tag = "3")]
+    pub is_typing: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SetTypingResponse {
+    #[prost(oneof = "set_typing_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<set_typing_response::Result>,
+}
+/// Nested message and enum types in `SetTypingResponse`.
+pub mod set_typing_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::SetTypingSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct SetTypingSuccess {
+    #[prost(bool, tag = "1")]
+    pub acknowledged: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct HealthRequest {}
@@ -308,6 +380,33 @@ pub mod presence_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /// Get multiple users' presence status
+        pub async fn get_bulk_status(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetBulkStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBulkStatusResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.presence.PresenceService/GetBulkStatus",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.presence.PresenceService", "GetBulkStatus"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /// Subscribe to presence updates (streaming)
         pub async fn subscribe(
             &mut self,
@@ -359,6 +458,33 @@ pub mod presence_service_client {
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new("guardyn.presence.PresenceService", "UpdateLastSeen"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Send typing indicator
+        pub async fn set_typing(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SetTypingRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SetTypingResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.presence.PresenceService/SetTyping",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.presence.PresenceService", "SetTyping"),
                 );
             self.inner.unary(req, path, codec).await
         }
@@ -418,6 +544,14 @@ pub mod presence_service_server {
             tonic::Response<super::GetStatusResponse>,
             tonic::Status,
         >;
+        /// Get multiple users' presence status
+        async fn get_bulk_status(
+            &self,
+            request: tonic::Request<super::GetBulkStatusRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBulkStatusResponse>,
+            tonic::Status,
+        >;
         /// Server streaming response type for the Subscribe method.
         type SubscribeStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::PresenceUpdate, tonic::Status>,
@@ -435,6 +569,14 @@ pub mod presence_service_server {
             request: tonic::Request<super::UpdateLastSeenRequest>,
         ) -> std::result::Result<
             tonic::Response<super::UpdateLastSeenResponse>,
+            tonic::Status,
+        >;
+        /// Send typing indicator
+        async fn set_typing(
+            &self,
+            request: tonic::Request<super::SetTypingRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SetTypingResponse>,
             tonic::Status,
         >;
         /// Health check
@@ -612,6 +754,52 @@ pub mod presence_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/guardyn.presence.PresenceService/GetBulkStatus" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetBulkStatusSvc<T: PresenceService>(pub Arc<T>);
+                    impl<
+                        T: PresenceService,
+                    > tonic::server::UnaryService<super::GetBulkStatusRequest>
+                    for GetBulkStatusSvc<T> {
+                        type Response = super::GetBulkStatusResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetBulkStatusRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as PresenceService>::get_bulk_status(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetBulkStatusSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/guardyn.presence.PresenceService/Subscribe" => {
                     #[allow(non_camel_case_types)]
                     struct SubscribeSvc<T: PresenceService>(pub Arc<T>);
@@ -689,6 +877,51 @@ pub mod presence_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateLastSeenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.presence.PresenceService/SetTyping" => {
+                    #[allow(non_camel_case_types)]
+                    struct SetTypingSvc<T: PresenceService>(pub Arc<T>);
+                    impl<
+                        T: PresenceService,
+                    > tonic::server::UnaryService<super::SetTypingRequest>
+                    for SetTypingSvc<T> {
+                        type Response = super::SetTypingResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SetTypingRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as PresenceService>::set_typing(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = SetTypingSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

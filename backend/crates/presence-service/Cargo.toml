@@ -2,17 +2,29 @@
 name = "guardyn-presence-service"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
 guardyn-common = { path = "../common" }
+
 tokio.workspace = true
+tokio-stream = "0.1"
+futures = "0.3"
 tonic.workspace = true
 prost.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 anyhow.workspace = true
+thiserror.workspace = true
 tracing.workspace = true
-scylla.workspace = true
+config.workspace = true
+tikv-client.workspace = true
 async-nats.workspace = true
+uuid = { version = "1.11", features = ["v1", "v4", "v5", "serde"] }
+chrono = "0.4"
+jsonwebtoken = "9.3"
+bytes = "1.5"
 
 [build-dependencies]
 tonic-build.workspace = true
