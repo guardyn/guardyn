@@ -1,0 +1,533 @@
+# Guardyn Alerting Rules for Prometheus
+# Phase 3.1: Observability - Alerting Rules
+# Created: January 2025
+#
+# This file defines PrometheusRule resources for monitoring Guardyn services.
+# Rules are grouped by severity and service for easier management.
+#
+# Severity levels:
+# - critical: Requires immediate attention (paging)
+# - warning: Should be investigated soon (non-paging)
+# - info: For dashboards and trends
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: guardyn-alerting-rules
+  namespace: observability
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+    guardyn.io/stage: poc
+spec:
+  groups:
+    # ===================================================================
+    # Service Health Alerts
+    # ===================================================================
+    - name: guardyn.service.health
+      interval: 30s
+      rules:
+        # Auth Service health
+        - alert: AuthServiceDown
+          expr: |
+            sum(up{job="auth-service"}) == 0
+            or absent(up{job="auth-service"})
+          for: 2m
+          labels:
+            severity: critical
+            service: auth-service
+            team: backend
+          annotations:
+            summary: "Auth Service is down"
+            description: "Auth Service has been unavailable for more than 2 minutes. User authentication is impacted."
+            runbook_url: "https://guardyn.io/runbooks/auth-service-down"
+
+        - alert: AuthServiceHighRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{container="auth-service"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            service: auth-service
+            team: backend
+          annotations:
+            summary: "Auth Service experiencing frequent restarts"
+            description: "Auth Service has restarted {{ $value }} times in the last hour. Investigate container logs."
+
+        # Messaging Service health
+        - alert: MessagingServiceDown
+          expr: |
+            sum(up{job="messaging-service"}) == 0
+            or absent(up{job="messaging-service"})
+          for: 2m
+          labels:
+            severity: critical
+            service: messaging-service
+            team: backend
+          annotations:
+            summary: "Messaging Service is down"
+            description: "Messaging Service has been unavailable for more than 2 minutes. Chat functionality is impacted."
+            runbook_url: "https://guardyn.io/runbooks/messaging-service-down"
+
+        - alert: MessagingServiceHighRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{container="messaging-service"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            service: messaging-service
+            team: backend
+          annotations:
+            summary: "Messaging Service experiencing frequent restarts"
+            description: "Messaging Service has restarted {{ $value }} times in the last hour."
+
+        # Presence Service health
+        - alert: PresenceServiceDown
+          expr: |
+            sum(up{job="presence-service"}) == 0
+            or absent(up{job="presence-service"})
+          for: 5m
+          labels:
+            severity: warning
+            service: presence-service
+            team: backend
+          annotations:
+            summary: "Presence Service is down"
+            description: "Presence Service has been unavailable for more than 5 minutes. Online status will not update."
+
+        # Media Service health
+        - alert: MediaServiceDown
+          expr: |
+            sum(up{job="media-service"}) == 0
+            or absent(up{job="media-service"})
+          for: 5m
+          labels:
+            severity: warning
+            service: media-service
+            team: backend
+          annotations:
+            summary: "Media Service is down"
+            description: "Media Service has been unavailable for more than 5 minutes. File uploads/downloads are impacted."
+
+    # ===================================================================
+    # gRPC Performance Alerts
+    # ===================================================================
+    - name: guardyn.grpc.performance
+      interval: 30s
+      rules:
+        # High latency for gRPC requests
+        - alert: GrpcHighLatencyAuth
+          expr: |
+            histogram_quantile(0.95, sum(rate(grpc_server_handling_seconds_bucket{grpc_service=~"auth.*"}[5m])) by (le, grpc_method)) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            service: auth-service
+            team: backend
+          annotations:
+            summary: "High latency on Auth Service gRPC calls"
+            description: "95th percentile latency for {{ $labels.grpc_method }} is {{ $value }}s (threshold: 0.5s)"
+
+        - alert: GrpcHighLatencyMessaging
+          expr: |
+            histogram_quantile(0.95, sum(rate(grpc_server_handling_seconds_bucket{grpc_service=~"messaging.*"}[5m])) by (le, grpc_method)) > 0.3
+          for: 5m
+          labels:
+            severity: warning
+            service: messaging-service
+            team: backend
+          annotations:
+            summary: "High latency on Messaging Service gRPC calls"
+            description: "95th percentile latency for {{ $labels.grpc_method }} is {{ $value }}s (threshold: 0.3s)"
+
+        # High error rate for gRPC requests
+        - alert: GrpcHighErrorRateAuth
+          expr: |
+            sum(rate(grpc_server_handled_total{grpc_code!="OK",grpc_service=~"auth.*"}[5m]))
+            /
+            sum(rate(grpc_server_handled_total{grpc_service=~"auth.*"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            service: auth-service
+            team: backend
+          annotations:
+            summary: "High error rate on Auth Service"
+            description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+        - alert: GrpcHighErrorRateMessaging
+          expr: |
+            sum(rate(grpc_server_handled_total{grpc_code!="OK",grpc_service=~"messaging.*"}[5m]))
+            /
+            sum(rate(grpc_server_handled_total{grpc_service=~"messaging.*"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            service: messaging-service
+            team: backend
+          annotations:
+            summary: "High error rate on Messaging Service"
+            description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+        - alert: GrpcCriticalErrorRate
+          expr: |
+            sum(rate(grpc_server_handled_total{grpc_code!="OK"}[5m]))
+            /
+            sum(rate(grpc_server_handled_total[5m])) > 0.15
+          for: 5m
+          labels:
+            severity: critical
+            team: backend
+          annotations:
+            summary: "Critical error rate across Guardyn services"
+            description: "Overall gRPC error rate is {{ $value | humanizePercentage }} (threshold: 15%)"
+
+    # ===================================================================
+    # Database Alerts (TiKV, ScyllaDB)
+    # ===================================================================
+    - name: guardyn.database.health
+      interval: 30s
+      rules:
+        # TiKV alerts
+        - alert: TiKVDown
+          expr: |
+            sum(up{job=~".*tikv.*"}) == 0
+            or absent(up{job=~".*tikv.*"})
+          for: 2m
+          labels:
+            severity: critical
+            service: tikv
+            team: data
+          annotations:
+            summary: "TiKV cluster is down"
+            description: "TiKV cluster has been unavailable for more than 2 minutes. All data operations are impacted."
+            runbook_url: "https://guardyn.io/runbooks/tikv-down"
+
+        - alert: TiKVHighLatency
+          expr: |
+            histogram_quantile(0.99, sum(rate(tikv_storage_command_total_duration_seconds_bucket[5m])) by (le)) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            service: tikv
+            team: data
+          annotations:
+            summary: "TiKV experiencing high latency"
+            description: "99th percentile TiKV command latency is {{ $value }}s"
+
+        # ScyllaDB alerts
+        - alert: ScyllaDBDown
+          expr: |
+            sum(up{job=~".*scylla.*"}) == 0
+            or absent(up{job=~".*scylla.*"})
+          for: 2m
+          labels:
+            severity: critical
+            service: scylladb
+            team: data
+          annotations:
+            summary: "ScyllaDB cluster is down"
+            description: "ScyllaDB cluster has been unavailable for more than 2 minutes. Message history is impacted."
+            runbook_url: "https://guardyn.io/runbooks/scylladb-down"
+
+        - alert: ScyllaDBHighLatency
+          expr: |
+            histogram_quantile(0.99, sum(rate(scylla_storage_proxy_coordinator_write_latency_bucket[5m])) by (le)) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+            service: scylladb
+            team: data
+          annotations:
+            summary: "ScyllaDB experiencing high write latency"
+            description: "99th percentile ScyllaDB write latency is {{ $value }}s"
+
+    # ===================================================================
+    # NATS JetStream Alerts
+    # ===================================================================
+    - name: guardyn.nats.health
+      interval: 30s
+      rules:
+        - alert: NATSDown
+          expr: |
+            sum(up{job=~".*nats.*"}) == 0
+            or absent(up{job=~".*nats.*"})
+          for: 2m
+          labels:
+            severity: critical
+            service: nats
+            team: messaging
+          annotations:
+            summary: "NATS JetStream is down"
+            description: "NATS JetStream has been unavailable for more than 2 minutes. Real-time messaging is impacted."
+            runbook_url: "https://guardyn.io/runbooks/nats-down"
+
+        - alert: NATSHighPendingMessages
+          expr: |
+            sum(nats_consumer_num_pending) by (stream_name) > 10000
+          for: 5m
+          labels:
+            severity: warning
+            service: nats
+            team: messaging
+          annotations:
+            summary: "NATS stream has high pending messages"
+            description: "Stream {{ $labels.stream_name }} has {{ $value }} pending messages. Consider scaling consumers."
+
+        - alert: NATSSlowConsumers
+          expr: |
+            sum(nats_consumer_num_redelivered) by (stream_name, consumer_name) > 100
+          for: 5m
+          labels:
+            severity: warning
+            service: nats
+            team: messaging
+          annotations:
+            summary: "NATS consumer has high redelivery count"
+            description: "Consumer {{ $labels.consumer_name }} on stream {{ $labels.stream_name }} has {{ $value }} redelivered messages."
+
+    # ===================================================================
+    # Resource Usage Alerts
+    # ===================================================================
+    - name: guardyn.resources
+      interval: 60s
+      rules:
+        # Pod memory alerts
+        - alert: PodHighMemoryUsage
+          expr: |
+            container_memory_working_set_bytes{namespace="apps", container!="POD", container!=""}
+            /
+            container_spec_memory_limit_bytes{namespace="apps", container!="POD", container!=""} > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "Pod {{ $labels.pod }} memory usage is high"
+            description: "Memory usage is {{ $value | humanizePercentage }} of limit (threshold: 85%)"
+
+        - alert: PodCriticalMemoryUsage
+          expr: |
+            container_memory_working_set_bytes{namespace="apps", container!="POD", container!=""}
+            /
+            container_spec_memory_limit_bytes{namespace="apps", container!="POD", container!=""} > 0.95
+          for: 2m
+          labels:
+            severity: critical
+            team: backend
+          annotations:
+            summary: "Pod {{ $labels.pod }} is about to be OOMKilled"
+            description: "Memory usage is {{ $value | humanizePercentage }} of limit. Immediate action required."
+
+        # Pod CPU alerts
+        - alert: PodHighCPUUsage
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{namespace="apps", container!="POD", container!=""}[5m])) by (pod, container)
+            /
+            sum(container_spec_cpu_quota{namespace="apps", container!="POD", container!=""}/container_spec_cpu_period{namespace="apps", container!="POD", container!=""}) by (pod, container) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "Pod {{ $labels.pod }} CPU usage is high"
+            description: "CPU usage is {{ $value | humanizePercentage }} of limit"
+
+        # PVC space alerts
+        - alert: PersistentVolumeAlmostFull
+          expr: |
+            kubelet_volume_stats_available_bytes{namespace=~"data|observability"}
+            /
+            kubelet_volume_stats_capacity_bytes{namespace=~"data|observability"} < 0.15
+          for: 5m
+          labels:
+            severity: warning
+            team: infra
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} is almost full"
+            description: "Only {{ $value | humanizePercentage }} space remaining"
+
+    # ===================================================================
+    # Envoy Proxy Alerts
+    # ===================================================================
+    - name: guardyn.envoy
+      interval: 30s
+      rules:
+        - alert: EnvoyProxyDown
+          expr: |
+            sum(up{job=~".*envoy.*"}) == 0
+            or absent(up{job=~".*envoy.*"})
+          for: 2m
+          labels:
+            severity: critical
+            service: envoy
+            team: infra
+          annotations:
+            summary: "Envoy Proxy is down"
+            description: "Envoy Proxy has been unavailable for more than 2 minutes. gRPC-Web clients cannot connect."
+            runbook_url: "https://guardyn.io/runbooks/envoy-down"
+
+        - alert: EnvoyHighErrorRate
+          expr: |
+            sum(rate(envoy_cluster_upstream_rq_xx{envoy_response_code_class="5"}[5m]))
+            /
+            sum(rate(envoy_cluster_upstream_rq_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            service: envoy
+            team: infra
+          annotations:
+            summary: "Envoy proxy high 5xx error rate"
+            description: "5xx error rate is {{ $value | humanizePercentage }}"
+
+    # ===================================================================
+    # WebSocket Alerts
+    # ===================================================================
+    - name: guardyn.websocket
+      interval: 30s
+      rules:
+        - alert: WebSocketConnectionsHigh
+          expr: |
+            sum(guardyn_websocket_connections_total) > 5000
+          for: 5m
+          labels:
+            severity: warning
+            service: messaging-service
+            team: backend
+          annotations:
+            summary: "High number of WebSocket connections"
+            description: "Current WebSocket connections: {{ $value }}. Consider scaling messaging-service."
+
+        - alert: WebSocketConnectionDropRate
+          expr: |
+            sum(rate(guardyn_websocket_disconnections_total[5m])) / sum(rate(guardyn_websocket_connections_total[5m])) > 0.3
+          for: 5m
+          labels:
+            severity: warning
+            service: messaging-service
+            team: backend
+          annotations:
+            summary: "High WebSocket disconnect rate"
+            description: "WebSocket disconnect rate is {{ $value | humanizePercentage }}. Investigate network issues."
+
+    # ===================================================================
+    # Security Alerts
+    # ===================================================================
+    - name: guardyn.security
+      interval: 30s
+      rules:
+        - alert: HighAuthenticationFailures
+          expr: |
+            sum(rate(grpc_server_handled_total{grpc_service=~"auth.*",grpc_method="Login",grpc_code!="OK"}[5m])) > 10
+          for: 5m
+          labels:
+            severity: warning
+            service: auth-service
+            team: security
+          annotations:
+            summary: "High rate of authentication failures"
+            description: "{{ $value }} failed login attempts per second. Possible brute-force attack."
+
+        - alert: JWTValidationFailures
+          expr: |
+            sum(rate(guardyn_jwt_validation_failures_total[5m])) > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: security
+          annotations:
+            summary: "High JWT validation failure rate"
+            description: "{{ $value }} JWT validation failures per second. Check for token issues."
+
+    # ===================================================================
+    # E2EE/Cryptography Alerts
+    # ===================================================================
+    - name: guardyn.crypto
+      interval: 60s
+      rules:
+        - alert: E2EESessionCreationFailures
+          expr: |
+            sum(rate(guardyn_e2ee_session_creation_failures_total[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+            team: crypto
+          annotations:
+            summary: "E2EE session creation failures detected"
+            description: "{{ $value }} E2EE session creation failures per second. Check key exchange."
+
+        - alert: MLSGroupOperationFailures
+          expr: |
+            sum(rate(guardyn_mls_operation_failures_total[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+            team: crypto
+          annotations:
+            summary: "MLS group operation failures detected"
+            description: "{{ $value }} MLS operation failures per second. Check group state consistency."
+---
+# Alertmanager Configuration for routing alerts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guardyn-alertmanager-config
+  namespace: observability
+  labels:
+    guardyn.io/stage: poc
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['alertname', 'severity', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'default-receiver'
+      routes:
+        # Critical alerts - immediate notification
+        - match:
+            severity: critical
+          receiver: 'critical-receiver'
+          group_wait: 10s
+          repeat_interval: 1h
+        
+        # Security alerts - dedicated channel
+        - match:
+            team: security
+          receiver: 'security-receiver'
+          group_wait: 10s
+          repeat_interval: 30m
+        
+        # Data team alerts
+        - match:
+            team: data
+          receiver: 'data-receiver'
+
+    receivers:
+      - name: 'default-receiver'
+        # Placeholder - configure Slack/PagerDuty/Email in production
+        webhook_configs: []
+
+      - name: 'critical-receiver'
+        # Placeholder for PagerDuty or Opsgenie
+        webhook_configs: []
+
+      - name: 'security-receiver'
+        # Placeholder for security team notifications
+        webhook_configs: []
+
+      - name: 'data-receiver'
+        # Placeholder for data team notifications
+        webhook_configs: []
+
+    inhibit_rules:
+      # Don't alert on warning if critical is already firing
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'service']

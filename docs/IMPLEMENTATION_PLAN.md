@@ -377,7 +377,7 @@ WebSocket infrastructure is **fully implemented** in both backend and Flutter cl
 
 - [x] Configure service monitors
 
-- [ ] Set up alerting rules
+- [x] Set up alerting rules
 
 - [x] Create performance dashboards
 

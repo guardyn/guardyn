@@ -38,6 +38,10 @@ case "${SERVICE}" in
     helm upgrade --install grafana-loki grafana/loki-distributed \
       --namespace observability \
       --values infra/k8s/base/monitoring/loki-values.yaml
+    # Apply Guardyn-specific alerting rules
+    echo "Applying Guardyn alerting rules..."
+    kubectl apply -f infra/k8s/base/monitoring/alerting-rules.yaml
+    echo "Alerting rules deployed. Check with: kubectl get prometheusrules -n observability"
     ;;
   tracing)
     echo "Deploying distributed tracing stack (Tempo + OpenTelemetry Collector)..."
