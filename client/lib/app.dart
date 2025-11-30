@@ -18,8 +18,10 @@ import 'package:guardyn_client/features/groups/data/datasources/group_remote_dat
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
@@ -80,10 +82,12 @@ class GuardynApp extends StatelessWidget {
 
     final createGroup = CreateGroup(groupRepository);
     final getGroups = GetGroups(groupRepository);
+    final getGroupById = GetGroupById(groupRepository);
     final sendGroupMessage = SendGroupMessage(groupRepository);
     final getGroupMessages = GetGroupMessages(groupRepository);
     final addGroupMember = AddGroupMember(groupRepository);
     final removeGroupMember = RemoveGroupMember(groupRepository);
+    final leaveGroup = LeaveGroup(groupRepository);
 
     return MultiBlocProvider(
       providers: [
@@ -107,10 +111,12 @@ class GuardynApp extends StatelessWidget {
           create: (context) => GroupBloc(
             createGroup: createGroup,
             getGroups: getGroups,
+            getGroupById: getGroupById,
             sendGroupMessage: sendGroupMessage,
             getGroupMessages: getGroupMessages,
             addGroupMember: addGroupMember,
             removeGroupMember: removeGroupMember,
+            leaveGroup: leaveGroup,
           ),
         ),
       ],
