@@ -1,8 +1,6 @@
-import 'dart:math';
-import 'dart:typed_data';
-
 import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
 import 'package:guardyn_client/generated/auth.pbgrpc.dart';
@@ -12,9 +10,10 @@ import 'package:logger/logger.dart';
 /// Remote data source for authentication via gRPC
 class AuthRemoteDatasource {
   final GrpcClients grpcClients;
+  final CryptoService cryptoService;
   final Logger logger = Logger();
 
-  AuthRemoteDatasource(this.grpcClients);
+  AuthRemoteDatasource(this.grpcClients, this.cryptoService);
 
   /// Register a new user
   Future<RegisterSuccess> register({
@@ -23,8 +22,8 @@ class AuthRemoteDatasource {
     required String deviceName,
   }) async {
     try {
-      // Generate placeholder KeyBundle (will be replaced with real crypto later)
-      final keyBundle = _generatePlaceholderKeyBundle();
+      // Generate real X3DH KeyBundle for E2EE
+      final keyBundle = await _generateX3DHKeyBundle();
 
       final request = RegisterRequest()
         ..username = username
@@ -64,8 +63,8 @@ class AuthRemoteDatasource {
     required String password,
   }) async {
     try {
-      // Generate placeholder KeyBundle for new device
-      final keyBundle = _generatePlaceholderKeyBundle();
+      // Generate real X3DH KeyBundle for E2EE
+      final keyBundle = await _generateX3DHKeyBundle();
 
       final request = LoginRequest()
         ..username = username
@@ -165,25 +164,30 @@ class AuthRemoteDatasource {
     }
   }
 
-  /// Generate placeholder KeyBundle (temporary until real crypto is implemented)
-  /// TODO: Replace with real X3DH key generation
-  common.KeyBundle _generatePlaceholderKeyBundle() {
-    final random = Random.secure();
+  /// Generate real X3DH KeyBundle for registration/login
+  /// Uses CryptoService to create cryptographically secure keys
+  Future<common.KeyBundle> _generateX3DHKeyBundle() async {
+    // Initialize X3DH if not already done
+    if (!cryptoService.isInitialized) {
+      logger.i('Initializing X3DH protocol for key bundle generation');
+      await cryptoService.initializeX3DH(oneTimePreKeyCount: 100);
+    }
+
+    // Export real cryptographic key bundle
+    final keyBundle = cryptoService.exportKeyBundle(oneTimePreKeyIndex: 0);
+    if (keyBundle == null) {
+      throw AuthException('Failed to generate X3DH key bundle');
+    }
+
     final now = DateTime.now();
-    
+    logger.i('Generated real X3DH key bundle with ${keyBundle.oneTimePreKey != null ? 1 : 0} one-time pre-key');
+
     return common.KeyBundle()
-      ..identityKey = Uint8List.fromList(
-        List.generate(32, (_) => random.nextInt(256)),
-      )
-      ..signedPreKey = Uint8List.fromList(
-        List.generate(32, (_) => random.nextInt(256)),
-      )
-      ..signedPreKeySignature = Uint8List.fromList(
-        List.generate(64, (_) => random.nextInt(256)),
-      )
+      ..identityKey = keyBundle.identityKey
+      ..signedPreKey = keyBundle.signedPreKey
+      ..signedPreKeySignature = keyBundle.signedPreKeySignature
       ..oneTimePreKeys.addAll([
-        Uint8List.fromList(List.generate(32, (_) => random.nextInt(256))),
-        Uint8List.fromList(List.generate(32, (_) => random.nextInt(256))),
+        if (keyBundle.oneTimePreKey != null) keyBundle.oneTimePreKey!,
       ])
       ..createdAt = (common.Timestamp()
         ..seconds = Int64(now.millisecondsSinceEpoch ~/ 1000)

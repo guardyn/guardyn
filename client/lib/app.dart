@@ -26,6 +26,7 @@ import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart
 import 'package:guardyn_client/features/groups/presentation/pages/group_chat_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_create_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_list_page.dart';
+import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
@@ -45,7 +46,7 @@ class GuardynApp extends StatelessWidget {
     final cryptoService = getIt<CryptoService>();
 
     // Auth dependencies
-    final remoteDatasource = AuthRemoteDatasource(grpcClients);
+    final remoteDatasource = AuthRemoteDatasource(grpcClients, cryptoService);
     final authRepository = AuthRepositoryImpl(
       remoteDatasource: remoteDatasource,
       secureStorage: secureStorage,
@@ -57,8 +58,10 @@ class GuardynApp extends StatelessWidget {
 
     // Messaging dependencies
     final messageRemoteDatasource = MessageRemoteDatasource(grpcClients);
+    final keyExchangeDatasource = KeyExchangeDatasource(grpcClients);
     final messageRepository = MessageRepositoryImpl(
       messageRemoteDatasource,
+      keyExchangeDatasource,
       secureStorage,
       cryptoService,
     );

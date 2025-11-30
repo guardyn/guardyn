@@ -1,4 +1,5 @@
 /// Cryptographic exceptions for E2EE operations
+library;
 
 /// Base class for crypto exceptions
 abstract class CryptoException implements Exception {

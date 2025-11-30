@@ -1,6 +1,7 @@
 /// E2EE Crypto Service for managing encryption sessions
 ///
 /// Handles X3DH key exchange and Double Ratchet sessions
+library;
 
 import 'dart:convert';
 import 'dart:typed_data';

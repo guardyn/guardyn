@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:logger/logger.dart';
 
 import '../../../../core/crypto/crypto_service.dart';
 import '../../../../core/error/failures.dart';
@@ -10,16 +11,24 @@ import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/utils/conversation_utils.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/message_repository.dart';
+import '../datasources/key_exchange_datasource.dart';
 import '../datasources/message_remote_datasource.dart';
 import '../models/message_model.dart';
 
 @Injectable(as: MessageRepository)
 class MessageRepositoryImpl implements MessageRepository {
   final MessageRemoteDatasource remoteDatasource;
+  final KeyExchangeDatasource keyExchangeDatasource;
   final SecureStorage secureStorage;
   final CryptoService cryptoService;
+  final Logger _logger = Logger();
 
-  MessageRepositoryImpl(this.remoteDatasource, this.secureStorage, this.cryptoService);
+  MessageRepositoryImpl(
+    this.remoteDatasource, 
+    this.keyExchangeDatasource,
+    this.secureStorage, 
+    this.cryptoService,
+  );
 
   @override
   Future<Either<Failure, Message>> sendMessage({
@@ -293,7 +302,7 @@ class MessageRepositoryImpl implements MessageRepository {
 
   /// Encrypt message content with Double Ratchet
   ///
-  /// If no session exists, creates one (requires key exchange via backend)
+  /// If no session exists, creates one via X3DH key exchange
   Future<String> _encryptMessage({
     required String plaintext,
     required String recipientUserId,
@@ -301,16 +310,30 @@ class MessageRepositoryImpl implements MessageRepository {
     required String currentUserId,
   }) async {
     // Check if E2EE session exists
-    final session = await cryptoService.getSession(
+    var session = await cryptoService.getSession(
       remoteUserId: recipientUserId,
       remoteDeviceId: recipientDeviceId,
     );
 
+    // No session? Create one via X3DH key exchange
     if (session == null) {
-      // No E2EE session - return plaintext (backend will handle fallback)
-      // In production, we would fetch key bundle and create session here
-      // For now, return base64-encoded plaintext as marker
-      return plaintext;
+      _logger.i('No E2EE session for $recipientUserId:$recipientDeviceId, initiating X3DH');
+      try {
+        await _createE2ESession(
+          recipientUserId: recipientUserId,
+          recipientDeviceId: recipientDeviceId,
+        );
+        // Re-fetch session after creation
+        session = await cryptoService.getSession(
+          remoteUserId: recipientUserId,
+          remoteDeviceId: recipientDeviceId,
+        );
+        _logger.i('E2EE session created successfully');
+      } catch (e) {
+        _logger.w('Failed to create E2EE session: $e. Sending plaintext.');
+        // Fall back to plaintext if session creation fails
+        return plaintext;
+      }
     }
 
     // Encrypt with Double Ratchet
@@ -326,13 +349,40 @@ class MessageRepositoryImpl implements MessageRepository {
         plaintext: plaintextBytes,
         associatedData: associatedData,
       );
+      _logger.d('Message encrypted successfully (${encrypted.length} bytes)');
       // Return as string representation of bytes
       return String.fromCharCodes(encrypted);
     } catch (e) {
+      _logger.e('Encryption failed: $e. Sending plaintext.');
       // Encryption failed, fall back to plaintext
-      // Log this in production for debugging
       return plaintext;
     }
+  }
+
+  /// Create E2EE session via X3DH key exchange
+  Future<void> _createE2ESession({
+    required String recipientUserId,
+    required String recipientDeviceId,
+  }) async {
+    // Get access token for fetching key bundle
+    final accessToken = await secureStorage.getAccessToken();
+    if (accessToken == null) {
+      throw Exception('No access token for key exchange');
+    }
+
+    // Fetch recipient's X3DH KeyBundle from server
+    final remoteKeyBundle = await keyExchangeDatasource.getKeyBundle(
+      accessToken: accessToken,
+      userId: recipientUserId,
+      deviceId: recipientDeviceId.isNotEmpty ? recipientDeviceId : null,
+    );
+
+    // Create E2EE session as initiator (Alice)
+    await cryptoService.createSessionAsInitiator(
+      recipientUserId: recipientUserId,
+      recipientDeviceId: recipientDeviceId,
+      remoteKeyBundle: remoteKeyBundle,
+    );
   }
 
   /// Decrypt message content with Double Ratchet
