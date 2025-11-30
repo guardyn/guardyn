@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-tracing
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+    guardyn.io/stage: poc
+data:
+  tracing-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Guardyn Distributed Tracing",
+        "tags": ["guardyn", "tracing", "tempo", "mvp"],
+        "timezone": "browser",
+        "schemaVersion": 39,
+        "version": 1,
+        "refresh": "30s",
+        "uid": "guardyn-tracing",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Trace Search",
+            "type": "traces",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "targets": [
+              {
+                "query": "{}",
+                "queryType": "traceql",
+                "refId": "A",
+                "limit": 20
+              }
+            ],
+            "gridPos": {"x": 0, "y": 0, "w": 24, "h": 12}
+          },
+          {
+            "id": 2,
+            "title": "Recent Traces by Service",
+            "type": "table",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "targets": [
+              {
+                "query": "{resource.service.name=~\"auth-service|messaging-service|presence-service|media-service\"}",
+                "queryType": "traceql",
+                "refId": "A",
+                "limit": 50
+              }
+            ],
+            "gridPos": {"x": 0, "y": 12, "w": 24, "h": 8}
+          },
+          {
+            "id": 3,
+            "title": "Error Traces",
+            "type": "traces",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "targets": [
+              {
+                "query": "{status=error}",
+                "queryType": "traceql",
+                "refId": "A",
+                "limit": 20
+              }
+            ],
+            "gridPos": {"x": 0, "y": 20, "w": 24, "h": 8}
+          }
+        ]
+      },
+      "overwrite": true
+    }

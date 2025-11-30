@@ -237,7 +237,17 @@ impl MessagingService for MessagingServiceImpl {
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = ServiceConfig::load()?;
-    observability::init_tracing(&config.service_name, &config.observability.log_level);
+    // Initialize tracing with OpenTelemetry if endpoint is configured
+    let otlp_endpoint = if config.observability.otlp_endpoint.is_empty() {
+        None
+    } else {
+        Some(config.observability.otlp_endpoint.as_str())
+    };
+    let _tracing_guard = observability::init_tracing(
+        &config.service_name, 
+        &config.observability.log_level,
+        otlp_endpoint,
+    );
 
     tracing::info!("Starting messaging service on {}:{}", config.host, config.port);
 

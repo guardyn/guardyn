@@ -32,6 +32,8 @@ spec:
           value: "nats://nats.messaging.svc.cluster.local:4222"
         - name: SCYLLADB_URL
           value: "guardyn-scylla-dc1-rack1-0.data.svc.cluster.local:9042"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://tempo.observability.svc.cluster.local:4317"
         - name: FCM_KEY_PATH
           value: "/etc/secrets/fcm-key.json"
         resources:

@@ -35,6 +35,8 @@ spec:
           value: "nats://nats.messaging.svc.cluster.local:4222"
         - name: TIKV_PD_ENDPOINTS
           value: "pd-0.pd.data.svc.cluster.local:2379"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://tempo.observability.svc.cluster.local:4317"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
