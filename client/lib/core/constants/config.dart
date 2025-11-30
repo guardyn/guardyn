@@ -37,6 +37,9 @@ class AppConfig {
   static String get messagingHost => authHost; // Same logic as authHost
   static const int messagingPort = 50052;
 
+  static String get presenceHost => authHost; // Same logic as authHost
+  static const int presencePort = 50053;
+
   // Web-specific ports for Envoy gRPC-Web proxy
   // Note: Using port 18080 to avoid conflict with k3d loadbalancer on 8080
   static const int webProxyPort = 18080;
@@ -57,6 +60,14 @@ class AppConfig {
       return Uri.parse('http://$messagingHost:$webProxyPort');
     }
     throw UnsupportedError('getMessagingUri is only for web platforms');
+  }
+
+  static Uri getPresenceUri() {
+    if (kIsWeb) {
+      // Use Envoy proxy on port 18080 which translates gRPC-Web to gRPC
+      return Uri.parse('http://$presenceHost:$webProxyPort');
+    }
+    throw UnsupportedError('getPresenceUri is only for web platforms');
   }
 
   // WebSocket configuration

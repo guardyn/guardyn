@@ -194,10 +194,11 @@ All core MVP features are deployed, tested, documented, and production-ready:
 6. ✅ **Performance testing ready (k6 load tests with 50 VUs)**
 7. ✅ **Observability complete (Prometheus, Loki, Grafana)**
 8. ✅ **Cryptography implementation complete (X3DH, Double Ratchet, MLS)** - **PHASE 6 COMPLETE**
-9. ⏳ Presence Service (online/offline status, typing indicators)
-10. ✅ **Media Service DEPLOYED** (upload/download, S3/MinIO storage, 2/2 replicas running)
-11. ⏳ Post-Quantum Cryptography (Kyber integration)
-12. ✅ **WebSocket Infrastructure COMPLETE** (messaging-service with Axum, connection management, NATS integration)
+9. ✅ **Presence Service DEPLOYED** (backend: online/offline status, typing indicators, heartbeat)
+10. ✅ **Presence UI (Flutter) COMPLETE** (OnlineIndicator, TypingIndicator, LastSeenText, StatusBadge widgets)
+11. ✅ **Media Service DEPLOYED** (upload/download, S3/MinIO storage, 2/2 replicas running)
+12. ⏳ Post-Quantum Cryptography (Kyber integration)
+13. ✅ **WebSocket Infrastructure COMPLETE** (messaging-service with Axum, connection management, NATS integration)
 
 ### 🔄 **Real-Time Messaging: Polling → WebSocket Migration Roadmap**
 

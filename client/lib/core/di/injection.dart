@@ -27,6 +27,16 @@ import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.d
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
+// Presence feature imports
+import 'package:guardyn_client/features/presence/data/datasources/presence_remote_datasource.dart';
+import 'package:guardyn_client/features/presence/data/repositories/presence_repository_impl.dart';
+import 'package:guardyn_client/features/presence/domain/repositories/presence_repository.dart';
+import 'package:guardyn_client/features/presence/domain/usecases/get_bulk_presence.dart';
+import 'package:guardyn_client/features/presence/domain/usecases/get_user_presence.dart';
+import 'package:guardyn_client/features/presence/domain/usecases/send_heartbeat.dart';
+import 'package:guardyn_client/features/presence/domain/usecases/send_typing_indicator.dart';
+import 'package:guardyn_client/features/presence/domain/usecases/update_my_status.dart';
+import 'package:guardyn_client/features/presence/presentation/bloc/presence_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 final getIt = GetIt.instance;
@@ -59,6 +69,9 @@ Future<void> configureDependencies() async {
 
   // Register groups feature dependencies
   _registerGroupsDependencies();
+
+  // Register presence feature dependencies
+  _registerPresenceDependencies();
 }
 
 void _registerAuthDependencies() {
@@ -170,6 +183,52 @@ void _registerGroupsDependencies() {
       getGroupMessages: getIt<GetGroupMessages>(),
       addGroupMember: getIt<AddGroupMember>(),
       removeGroupMember: getIt<RemoveGroupMember>(),
+    ),
+  );
+}
+
+void _registerPresenceDependencies() {
+  // Data layer
+  getIt.registerLazySingleton<PresenceRemoteDatasource>(
+    () => PresenceRemoteDatasource(getIt<GrpcClients>()),
+  );
+
+  getIt.registerLazySingleton<PresenceRepository>(
+    () => PresenceRepositoryImpl(
+      getIt<PresenceRemoteDatasource>(),
+      getIt<SecureStorage>(),
+    ),
+  );
+
+  // Domain layer - Use cases
+  getIt.registerLazySingleton<GetUserPresence>(
+    () => GetUserPresence(getIt<PresenceRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetBulkPresence>(
+    () => GetBulkPresence(getIt<PresenceRepository>()),
+  );
+
+  getIt.registerLazySingleton<UpdateMyStatus>(
+    () => UpdateMyStatus(getIt<PresenceRepository>()),
+  );
+
+  getIt.registerLazySingleton<SendTypingIndicator>(
+    () => SendTypingIndicator(getIt<PresenceRepository>()),
+  );
+
+  getIt.registerLazySingleton<SendHeartbeat>(
+    () => SendHeartbeat(getIt<PresenceRepository>()),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<PresenceBloc>(
+    () => PresenceBloc(
+      getUserPresence: getIt<GetUserPresence>(),
+      getBulkPresence: getIt<GetBulkPresence>(),
+      updateMyStatus: getIt<UpdateMyStatus>(),
+      sendTypingIndicator: getIt<SendTypingIndicator>(),
+      sendHeartbeat: getIt<SendHeartbeat>(),
     ),
   );
 }

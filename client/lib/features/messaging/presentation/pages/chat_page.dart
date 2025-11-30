@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/utils/conversation_utils.dart';
+import '../../../presence/presentation/bloc/presence_bloc.dart';
+import '../../../presence/presentation/bloc/presence_event.dart';
+import '../../../presence/presentation/bloc/presence_state.dart';
+import '../../../presence/presentation/widgets/last_seen_text.dart';
+import '../../../presence/presentation/widgets/online_indicator.dart';
+import '../../../presence/presentation/widgets/typing_indicator.dart';
 import '../bloc/message_bloc.dart';
 import '../bloc/message_event.dart';
 import '../bloc/message_state.dart';
@@ -29,10 +36,16 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
   final _secureStorage = const FlutterSecureStorage();
   String? _conversationId;
+  late PresenceBloc _presenceBloc;
 
   @override
   void initState() {
     super.initState();
+    // Initialize presence bloc
+    _presenceBloc = getIt<PresenceBloc>();
+    _presenceBloc.add(const PresenceStartHeartbeat());
+    _presenceBloc.add(PresenceFetchUser(widget.conversationUserId));
+    
     _loadMessagesWithConversationId();
     // Set active conversation (to suppress notifications for current chat)
     context.read<MessageBloc>().add(MessageSetActiveConversation(widget.conversationUserId));
@@ -76,6 +89,9 @@ class _ChatPageState extends State<ChatPage> {
     context.read<MessageBloc>().add(const MessageStopPolling());
     // Clear active conversation when leaving chat
     context.read<MessageBloc>().add(const MessageSetActiveConversation(null));
+    // Stop presence heartbeat
+    _presenceBloc.add(const PresenceStopHeartbeat());
+    _presenceBloc.close();
     _scrollController.dispose();
     super.dispose();
   }
@@ -134,13 +150,54 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(widget.conversationUserName),
-            const Text(
-              'Online',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            // Online indicator dot
+            StreamBuilder<PresenceState>(
+              stream: _presenceBloc.stream,
+              initialData: _presenceBloc.state,
+              builder: (context, snapshot) {
+                final state = snapshot.data;
+                if (state is PresenceLoaded) {
+                  final presence = state.presenceMap[widget.conversationUserId];
+                  return OnlineIndicator(
+                    presenceInfo: presence,
+                    size: 10,
+                  );
+                }
+                return const OnlineIndicator(size: 10);
+              },
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.conversationUserName),
+                  StreamBuilder<PresenceState>(
+                    stream: _presenceBloc.stream,
+                    initialData: _presenceBloc.state,
+                    builder: (context, snapshot) {
+                      final state = snapshot.data;
+                      if (state is PresenceLoaded) {
+                        final presence = state.presenceMap[widget.conversationUserId];
+                        if (presence != null) {
+                          // Check if typing
+                          final isTyping = state.typingUsers.containsKey(widget.conversationUserId);
+                          if (isTyping) {
+                            return const TypingIndicator(dotSize: 4);
+                          }
+                          return LastSeenText(presenceInfo: presence);
+                        }
+                      }
+                      return const Text(
+                        'Connecting...',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
