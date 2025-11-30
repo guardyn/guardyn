@@ -6,6 +6,7 @@
 /// - Message history
 /// - Delivery guarantees
 /// - Group chat logic
+/// - WebSocket real-time messaging
 
 mod handlers;
 mod models;
@@ -16,6 +17,7 @@ mod crypto;
 mod mls_manager;
 mod auth_client;
 mod config;
+mod websocket;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
@@ -260,16 +262,47 @@ async fn main() -> Result<()> {
 
     tracing::info!("Connected to NATS JetStream");
 
+    let db = Arc::new(db);
+    let nats = Arc::new(nats);
+
     // Create gRPC service
     let service = MessagingServiceImpl {
-        db: Arc::new(db),
-        nats: Arc::new(nats),
+        db: db.clone(),
+        nats: nats.clone(),
     };
+
+    // Start WebSocket server if enabled
+    let ws_enabled = std::env::var("ENABLE_WEBSOCKET")
+        .unwrap_or_else(|_| "true".to_string())
+        .to_lowercase() == "true";
+
+    if ws_enabled {
+        let ws_port: u16 = std::env::var("WEBSOCKET_PORT")
+            .unwrap_or_else(|_| "8080".to_string())
+            .parse()
+            .unwrap_or(8080);
+
+        let jwt_secret = std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
+
+        let ws_config = websocket::server::WebSocketServerConfig {
+            port: ws_port,
+            jwt_secret,
+            max_connections_per_user: 5,
+            heartbeat_interval: 30,
+            connection_timeout: 90,
+        };
+
+        let ws_server = websocket::WebSocketServer::new(ws_config, db.clone(), nats.clone());
+        
+        tracing::info!(port = ws_port, "Starting WebSocket server");
+        ws_server.spawn();
+    }
 
     // Start gRPC server
     let addr = format!("{}:{}", config.host, config.port).parse()?;
 
-    tracing::info!("Messaging service listening on {}", addr);
+    tracing::info!("Messaging service gRPC listening on {}", addr);
 
     Server::builder()
         .add_service(MessagingServiceServer::new(service))

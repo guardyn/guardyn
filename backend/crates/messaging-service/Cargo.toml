@@ -31,5 +31,12 @@ x25519-dalek = { version = "2.0", features = ["serde", "static_secrets"] }
 rand = "0.8"
 bytes = "1.5"
 
+# WebSocket support
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+dashmap = "6.0"
+parking_lot = "0.12"
+
 [build-dependencies]
 tonic-build.workspace = true

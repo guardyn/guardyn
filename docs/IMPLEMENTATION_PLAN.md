@@ -173,6 +173,7 @@ All core MVP features are deployed, tested, documented, and production-ready:
 9. ⏳ Presence Service (online/offline status, typing indicators)
 10. ✅ **Media Service DEPLOYED** (upload/download, S3/MinIO storage, 2/2 replicas running)
 11. ⏳ Post-Quantum Cryptography (Kyber integration)
+12. ✅ **WebSocket Infrastructure COMPLETE** (messaging-service with Axum, connection management, NATS integration)
 
 ### 🔄 **Real-Time Messaging: Polling → WebSocket Migration Roadmap**
 
@@ -223,9 +224,9 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 3. **Implementation Steps**:
 
-   - [ ] Add `axum-tungstenite` WebSocket support to messaging-service
-   - [ ] Create WebSocket gateway service (or extend messaging-service)
-   - [ ] Implement connection management (heartbeat, reconnection)
+   - [x] Add `axum-tungstenite` WebSocket support to messaging-service
+   - [x] Create WebSocket gateway service (or extend messaging-service)
+   - [x] Implement connection management (heartbeat, reconnection)
    - [ ] Add WebSocket client to Flutter (`web_socket_channel` package)
    - [ ] Maintain polling as fallback for unreliable networks
    - [ ] Migrate presence and typing indicators to WebSocket
@@ -527,7 +528,38 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
 
 ---
 
-## Phase 5: Real-Time Communication (RTC) ⏳
+## Phase 5: Real-Time Communication (RTC) 🔄
+
+### 5.0 WebSocket Infrastructure ✅ **COMPLETE** (Nov 30, 2025)
+
+- [x] Add `axum` WebSocket support to messaging-service
+
+- [x] WebSocket server implementation (`websocket/server.rs`)
+
+- [x] Connection management with heartbeat (`websocket/connection.rs`)
+
+- [x] WebSocket message types and handlers (`websocket/handlers.rs`)
+
+- [x] NATS integration for message pub/sub
+
+- [x] JWT authentication via query parameter
+
+- [x] Presence tracking (online/offline status)
+
+- [x] Typing indicators support
+
+- [x] Conversation subscriptions
+
+- [x] Database integration for message storage
+
+**Architecture**:
+```
+Flutter Client ←→ WebSocket (ws://host:8081) ←→ messaging-service (Axum) ←→ NATS JetStream
+```
+
+**Endpoints**:
+- `ws://host:8081/ws?token=<jwt>` - WebSocket connection
+- Supports: send_message, subscribe, typing_indicator, heartbeat
 
 ### 5.1 Signaling Server
 

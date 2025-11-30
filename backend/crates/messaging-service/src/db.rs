@@ -1245,5 +1245,120 @@ impl DatabaseClient {
 
         Ok(sessions)
     }
+
+    // ========================================================================
+    // WebSocket Support Methods
+    // ========================================================================
+
+    /// Execute a message insert for WebSocket handler
+    pub async fn execute_message_insert(
+        &self,
+        message_id: &str,
+        sender_id: &str,
+        recipient_id: &str,
+        content: &str,
+        content_type: &str,
+        encrypted: bool,
+        timestamp: chrono::DateTime<chrono::Utc>,
+    ) -> Result<()> {
+        // Generate conversation ID (deterministic for 1-on-1)
+        let conversation_id = self.generate_conversation_id(sender_id, recipient_id);
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .unwrap_or_else(|_| uuid::Uuid::new_v4());
+
+        // Store message in ScyllaDB
+        self.scylla
+            .query_unpaged(
+                "INSERT INTO guardyn.messages (
+                    conversation_id, message_id, sender_user_id, recipient_user_id,
+                    encrypted_content, message_type, server_timestamp, delivery_status, is_deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    conversation_id,
+                    message_uuid,
+                    sender_id.to_string(),
+                    recipient_id.to_string(),
+                    content.as_bytes().to_vec(),
+                    if content_type == "text" { 0i32 } else { 1i32 },
+                    timestamp.timestamp_millis(),
+                    0i32, // Sent
+                    false,
+                ),
+            )
+            .await
+            .context("Failed to store message")?;
+
+        // Update conversation metadata for both users
+        let now = chrono::Utc::now();
+        let time_ms = now.timestamp_millis();
+        let preview = if content.len() > 100 {
+            &content[..100]
+        } else {
+            content
+        };
+        
+        self.upsert_conversation(
+            sender_id,
+            &conversation_id.to_string(),
+            recipient_id,
+            recipient_id, // other_username (use ID as fallback)
+            message_id,
+            preview,
+            time_ms,
+            false,
+        ).await?;
+
+        self.upsert_conversation(
+            recipient_id,
+            &conversation_id.to_string(),
+            sender_id,
+            sender_id, // other_username (use ID as fallback)
+            message_id,
+            preview,
+            time_ms,
+            true, // Increment unread for recipient
+        ).await?;
+
+        Ok(())
+    }
+
+    /// Generate deterministic conversation ID for 1-on-1 chats
+    fn generate_conversation_id(&self, user_a: &str, user_b: &str) -> uuid::Uuid {
+        // Sort user IDs to ensure same conversation ID regardless of who sends
+        let (first, second) = if user_a < user_b {
+            (user_a, user_b)
+        } else {
+            (user_b, user_a)
+        };
+        
+        // Use UUID v5 with DNS namespace for deterministic generation
+        uuid::Uuid::new_v5(
+            &uuid::Uuid::NAMESPACE_DNS,
+            format!("{}:{}", first, second).as_bytes(),
+        )
+    }
+
+    /// Mark a message as read
+    pub async fn mark_message_read(
+        &self,
+        message_id: &str,
+        reader_user_id: &str,
+    ) -> Result<()> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message ID")?;
+
+        // Update delivery status to Read (2)
+        self.scylla
+            .query_unpaged(
+                "UPDATE guardyn.messages SET delivery_status = 2 WHERE message_id = ? ALLOW FILTERING",
+                (message_uuid,),
+            )
+            .await
+            .context("Failed to mark message as read")?;
+
+        tracing::debug!(message_id = %message_id, reader = %reader_user_id, "Message marked as read");
+        Ok(())
+    }
 }
+
 
