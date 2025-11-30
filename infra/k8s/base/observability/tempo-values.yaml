@@ -1,0 +1,61 @@
+# Grafana Tempo Helm Chart Values
+# Single binary mode for local development / PoC
+# Documentation: https://grafana.com/docs/tempo/latest/
+
+tempo:
+  # Trace storage backend - local filesystem for PoC
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  # Receivers for OTLP traces
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  # Retention configuration (7 days for PoC)
+  retention: 168h  # 7 days
+
+  # Search configuration
+  search:
+    enabled: true
+
+  # Metrics generator for trace-to-metrics
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server.observability.svc.cluster.local:9090/api/v1/write"
+
+# Resource configuration (conservative for local dev)
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Persistence configuration
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: local-path
+
+# Service configuration
+service:
+  type: ClusterIP
+
+# Tempo Query frontend (optional for PoC)
+tempoQuery:
+  enabled: false
+
+# Enable trace ingestion metrics
+metricsGenerator:
+  enabled: false  # Disable for PoC to save resources

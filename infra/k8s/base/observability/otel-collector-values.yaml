@@ -1,0 +1,127 @@
+# OpenTelemetry Collector Helm Chart Values
+# Collects traces from Rust services and forwards to Tempo
+# Documentation: https://opentelemetry.io/docs/collector/
+
+mode: deployment
+
+# Image configuration (required since v0.86.0)
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.140.0
+
+# Single replica for PoC
+replicaCount: 1
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Ports configuration
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+
+# Collector configuration
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    batch:
+      timeout: 1s
+      send_batch_size: 1024
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 200
+      spike_limit_mib: 50
+    # Add service name attribute if missing
+    resource:
+      attributes:
+        - key: deployment.environment
+          value: poc
+          action: insert
+
+  exporters:
+    # Export traces to Tempo
+    otlp/tempo:
+      endpoint: tempo.observability.svc.cluster.local:4317
+      tls:
+        insecure: true
+    # Export metrics to Prometheus (for collector health)
+    prometheus:
+      endpoint: 0.0.0.0:8889
+      namespace: otel
+      const_labels:
+        collector: guardyn-otel
+    # Debug output for troubleshooting
+    debug:
+      verbosity: normal
+      sampling_initial: 5
+      sampling_thereafter: 200
+
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+    zpages:
+      endpoint: 0.0.0.0:55679
+
+  service:
+    extensions: [health_check, zpages]
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch, resource]
+        exporters: [otlp/tempo, debug]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [prometheus]
+
+# Service configuration
+service:
+  type: ClusterIP
+  annotations: {}
+
+# Pod annotations for Prometheus scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8889"
+  prometheus.io/path: "/metrics"
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 15
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+  initialDelaySeconds: 10
+  periodSeconds: 5

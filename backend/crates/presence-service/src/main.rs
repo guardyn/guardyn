@@ -165,7 +165,8 @@ impl PresenceService for PresenceServiceImpl {
 async fn main() -> Result<()> {
     // Initialize observability (tracing, logging, metrics)
     let log_level = std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
-    observability::init_tracing("presence-service", &log_level);
+    let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
+    let _tracing_guard = observability::init_tracing("presence-service", &log_level, otlp_endpoint.as_deref());
 
     tracing::info!("Starting Presence Service");
 

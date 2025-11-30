@@ -171,7 +171,12 @@ impl MediaService for MediaServiceImpl {
 #[tokio::main]
 async fn main() -> Result<()> {
     let service_config = ServiceConfig::load()?;
-    observability::init_tracing(&service_config.service_name, &service_config.observability.log_level);
+    let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
+    let _tracing_guard = observability::init_tracing(
+        &service_config.service_name,
+        &service_config.observability.log_level,
+        otlp_endpoint.as_deref(),
+    );
 
     tracing::info!(
         service = "media-service",

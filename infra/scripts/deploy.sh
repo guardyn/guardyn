@@ -39,6 +39,24 @@ case "${SERVICE}" in
       --namespace observability \
       --values infra/k8s/base/monitoring/loki-values.yaml
     ;;
+  tracing)
+    echo "Deploying distributed tracing stack (Tempo + OpenTelemetry Collector)..."
+    helm repo add grafana https://grafana.github.io/helm-charts >/dev/null
+    helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts >/dev/null
+    helm repo update >/dev/null
+    # Deploy Tempo for trace storage
+    helm upgrade --install tempo grafana/tempo \
+      --namespace observability \
+      --create-namespace \
+      --values infra/k8s/base/observability/tempo-values.yaml
+    # Deploy OpenTelemetry Collector
+    helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+      --namespace observability \
+      --values infra/k8s/base/observability/otel-collector-values.yaml
+    echo "Tracing stack deployed. Services can send traces to:"
+    echo "  - otel-collector.observability.svc.cluster.local:4317 (OTLP gRPC)"
+    echo "  - tempo.observability.svc.cluster.local:4317 (OTLP gRPC direct)"
+    ;;
   *)
     echo "Unsupported service '${SERVICE}'" >&2
     exit 1

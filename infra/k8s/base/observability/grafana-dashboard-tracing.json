@@ -1,0 +1,195 @@
+{
+  "dashboard": {
+    "title": "Guardyn Distributed Tracing",
+    "tags": ["guardyn", "tracing", "tempo", "mvp"],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "30s",
+    "uid": "guardyn-tracing",
+    "templating": {
+      "list": [
+        {
+          "name": "service",
+          "type": "query",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "query": {
+            "query": "{} | select(resource.service.name)",
+            "type": "traceql"
+          },
+          "refresh": 1,
+          "regex": "",
+          "sort": 1,
+          "multi": false,
+          "includeAll": true,
+          "allValue": ".*"
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Request Rate",
+        "type": "timeseries",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\"}[5m])) by (service_name)",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Service Latency (p95)",
+        "type": "timeseries",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service_name=~\"$service\"}[5m])) by (le, service_name))",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
+        },
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate by Service",
+        "type": "timeseries",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\", status_code=\"STATUS_CODE_ERROR\"}[5m])) by (service_name) / sum(rate(traces_spanmetrics_calls_total{service_name=~\"$service\"}[5m])) by (service_name) * 100",
+            "legendFormat": "{{service_name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 6}
+      },
+      {
+        "id": 4,
+        "title": "Active Spans",
+        "type": "stat",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(traces_spanmetrics_calls_total[1m]))",
+            "legendFormat": "Spans/min",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"x": 12, "y": 8, "w": 6, "h": 6}
+      },
+      {
+        "id": 5,
+        "title": "Tempo Status",
+        "type": "stat",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"tempo\"}",
+            "legendFormat": "Tempo",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}},
+              {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}}
+            ]
+          }
+        },
+        "gridPos": {"x": 18, "y": 8, "w": 6, "h": 6}
+      },
+      {
+        "id": 6,
+        "title": "Trace Search",
+        "type": "traces",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "targets": [
+          {
+            "query": "{resource.service.name=~\"$service\"}",
+            "queryType": "traceql",
+            "refId": "A",
+            "limit": 20
+          }
+        ],
+        "gridPos": {"x": 0, "y": 14, "w": 24, "h": 10}
+      },
+      {
+        "id": 7,
+        "title": "Service Graph",
+        "type": "nodeGraph",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "targets": [
+          {
+            "queryType": "serviceMap",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 24, "w": 24, "h": 10}
+      }
+    ]
+  },
+  "overwrite": true
+}
