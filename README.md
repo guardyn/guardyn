@@ -29,21 +29,22 @@
 
 ## 🚀 Current Status
 
-**Phase:** MVP Backend Complete, Mobile Client in Development (November 15, 2025)
+**Phase:** MVP Complete — All Backend Services Operational (January 2025)
 
 **What's Working:**
 
-- ✅ **Backend Services**: Auth and Messaging services operational (Kubernetes deployment)
+- ✅ **Backend Services**: Auth, Messaging, Presence, Media services deployed (Kubernetes)
 - ✅ **Cryptography**: X3DH, Double Ratchet, OpenMLS fully implemented and tested
-- ✅ **Infrastructure**: Production-ready stack (TiKV, ScyllaDB, NATS, Prometheus, Grafana)
-- ✅ **Testing**: 8/8 E2E integration tests passing, performance baseline established
+- ✅ **Infrastructure**: Production-ready stack (TiKV, ScyllaDB, NATS, Envoy)
+- ✅ **Observability**: Prometheus alerting, Loki log aggregation, Tempo tracing, Grafana dashboards
+- ✅ **Testing**: E2E integration tests passing, performance baseline established
+- ✅ **WebSocket**: Real-time messaging infrastructure with connection management
 - ✅ **Reproducible Builds**: Nix flakes for deterministic builds
 
 **In Active Development:**
 
-- 🚧 **Mobile Client**: Authentication complete, messaging UI in progress
+- 🚧 **Flutter Client**: E2EE messaging working, Presence/Media UI in progress
 - 🚧 **Security Audits**: Planning Cure53 audit for Q2 2026
-- 🚧 **Additional Services**: Presence and Media services
 
 **Planned Features:**
 
