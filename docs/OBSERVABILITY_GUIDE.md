@@ -200,7 +200,7 @@ rate(envoy_http_downstream_rq_5xx{namespace="apps", pod=~"guardyn-envoy.*"}[5m])
 
 ### Future: Application Metrics
 
-To add custom application metrics (TODO):
+To add custom application metrics (optional enhancement):
 
 1. Add `prometheus` crate to `Cargo.toml`
 2. Instrument handlers with counters/histograms
@@ -277,9 +277,38 @@ kubectl rollout restart deployment/kube-prometheus-stack-grafana -n observabilit
 - High CPU/memory usage
 - Node failures
 
-### Custom Alerts (TODO)
+### Custom Alerts ✅
 
-Create PrometheusRule for custom alerts:
+Custom alerting rules are deployed via PrometheusRule CRD:
+
+**Location**: `infra/k8s/base/monitoring/alerting-rules.yaml`
+
+**Alert Groups**:
+
+- `guardyn.service.health` - Service availability, pod restarts, OOM kills
+- `guardyn.grpc.performance` - gRPC latency, error rates, request rates
+- `guardyn.database.health` - TiKV and ScyllaDB health and performance
+- `guardyn.nats.health` - NATS JetStream consumer lag, delivery failures
+- `guardyn.resources` - CPU, memory utilization thresholds
+- `guardyn.envoy` - Envoy proxy error rates, connection limits
+- `guardyn.websocket` - WebSocket connection counts
+- `guardyn.security` - Authentication failures, certificate expiry
+- `guardyn.crypto` - Key rotation and crypto operation monitoring
+
+**Deploy alerts**:
+
+```bash
+kubectl apply -f infra/k8s/base/monitoring/alerting-rules.yaml
+```
+
+**View alerts in Prometheus**:
+
+```bash
+kubectl port-forward -n observability svc/kube-prometheus-stack-prometheus 9090:9090 &
+# Open http://localhost:9090/alerts
+```
+
+**Example Alert (from alerting-rules.yaml)**:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -363,10 +392,15 @@ Current status:
 
 - [x] JSON structured logging configured
 - [x] Loki log aggregation deployed
+- [x] Log retention policies configured (7-day retention)
+- [x] Promtail log collection deployed
 - [x] Prometheus metrics collection deployed
 - [x] Grafana dashboards deployed
 - [x] Basic dashboard for messaging service created
-- [ ] Custom application metrics (TODO)
-- [ ] ServiceMonitor for custom metrics (TODO)
-- [ ] Custom alerting rules (TODO)
-- [ ] Distributed tracing with Tempo (TODO)
+- [x] Log query dashboard created
+- [x] Custom alerting rules configured (PrometheusRule CRD)
+- [x] Distributed tracing with Tempo deployed
+- [x] OpenTelemetry collector configured
+- [ ] Custom application metrics (expose /metrics from Rust services)
+- [ ] ServiceMonitor for custom app metrics
+

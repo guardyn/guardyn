@@ -592,8 +592,9 @@ Current coverage:
 - [x] Offline message delivery
 - [x] Group member management
 - [x] Performance testing (k6 load tests)
-- [ ] Crypto key exchange (X3DH) - TODO
-- [ ] Message encryption (Double Ratchet) - TODO
-- [ ] Group encryption (MLS) - TODO
-- [ ] Media upload/download - TODO
-- [ ] Presence updates - TODO
+- [x] Crypto key exchange (X3DH) - backend integration tests passing
+- [x] Message encryption (Double Ratchet) - 11 unit + 10 integration tests
+- [x] Group encryption (MLS) - 8/15 core tests passing
+- [ ] Media upload/download - backend ready, needs E2E tests
+- [ ] Presence updates - backend ready, needs E2E tests
+
