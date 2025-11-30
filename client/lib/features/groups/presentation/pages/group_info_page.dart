@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
+import '../bloc/group_state.dart';
 import '../widgets/add_member_dialog.dart';
 import '../widgets/member_options_sheet.dart';
 
@@ -29,12 +30,15 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   final _secureStorage = const FlutterSecureStorage();
   String? _currentUserId;
   Group? _group;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _group = widget.initialGroup;
     _loadCurrentUserId();
+    _loadGroupDetails();
   }
 
   Future<void> _loadCurrentUserId() async {
@@ -46,33 +50,119 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     }
   }
 
+  void _loadGroupDetails() {
+    context.read<GroupBloc>().add(GroupLoadDetails(widget.groupId));
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Group Info'),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) => _handleMenuAction(context, value),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'leave',
-                child: Row(
-                  children: [
-                    Icon(Icons.exit_to_app, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Leave Group', style: TextStyle(color: Colors.red)),
-                  ],
+    return BlocListener<GroupBloc, GroupState>(
+      listener: (context, state) {
+        if (state is GroupLoading) {
+          setState(() {
+            _isLoading = true;
+            _errorMessage = null;
+          });
+        } else if (state is GroupDetailsLoaded) {
+          setState(() {
+            _group = state.group;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        } else if (state is GroupError) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = state.message;
+          });
+        } else if (state is GroupLeft) {
+          // Successfully left group - navigate back
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You have left the group'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (state is GroupMemberAdded || state is GroupMemberRemoved) {
+          // Reload group details after member changes
+          _loadGroupDetails();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Group Info'),
+          actions: [
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadGroupDetails,
+                tooltip: 'Refresh',
               ),
-            ],
-          ),
-        ],
+            PopupMenuButton<String>(
+              onSelected: (value) => _handleMenuAction(context, value),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'leave',
+                  child: Row(
+                    children: [
+                      Icon(Icons.exit_to_app, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Leave Group', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        body: _buildBody(context),
       ),
-      body: _group != null
-          ? _buildGroupContent(context, _group!)
-          : const Center(child: CircularProgressIndicator()),
     );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_errorMessage != null && _group == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load group details',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadGroupDetails,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_group == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return _buildGroupContent(context, _group!);
   }
 
   Widget _buildGroupContent(BuildContext context, Group group) {
