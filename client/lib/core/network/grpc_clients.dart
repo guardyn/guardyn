@@ -4,6 +4,7 @@ import 'package:grpc/grpc_connection_interface.dart';
 import 'package:guardyn_client/core/constants/config.dart';
 import 'package:guardyn_client/generated/auth.pbgrpc.dart';
 import 'package:guardyn_client/generated/messaging.pbgrpc.dart';
+import 'package:guardyn_client/generated/presence.pbgrpc.dart';
 
 // Conditional import: only import grpc_web on web platform
 import 'grpc_channel_stub.dart'
@@ -13,9 +14,11 @@ import 'grpc_channel_stub.dart'
 class GrpcClients {
   late ClientChannelBase _authChannel;
   late ClientChannelBase _messagingChannel;
+  late ClientChannelBase _presenceChannel;
 
   late AuthServiceClient authClient;
   late MessagingServiceClient messagingClient;
+  late PresenceServiceClient presenceClient;
 
   bool _initialized = false;
 
@@ -59,17 +62,27 @@ class GrpcClients {
       AppConfig.messagingPort,
       webUri: kIsWeb ? AppConfig.getMessagingUri() : null,
     );
+    _presenceChannel = _createChannel(
+      AppConfig.presenceHost,
+      AppConfig.presencePort,
+      webUri: kIsWeb ? AppConfig.getPresenceUri() : null,
+    );
 
     // Create service clients
     authClient = AuthServiceClient(_authChannel);
     messagingClient = MessagingServiceClient(_messagingChannel);
+    presenceClient = PresenceServiceClient(_presenceChannel);
 
     _initialized = true;
   }
 
   /// Close all gRPC channels
   Future<void> dispose() async {
-    await Future.wait([_authChannel.shutdown(), _messagingChannel.shutdown()]);
+    await Future.wait([
+      _authChannel.shutdown(),
+      _messagingChannel.shutdown(),
+      _presenceChannel.shutdown(),
+    ]);
     _initialized = false;
   }
 }
