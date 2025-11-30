@@ -54,7 +54,7 @@ pub struct WebSocketServerConfig {
 impl Default for WebSocketServerConfig {
     fn default() -> Self {
         Self {
-            port: 8080,
+            port: 8081,
             jwt_secret: "dev-jwt-secret-change-in-prod".to_string(),
             max_connections_per_user: 5,
             heartbeat_interval: 30,

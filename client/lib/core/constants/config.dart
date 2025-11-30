@@ -61,7 +61,7 @@ class AppConfig {
 
   // WebSocket configuration
   static String get websocketHost => authHost; // Same logic as gRPC hosts
-  static const int websocketPort = 8080;
+  static const int websocketPort = 8081;
   static const bool websocketSecure = false; // Use 'ws://' for local dev
 
   /// Get WebSocket URL with authentication token
