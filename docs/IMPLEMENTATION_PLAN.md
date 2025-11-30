@@ -34,6 +34,21 @@ All core MVP features are deployed, tested, documented, and production-ready:
   - All 15 messaging repository tests passing
   - Security Critical (P0) issue resolved - messages now can be encrypted
 
+**Latest Work (January 2025)**:
+
+- ✅ **Testing Gap Resolution** - Additional E2E and unit tests for complete coverage
+  - Presence Service E2E Tests: 4 tests (health check, online/offline flow, typing indicator, last seen)
+  - Media Service E2E Tests: 6 tests (health check, upload, download, auth, size limit, thumbnail)
+  - Group Chat Flutter Tests: 7 test files with 50+ test cases
+    - `group_bloc_test.dart` - BLoC state management tests
+    - `group_list_page_test.dart` - Widget tests for group list
+    - `group_create_page_test.dart` - Widget tests for group creation
+    - `group_chat_page_test.dart` - Widget tests for chat screen
+    - `group_repository_impl_test.dart` - Repository layer tests
+    - `group_message_bubble_test.dart` - Message bubble widget tests
+    - `group_message_input_test.dart` - Input field widget tests
+  - Test coverage now includes all critical paths for MVP
+
 **Previous Work (November 30, 2025)**:
 
 - ✅ **Flutter E2EE Crypto Implementation** - Real Double Ratchet + X3DH encryption (replaces base64 placeholder)
