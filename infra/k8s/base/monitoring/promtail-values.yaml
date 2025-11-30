@@ -1,0 +1,290 @@
+# Promtail Configuration for Guardyn Services
+# Phase 3.2: Logging - Log Aggregation
+# Created: January 2025
+#
+# Promtail collects logs from all Guardyn services and sends them to Loki.
+# Features:
+# - Service-specific labels (auth, messaging, presence, media)
+# - JSON log parsing for structured metadata
+# - Kubernetes pod metadata enrichment
+# - Log level extraction from JSON logs
+
+# Deployment settings
+deployment:
+  enabled: true
+
+# ConfigMap for Promtail configuration
+config:
+  # Enable log timestamp ordering
+  enable_tracing: true
+  
+  clients:
+    - url: http://grafana-loki-gateway.observability.svc.cluster.local/loki/api/v1/push
+      tenant_id: guardyn
+      batchwait: 1s
+      batchsize: 1048576  # 1MB
+      timeout: 10s
+      
+  # Server configuration
+  server:
+    http_listen_port: 3101
+    grpc_listen_port: 9095
+    log_level: info
+  
+  # Position tracking for log files
+  positions:
+    filename: /run/promtail/positions.yaml
+  
+  # Target configuration
+  target_config:
+    sync_period: 10s
+
+  # Scrape configurations for Kubernetes
+  scrape_configs:
+    # ===================================================================
+    # Guardyn Application Services (apps namespace)
+    # ===================================================================
+    - job_name: guardyn-apps
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - apps
+      relabel_configs:
+        # Keep only pods from Guardyn services
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: (auth-service|messaging-service|presence-service|media-service|notification-service|envoy)
+          action: keep
+        
+        # Extract container name
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        
+        # Extract pod name
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        
+        # Extract namespace
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        
+        # Extract service name from label
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          target_label: service
+        
+        # Add Guardyn stage label
+        - source_labels: [__meta_kubernetes_pod_label_guardyn_io_stage]
+          target_label: stage
+        
+        # Extract node name
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: node
+        
+        # Path to container log
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
+      
+      # Pipeline stages for log processing
+      pipeline_stages:
+        # Parse JSON logs from Rust services
+        - json:
+            expressions:
+              level: level
+              message: message
+              target: target
+              timestamp: timestamp
+              trace_id: trace_id
+              span_id: span_id
+              user_id: user_id
+              request_id: request_id
+        
+        # Extract labels from JSON fields
+        - labels:
+            level:
+            target:
+            trace_id:
+            span_id:
+            user_id:
+        
+        # Map log levels to standard format
+        - match:
+            selector: '{level=~"INFO|info"}'
+            stages:
+              - static_labels:
+                  severity: info
+        - match:
+            selector: '{level=~"WARN|warn"}'
+            stages:
+              - static_labels:
+                  severity: warning
+        - match:
+            selector: '{level=~"ERROR|error"}'
+            stages:
+              - static_labels:
+                  severity: error
+        - match:
+            selector: '{level=~"DEBUG|debug"}'
+            stages:
+              - static_labels:
+                  severity: debug
+        
+        # Extract metrics from logs (optional)
+        - metrics:
+            log_lines_total:
+              type: Counter
+              description: "Total log lines by service and level"
+              source: level
+              config:
+                action: inc
+            
+            error_lines_total:
+              type: Counter
+              description: "Total error log lines"
+              source: level
+              config:
+                match_all: true
+                action: inc
+
+    # ===================================================================
+    # Data Services (data namespace)
+    # ===================================================================
+    - job_name: guardyn-data
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - data
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: (tikv|pd|scylla|scylladb)
+          action: keep
+        
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          target_label: service
+        
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
+
+    # ===================================================================
+    # Messaging Infrastructure (messaging namespace)
+    # ===================================================================
+    - job_name: guardyn-messaging
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - messaging
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: nats
+          action: keep
+        
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          target_label: service
+        
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
+
+    # ===================================================================
+    # Observability Stack (observability namespace)
+    # ===================================================================
+    - job_name: guardyn-observability
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+              - observability
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: (prometheus|grafana|loki|tempo|otel)
+          action: keep
+        
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          target_label: service
+        
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Service account for Kubernetes API access
+serviceAccount:
+  create: true
+  name: promtail
+
+# RBAC for reading pod logs
+rbac:
+  create: true
+  pspEnabled: false
+
+# Tolerations for running on all nodes
+tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+# DaemonSet settings
+daemonset:
+  enabled: true
+
+# Extra volumes for log access
+extraVolumes:
+  - name: varlog
+    hostPath:
+      path: /var/log
+  - name: varlibdockercontainers
+    hostPath:
+      path: /var/lib/docker/containers
+
+extraVolumeMounts:
+  - name: varlog
+    mountPath: /var/log
+    readOnly: true
+  - name: varlibdockercontainers
+    mountPath: /var/lib/docker/containers
+    readOnly: true

@@ -38,10 +38,22 @@ case "${SERVICE}" in
     helm upgrade --install grafana-loki grafana/loki-distributed \
       --namespace observability \
       --values infra/k8s/base/monitoring/loki-values.yaml
+    # Deploy Promtail for log collection
+    echo "Deploying Promtail log collector..."
+    helm upgrade --install promtail grafana/promtail \
+      --namespace observability \
+      --values infra/k8s/base/monitoring/promtail-values.yaml
     # Apply Guardyn-specific alerting rules
     echo "Applying Guardyn alerting rules..."
     kubectl apply -f infra/k8s/base/monitoring/alerting-rules.yaml
-    echo "Alerting rules deployed. Check with: kubectl get prometheusrules -n observability"
+    # Apply Grafana dashboards
+    echo "Applying Guardyn Grafana dashboards..."
+    kubectl apply -f infra/k8s/base/observability/grafana-dashboard-logs-configmap.yaml
+    echo "Logging stack deployed:"
+    echo "  - Loki: Log storage with 7-day retention"
+    echo "  - Promtail: Log collection from all namespaces"
+    echo "  - Grafana dashboard: guardyn-logs"
+    echo "Check with: kubectl get pods -n observability -l app.kubernetes.io/name=promtail"
     ;;
   tracing)
     echo "Deploying distributed tracing stack (Tempo + OpenTelemetry Collector)..."

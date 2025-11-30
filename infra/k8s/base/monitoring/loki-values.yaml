@@ -1,26 +1,169 @@
+# Loki Distributed Configuration for Guardyn
+# Phase 3.2: Logging - Log Aggregation and Retention Policies
+# Created: January 2025
+#
+# This configuration provides:
+# - Log retention policies (7 days for MVP/PoC)
+# - Structured log parsing for JSON logs
+# - Service-specific log labels
+# - Query optimization settings
+
 loki:
   auth_enabled: false
   commonConfig:
     replication_factor: 1
+    path_prefix: /var/loki
   storage:
     type: filesystem
   analytics:
     reporting_enabled: false
+  
+  # Schema configuration for efficient querying
+  schemaConfig:
+    configs:
+      - from: "2025-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  
+  # Retention and compaction settings
+  limits_config:
+    enforce_metric_name: false
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h  # 7 days
+    max_cache_freshness_per_query: 10m
+    split_queries_by_interval: 15m
+    max_query_length: 744h  # 31 days
+    max_query_parallelism: 32
+    max_entries_limit_per_query: 5000
+    ingestion_rate_mb: 16
+    ingestion_burst_size_mb: 32
+    per_stream_rate_limit: 5MB
+    per_stream_rate_limit_burst: 15MB
+  
+  # Compactor for retention enforcement
+  compactor:
+    working_directory: /var/loki/compactor
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 150
+    delete_request_store: filesystem
+  
+  # Chunk storage settings
+  chunk_store_config:
+    max_look_back_period: 168h  # 7 days - match retention
+    chunk_cache_config:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+  # Ingester settings for JSON log parsing
+  ingester:
+    chunk_encoding: snappy
+    chunk_idle_period: 1h
+    chunk_target_size: 1536000
+    max_chunk_age: 2h
+    wal:
+      enabled: true
+      dir: /var/loki/wal
+      replay_memory_ceiling: 1GB
+
+  # Query range settings
+  query_range:
+    align_queries_with_step: true
+    cache_results: true
+    results_cache:
+      cache:
+        embedded_cache:
+          enabled: true
+          max_size_mb: 100
+
+# Structured metadata extraction for Guardyn services
+structuredConfig:
+  limits_config:
+    allow_structured_metadata: true
+
+# Distributor component settings
 distributor:
   replicas: 1
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+# Querier component settings
 querier:
   replicas: 1
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  max_concurrent: 10
+
+# Query Frontend settings
 queryFrontend:
   replicas: 1
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+# Ingester settings
+ingester:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+
+# Compactor settings
+compactor:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+
+# Gateway/Router settings
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Table Manager (for index management)
+tableManager:
+  enabled: false  # Not needed with TSDB schema
+
+# Ruler (for alerting based on logs)
+ruler:
+  enabled: false  # Enable later if needed for log-based alerts
