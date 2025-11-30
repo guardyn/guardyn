@@ -3,6 +3,11 @@ prometheus:
     retention: 12h
     retentionSize: "15GB"
     scrapeInterval: "15s"
+    # Enable PrometheusRule discovery for custom alerts
+    ruleSelector:
+      matchLabels:
+        app: kube-prometheus-stack
+    ruleNamespaceSelector: {}
     resources:
       requests:
         cpu: 200m
@@ -12,6 +17,38 @@ prometheus:
         memory: 1Gi
 alertmanager:
   enabled: true
+  # Custom alertmanager config for Guardyn
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'severity', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'default-receiver'
+      routes:
+        - match:
+            severity: critical
+          receiver: 'critical-receiver'
+          group_wait: 10s
+          repeat_interval: 1h
+        - match:
+            team: security
+          receiver: 'security-receiver'
+    receivers:
+      - name: 'default-receiver'
+        webhook_configs: []
+      - name: 'critical-receiver'
+        webhook_configs: []
+      - name: 'security-receiver'
+        webhook_configs: []
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'service']
   alertmanagerSpec:
     resources:
       requests:
