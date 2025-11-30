@@ -55,6 +55,7 @@ PID_FILE="/tmp/guardyn-pf-watchdog.pid"
 # Port configuration
 AUTH_PORT=50051
 MESSAGING_PORT=50052
+PRESENCE_PORT=50053
 ENVOY_LOCAL_PORT=18080
 ENVOY_REMOTE_PORT=8080
 CHROMEDRIVER_PORT=4444
@@ -117,6 +118,7 @@ while [[ $# -gt 0 ]]; do
       # Kill any remaining port-forwards
       pkill -f "kubectl port-forward.*auth-service" 2>/dev/null || true
       pkill -f "kubectl port-forward.*messaging-service" 2>/dev/null || true
+      pkill -f "kubectl port-forward.*presence-service" 2>/dev/null || true
       pkill -f "kubectl port-forward.*guardyn-envoy" 2>/dev/null || true
       pkill -f "chromedriver.*--port=$CHROMEDRIVER_PORT" 2>/dev/null || true
       echo -e "${GREEN}✅ All port-forwards stopped${NC}"
@@ -139,6 +141,7 @@ while [[ $# -gt 0 ]]; do
       
       check_port $AUTH_PORT "Auth Service"
       check_port $MESSAGING_PORT "Messaging Service"
+      check_port $PRESENCE_PORT "Presence Service"
       check_port $ENVOY_LOCAL_PORT "Envoy Proxy"
       check_port $CHROMEDRIVER_PORT "ChromeDriver"
       
@@ -261,6 +264,25 @@ start_messaging_forward() {
   fi
 }
 
+start_presence_forward() {
+  log_info "Starting presence-service port-forward (port $PRESENCE_PORT)..."
+  
+  lsof -ti ":$PRESENCE_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+  sleep 0.5
+  
+  kubectl port-forward -n apps svc/presence-service "$PRESENCE_PORT:$PRESENCE_PORT" \
+    >> "$LOG_DIR/presence-service.log" 2>&1 &
+  PIDS["presence"]=$!
+  
+  if wait_for_port "$PRESENCE_PORT" "presence-service" 10; then
+    log_success "Presence service port-forward started (PID: ${PIDS[presence]})"
+    return 0
+  else
+    log_error "Presence service port-forward failed to start"
+    return 1
+  fi
+}
+
 start_envoy_forward() {
   if [ "$ENABLE_ENVOY" != true ]; then
     return 0
@@ -370,6 +392,7 @@ run_watchdog() {
   while true; do
     check_and_restart "auth" $AUTH_PORT start_auth_forward
     check_and_restart "messaging" $MESSAGING_PORT start_messaging_forward
+    check_and_restart "presence" $PRESENCE_PORT start_presence_forward
     
     if [ "$ENABLE_ENVOY" = true ]; then
       check_and_restart "envoy" $ENVOY_LOCAL_PORT start_envoy_forward
@@ -434,6 +457,7 @@ main() {
   
   AUTH_READY=$(kubectl get pods -n apps -l app=auth-service --no-headers 2>/dev/null | grep -c Running || echo 0)
   MSG_READY=$(kubectl get pods -n apps -l app=messaging-service --no-headers 2>/dev/null | grep -c Running || echo 0)
+  PRESENCE_READY=$(kubectl get pods -n apps -l app=presence-service --no-headers 2>/dev/null | grep -c Running || echo 0)
   
   if [ "$AUTH_READY" -eq 0 ]; then
     log_error "Auth service pods not running"
@@ -443,6 +467,10 @@ main() {
   if [ "$MSG_READY" -eq 0 ]; then
     log_error "Messaging service pods not running"
     exit 1
+  fi
+  
+  if [ "$PRESENCE_READY" -eq 0 ]; then
+    log_warning "Presence service pods not running - heartbeats will fail"
   fi
   
   if [ "$ENABLE_ENVOY" = true ]; then
@@ -461,6 +489,7 @@ main() {
   
   start_auth_forward || exit 1
   start_messaging_forward || exit 1
+  start_presence_forward || exit 1
   
   if [ "$ENABLE_ENVOY" = true ]; then
     start_envoy_forward || true
@@ -477,6 +506,7 @@ main() {
   echo ""
   echo -e "  Auth service:      ${CYAN}localhost:$AUTH_PORT${NC}"
   echo -e "  Messaging service: ${CYAN}localhost:$MESSAGING_PORT${NC}"
+  echo -e "  Presence service:  ${CYAN}localhost:$PRESENCE_PORT${NC}"
   if [ "$ENABLE_ENVOY" = true ]; then
     echo -e "  Envoy proxy:       ${CYAN}localhost:$ENVOY_LOCAL_PORT${NC} (for Chrome)"
   fi

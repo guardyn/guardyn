@@ -76,24 +76,45 @@ impl DatabaseClient {
             .context("Failed to create messages table")?;
 
         // Create group_messages table (group conversations)
+        // Uses TIMEUUID for message_id to enable time-based ordering
         session
             .query_unpaged(
                 "CREATE TABLE IF NOT EXISTS guardyn.group_messages (
                     group_id UUID,
-                    message_id UUID,
+                    message_id TIMEUUID,
                     sender_user_id TEXT,
                     sender_device_id TEXT,
                     encrypted_content BLOB,
-                    message_type INT,
-                    server_timestamp BIGINT,
-                    client_timestamp BIGINT,
-                    is_deleted BOOLEAN,
+                    mls_epoch BIGINT,
+                    sent_at TIMESTAMP,
+                    metadata MAP<TEXT, TEXT>,
                     PRIMARY KEY (group_id, message_id)
                 ) WITH CLUSTERING ORDER BY (message_id DESC)",
                 &[],
             )
             .await
             .context("Failed to create group_messages table")?;
+
+        // Migration: Add missing columns to existing group_messages table
+        // This handles existing deployments that have the old schema
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.group_messages ADD mls_epoch BIGINT",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.group_messages ADD sent_at TIMESTAMP",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.group_messages ADD metadata MAP<TEXT, TEXT>",
+                &[],
+            )
+            .await;
 
         // Create conversations table for efficient conversation list queries
         // Partition by user_id allows single-query retrieval of all conversations
@@ -655,7 +676,7 @@ impl DatabaseClient {
             }
 
         let mut conversations: Vec<_> = conversations_map.into_values().collect();
-        
+
         // Sort by last activity
         conversations.sort_by(|a, b| {
             let a_ts = a.updated_at.as_ref().map(|t| t.seconds).unwrap_or(0);
@@ -703,22 +724,22 @@ impl DatabaseClient {
     ) -> Result<()> {
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
         let message_uuid = uuid::Uuid::parse_str(last_message_id)?;
-        
+
         // ScyllaDB timestamp is in milliseconds
         let timestamp = scylla::frame::value::CqlTimestamp(last_message_time_ms);
-        
+
         // Truncate preview to 100 chars
         let preview: String = last_message_preview.chars().take(100).collect();
-        
+
         // First, try to delete old entry for this conversation (if exists)
         // We need to do this because last_message_time is part of clustering key
         let delete_query = "DELETE FROM guardyn.conversations 
                            WHERE user_id = ? AND conversation_id = ?";
-        
+
         // Note: This won't work as-is because conversation_id is not the partition key
         // We need a different approach - using a separate lookup or accepting duplicates
         // For MVP, we'll just insert and accept that old entries remain (they'll be filtered)
-        
+
         // Insert new conversation entry
         let insert_query = if increment_unread {
             "INSERT INTO guardyn.conversations 
@@ -749,10 +770,10 @@ impl DatabaseClient {
             .context("Failed to upsert conversation")?;
 
         tracing::debug!(
-            "Upserted conversation for user {} with {}", 
+            "Upserted conversation for user {} with {}",
             user_id, other_user_id
         );
-        
+
         Ok(())
     }
 
@@ -875,15 +896,15 @@ impl DatabaseClient {
         // Since last_message_time is part of the clustering key, we can't just UPDATE
         // For MVP, we'll need to read and rewrite the row
         // In production, consider a separate table for unread counts
-        
+
         tracing::debug!(
-            "Reset unread count requested for user {} conversation {}", 
+            "Reset unread count requested for user {} conversation {}",
             user_id, conversation_id
         );
-        
+
         // TODO: Implement proper unread count reset
         // This requires finding the row by conversation_id and rewriting it
-        
+
         Ok(())
     }
 
@@ -957,7 +978,7 @@ impl DatabaseClient {
             // Convert Key to Vec<u8> then to string
             let key_bytes: Vec<u8> = kv_pair.0.into();
             let key = String::from_utf8_lossy(&key_bytes);
-            
+
             // Skip member keys (they contain /members/)
             if key.contains("/members/") {
                 continue;
@@ -968,7 +989,7 @@ impl DatabaseClient {
                 // Check if user is a member
                 let members = self.get_group_members(&group.group_id).await?;
                 let is_member = members.iter().any(|m| m.user_id == user_id);
-                
+
                 if is_member {
                     user_groups.push((group, members));
                 }
@@ -995,12 +1016,12 @@ impl DatabaseClient {
             .context("Failed to parse group_id as UUID")?;
         let message_uuid = uuid::Uuid::parse_str(&msg.message_id)
             .context("Failed to parse message_id as UUID")?;
-        
+
         // Convert message_id to CqlTimeuuid (required for TIMEUUID type in ScyllaDB)
         use scylla::frame::response::result::CqlValue;
         use scylla::frame::value::CqlTimeuuid;
         let message_timeuuid = CqlValue::Timeuuid(CqlTimeuuid::from(message_uuid));
-        
+
         // Convert sent_at (millis) to CqlTimestamp
         let sent_at_timestamp = CqlValue::Timestamp(scylla::frame::value::CqlTimestamp(msg.sent_at));
 
@@ -1110,7 +1131,7 @@ impl DatabaseClient {
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_cql_timestamp())
                     .ok_or_else(|| anyhow::anyhow!("Missing sent_at"))?;
-                
+
                 // CqlTimestamp is in milliseconds
                 let sent_at = sent_at_timestamp.0;
 
@@ -1330,7 +1351,7 @@ impl DatabaseClient {
         } else {
             content
         };
-        
+
         self.upsert_conversation(
             sender_id,
             &conversation_id.to_string(),
@@ -1364,7 +1385,7 @@ impl DatabaseClient {
         } else {
             (user_b, user_a)
         };
-        
+
         // Use UUID v5 with DNS namespace for deterministic generation
         uuid::Uuid::new_v5(
             &uuid::Uuid::NAMESPACE_DNS,
