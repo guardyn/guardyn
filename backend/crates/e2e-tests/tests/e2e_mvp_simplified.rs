@@ -255,7 +255,7 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
         .duration_since(UNIX_EPOCH)?
         .as_secs() as i64;
 
-    let mut send_request = Request::new(SendMessageRequest {
+    let send_request = Request::new(SendMessageRequest {
         access_token: user1.token()?,
         recipient_user_id: user2.user_id()?,
         recipient_device_id: user2.device_id()?,
@@ -267,6 +267,7 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
         }),
         message_type: MessageType::Text as i32, // TEXT = 0
         media_id: String::new(),
+        recipient_username: user2.username.clone(),
     });
 
     let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -364,6 +365,7 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
             }),
             message_type: MessageType::Text as i32,
             media_id: String::new(),
+            recipient_username: user2.username.clone(),
         });
 
         let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -438,6 +440,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
             }),
             message_type: MessageType::Text as i32,
             media_id: String::new(),
+            recipient_username: user2.username.clone(),
         });
 
         let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -647,6 +650,7 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
         }),
         message_type: MessageType::Text as i32,
         media_id: String::new(),
+        recipient_username: user2.username.clone(),
     });
 
     let send_response = messaging_client.send_message(send_request).await?.into_inner();
