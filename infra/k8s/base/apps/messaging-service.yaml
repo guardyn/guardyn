@@ -25,7 +25,7 @@ spec:
         - containerPort: 50052
           name: grpc
           protocol: TCP
-        - containerPort: 8080
+        - containerPort: 8081
           name: websocket
           protocol: TCP
         env:
@@ -80,7 +80,7 @@ spec:
         - name: ENABLE_WEBSOCKET
           value: "true"
         - name: WEBSOCKET_PORT
-          value: "8080"
+          value: "8081"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -132,7 +132,7 @@ spec:
     targetPort: 50052
     protocol: TCP
   - name: websocket
-    port: 8080
-    targetPort: 8080
+    port: 8081
+    targetPort: 8081
     protocol: TCP
   type: ClusterIP

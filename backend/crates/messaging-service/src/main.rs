@@ -278,9 +278,9 @@ async fn main() -> Result<()> {
 
     if ws_enabled {
         let ws_port: u16 = std::env::var("WEBSOCKET_PORT")
-            .unwrap_or_else(|_| "8080".to_string())
+            .unwrap_or_else(|_| "8081".to_string())
             .parse()
-            .unwrap_or(8080);
+            .unwrap_or(8081);
 
         let jwt_secret = std::env::var("JWT_SECRET")
             .unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
