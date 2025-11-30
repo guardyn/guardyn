@@ -14,6 +14,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 hex = "0.4"
+reqwest = { version = "0.12", features = ["json", "multipart"] }
 
 [build-dependencies]
 tonic-build = { workspace = true }
@@ -26,4 +27,14 @@ harness = true
 [[test]]
 name = "e2e_mls_integration"
 path = "tests/e2e_mls_integration.rs"
+harness = true
+
+[[test]]
+name = "e2e_presence"
+path = "tests/e2e_presence.rs"
+harness = true
+
+[[test]]
+name = "e2e_media"
+path = "tests/e2e_media.rs"
 harness = true
