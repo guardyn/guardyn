@@ -17,24 +17,24 @@ deployment:
 config:
   # Enable log timestamp ordering
   enable_tracing: true
-  
+
   clients:
     - url: http://grafana-loki-gateway.observability.svc.cluster.local/loki/api/v1/push
       tenant_id: guardyn
       batchwait: 1s
       batchsize: 1048576  # 1MB
       timeout: 10s
-      
+
   # Server configuration
   server:
     http_listen_port: 3101
     grpc_listen_port: 9095
     log_level: info
-  
+
   # Position tracking for log files
   positions:
     filename: /run/promtail/positions.yaml
-  
+
   # Target configuration
   target_config:
     sync_period: 10s
@@ -55,37 +55,37 @@ config:
         - source_labels: [__meta_kubernetes_pod_label_app]
           regex: (auth-service|messaging-service|presence-service|media-service|notification-service|envoy)
           action: keep
-        
+
         # Extract container name
         - source_labels: [__meta_kubernetes_pod_container_name]
           target_label: container
-        
+
         # Extract pod name
         - source_labels: [__meta_kubernetes_pod_name]
           target_label: pod
-        
+
         # Extract namespace
         - source_labels: [__meta_kubernetes_namespace]
           target_label: namespace
-        
+
         # Extract service name from label
         - source_labels: [__meta_kubernetes_pod_label_app]
           target_label: service
-        
+
         # Add Guardyn stage label
         - source_labels: [__meta_kubernetes_pod_label_guardyn_io_stage]
           target_label: stage
-        
+
         # Extract node name
         - source_labels: [__meta_kubernetes_pod_node_name]
           target_label: node
-        
+
         # Path to container log
         - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
           target_label: __path__
           separator: /
           replacement: /var/log/pods/*$1/*.log
-      
+
       # Pipeline stages for log processing
       pipeline_stages:
         # Parse JSON logs from Rust services
@@ -99,7 +99,7 @@ config:
               span_id: span_id
               user_id: user_id
               request_id: request_id
-        
+
         # Extract labels from JSON fields
         - labels:
             level:
@@ -107,7 +107,7 @@ config:
             trace_id:
             span_id:
             user_id:
-        
+
         # Map log levels to standard format
         - match:
             selector: '{level=~"INFO|info"}'
@@ -129,7 +129,7 @@ config:
             stages:
               - static_labels:
                   severity: debug
-        
+
         # Extract metrics from logs (optional)
         - metrics:
             log_lines_total:
@@ -138,7 +138,7 @@ config:
               source: level
               config:
                 action: inc
-            
+
             error_lines_total:
               type: Counter
               description: "Total error log lines"
@@ -160,19 +160,19 @@ config:
         - source_labels: [__meta_kubernetes_pod_label_app]
           regex: (tikv|pd|scylla|scylladb)
           action: keep
-        
+
         - source_labels: [__meta_kubernetes_pod_container_name]
           target_label: container
-        
+
         - source_labels: [__meta_kubernetes_pod_name]
           target_label: pod
-        
+
         - source_labels: [__meta_kubernetes_namespace]
           target_label: namespace
-        
+
         - source_labels: [__meta_kubernetes_pod_label_app]
           target_label: service
-        
+
         - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
           target_label: __path__
           separator: /
@@ -191,19 +191,19 @@ config:
         - source_labels: [__meta_kubernetes_pod_label_app]
           regex: nats
           action: keep
-        
+
         - source_labels: [__meta_kubernetes_pod_container_name]
           target_label: container
-        
+
         - source_labels: [__meta_kubernetes_pod_name]
           target_label: pod
-        
+
         - source_labels: [__meta_kubernetes_namespace]
           target_label: namespace
-        
+
         - source_labels: [__meta_kubernetes_pod_label_app]
           target_label: service
-        
+
         - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
           target_label: __path__
           separator: /
@@ -222,19 +222,19 @@ config:
         - source_labels: [__meta_kubernetes_pod_label_app]
           regex: (prometheus|grafana|loki|tempo|otel)
           action: keep
-        
+
         - source_labels: [__meta_kubernetes_pod_container_name]
           target_label: container
-        
+
         - source_labels: [__meta_kubernetes_pod_name]
           target_label: pod
-        
+
         - source_labels: [__meta_kubernetes_namespace]
           target_label: namespace
-        
+
         - source_labels: [__meta_kubernetes_pod_label_app]
           target_label: service
-        
+
         - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
           target_label: __path__
           separator: /

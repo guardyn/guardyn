@@ -136,4 +136,3 @@ just k8s-deploy media
 - [x] Testing suite (E2E + unit tests)
 - [x] Containerization (Docker multi-stage builds)
 - [x] Kubernetes deployment (k8s manifests)
-
