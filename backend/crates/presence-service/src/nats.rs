@@ -134,3 +134,109 @@ impl NatsClient {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_presence_event_serialization() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let event = PresenceEvent {
+            user_id: "user-123".to_string(),
+            status: 1, // ONLINE
+            custom_status_text: "Available".to_string(),
+            last_seen: now,
+            updated_at: now,
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("user-123"));
+        assert!(json.contains("Available"));
+        assert!(json.contains("\"status\":1"));
+
+        // Deserialize back
+        let deserialized: PresenceEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.user_id, event.user_id);
+        assert_eq!(deserialized.status, event.status);
+        assert_eq!(deserialized.custom_status_text, event.custom_status_text);
+    }
+
+    #[test]
+    fn test_typing_event_serialization() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let event = TypingEvent {
+            user_id: "alice".to_string(),
+            conversation_user_id: "bob".to_string(),
+            is_typing: true,
+            timestamp: now,
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("alice"));
+        assert!(json.contains("bob"));
+        assert!(json.contains("\"is_typing\":true"));
+
+        // Deserialize back
+        let deserialized: TypingEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.user_id, event.user_id);
+        assert_eq!(deserialized.conversation_user_id, event.conversation_user_id);
+        assert_eq!(deserialized.is_typing, event.is_typing);
+    }
+
+    #[test]
+    fn test_presence_subject_format() {
+        let user_id = "user-xyz";
+        let subject = format!("{}.{}", PRESENCE_SUBJECT, user_id);
+        assert_eq!(subject, "presence.updates.user-xyz");
+    }
+
+    #[test]
+    fn test_typing_subject_format() {
+        let target_user_id = "bob";
+        let from_user_id = "alice";
+        let subject = format!("{}.{}.{}", TYPING_SUBJECT, target_user_id, from_user_id);
+        assert_eq!(subject, "presence.typing.bob.alice");
+    }
+
+    #[test]
+    fn test_stream_config_values() {
+        assert_eq!(PRESENCE_STREAM, "PRESENCE");
+        assert_eq!(PRESENCE_SUBJECT, "presence.updates");
+        assert_eq!(TYPING_SUBJECT, "presence.typing");
+    }
+
+    #[test]
+    fn test_presence_event_all_statuses() {
+        let now = chrono::Utc::now().timestamp_millis();
+        
+        for status in 0..=4 {
+            let event = PresenceEvent {
+                user_id: format!("user-{}", status),
+                status,
+                custom_status_text: String::new(),
+                last_seen: now,
+                updated_at: now,
+            };
+            
+            let json = serde_json::to_string(&event).unwrap();
+            let deserialized: PresenceEvent = serde_json::from_str(&json).unwrap();
+            assert_eq!(deserialized.status, status);
+        }
+    }
+
+    #[test]
+    fn test_typing_event_stop_typing() {
+        let event = TypingEvent {
+            user_id: "alice".to_string(),
+            conversation_user_id: "bob".to_string(),
+            is_typing: false,
+            timestamp: chrono::Utc::now().timestamp_millis(),
+        };
+
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("\"is_typing\":false"));
+    }
+}

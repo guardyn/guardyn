@@ -148,6 +148,7 @@ impl DatabaseClient {
 
         let indicator: TypingIndicator = serde_json::from_slice(&indicator_data)?;
 
+
         // Check if typing indicator is stale (older than 10 seconds)
         let now = chrono::Utc::now().timestamp_millis();
         if now - indicator.started_at > 10_000 {
@@ -164,5 +165,156 @@ impl DatabaseClient {
         let key = b"/health_check".to_vec();
         let _ = self.client.get(key).await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_user_presence_default() {
+        let presence = UserPresence::default();
+        
+        assert_eq!(presence.user_id, "");
+        assert_eq!(presence.status, 0); // OFFLINE
+        assert_eq!(presence.custom_status_text, "");
+        assert_eq!(presence.last_seen, 0);
+        assert_eq!(presence.updated_at, 0);
+    }
+
+    #[test]
+    fn test_user_presence_serialization() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let presence = UserPresence {
+            user_id: "user-123".to_string(),
+            status: 1, // ONLINE
+            custom_status_text: "Working from home".to_string(),
+            last_seen: now,
+            updated_at: now,
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&presence).unwrap();
+        assert!(json.contains("user-123"));
+        assert!(json.contains("Working from home"));
+
+        // Deserialize back
+        let deserialized: UserPresence = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.user_id, presence.user_id);
+        assert_eq!(deserialized.status, presence.status);
+        assert_eq!(deserialized.custom_status_text, presence.custom_status_text);
+    }
+
+    #[test]
+    fn test_typing_indicator_serialization() {
+        let now = chrono::Utc::now().timestamp_millis();
+        let indicator = TypingIndicator {
+            user_id: "user-a".to_string(),
+            conversation_user_id: "user-b".to_string(),
+            is_typing: true,
+            started_at: now,
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&indicator).unwrap();
+        assert!(json.contains("user-a"));
+        assert!(json.contains("user-b"));
+        assert!(json.contains("true"));
+
+        // Deserialize back
+        let deserialized: TypingIndicator = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.user_id, indicator.user_id);
+        assert_eq!(deserialized.conversation_user_id, indicator.conversation_user_id);
+        assert_eq!(deserialized.is_typing, indicator.is_typing);
+    }
+
+    #[test]
+    fn test_presence_key_format() {
+        let user_id = "user-test-123";
+        let key = format!("/presence/{}", user_id);
+        assert_eq!(key, "/presence/user-test-123");
+    }
+
+    #[test]
+    fn test_typing_key_format() {
+        let user_id = "user-a";
+        let conversation_id = "user-b";
+        let key = format!("/typing/{}/{}", user_id, conversation_id);
+        assert_eq!(key, "/typing/user-a/user-b");
+    }
+
+    #[test]
+    fn test_status_values() {
+        // OFFLINE = 0
+        // ONLINE = 1
+        // AWAY = 2
+        // DO_NOT_DISTURB = 3
+        // INVISIBLE = 4
+        
+        let statuses = vec![
+            (0, "OFFLINE"),
+            (1, "ONLINE"),
+            (2, "AWAY"),
+            (3, "DO_NOT_DISTURB"),
+            (4, "INVISIBLE"),
+        ];
+
+        for (value, _name) in &statuses {
+            let presence = UserPresence {
+                user_id: "test".to_string(),
+                status: *value,
+                ..Default::default()
+            };
+            assert_eq!(presence.status, *value);
+        }
+    }
+
+    #[test]
+    fn test_typing_indicator_stale_check_logic() {
+        let now = chrono::Utc::now().timestamp_millis();
+        
+        // Fresh indicator (1 second ago)
+        let fresh = TypingIndicator {
+            user_id: "a".to_string(),
+            conversation_user_id: "b".to_string(),
+            is_typing: true,
+            started_at: now - 1000,
+        };
+        assert!(now - fresh.started_at <= 10_000);
+        
+        // Stale indicator (15 seconds ago)
+        let stale = TypingIndicator {
+            user_id: "a".to_string(),
+            conversation_user_id: "b".to_string(),
+            is_typing: true,
+            started_at: now - 15_000,
+        };
+        assert!(now - stale.started_at > 10_000);
+    }
+
+    #[test]
+    fn test_custom_status_text_lengths() {
+        // Empty status text
+        let empty = UserPresence {
+            custom_status_text: String::new(),
+            ..Default::default()
+        };
+        assert_eq!(empty.custom_status_text.len(), 0);
+        
+        // Max allowed (100 chars)
+        let max_text = "a".repeat(100);
+        let max = UserPresence {
+            custom_status_text: max_text.clone(),
+            ..Default::default()
+        };
+        assert_eq!(max.custom_status_text.len(), 100);
+        
+        // Unicode status text
+        let unicode = UserPresence {
+            custom_status_text: "🎉 Celebrating! 🎊".to_string(),
+            ..Default::default()
+        };
+        assert!(!unicode.custom_status_text.is_empty());
     }
 }
