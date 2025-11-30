@@ -23,6 +23,11 @@ repository = "https://github.com/guardyn/guardyn"
 tokio = { version = "1.41", features = ["full"] }
 tokio-util = "0.7"
 
+# Web framework (for WebSocket)
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
 # gRPC and protocols
 tonic = "0.12"
 prost = "0.13"

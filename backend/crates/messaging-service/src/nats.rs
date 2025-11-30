@@ -191,6 +191,17 @@ impl NatsClient {
     pub fn connection_state(&self) -> async_nats::connection::State {
         self.client.connection_state()
     }
+
+    /// Publish raw bytes to a subject (for WebSocket handlers)
+    pub async fn publish_raw(&self, subject: &str, payload: bytes::Bytes) -> Result<()> {
+        self.context
+            .publish(subject.to_string(), payload)
+            .await
+            .context("Failed to publish to NATS")?
+            .await
+            .context("Failed to confirm NATS publish")?;
+        Ok(())
+    }
 }
 
 
