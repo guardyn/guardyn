@@ -1,6 +1,9 @@
 # These are supported funding model platforms
+#
+# Note: To enable GitHub Sponsors, the 'guardyn' account must first be
+# enrolled in the GitHub Sponsors program at https://github.com/sponsors
 
-github: [guardyn]
+#github: [guardyn]
 open_collective: guardyn
 ko_fi: guardyn
 custom: [
