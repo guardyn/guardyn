@@ -63,6 +63,7 @@ class GroupMember extends Equatable {
 
 /// Group roles
 enum GroupRole {
+  owner,
   admin,
   member,
 }

@@ -127,6 +127,16 @@ class GroupLeft extends GroupState {
   List<Object?> get props => [groupId];
 }
 
+/// Group details loaded successfully
+class GroupDetailsLoaded extends GroupState {
+  final Group group;
+
+  const GroupDetailsLoaded({required this.group});
+
+  @override
+  List<Object?> get props => [group];
+}
+
 /// Error state
 class GroupError extends GroupState {
   final String message;

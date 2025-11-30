@@ -944,6 +944,40 @@ impl DatabaseClient {
         Ok(members)
     }
 
+    /// Get all groups for a user
+    pub async fn get_user_groups(&self, user_id: &str) -> Result<Vec<(GroupMetadata, Vec<GroupMember>)>> {
+        // Scan all groups to find where user is a member
+        // This is not optimal for large number of groups, but works for MVP
+        let groups_prefix = b"/groups/".to_vec();
+        let groups_keys = self.tikv.scan(groups_prefix.., 1000).await?;
+
+        let mut user_groups = Vec::new();
+
+        for kv_pair in groups_keys {
+            // Convert Key to Vec<u8> then to string
+            let key_bytes: Vec<u8> = kv_pair.0.into();
+            let key = String::from_utf8_lossy(&key_bytes);
+            
+            // Skip member keys (they contain /members/)
+            if key.contains("/members/") {
+                continue;
+            }
+
+            // Try to parse as GroupMetadata
+            if let Ok(group) = serde_json::from_slice::<GroupMetadata>(&kv_pair.1) {
+                // Check if user is a member
+                let members = self.get_group_members(&group.group_id).await?;
+                let is_member = members.iter().any(|m| m.user_id == user_id);
+                
+                if is_member {
+                    user_groups.push((group, members));
+                }
+            }
+        }
+
+        Ok(user_groups)
+    }
+
     // ========================================================================
     // Group Message Operations (ScyllaDB)
     // ========================================================================

@@ -83,9 +83,23 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<Either<Failure, List<Group>>> getGroups() async {
     try {
-      // For now, return cached groups
-      // TODO: Implement GetGroups RPC on backend
-      return Right(_groupCache.values.toList());
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final groups = await _remoteDatasource.getGroups(
+        accessToken: accessToken,
+      );
+
+      // Update cache with fetched groups
+      for (final group in groups) {
+        _groupCache[group.groupId] = group;
+      }
+
+      return Right(groups);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to fetch groups'));
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }
@@ -94,14 +108,27 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<Either<Failure, Group>> getGroupById(String groupId) async {
     try {
-      // Try to get from cache first
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final group = await _remoteDatasource.getGroupById(
+        accessToken: accessToken,
+        groupId: groupId,
+      );
+
+      // Update cache
+      _groupCache[groupId] = group;
+
+      return Right(group);
+    } on GrpcError catch (e) {
+      // Return cached version if available and server error
       final cached = _groupCache[groupId];
       if (cached != null) {
         return Right(cached);
       }
-
-      // TODO: Implement GetGroupById RPC on backend
-      return Left(ServerFailure('Group not found: $groupId'));
+      return Left(ServerFailure(e.message ?? 'Failed to fetch group'));
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }
@@ -282,27 +309,24 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<Either<Failure, bool>> leaveGroup(String groupId) async {
     try {
-      final currentUserId = await _getCurrentUserId();
-      if (currentUserId == null) {
-        return const Left(AuthFailure('User ID not found'));
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
       }
 
-      final result = await removeGroupMember(
+      final result = await _remoteDatasource.leaveGroup(
+        accessToken: accessToken,
         groupId: groupId,
-        memberUserId: currentUserId,
       );
 
       // Remove from cache if successful
-      result.fold(
-        (failure) => null,
-        (success) {
-          if (success) {
-            _groupCache.remove(groupId);
-          }
-        },
-      );
+      if (result) {
+        _groupCache.remove(groupId);
+      }
 
-      return result;
+      return Right(result);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to leave group'));
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }

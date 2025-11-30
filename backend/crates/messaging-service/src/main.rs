@@ -51,6 +51,9 @@ use proto::messaging::{
     RemoveGroupMemberRequest, RemoveGroupMemberResponse,
     SendGroupMessageRequest, SendGroupMessageResponse,
     GetGroupMessagesRequest, GetGroupMessagesResponse,
+    GetGroupsRequest, GetGroupsResponse,
+    GetGroupByIdRequest, GetGroupByIdResponse,
+    LeaveGroupRequest, LeaveGroupResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -170,6 +173,27 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<GetGroupMessagesRequest>,
     ) -> Result<Response<GetGroupMessagesResponse>, Status> {
         handlers::get_group_messages(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn get_groups(
+        &self,
+        request: Request<GetGroupsRequest>,
+    ) -> Result<Response<GetGroupsResponse>, Status> {
+        handlers::get_groups(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn get_group_by_id(
+        &self,
+        request: Request<GetGroupByIdRequest>,
+    ) -> Result<Response<GetGroupByIdResponse>, Status> {
+        handlers::get_group_by_id(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn leave_group(
+        &self,
+        request: Request<LeaveGroupRequest>,
+    ) -> Result<Response<LeaveGroupResponse>, Status> {
+        handlers::leave_group(request.into_inner(), self.db.clone()).await
     }
 
     async fn health(

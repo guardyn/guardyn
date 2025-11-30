@@ -107,6 +107,16 @@ class GroupLeave extends GroupEvent {
   List<Object?> get props => [groupId];
 }
 
+/// Load details of a specific group (for GroupInfoPage)
+class GroupLoadDetails extends GroupEvent {
+  final String groupId;
+
+  const GroupLoadDetails(this.groupId);
+
+  @override
+  List<Object?> get props => [groupId];
+}
+
 /// Start polling for new messages in a group
 class GroupStartPolling extends GroupEvent {
   final String groupId;

@@ -22,6 +22,98 @@ class GroupRemoteDatasource {
 
   MessagingServiceClient get _messagingClient => _grpcClients.messagingClient;
 
+  /// Get all groups for the current user via gRPC
+  Future<List<GroupModel>> getGroups({
+    required String accessToken,
+    int limit = 50,
+  }) async {
+    final request = proto.GetGroupsRequest(
+      accessToken: accessToken,
+      limit: limit,
+    );
+
+    final response = await _messagingClient.getGroups(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.groups.map((g) => _groupInfoToModel(g)).toList();
+  }
+
+  /// Get a group by ID via gRPC
+  Future<GroupModel> getGroupById({
+    required String accessToken,
+    required String groupId,
+  }) async {
+    final request = proto.GetGroupByIdRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+    );
+
+    final response = await _messagingClient.getGroupById(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return _groupInfoToModel(response.success.group);
+  }
+
+  /// Leave a group via gRPC
+  Future<bool> leaveGroup({
+    required String accessToken,
+    required String groupId,
+  }) async {
+    final request = proto.LeaveGroupRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+    );
+
+    final response = await _messagingClient.leaveGroup(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.left;
+  }
+
+  /// Convert GroupInfo proto to GroupModel
+  GroupModel _groupInfoToModel(proto.GroupInfo groupInfo) {
+    return GroupModel(
+      groupId: groupInfo.groupId,
+      name: groupInfo.name,
+      creatorUserId: groupInfo.creatorUserId,
+      members: groupInfo.members
+          .map((m) => GroupMemberModel(
+                userId: m.userId,
+                username: m.username.isNotEmpty ? m.username : m.userId,
+                deviceId: m.deviceId,
+                role: _roleFromString(m.role),
+                joinedAt: m.hasJoinedAt()
+                    ? _timestampFromProto(m.joinedAt)
+                    : DateTime.now(),
+              ))
+          .toList(),
+      createdAt: groupInfo.hasCreatedAt()
+          ? _timestampFromProto(groupInfo.createdAt)
+          : DateTime.now(),
+      memberCount: groupInfo.memberCount,
+    );
+  }
+
+  GroupRole _roleFromString(String role) {
+    switch (role.toLowerCase()) {
+      case 'owner':
+        return GroupRole.owner;
+      case 'admin':
+        return GroupRole.admin;
+      default:
+        return GroupRole.member;
+    }
+  }
+
   /// Create a new group via gRPC
   Future<GroupModel> createGroup({
     required String accessToken,
@@ -205,12 +297,17 @@ class GroupRemoteDatasource {
     proto.GroupMessage msg, {
     String? currentUserId,
   }) {
+    // Use sender_username from proto if available, otherwise fallback to sender_user_id
+    final senderUsername = msg.senderUsername.isNotEmpty
+        ? msg.senderUsername
+        : msg.senderUserId;
+    
     return GroupMessageModel(
       messageId: msg.messageId,
       groupId: msg.groupId,
       senderUserId: msg.senderUserId,
       senderDeviceId: msg.senderDeviceId,
-      senderUsername: msg.senderUserId, // TODO: Fetch username from user cache
+      senderUsername: senderUsername,
       messageType: _messageTypeFromProto(msg.messageType),
       textContent: utf8.decode(msg.encryptedContent, allowMalformed: true),
       clientTimestamp: msg.hasClientTimestamp()

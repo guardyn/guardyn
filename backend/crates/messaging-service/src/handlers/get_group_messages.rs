@@ -138,11 +138,18 @@ pub async fn get_group_messages(
                 .and_then(|s| s.parse::<i32>().ok())
                 .unwrap_or(0);
             
+            // Extract sender_username from metadata or use sender_user_id as fallback
+            let sender_username = msg.metadata
+                .get("sender_username")
+                .cloned()
+                .unwrap_or_else(|| msg.sender_user_id.clone());
+            
             GroupMessage {
                 message_id: msg.message_id,
                 group_id: msg.group_id,
                 sender_user_id: msg.sender_user_id,
                 sender_device_id: msg.sender_device_id,
+                sender_username,
                 encrypted_content: msg.encrypted_content,
                 message_type,
                 client_message_id: String::new(), // Not stored in current schema
