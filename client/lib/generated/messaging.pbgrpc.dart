@@ -131,6 +131,30 @@ class MessagingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getGroupMessages, request, options: options);
   }
 
+  /// Get all groups for the current user
+  $grpc.ResponseFuture<$0.GetGroupsResponse> getGroups(
+    $0.GetGroupsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getGroups, request, options: options);
+  }
+
+  /// Get group details by ID
+  $grpc.ResponseFuture<$0.GetGroupByIdResponse> getGroupById(
+    $0.GetGroupByIdRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getGroupById, request, options: options);
+  }
+
+  /// Leave a group
+  $grpc.ResponseFuture<$0.LeaveGroupResponse> leaveGroup(
+    $0.LeaveGroupRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$leaveGroup, request, options: options);
+  }
+
   /// Health check
   $grpc.ResponseFuture<$1.HealthStatus> health(
     $0.HealthRequest request, {
@@ -201,6 +225,21 @@ class MessagingServiceClient extends $grpc.Client {
       '/guardyn.messaging.MessagingService/GetGroupMessages',
       ($0.GetGroupMessagesRequest value) => value.writeToBuffer(),
       $0.GetGroupMessagesResponse.fromBuffer);
+  static final _$getGroups =
+      $grpc.ClientMethod<$0.GetGroupsRequest, $0.GetGroupsResponse>(
+          '/guardyn.messaging.MessagingService/GetGroups',
+          ($0.GetGroupsRequest value) => value.writeToBuffer(),
+          $0.GetGroupsResponse.fromBuffer);
+  static final _$getGroupById =
+      $grpc.ClientMethod<$0.GetGroupByIdRequest, $0.GetGroupByIdResponse>(
+          '/guardyn.messaging.MessagingService/GetGroupById',
+          ($0.GetGroupByIdRequest value) => value.writeToBuffer(),
+          $0.GetGroupByIdResponse.fromBuffer);
+  static final _$leaveGroup =
+      $grpc.ClientMethod<$0.LeaveGroupRequest, $0.LeaveGroupResponse>(
+          '/guardyn.messaging.MessagingService/LeaveGroup',
+          ($0.LeaveGroupRequest value) => value.writeToBuffer(),
+          $0.LeaveGroupResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.messaging.MessagingService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -317,6 +356,29 @@ abstract class MessagingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetGroupMessagesRequest.fromBuffer(value),
         ($0.GetGroupMessagesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetGroupsRequest, $0.GetGroupsResponse>(
+        'GetGroups',
+        getGroups_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetGroupsRequest.fromBuffer(value),
+        ($0.GetGroupsResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.GetGroupByIdRequest, $0.GetGroupByIdResponse>(
+            'GetGroupById',
+            getGroupById_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GetGroupByIdRequest.fromBuffer(value),
+            ($0.GetGroupByIdResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.LeaveGroupRequest, $0.LeaveGroupResponse>(
+        'LeaveGroup',
+        leaveGroup_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.LeaveGroupRequest.fromBuffer(value),
+        ($0.LeaveGroupResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -428,6 +490,31 @@ abstract class MessagingServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetGroupMessagesResponse> getGroupMessages(
       $grpc.ServiceCall call, $0.GetGroupMessagesRequest request);
+
+  $async.Future<$0.GetGroupsResponse> getGroups_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.GetGroupsRequest> $request) async {
+    return getGroups($call, await $request);
+  }
+
+  $async.Future<$0.GetGroupsResponse> getGroups(
+      $grpc.ServiceCall call, $0.GetGroupsRequest request);
+
+  $async.Future<$0.GetGroupByIdResponse> getGroupById_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetGroupByIdRequest> $request) async {
+    return getGroupById($call, await $request);
+  }
+
+  $async.Future<$0.GetGroupByIdResponse> getGroupById(
+      $grpc.ServiceCall call, $0.GetGroupByIdRequest request);
+
+  $async.Future<$0.LeaveGroupResponse> leaveGroup_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.LeaveGroupRequest> $request) async {
+    return leaveGroup($call, await $request);
+  }
+
+  $async.Future<$0.LeaveGroupResponse> leaveGroup(
+      $grpc.ServiceCall call, $0.LeaveGroupRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {

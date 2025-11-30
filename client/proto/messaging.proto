@@ -45,6 +45,15 @@ service MessagingService {
   // Get group messages
   rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesResponse);
 
+  // Get all groups for the current user
+  rpc GetGroups(GetGroupsRequest) returns (GetGroupsResponse);
+
+  // Get group details by ID
+  rpc GetGroupById(GetGroupByIdRequest) returns (GetGroupByIdResponse);
+
+  // Leave a group
+  rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -384,6 +393,7 @@ message GroupMessage {
   string group_id = 2;
   string sender_user_id = 3;
   string sender_device_id = 4;
+  string sender_username = 12; // Username of the sender for display
 
   bytes encrypted_content = 5;
 
@@ -394,6 +404,87 @@ message GroupMessage {
 
   string media_id = 10;
   bool is_deleted = 11; // Soft deletion flag
+}
+
+// ============================================================================
+// Get Groups (List all groups for user)
+// ============================================================================
+
+message GetGroupsRequest {
+  string access_token = 1;
+  int32 limit = 2; // Max results (default: 50, max: 100)
+  string cursor = 3; // Pagination cursor
+}
+
+message GetGroupsResponse {
+  oneof result {
+    GetGroupsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetGroupsSuccess {
+  repeated GroupInfo groups = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message GroupInfo {
+  string group_id = 1;
+  string name = 2;
+  string creator_user_id = 3;
+  repeated GroupMemberInfo members = 4;
+  common.Timestamp created_at = 5;
+  int32 member_count = 6;
+  GroupMessage last_message = 7; // Optional: for preview
+}
+
+message GroupMemberInfo {
+  string user_id = 1;
+  string username = 2;
+  string device_id = 3;
+  string role = 4; // "owner", "admin", "member"
+  common.Timestamp joined_at = 5;
+}
+
+// ============================================================================
+// Get Group By ID
+// ============================================================================
+
+message GetGroupByIdRequest {
+  string access_token = 1;
+  string group_id = 2;
+}
+
+message GetGroupByIdResponse {
+  oneof result {
+    GetGroupByIdSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetGroupByIdSuccess {
+  GroupInfo group = 1;
+}
+
+// ============================================================================
+// Leave Group
+// ============================================================================
+
+message LeaveGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+}
+
+message LeaveGroupResponse {
+  oneof result {
+    LeaveGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message LeaveGroupSuccess {
+  bool left = 1;
 }
 
 // ============================================================================

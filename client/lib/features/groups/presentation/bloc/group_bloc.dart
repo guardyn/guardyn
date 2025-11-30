@@ -6,8 +6,10 @@ import 'package:injectable/injectable.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/usecases/add_group_member.dart';
 import '../../domain/usecases/create_group.dart';
+import '../../domain/usecases/get_group_by_id.dart';
 import '../../domain/usecases/get_group_messages.dart';
 import '../../domain/usecases/get_groups.dart';
+import '../../domain/usecases/leave_group.dart';
 import '../../domain/usecases/remove_group_member.dart';
 import '../../domain/usecases/send_group_message.dart';
 import 'group_event.dart';
@@ -17,10 +19,12 @@ import 'group_state.dart';
 class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final CreateGroup createGroup;
   final GetGroups getGroups;
+  final GetGroupById getGroupById;
   final SendGroupMessage sendGroupMessage;
   final GetGroupMessages getGroupMessages;
   final AddGroupMember addGroupMember;
   final RemoveGroupMember removeGroupMember;
+  final LeaveGroup leaveGroup;
 
   Timer? _pollingTimer;
   String? _activeGroupId;
@@ -28,13 +32,16 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   GroupBloc({
     required this.createGroup,
     required this.getGroups,
+    required this.getGroupById,
     required this.sendGroupMessage,
     required this.getGroupMessages,
     required this.addGroupMember,
     required this.removeGroupMember,
+    required this.leaveGroup,
   }) : super(const GroupInitial()) {
     on<GroupLoadAll>(_onLoadAll);
     on<GroupCreate>(_onCreateGroup);
+    on<GroupLoadDetails>(_onLoadDetails);
     on<GroupLoadMessages>(_onLoadMessages);
     on<GroupSendMessage>(_onSendMessage);
     on<GroupMessageReceived>(_onMessageReceived);
@@ -83,6 +90,20 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
         final updatedGroups = [group, ...currentGroups];
         emit(GroupListLoaded(groups: updatedGroups));
       },
+    );
+  }
+
+  Future<void> _onLoadDetails(
+    GroupLoadDetails event,
+    Emitter<GroupState> emit,
+  ) async {
+    emit(const GroupLoading());
+
+    final result = await getGroupById(GetGroupByIdParams(groupId: event.groupId));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message)),
+      (group) => emit(GroupDetailsLoaded(group: group)),
     );
   }
 
@@ -214,20 +235,27 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     GroupLeave event,
     Emitter<GroupState> emit,
   ) async {
-    // Reuse remove member logic (remove self)
     final currentGroups = state is GroupListLoaded
         ? (state as GroupListLoaded).groups
         : <Group>[];
 
-    // Note: Leave group is handled by repository.leaveGroup()
-    // For now, we remove from local cache
-    emit(GroupLeft(groupId: event.groupId));
+    emit(GroupLoading(groups: currentGroups));
 
-    // Update groups list
-    final updatedGroups = currentGroups
-        .where((g) => g.groupId != event.groupId)
-        .toList();
-    emit(GroupListLoaded(groups: updatedGroups));
+    final result = await leaveGroup(LeaveGroupParams(groupId: event.groupId));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message, groups: currentGroups)),
+      (success) {
+        if (success) {
+          emit(GroupLeft(groupId: event.groupId));
+          // Update groups list
+          final updatedGroups = currentGroups
+              .where((g) => g.groupId != event.groupId)
+              .toList();
+          emit(GroupListLoaded(groups: updatedGroups));
+        }
+      },
+    );
   }
 
   void _onStartPolling(

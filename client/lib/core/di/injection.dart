@@ -11,8 +11,10 @@ import 'package:guardyn_client/features/groups/data/repositories/group_repositor
 import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
@@ -158,6 +160,10 @@ void _registerGroupsDependencies() {
     () => GetGroups(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<GetGroupById>(
+    () => GetGroupById(getIt<GroupRepository>()),
+  );
+
   getIt.registerLazySingleton<SendGroupMessage>(
     () => SendGroupMessage(getIt<GroupRepository>()),
   );
@@ -174,15 +180,21 @@ void _registerGroupsDependencies() {
     () => RemoveGroupMember(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<LeaveGroup>(
+    () => LeaveGroup(getIt<GroupRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<GroupBloc>(
     () => GroupBloc(
       createGroup: getIt<CreateGroup>(),
       getGroups: getIt<GetGroups>(),
+      getGroupById: getIt<GetGroupById>(),
       sendGroupMessage: getIt<SendGroupMessage>(),
       getGroupMessages: getIt<GetGroupMessages>(),
       addGroupMember: getIt<AddGroupMember>(),
       removeGroupMember: getIt<RemoveGroupMember>(),
+      leaveGroup: getIt<LeaveGroup>(),
     ),
   );
 }

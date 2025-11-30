@@ -14,6 +14,9 @@ pub mod remove_group_member;
 pub mod send_group_message;
 pub mod send_group_message_mls;
 pub mod get_group_messages;
+pub mod get_groups;
+pub mod get_group_by_id;
+pub mod leave_group;
 
 pub use send_message::send_message;
 pub use send_message_e2ee::send_message_e2ee;
@@ -30,3 +33,6 @@ pub use remove_group_member::remove_group_member;
 pub use send_group_message::send_group_message;
 pub use send_group_message_mls::send_group_message_mls;
 pub use get_group_messages::get_group_messages;
+pub use get_groups::get_groups;
+pub use get_group_by_id::get_group_by_id;
+pub use leave_group::leave_group;

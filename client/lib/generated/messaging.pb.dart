@@ -3329,6 +3329,7 @@ class GroupMessage extends $pb.GeneratedMessage {
     $1.Timestamp? serverTimestamp,
     $core.String? mediaId,
     $core.bool? isDeleted,
+    $core.String? senderUsername,
   }) {
     final result = create();
     if (messageId != null) result.messageId = messageId;
@@ -3342,6 +3343,7 @@ class GroupMessage extends $pb.GeneratedMessage {
     if (serverTimestamp != null) result.serverTimestamp = serverTimestamp;
     if (mediaId != null) result.mediaId = mediaId;
     if (isDeleted != null) result.isDeleted = isDeleted;
+    if (senderUsername != null) result.senderUsername = senderUsername;
     return result;
   }
 
@@ -3374,6 +3376,7 @@ class GroupMessage extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.create)
     ..aOS(10, _omitFieldNames ? '' : 'mediaId')
     ..aOB(11, _omitFieldNames ? '' : 'isDeleted')
+    ..aOS(12, _omitFieldNames ? '' : 'senderUsername')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3497,6 +3500,918 @@ class GroupMessage extends $pb.GeneratedMessage {
   $core.bool hasIsDeleted() => $_has(10);
   @$pb.TagNumber(11)
   void clearIsDeleted() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get senderUsername => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set senderUsername($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasSenderUsername() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearSenderUsername() => $_clearField(12);
+}
+
+class GetGroupsRequest extends $pb.GeneratedMessage {
+  factory GetGroupsRequest({
+    $core.String? accessToken,
+    $core.int? limit,
+    $core.String? cursor,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (limit != null) result.limit = limit;
+    if (cursor != null) result.cursor = cursor;
+    return result;
+  }
+
+  GetGroupsRequest._();
+
+  factory GetGroupsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetGroupsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetGroupsRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aI(2, _omitFieldNames ? '' : 'limit')
+    ..aOS(3, _omitFieldNames ? '' : 'cursor')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupsRequest copyWith(void Function(GetGroupsRequest) updates) =>
+      super.copyWith((message) => updates(message as GetGroupsRequest))
+          as GetGroupsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetGroupsRequest create() => GetGroupsRequest._();
+  @$core.override
+  GetGroupsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetGroupsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetGroupsRequest>(create);
+  static GetGroupsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get limit => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set limit($core.int value) => $_setSignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLimit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLimit() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get cursor => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set cursor($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCursor() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCursor() => $_clearField(3);
+}
+
+enum GetGroupsResponse_Result { success, error, notSet }
+
+class GetGroupsResponse extends $pb.GeneratedMessage {
+  factory GetGroupsResponse({
+    GetGroupsSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetGroupsResponse._();
+
+  factory GetGroupsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetGroupsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, GetGroupsResponse_Result>
+      _GetGroupsResponse_ResultByTag = {
+    1: GetGroupsResponse_Result.success,
+    2: GetGroupsResponse_Result.error,
+    0: GetGroupsResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetGroupsResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<GetGroupsSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: GetGroupsSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupsResponse copyWith(void Function(GetGroupsResponse) updates) =>
+      super.copyWith((message) => updates(message as GetGroupsResponse))
+          as GetGroupsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetGroupsResponse create() => GetGroupsResponse._();
+  @$core.override
+  GetGroupsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetGroupsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetGroupsResponse>(create);
+  static GetGroupsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  GetGroupsResponse_Result whichResult() =>
+      _GetGroupsResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  GetGroupsSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(GetGroupsSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  GetGroupsSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class GetGroupsSuccess extends $pb.GeneratedMessage {
+  factory GetGroupsSuccess({
+    $core.Iterable<GroupInfo>? groups,
+    $core.String? nextCursor,
+    $core.bool? hasMore,
+  }) {
+    final result = create();
+    if (groups != null) result.groups.addAll(groups);
+    if (nextCursor != null) result.nextCursor = nextCursor;
+    if (hasMore != null) result.hasMore = hasMore;
+    return result;
+  }
+
+  GetGroupsSuccess._();
+
+  factory GetGroupsSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetGroupsSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetGroupsSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..pPM<GroupInfo>(1, _omitFieldNames ? '' : 'groups',
+        subBuilder: GroupInfo.create)
+    ..aOS(2, _omitFieldNames ? '' : 'nextCursor')
+    ..aOB(3, _omitFieldNames ? '' : 'hasMore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupsSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupsSuccess copyWith(void Function(GetGroupsSuccess) updates) =>
+      super.copyWith((message) => updates(message as GetGroupsSuccess))
+          as GetGroupsSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetGroupsSuccess create() => GetGroupsSuccess._();
+  @$core.override
+  GetGroupsSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetGroupsSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetGroupsSuccess>(create);
+  static GetGroupsSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<GroupInfo> get groups => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get nextCursor => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set nextCursor($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNextCursor() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNextCursor() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get hasMore => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasMore($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHasMore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasMore() => $_clearField(3);
+}
+
+class GroupInfo extends $pb.GeneratedMessage {
+  factory GroupInfo({
+    $core.String? groupId,
+    $core.String? name,
+    $core.String? creatorUserId,
+    $core.Iterable<GroupMemberInfo>? members,
+    $1.Timestamp? createdAt,
+    $core.int? memberCount,
+    GroupMessage? lastMessage,
+  }) {
+    final result = create();
+    if (groupId != null) result.groupId = groupId;
+    if (name != null) result.name = name;
+    if (creatorUserId != null) result.creatorUserId = creatorUserId;
+    if (members != null) result.members.addAll(members);
+    if (createdAt != null) result.createdAt = createdAt;
+    if (memberCount != null) result.memberCount = memberCount;
+    if (lastMessage != null) result.lastMessage = lastMessage;
+    return result;
+  }
+
+  GroupInfo._();
+
+  factory GroupInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GroupInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GroupInfo',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'groupId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'creatorUserId')
+    ..pPM<GroupMemberInfo>(4, _omitFieldNames ? '' : 'members',
+        subBuilder: GroupMemberInfo.create)
+    ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.create)
+    ..aI(6, _omitFieldNames ? '' : 'memberCount')
+    ..aOM<GroupMessage>(7, _omitFieldNames ? '' : 'lastMessage',
+        subBuilder: GroupMessage.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GroupInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GroupInfo copyWith(void Function(GroupInfo) updates) =>
+      super.copyWith((message) => updates(message as GroupInfo)) as GroupInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GroupInfo create() => GroupInfo._();
+  @$core.override
+  GroupInfo createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GroupInfo getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GroupInfo>(create);
+  static GroupInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get groupId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set groupId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGroupId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGroupId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get creatorUserId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set creatorUserId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCreatorUserId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCreatorUserId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<GroupMemberInfo> get members => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $1.Timestamp get createdAt => $_getN(4);
+  @$pb.TagNumber(5)
+  set createdAt($1.Timestamp value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCreatedAt() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCreatedAt() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $1.Timestamp ensureCreatedAt() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.int get memberCount => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set memberCount($core.int value) => $_setSignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMemberCount() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMemberCount() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  GroupMessage get lastMessage => $_getN(6);
+  @$pb.TagNumber(7)
+  set lastMessage(GroupMessage value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasLastMessage() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearLastMessage() => $_clearField(7);
+  @$pb.TagNumber(7)
+  GroupMessage ensureLastMessage() => $_ensure(6);
+}
+
+class GroupMemberInfo extends $pb.GeneratedMessage {
+  factory GroupMemberInfo({
+    $core.String? userId,
+    $core.String? username,
+    $core.String? deviceId,
+    $core.String? role,
+    $1.Timestamp? joinedAt,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (username != null) result.username = username;
+    if (deviceId != null) result.deviceId = deviceId;
+    if (role != null) result.role = role;
+    if (joinedAt != null) result.joinedAt = joinedAt;
+    return result;
+  }
+
+  GroupMemberInfo._();
+
+  factory GroupMemberInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GroupMemberInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GroupMemberInfo',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aOS(2, _omitFieldNames ? '' : 'username')
+    ..aOS(3, _omitFieldNames ? '' : 'deviceId')
+    ..aOS(4, _omitFieldNames ? '' : 'role')
+    ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'joinedAt',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GroupMemberInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GroupMemberInfo copyWith(void Function(GroupMemberInfo) updates) =>
+      super.copyWith((message) => updates(message as GroupMemberInfo))
+          as GroupMemberInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GroupMemberInfo create() => GroupMemberInfo._();
+  @$core.override
+  GroupMemberInfo createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GroupMemberInfo getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GroupMemberInfo>(create);
+  static GroupMemberInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get username => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set username($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUsername() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUsername() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get deviceId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set deviceId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDeviceId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDeviceId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get role => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set role($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRole() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRole() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $1.Timestamp get joinedAt => $_getN(4);
+  @$pb.TagNumber(5)
+  set joinedAt($1.Timestamp value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasJoinedAt() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearJoinedAt() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $1.Timestamp ensureJoinedAt() => $_ensure(4);
+}
+
+class GetGroupByIdRequest extends $pb.GeneratedMessage {
+  factory GetGroupByIdRequest({
+    $core.String? accessToken,
+    $core.String? groupId,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (groupId != null) result.groupId = groupId;
+    return result;
+  }
+
+  GetGroupByIdRequest._();
+
+  factory GetGroupByIdRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetGroupByIdRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetGroupByIdRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupByIdRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupByIdRequest copyWith(void Function(GetGroupByIdRequest) updates) =>
+      super.copyWith((message) => updates(message as GetGroupByIdRequest))
+          as GetGroupByIdRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetGroupByIdRequest create() => GetGroupByIdRequest._();
+  @$core.override
+  GetGroupByIdRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetGroupByIdRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetGroupByIdRequest>(create);
+  static GetGroupByIdRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => $_clearField(2);
+}
+
+enum GetGroupByIdResponse_Result { success, error, notSet }
+
+class GetGroupByIdResponse extends $pb.GeneratedMessage {
+  factory GetGroupByIdResponse({
+    GetGroupByIdSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetGroupByIdResponse._();
+
+  factory GetGroupByIdResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetGroupByIdResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, GetGroupByIdResponse_Result>
+      _GetGroupByIdResponse_ResultByTag = {
+    1: GetGroupByIdResponse_Result.success,
+    2: GetGroupByIdResponse_Result.error,
+    0: GetGroupByIdResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetGroupByIdResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<GetGroupByIdSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: GetGroupByIdSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupByIdResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupByIdResponse copyWith(void Function(GetGroupByIdResponse) updates) =>
+      super.copyWith((message) => updates(message as GetGroupByIdResponse))
+          as GetGroupByIdResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetGroupByIdResponse create() => GetGroupByIdResponse._();
+  @$core.override
+  GetGroupByIdResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetGroupByIdResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetGroupByIdResponse>(create);
+  static GetGroupByIdResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  GetGroupByIdResponse_Result whichResult() =>
+      _GetGroupByIdResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  GetGroupByIdSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(GetGroupByIdSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  GetGroupByIdSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class GetGroupByIdSuccess extends $pb.GeneratedMessage {
+  factory GetGroupByIdSuccess({
+    GroupInfo? group,
+  }) {
+    final result = create();
+    if (group != null) result.group = group;
+    return result;
+  }
+
+  GetGroupByIdSuccess._();
+
+  factory GetGroupByIdSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetGroupByIdSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetGroupByIdSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOM<GroupInfo>(1, _omitFieldNames ? '' : 'group',
+        subBuilder: GroupInfo.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupByIdSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetGroupByIdSuccess copyWith(void Function(GetGroupByIdSuccess) updates) =>
+      super.copyWith((message) => updates(message as GetGroupByIdSuccess))
+          as GetGroupByIdSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetGroupByIdSuccess create() => GetGroupByIdSuccess._();
+  @$core.override
+  GetGroupByIdSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetGroupByIdSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetGroupByIdSuccess>(create);
+  static GetGroupByIdSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  GroupInfo get group => $_getN(0);
+  @$pb.TagNumber(1)
+  set group(GroupInfo value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGroup() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGroup() => $_clearField(1);
+  @$pb.TagNumber(1)
+  GroupInfo ensureGroup() => $_ensure(0);
+}
+
+class LeaveGroupRequest extends $pb.GeneratedMessage {
+  factory LeaveGroupRequest({
+    $core.String? accessToken,
+    $core.String? groupId,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (groupId != null) result.groupId = groupId;
+    return result;
+  }
+
+  LeaveGroupRequest._();
+
+  factory LeaveGroupRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory LeaveGroupRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LeaveGroupRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LeaveGroupRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LeaveGroupRequest copyWith(void Function(LeaveGroupRequest) updates) =>
+      super.copyWith((message) => updates(message as LeaveGroupRequest))
+          as LeaveGroupRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static LeaveGroupRequest create() => LeaveGroupRequest._();
+  @$core.override
+  LeaveGroupRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static LeaveGroupRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LeaveGroupRequest>(create);
+  static LeaveGroupRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => $_clearField(2);
+}
+
+enum LeaveGroupResponse_Result { success, error, notSet }
+
+class LeaveGroupResponse extends $pb.GeneratedMessage {
+  factory LeaveGroupResponse({
+    LeaveGroupSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  LeaveGroupResponse._();
+
+  factory LeaveGroupResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory LeaveGroupResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, LeaveGroupResponse_Result>
+      _LeaveGroupResponse_ResultByTag = {
+    1: LeaveGroupResponse_Result.success,
+    2: LeaveGroupResponse_Result.error,
+    0: LeaveGroupResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LeaveGroupResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<LeaveGroupSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: LeaveGroupSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LeaveGroupResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LeaveGroupResponse copyWith(void Function(LeaveGroupResponse) updates) =>
+      super.copyWith((message) => updates(message as LeaveGroupResponse))
+          as LeaveGroupResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static LeaveGroupResponse create() => LeaveGroupResponse._();
+  @$core.override
+  LeaveGroupResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static LeaveGroupResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LeaveGroupResponse>(create);
+  static LeaveGroupResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  LeaveGroupResponse_Result whichResult() =>
+      _LeaveGroupResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  LeaveGroupSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(LeaveGroupSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  LeaveGroupSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class LeaveGroupSuccess extends $pb.GeneratedMessage {
+  factory LeaveGroupSuccess({
+    $core.bool? left,
+  }) {
+    final result = create();
+    if (left != null) result.left = left;
+    return result;
+  }
+
+  LeaveGroupSuccess._();
+
+  factory LeaveGroupSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory LeaveGroupSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LeaveGroupSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'left')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LeaveGroupSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LeaveGroupSuccess copyWith(void Function(LeaveGroupSuccess) updates) =>
+      super.copyWith((message) => updates(message as LeaveGroupSuccess))
+          as LeaveGroupSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static LeaveGroupSuccess create() => LeaveGroupSuccess._();
+  @$core.override
+  LeaveGroupSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static LeaveGroupSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LeaveGroupSuccess>(create);
+  static LeaveGroupSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get left => $_getBF(0);
+  @$pb.TagNumber(1)
+  set left($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLeft() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLeft() => $_clearField(1);
 }
 
 class HealthRequest extends $pb.GeneratedMessage {

@@ -1119,6 +1119,7 @@ const GroupMessage$json = {
     {'1': 'group_id', '3': 2, '4': 1, '5': 9, '10': 'groupId'},
     {'1': 'sender_user_id', '3': 3, '4': 1, '5': 9, '10': 'senderUserId'},
     {'1': 'sender_device_id', '3': 4, '4': 1, '5': 9, '10': 'senderDeviceId'},
+    {'1': 'sender_username', '3': 12, '4': 1, '5': 9, '10': 'senderUsername'},
     {
       '1': 'encrypted_content',
       '3': 5,
@@ -1160,14 +1161,284 @@ const GroupMessage$json = {
 final $typed_data.Uint8List groupMessageDescriptor = $convert.base64Decode(
     'CgxHcm91cE1lc3NhZ2USHQoKbWVzc2FnZV9pZBgBIAEoCVIJbWVzc2FnZUlkEhkKCGdyb3VwX2'
     'lkGAIgASgJUgdncm91cElkEiQKDnNlbmRlcl91c2VyX2lkGAMgASgJUgxzZW5kZXJVc2VySWQS'
-    'KAoQc2VuZGVyX2RldmljZV9pZBgEIAEoCVIOc2VuZGVyRGV2aWNlSWQSKwoRZW5jcnlwdGVkX2'
-    'NvbnRlbnQYBSABKAxSEGVuY3J5cHRlZENvbnRlbnQSQQoMbWVzc2FnZV90eXBlGAYgASgOMh4u'
-    'Z3VhcmR5bi5tZXNzYWdpbmcuTWVzc2FnZVR5cGVSC21lc3NhZ2VUeXBlEioKEWNsaWVudF9tZX'
-    'NzYWdlX2lkGAcgASgJUg9jbGllbnRNZXNzYWdlSWQSRAoQY2xpZW50X3RpbWVzdGFtcBgIIAEo'
-    'CzIZLmd1YXJkeW4uY29tbW9uLlRpbWVzdGFtcFIPY2xpZW50VGltZXN0YW1wEkQKEHNlcnZlcl'
-    '90aW1lc3RhbXAYCSABKAsyGS5ndWFyZHluLmNvbW1vbi5UaW1lc3RhbXBSD3NlcnZlclRpbWVz'
-    'dGFtcBIZCghtZWRpYV9pZBgKIAEoCVIHbWVkaWFJZBIdCgppc19kZWxldGVkGAsgASgIUglpc0'
-    'RlbGV0ZWQ=');
+    'KAoQc2VuZGVyX2RldmljZV9pZBgEIAEoCVIOc2VuZGVyRGV2aWNlSWQSJwoPc2VuZGVyX3VzZX'
+    'JuYW1lGAwgASgJUg5zZW5kZXJVc2VybmFtZRIrChFlbmNyeXB0ZWRfY29udGVudBgFIAEoDFIQ'
+    'ZW5jcnlwdGVkQ29udGVudBJBCgxtZXNzYWdlX3R5cGUYBiABKA4yHi5ndWFyZHluLm1lc3NhZ2'
+    'luZy5NZXNzYWdlVHlwZVILbWVzc2FnZVR5cGUSKgoRY2xpZW50X21lc3NhZ2VfaWQYByABKAlS'
+    'D2NsaWVudE1lc3NhZ2VJZBJEChBjbGllbnRfdGltZXN0YW1wGAggASgLMhkuZ3VhcmR5bi5jb2'
+    '1tb24uVGltZXN0YW1wUg9jbGllbnRUaW1lc3RhbXASRAoQc2VydmVyX3RpbWVzdGFtcBgJIAEo'
+    'CzIZLmd1YXJkeW4uY29tbW9uLlRpbWVzdGFtcFIPc2VydmVyVGltZXN0YW1wEhkKCG1lZGlhX2'
+    'lkGAogASgJUgdtZWRpYUlkEh0KCmlzX2RlbGV0ZWQYCyABKAhSCWlzRGVsZXRlZA==');
+
+@$core.Deprecated('Use getGroupsRequestDescriptor instead')
+const GetGroupsRequest$json = {
+  '1': 'GetGroupsRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'limit', '3': 2, '4': 1, '5': 5, '10': 'limit'},
+    {'1': 'cursor', '3': 3, '4': 1, '5': 9, '10': 'cursor'},
+  ],
+};
+
+/// Descriptor for `GetGroupsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getGroupsRequestDescriptor = $convert.base64Decode(
+    'ChBHZXRHcm91cHNSZXF1ZXN0EiEKDGFjY2Vzc190b2tlbhgBIAEoCVILYWNjZXNzVG9rZW4SFA'
+    'oFbGltaXQYAiABKAVSBWxpbWl0EhYKBmN1cnNvchgDIAEoCVIGY3Vyc29y');
+
+@$core.Deprecated('Use getGroupsResponseDescriptor instead')
+const GetGroupsResponse$json = {
+  '1': 'GetGroupsResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.GetGroupsSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `GetGroupsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getGroupsResponseDescriptor = $convert.base64Decode(
+    'ChFHZXRHcm91cHNSZXNwb25zZRI/CgdzdWNjZXNzGAEgASgLMiMuZ3VhcmR5bi5tZXNzYWdpbm'
+    'cuR2V0R3JvdXBzU3VjY2Vzc0gAUgdzdWNjZXNzEjUKBWVycm9yGAIgASgLMh0uZ3VhcmR5bi5j'
+    'b21tb24uRXJyb3JSZXNwb25zZUgAUgVlcnJvckIICgZyZXN1bHQ=');
+
+@$core.Deprecated('Use getGroupsSuccessDescriptor instead')
+const GetGroupsSuccess$json = {
+  '1': 'GetGroupsSuccess',
+  '2': [
+    {
+      '1': 'groups',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.guardyn.messaging.GroupInfo',
+      '10': 'groups'
+    },
+    {'1': 'next_cursor', '3': 2, '4': 1, '5': 9, '10': 'nextCursor'},
+    {'1': 'has_more', '3': 3, '4': 1, '5': 8, '10': 'hasMore'},
+  ],
+};
+
+/// Descriptor for `GetGroupsSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getGroupsSuccessDescriptor = $convert.base64Decode(
+    'ChBHZXRHcm91cHNTdWNjZXNzEjQKBmdyb3VwcxgBIAMoCzIcLmd1YXJkeW4ubWVzc2FnaW5nLk'
+    'dyb3VwSW5mb1IGZ3JvdXBzEh8KC25leHRfY3Vyc29yGAIgASgJUgpuZXh0Q3Vyc29yEhkKCGhh'
+    'c19tb3JlGAMgASgIUgdoYXNNb3Jl');
+
+@$core.Deprecated('Use groupInfoDescriptor instead')
+const GroupInfo$json = {
+  '1': 'GroupInfo',
+  '2': [
+    {'1': 'group_id', '3': 1, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'creator_user_id', '3': 3, '4': 1, '5': 9, '10': 'creatorUserId'},
+    {
+      '1': 'members',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.guardyn.messaging.GroupMemberInfo',
+      '10': 'members'
+    },
+    {
+      '1': 'created_at',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'createdAt'
+    },
+    {'1': 'member_count', '3': 6, '4': 1, '5': 5, '10': 'memberCount'},
+    {
+      '1': 'last_message',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.GroupMessage',
+      '10': 'lastMessage'
+    },
+  ],
+};
+
+/// Descriptor for `GroupInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List groupInfoDescriptor = $convert.base64Decode(
+    'CglHcm91cEluZm8SGQoIZ3JvdXBfaWQYASABKAlSB2dyb3VwSWQSEgoEbmFtZRgCIAEoCVIEbm'
+    'FtZRImCg9jcmVhdG9yX3VzZXJfaWQYAyABKAlSDWNyZWF0b3JVc2VySWQSPAoHbWVtYmVycxgE'
+    'IAMoCzIiLmd1YXJkeW4ubWVzc2FnaW5nLkdyb3VwTWVtYmVySW5mb1IHbWVtYmVycxI4Cgpjcm'
+    'VhdGVkX2F0GAUgASgLMhkuZ3VhcmR5bi5jb21tb24uVGltZXN0YW1wUgljcmVhdGVkQXQSIQoM'
+    'bWVtYmVyX2NvdW50GAYgASgFUgttZW1iZXJDb3VudBJCCgxsYXN0X21lc3NhZ2UYByABKAsyHy'
+    '5ndWFyZHluLm1lc3NhZ2luZy5Hcm91cE1lc3NhZ2VSC2xhc3RNZXNzYWdl');
+
+@$core.Deprecated('Use groupMemberInfoDescriptor instead')
+const GroupMemberInfo$json = {
+  '1': 'GroupMemberInfo',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'username', '3': 2, '4': 1, '5': 9, '10': 'username'},
+    {'1': 'device_id', '3': 3, '4': 1, '5': 9, '10': 'deviceId'},
+    {'1': 'role', '3': 4, '4': 1, '5': 9, '10': 'role'},
+    {
+      '1': 'joined_at',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'joinedAt'
+    },
+  ],
+};
+
+/// Descriptor for `GroupMemberInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List groupMemberInfoDescriptor = $convert.base64Decode(
+    'Cg9Hcm91cE1lbWJlckluZm8SFwoHdXNlcl9pZBgBIAEoCVIGdXNlcklkEhoKCHVzZXJuYW1lGA'
+    'IgASgJUgh1c2VybmFtZRIbCglkZXZpY2VfaWQYAyABKAlSCGRldmljZUlkEhIKBHJvbGUYBCAB'
+    'KAlSBHJvbGUSNgoJam9pbmVkX2F0GAUgASgLMhkuZ3VhcmR5bi5jb21tb24uVGltZXN0YW1wUg'
+    'hqb2luZWRBdA==');
+
+@$core.Deprecated('Use getGroupByIdRequestDescriptor instead')
+const GetGroupByIdRequest$json = {
+  '1': 'GetGroupByIdRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'group_id', '3': 2, '4': 1, '5': 9, '10': 'groupId'},
+  ],
+};
+
+/// Descriptor for `GetGroupByIdRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getGroupByIdRequestDescriptor = $convert.base64Decode(
+    'ChNHZXRHcm91cEJ5SWRSZXF1ZXN0EiEKDGFjY2Vzc190b2tlbhgBIAEoCVILYWNjZXNzVG9rZW'
+    '4SGQoIZ3JvdXBfaWQYAiABKAlSB2dyb3VwSWQ=');
+
+@$core.Deprecated('Use getGroupByIdResponseDescriptor instead')
+const GetGroupByIdResponse$json = {
+  '1': 'GetGroupByIdResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.GetGroupByIdSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `GetGroupByIdResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getGroupByIdResponseDescriptor = $convert.base64Decode(
+    'ChRHZXRHcm91cEJ5SWRSZXNwb25zZRJCCgdzdWNjZXNzGAEgASgLMiYuZ3VhcmR5bi5tZXNzYW'
+    'dpbmcuR2V0R3JvdXBCeUlkU3VjY2Vzc0gAUgdzdWNjZXNzEjUKBWVycm9yGAIgASgLMh0uZ3Vh'
+    'cmR5bi5jb21tb24uRXJyb3JSZXNwb25zZUgAUgVlcnJvckIICgZyZXN1bHQ=');
+
+@$core.Deprecated('Use getGroupByIdSuccessDescriptor instead')
+const GetGroupByIdSuccess$json = {
+  '1': 'GetGroupByIdSuccess',
+  '2': [
+    {
+      '1': 'group',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.GroupInfo',
+      '10': 'group'
+    },
+  ],
+};
+
+/// Descriptor for `GetGroupByIdSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getGroupByIdSuccessDescriptor = $convert.base64Decode(
+    'ChNHZXRHcm91cEJ5SWRTdWNjZXNzEjIKBWdyb3VwGAEgASgLMhwuZ3VhcmR5bi5tZXNzYWdpbm'
+    'cuR3JvdXBJbmZvUgVncm91cA==');
+
+@$core.Deprecated('Use leaveGroupRequestDescriptor instead')
+const LeaveGroupRequest$json = {
+  '1': 'LeaveGroupRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'group_id', '3': 2, '4': 1, '5': 9, '10': 'groupId'},
+  ],
+};
+
+/// Descriptor for `LeaveGroupRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List leaveGroupRequestDescriptor = $convert.base64Decode(
+    'ChFMZWF2ZUdyb3VwUmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2VuEh'
+    'kKCGdyb3VwX2lkGAIgASgJUgdncm91cElk');
+
+@$core.Deprecated('Use leaveGroupResponseDescriptor instead')
+const LeaveGroupResponse$json = {
+  '1': 'LeaveGroupResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.LeaveGroupSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `LeaveGroupResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List leaveGroupResponseDescriptor = $convert.base64Decode(
+    'ChJMZWF2ZUdyb3VwUmVzcG9uc2USQAoHc3VjY2VzcxgBIAEoCzIkLmd1YXJkeW4ubWVzc2FnaW'
+    '5nLkxlYXZlR3JvdXBTdWNjZXNzSABSB3N1Y2Nlc3MSNQoFZXJyb3IYAiABKAsyHS5ndWFyZHlu'
+    'LmNvbW1vbi5FcnJvclJlc3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use leaveGroupSuccessDescriptor instead')
+const LeaveGroupSuccess$json = {
+  '1': 'LeaveGroupSuccess',
+  '2': [
+    {'1': 'left', '3': 1, '4': 1, '5': 8, '10': 'left'},
+  ],
+};
+
+/// Descriptor for `LeaveGroupSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List leaveGroupSuccessDescriptor = $convert
+    .base64Decode('ChFMZWF2ZUdyb3VwU3VjY2VzcxISCgRsZWZ0GAEgASgIUgRsZWZ0');
 
 @$core.Deprecated('Use healthRequestDescriptor instead')
 const HealthRequest$json = {
