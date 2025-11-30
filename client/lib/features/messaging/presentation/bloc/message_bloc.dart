@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../data/datasources/websocket_datasource.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
@@ -21,9 +22,17 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final MarkAsRead markAsRead;
 
   StreamSubscription<dynamic>? _messageStreamSubscription;
+  StreamSubscription<dynamic>? _wsMessageSubscription;
+  StreamSubscription<dynamic>? _wsStateSubscription;
   Timer? _pollingTimer;
   String? _pollingConversationUserId;
   String? _pollingConversationId;
+  
+  /// WebSocket datasource (lazy-loaded from DI)
+  WebSocketDatasource? _webSocketDatasource;
+  
+  /// Whether WebSocket is preferred over polling
+  bool _useWebSocket = true;
   
   /// Currently open conversation user ID (to suppress notifications for active chat)
   String? _activeConversationUserId;
@@ -43,6 +52,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<MessageSetActiveConversation>(_onSetActiveConversation);
     on<MessageStartPolling>(_onStartPolling);
     on<MessageStopPolling>(_onStopPolling);
+    // WebSocket events
+    on<MessageConnectWebSocket>(_onConnectWebSocket);
+    on<MessageDisconnectWebSocket>(_onDisconnectWebSocket);
+    on<MessageSubscribeConversation>(_onSubscribeConversation);
+    on<MessageSendTypingIndicator>(_onSendTypingIndicator);
   }
   
   /// Set the active conversation (to suppress notifications for current chat)
@@ -321,10 +335,111 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     );
   }
 
+  // ========================================================================
+  // WebSocket Handlers
+  // ========================================================================
+
+  /// Connect to WebSocket for real-time messaging
+  Future<void> _onConnectWebSocket(
+    MessageConnectWebSocket event,
+    Emitter<MessageState> emit,
+  ) async {
+    try {
+      _webSocketDatasource ??= getIt<WebSocketDatasource>();
+      
+      // Cancel existing subscriptions
+      await _wsMessageSubscription?.cancel();
+      await _wsStateSubscription?.cancel();
+      
+      // Connect to WebSocket
+      await _webSocketDatasource!.connect(event.accessToken);
+      
+      // Subscribe to incoming messages
+      _wsMessageSubscription = _webSocketDatasource!.messageStream.listen(
+        (message) {
+          add(MessageReceived(message));
+        },
+        onError: (error) {
+          // ignore: avoid_print
+          print('WebSocket message stream error: $error');
+          // Fall back to polling if WebSocket fails
+          _useWebSocket = false;
+        },
+      );
+      
+      // Subscribe to connection state changes
+      _wsStateSubscription = _webSocketDatasource!.stateStream.listen(
+        (state) {
+          // ignore: avoid_print
+          print('WebSocket state changed: $state');
+          if (state == WebSocketState.disconnected && _useWebSocket) {
+            // Could trigger reconnection or fallback to polling
+          }
+        },
+      );
+      
+      // ignore: avoid_print
+      print('🔌 WebSocket connected successfully');
+    } catch (e) {
+      // ignore: avoid_print
+      print('🔌 WebSocket connection failed: $e');
+      _useWebSocket = false;
+    }
+  }
+
+  /// Disconnect from WebSocket
+  Future<void> _onDisconnectWebSocket(
+    MessageDisconnectWebSocket event,
+    Emitter<MessageState> emit,
+  ) async {
+    await _wsMessageSubscription?.cancel();
+    await _wsStateSubscription?.cancel();
+    await _webSocketDatasource?.disconnect();
+    // ignore: avoid_print
+    print('🔌 WebSocket disconnected');
+  }
+
+  /// Subscribe to a conversation via WebSocket
+  Future<void> _onSubscribeConversation(
+    MessageSubscribeConversation event,
+    Emitter<MessageState> emit,
+  ) async {
+    if (_webSocketDatasource?.isConnected ?? false) {
+      try {
+        await _webSocketDatasource!.subscribeToConversation(event.conversationId);
+        // ignore: avoid_print
+        print('🔌 Subscribed to conversation: ${event.conversationId}');
+      } catch (e) {
+        // ignore: avoid_print
+        print('🔌 Failed to subscribe to conversation: $e');
+      }
+    }
+  }
+
+  /// Send typing indicator via WebSocket
+  Future<void> _onSendTypingIndicator(
+    MessageSendTypingIndicator event,
+    Emitter<MessageState> emit,
+  ) async {
+    if (_webSocketDatasource?.isConnected ?? false) {
+      try {
+        await _webSocketDatasource!.sendTypingIndicator(
+          conversationId: event.conversationId,
+          isTyping: event.isTyping,
+        );
+      } catch (e) {
+        // Silently ignore typing indicator errors
+      }
+    }
+  }
+
   @override
   Future<void> close() {
     _pollingTimer?.cancel();
     _messageStreamSubscription?.cancel();
+    _wsMessageSubscription?.cancel();
+    _wsStateSubscription?.cancel();
+    _webSocketDatasource?.disconnect();
     return super.close();
   }
 }

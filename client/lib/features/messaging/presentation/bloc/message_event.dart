@@ -104,3 +104,42 @@ class MessageStartPolling extends MessageEvent {
 class MessageStopPolling extends MessageEvent {
   const MessageStopPolling();
 }
+
+/// Connect to WebSocket for real-time messaging
+class MessageConnectWebSocket extends MessageEvent {
+  final String accessToken;
+
+  const MessageConnectWebSocket({required this.accessToken});
+
+  @override
+  List<Object?> get props => [accessToken];
+}
+
+/// Disconnect from WebSocket
+class MessageDisconnectWebSocket extends MessageEvent {
+  const MessageDisconnectWebSocket();
+}
+
+/// Subscribe to a conversation via WebSocket
+class MessageSubscribeConversation extends MessageEvent {
+  final String conversationId;
+
+  const MessageSubscribeConversation({required this.conversationId});
+
+  @override
+  List<Object?> get props => [conversationId];
+}
+
+/// Send typing indicator via WebSocket
+class MessageSendTypingIndicator extends MessageEvent {
+  final String conversationId;
+  final bool isTyping;
+
+  const MessageSendTypingIndicator({
+    required this.conversationId,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object?> get props => [conversationId, isTyping];
+}

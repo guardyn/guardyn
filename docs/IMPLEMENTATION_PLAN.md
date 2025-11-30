@@ -227,9 +227,9 @@ The Flutter client currently uses **HTTP polling** (every 2 seconds) as a workar
    - [x] Add `axum-tungstenite` WebSocket support to messaging-service
    - [x] Create WebSocket gateway service (or extend messaging-service)
    - [x] Implement connection management (heartbeat, reconnection)
-   - [ ] Add WebSocket client to Flutter (`web_socket_channel` package)
-   - [ ] Maintain polling as fallback for unreliable networks
-   - [ ] Migrate presence and typing indicators to WebSocket
+   - [x] Add WebSocket client to Flutter (`web_socket_channel` package)
+   - [x] Maintain polling as fallback for unreliable networks
+   - [x] Migrate presence and typing indicators to WebSocket
 
 4. **Files to Modify**:
    - `backend/crates/messaging-service/` — Add WebSocket handler
