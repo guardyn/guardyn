@@ -23,6 +23,9 @@ This document provides a comprehensive overview of all ports used in the Guardyn
 | **9042** | scylladb | TCP | data | ScyllaDB CQL native protocol |
 | **9000** | minio | HTTP | data | MinIO S3 API |
 | **9001** | minio | HTTP | data | MinIO Console UI |
+| **3200** | tempo | HTTP | observability | Tempo query API & UI |
+| **4317** | tempo / otel-collector | gRPC | observability | OTLP gRPC receiver (traces) |
+| **4318** | tempo / otel-collector | HTTP | observability | OTLP HTTP receiver (traces) |
 | **5000** | guardyn-registry | HTTP | host | Container image registry |
 | **6443** | k3s API | HTTPS | host | Kubernetes API server |
 | **80** | loadbalancer | HTTP | host | HTTP ingress |
@@ -142,6 +145,44 @@ This document provides a comprehensive overview of all ports used in the Guardyn
 
 ---
 
+### Observability (namespace: `observability`)
+
+#### Grafana Tempo (Distributed Tracing)
+
+| Port | Name | Protocol | Purpose |
+|------|------|----------|---------|
+| 3200 | http | TCP | Query API, Tempo UI |
+| 4317 | otlp-grpc | TCP | OTLP gRPC receiver (traces from services) |
+| 4318 | otlp-http | TCP | OTLP HTTP receiver |
+| 14268 | jaeger-http | TCP | Jaeger HTTP collector (legacy) |
+| 14250 | jaeger-grpc | TCP | Jaeger gRPC collector (legacy) |
+| 9411 | zipkin | TCP | Zipkin receiver (legacy) |
+| 6831 | jaeger-thrift | UDP | Jaeger Thrift compact (legacy) |
+| 6832 | jaeger-binary | UDP | Jaeger Thrift binary (legacy) |
+
+**K8s Service:** `tempo.observability.svc.cluster.local:3200` (query), `:4317` (OTLP)
+
+#### OpenTelemetry Collector
+
+| Port | Name | Protocol | Purpose |
+|------|------|----------|---------|
+| 4317 | otlp-grpc | TCP | OTLP gRPC receiver (from services) |
+| 4318 | otlp-http | TCP | OTLP HTTP receiver |
+| 8889 | metrics | TCP | Prometheus metrics endpoint |
+| 6831 | jaeger-compact | UDP | Jaeger Thrift compact |
+| 14250 | jaeger-grpc | TCP | Jaeger gRPC |
+| 14268 | jaeger-http | TCP | Jaeger HTTP |
+| 9411 | zipkin | TCP | Zipkin receiver |
+
+**K8s Service:** `otel-collector-opentelemetry-collector.observability.svc.cluster.local:4317`
+
+**Trace Flow:**
+```
+Services → :4317 (OTel Collector or Tempo) → Tempo storage → :3200 (Grafana query)
+```
+
+---
+
 ### Host Network (exposed via k3d)
 
 | Port | Service | Purpose |
@@ -213,17 +254,21 @@ Services read port configuration from environment variables:
 ```bash
 # Auth Service
 GUARDYN_PORT=50051
+GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
 
 # Messaging Service
 GUARDYN_PORT=50052
 WEBSOCKET_PORT=8081
 ENABLE_WEBSOCKET=true
+GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
 
 # Presence Service
 GUARDYN_PORT=50053
+OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
 
 # Media Service
 GUARDYN_PORT=50054
+GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
 
 # Database connections
 GUARDYN_DATABASE__TIKV_PD_ENDPOINTS=pd.data.svc.cluster.local:2379
@@ -242,4 +287,4 @@ GUARDYN_MESSAGING__NATS_URL=nats://nats.messaging.svc.cluster.local:4222
 
 ---
 
-*Last updated: November 30, 2025*
+Last updated: November 30, 2025

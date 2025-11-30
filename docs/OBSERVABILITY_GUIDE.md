@@ -1,6 +1,6 @@
 # Guardyn Observability Guide
 
-Complete observability stack for Guardyn MVP: Prometheus, Loki, Grafana.
+Complete observability stack for Guardyn MVP: Prometheus, Loki, Tempo, Grafana.
 
 ## 🎯 Overview
 
@@ -8,7 +8,10 @@ Guardyn uses a modern observability stack:
 
 - **Prometheus**: Metrics collection and alerting
 - **Loki**: Log aggregation and querying
+- **Tempo**: Distributed tracing
 - **Grafana**: Visualization and dashboards
+
+All backend services are instrumented with OpenTelemetry via the shared `guardyn-common` crate.
 
 ## 📊 Access Dashboards
 
@@ -90,6 +93,56 @@ kubectl logs -n apps -l app=messaging-service | jq 'select(.level == "ERROR")'
 
 # Filter by time range and show JSON fields
 {namespace="apps", app="messaging-service"} | json | line_format "{{.level}} - {{.message}}"
+```
+
+## 🔗 Distributed Tracing (Tempo)
+
+All services send traces to Grafana Tempo via OpenTelemetry (OTLP).
+
+### Access Tempo
+
+```bash
+kubectl port-forward -n observability svc/tempo 3200:3200
+```
+
+### Query Traces (via Grafana)
+
+1. Open Grafana → Explore
+2. Select **Tempo** data source
+3. Run TraceQL queries:
+
+```traceql
+# All traces
+{}
+
+# Traces from specific service
+{resource.service.name="auth-service"}
+
+# Traces with errors
+{status=error}
+
+# Traces longer than 100ms
+{duration>100ms}
+```
+
+### Service Instrumentation
+
+Services use `guardyn-common::observability::init_tracing()`:
+
+```rust
+// In main.rs
+let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
+let _guard = observability::init_tracing("service-name", "info", otlp_endpoint.as_deref());
+```
+
+The `_guard` ensures traces are flushed on shutdown.
+
+### Environment Variable
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
+# or via OTel Collector:
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector-opentelemetry-collector.observability.svc.cluster.local:4317
 ```
 
 ## 📈 Prometheus Metrics
