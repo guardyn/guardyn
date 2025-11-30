@@ -4,6 +4,7 @@ import 'package:grpc/grpc.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
+import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/models/message_model.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
@@ -14,6 +15,9 @@ import 'package:mocktail/mocktail.dart';
 class MockMessageRemoteDatasource extends Mock
     implements MessageRemoteDatasource {}
 
+class MockKeyExchangeDatasource extends Mock
+    implements KeyExchangeDatasource {}
+
 class MockSecureStorage extends Mock implements SecureStorage {}
 
 class MockCryptoService extends Mock implements CryptoService {}
@@ -21,14 +25,21 @@ class MockCryptoService extends Mock implements CryptoService {}
 void main() {
   late MessageRepositoryImpl repository;
   late MockMessageRemoteDatasource mockDatasource;
+  late MockKeyExchangeDatasource mockKeyExchangeDatasource;
   late MockSecureStorage mockSecureStorage;
   late MockCryptoService mockCryptoService;
 
   setUp(() {
     mockDatasource = MockMessageRemoteDatasource();
+    mockKeyExchangeDatasource = MockKeyExchangeDatasource();
     mockSecureStorage = MockSecureStorage();
     mockCryptoService = MockCryptoService();
-    repository = MessageRepositoryImpl(mockDatasource, mockSecureStorage, mockCryptoService);
+    repository = MessageRepositoryImpl(
+      mockDatasource, 
+      mockKeyExchangeDatasource,
+      mockSecureStorage, 
+      mockCryptoService,
+    );
   });
 
   const tAccessToken = 'test-access-token';
@@ -90,6 +101,13 @@ void main() {
           .thenAnswer((_) async => tCurrentUserId);
       when(() => mockSecureStorage.getDeviceId())
           .thenAnswer((_) async => tCurrentDeviceId);
+      // E2EE: Return null session to trigger plaintext fallback (test simplicity)
+      when(() => mockCryptoService.getSession(
+            remoteUserId: any(named: 'remoteUserId'),
+            remoteDeviceId: any(named: 'remoteDeviceId'),
+          )).thenAnswer((_) async => null);
+      // E2EE: Skip session creation for tests (would need KeyBundle mock)
+      when(() => mockCryptoService.isInitialized).thenReturn(false);
     }
 
     test('should return message when send is successful', () async {
@@ -114,7 +132,8 @@ void main() {
 
       // assert
       expect(result.isRight(), true);
-      verify(() => mockSecureStorage.getAccessToken()).called(1);
+      // Called twice: once for sendMessage, once for E2EE session creation attempt
+      verify(() => mockSecureStorage.getAccessToken()).called(2);
       verify(() => mockDatasource.sendMessage(
             accessToken: tAccessToken,
             recipientUserId: tRecipientUserId,
@@ -228,8 +247,17 @@ void main() {
   });
 
   group('getMessages', () {
+    void setUpCryptoMocks() {
+      // E2EE: Return null session to skip decryption (messages returned as-is)
+      when(() => mockCryptoService.getSession(
+            remoteUserId: any(named: 'remoteUserId'),
+            remoteDeviceId: any(named: 'remoteDeviceId'),
+          )).thenAnswer((_) async => null);
+    }
+
     test('should return list of messages when successful', () async {
       // arrange
+      setUpCryptoMocks();
       when(() => mockSecureStorage.getAccessToken())
           .thenAnswer((_) async => tAccessToken);
       when(() => mockSecureStorage.getUserId())
@@ -281,6 +309,7 @@ void main() {
 
     test('should return empty list when no messages', () async {
       // arrange
+      setUpCryptoMocks();
       when(() => mockSecureStorage.getAccessToken())
           .thenAnswer((_) async => tAccessToken);
       when(() => mockSecureStorage.getUserId())
@@ -309,6 +338,7 @@ void main() {
 
     test('should use custom limit when provided', () async {
       // arrange
+      setUpCryptoMocks();
       const customLimit = 25;
       when(() => mockSecureStorage.getAccessToken())
           .thenAnswer((_) async => tAccessToken);

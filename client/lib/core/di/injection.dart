@@ -3,6 +3,8 @@ import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
+// Auth feature imports
+import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
 // Groups feature imports
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
@@ -15,6 +17,7 @@ import 'package:guardyn_client/features/groups/domain/usecases/remove_group_memb
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 // Messaging feature imports
+import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
@@ -47,11 +50,24 @@ Future<void> configureDependencies() async {
   await grpcClients.initialize();
   getIt.registerSingleton<GrpcClients>(grpcClients);
 
+  // Register auth feature dependencies
+  _registerAuthDependencies();
+
   // Register messaging feature dependencies
   _registerMessagingDependencies();
 
   // Register groups feature dependencies
   _registerGroupsDependencies();
+}
+
+void _registerAuthDependencies() {
+  // Data layer
+  getIt.registerLazySingleton<AuthRemoteDatasource>(
+    () => AuthRemoteDatasource(
+      getIt<GrpcClients>(),
+      getIt<CryptoService>(),
+    ),
+  );
 }
 
 void _registerMessagingDependencies() {
@@ -60,9 +76,14 @@ void _registerMessagingDependencies() {
     () => MessageRemoteDatasource(getIt<GrpcClients>()),
   );
 
+  getIt.registerLazySingleton<KeyExchangeDatasource>(
+    () => KeyExchangeDatasource(getIt<GrpcClients>()),
+  );
+
   getIt.registerLazySingleton<MessageRepository>(
     () => MessageRepositoryImpl(
       getIt<MessageRemoteDatasource>(),
+      getIt<KeyExchangeDatasource>(),
       getIt<SecureStorage>(),
       getIt<CryptoService>(),
     ),

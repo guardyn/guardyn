@@ -2,6 +2,7 @@
 ///
 /// Based on Signal Protocol specification
 /// Compatible with Guardyn backend Rust implementation
+library;
 
 import 'dart:convert';
 import 'dart:typed_data';
