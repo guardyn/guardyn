@@ -103,27 +103,37 @@ export GUARDYN_OBSERVABILITY__LOG_LEVEL=info
 
 ## Deployment
 
-Each service will be containerized and deployed to Kubernetes:
+Each service is containerized and deployed to Kubernetes:
 
 ```bash
-# Build container
-docker build -f Dockerfile.auth-service -t guardyn-auth-service:latest .
+# Build all services
+./build-docker.sh
 
-# Deploy to k8s
-kubectl apply -f k8s/auth-service.yaml
+# Or build locally with Cargo
+./build-local.sh
+
+# Deploy to k8s cluster
+just k8s-deploy auth
+just k8s-deploy messaging
+just k8s-deploy presence
+just k8s-deploy media
 ```
 
 ## Status
 
-🔄 **In Development** - Core scaffolding complete, implementation in progress
+✅ **MVP Complete** - All core services deployed and operational
 
 - [x] Workspace structure
 - [x] Common utilities crate
-- [x] Cryptography crate skeleton
-- [x] Auth service skeleton
-- [x] Messaging service skeleton
-- [ ] Database integration
-- [ ] gRPC API definitions
-- [ ] Cryptography implementation
-- [ ] Testing suite
-- [ ] Containerization
+- [x] Cryptography crate (X3DH, Double Ratchet, MLS)
+- [x] Auth service (registration, login, JWT, device management)
+- [x] Messaging service (1-on-1, groups, E2EE, MLS)
+- [x] Presence service (online/offline, typing indicators)
+- [x] Media service (upload/download, thumbnails)
+- [x] Notification service (scaffold)
+- [x] Database integration (TiKV + ScyllaDB)
+- [x] gRPC API definitions (proto/)
+- [x] Testing suite (E2E + unit tests)
+- [x] Containerization (Docker multi-stage builds)
+- [x] Kubernetes deployment (k8s manifests)
+
