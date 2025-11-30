@@ -9,6 +9,9 @@ mod update_last_seen;
 mod set_typing;
 mod subscribe;
 
+#[cfg(test)]
+mod tests;
+
 pub use update_status::handle_update_status;
 pub use get_status::handle_get_status;
 pub use get_bulk_status::handle_get_bulk_status;
