@@ -25,6 +25,9 @@ spec:
         - containerPort: 50052
           name: grpc
           protocol: TCP
+        - containerPort: 8080
+          name: websocket
+          protocol: TCP
         env:
         - name: GUARDYN_SERVICE_NAME
           value: "messaging-service"
@@ -73,6 +76,16 @@ spec:
         # Service Endpoints
         - name: AUTH_SERVICE_ENDPOINT
           value: "http://auth-service.apps.svc.cluster.local:50051"
+        # WebSocket Configuration
+        - name: ENABLE_WEBSOCKET
+          value: "true"
+        - name: WEBSOCKET_PORT
+          value: "8080"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: guardyn-backend-secrets
+              key: jwt-secret
         resources:
           requests:
             cpu: 200m
@@ -117,5 +130,9 @@ spec:
   - name: grpc
     port: 50052
     targetPort: 50052
+    protocol: TCP
+  - name: websocket
+    port: 8080
+    targetPort: 8080
     protocol: TCP
   type: ClusterIP
