@@ -27,13 +27,13 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   Timer? _pollingTimer;
   String? _pollingConversationUserId;
   String? _pollingConversationId;
-  
+
   /// WebSocket datasource (lazy-loaded from DI)
   WebSocketDatasource? _webSocketDatasource;
-  
+
   /// Whether WebSocket is preferred over polling
   bool _useWebSocket = true;
-  
+
   /// Currently open conversation user ID (to suppress notifications for active chat)
   String? _activeConversationUserId;
 
@@ -58,7 +58,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<MessageSubscribeConversation>(_onSubscribeConversation);
     on<MessageSendTypingIndicator>(_onSendTypingIndicator);
   }
-  
+
   /// Set the active conversation (to suppress notifications for current chat)
   void _onSetActiveConversation(
     MessageSetActiveConversation event,
@@ -66,35 +66,31 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) {
     _activeConversationUserId = event.userId;
   }
-  
+
   /// Start polling for new messages (fallback for gRPC streaming)
-  void _onStartPolling(
-    MessageStartPolling event,
-    Emitter<MessageState> emit,
-  ) {
+  void _onStartPolling(MessageStartPolling event, Emitter<MessageState> emit) {
     // Cancel existing polling timer
     _pollingTimer?.cancel();
-    
+
     _pollingConversationUserId = event.conversationUserId;
     _pollingConversationId = event.conversationId;
-    
+
     // ignore: avoid_print
-    print('📡 Starting message polling for conversation: ${event.conversationUserId}');
-    
+    print(
+      '📡 Starting message polling for conversation: ${event.conversationUserId}',
+    );
+
     // Start periodic polling
     _pollingTimer = Timer.periodic(event.interval, (_) {
       _pollForNewMessages();
     });
-    
+
     // Also poll immediately
     _pollForNewMessages();
   }
-  
+
   /// Stop polling for new messages
-  void _onStopPolling(
-    MessageStopPolling event,
-    Emitter<MessageState> emit,
-  ) {
+  void _onStopPolling(MessageStopPolling event, Emitter<MessageState> emit) {
     // ignore: avoid_print
     print('📡 Stopping message polling');
     _pollingTimer?.cancel();
@@ -102,17 +98,19 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     _pollingConversationUserId = null;
     _pollingConversationId = null;
   }
-  
+
   /// Poll for new messages
   Future<void> _pollForNewMessages() async {
     if (_pollingConversationUserId == null) return;
-    
-    final result = await getMessages(GetMessagesParams(
-      conversationUserId: _pollingConversationUserId!,
-      conversationId: _pollingConversationId,
-      limit: 20,
-    ));
-    
+
+    final result = await getMessages(
+      GetMessagesParams(
+        conversationUserId: _pollingConversationUserId!,
+        conversationId: _pollingConversationId,
+        limit: 20,
+      ),
+    );
+
     result.fold(
       (failure) {
         // ignore: avoid_print
@@ -120,20 +118,22 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       },
       (messages) {
         if (messages.isEmpty) return;
-        
+
         // Get current messages
         final currentMessages = state is MessageLoaded
             ? (state as MessageLoaded).messages
             : <Message>[];
-        
+
         // Find new messages (not already in current list)
         final currentIds = currentMessages.map((m) => m.messageId).toSet();
-        final newMessages = messages.where((m) => !currentIds.contains(m.messageId)).toList();
-        
+        final newMessages = messages
+            .where((m) => !currentIds.contains(m.messageId))
+            .toList();
+
         if (newMessages.isNotEmpty) {
           // ignore: avoid_print
           print('📡 Found ${newMessages.length} new messages via polling');
-          
+
           // Add each new message via MessageReceived event
           for (final message in newMessages) {
             add(MessageReceived(message));
@@ -149,18 +149,22 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     emit(MessageLoading());
 
-    final result = await getMessages(GetMessagesParams(
-      conversationUserId: event.conversationUserId,
-      conversationId: event.conversationId,
-      limit: event.limit,
-    ));
+    final result = await getMessages(
+      GetMessagesParams(
+        conversationUserId: event.conversationUserId,
+        conversationId: event.conversationId,
+        limit: event.limit,
+      ),
+    );
 
     result.fold(
       (failure) => emit(MessageError(failure.message, const [])),
-      (messages) => emit(MessageLoaded(
-        messages: messages,
-        hasMore: messages.length >= event.limit,
-      )),
+      (messages) => emit(
+        MessageLoaded(
+          messages: messages,
+          hasMore: messages.length >= event.limit,
+        ),
+      ),
     );
   }
 
@@ -176,13 +180,15 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     // Emit sending state
     emit(MessageSending(currentMessages));
 
-    final result = await sendMessage(SendMessageParams(
-      recipientUserId: event.recipientUserId,
-      recipientDeviceId: event.recipientDeviceId,
-      recipientUsername: event.recipientUsername,
-      textContent: event.textContent,
-      metadata: event.metadata,
-    ));
+    final result = await sendMessage(
+      SendMessageParams(
+        recipientUserId: event.recipientUserId,
+        recipientDeviceId: event.recipientDeviceId,
+        recipientUsername: event.recipientUsername,
+        textContent: event.textContent,
+        metadata: event.metadata,
+      ),
+    );
 
     result.fold(
       (failure) => emit(MessageError(failure.message, currentMessages)),
@@ -194,10 +200,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     );
   }
 
-  void _onMessageReceived(
-    MessageReceived event,
-    Emitter<MessageState> emit,
-  ) {
+  void _onMessageReceived(MessageReceived event, Emitter<MessageState> emit) {
     // Get current messages if available
     final currentMessages = state is MessageLoaded
         ? (state as MessageLoaded).messages
@@ -212,22 +215,25 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       // Add new message to the list
       final updatedMessages = [event.message, ...currentMessages];
       emit(MessageLoaded(messages: updatedMessages));
-      
+
       // Show notification if message is from another user and not in active conversation
       final message = event.message;
-      if (!message.isSentByMe && message.senderUserId != _activeConversationUserId) {
+      if (!message.isSentByMe &&
+          message.senderUserId != _activeConversationUserId) {
         _showMessageNotification(message);
       }
     }
   }
-  
+
   /// Show notification for incoming message
   void _showMessageNotification(Message message) {
     try {
       final notificationService = getIt<NotificationService>();
       notificationService.showMessageNotification(
         senderName: message.senderUserId, // TODO: Get actual username
-        messagePreview: message.textContent.isNotEmpty ? message.textContent : 'New message',
+        messagePreview: message.textContent.isNotEmpty
+            ? message.textContent
+            : 'New message',
         conversationId: message.conversationId,
       );
     } catch (e) {
@@ -241,9 +247,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     MessageMarkAsRead event,
     Emitter<MessageState> emit,
   ) async {
-    final result = await markAsRead(MarkAsReadParams(
-      messageId: event.messageId,
-    ));
+    final result = await markAsRead(
+      MarkAsReadParams(messageId: event.messageId),
+    );
 
     result.fold(
       (failure) {
@@ -273,10 +279,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
             return message;
           }).toList();
 
-          emit(MessageLoaded(
-            messages: updatedMessages,
-            hasMore: currentState.hasMore,
-          ));
+          emit(
+            MessageLoaded(
+              messages: updatedMessages,
+              hasMore: currentState.hasMore,
+            ),
+          );
         }
       },
     );
@@ -294,10 +302,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           .where((message) => message.messageId != event.messageId)
           .toList();
 
-      emit(MessageLoaded(
-        messages: updatedMessages,
-        hasMore: currentState.hasMore,
-      ));
+      emit(
+        MessageLoaded(messages: updatedMessages, hasMore: currentState.hasMore),
+      );
     }
   }
 
@@ -346,14 +353,14 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     try {
       _webSocketDatasource ??= getIt<WebSocketDatasource>();
-      
+
       // Cancel existing subscriptions
       await _wsMessageSubscription?.cancel();
       await _wsStateSubscription?.cancel();
-      
+
       // Connect to WebSocket
       await _webSocketDatasource!.connect(event.accessToken);
-      
+
       // Subscribe to incoming messages
       _wsMessageSubscription = _webSocketDatasource!.messageStream.listen(
         (message) {
@@ -366,18 +373,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
           _useWebSocket = false;
         },
       );
-      
+
       // Subscribe to connection state changes
-      _wsStateSubscription = _webSocketDatasource!.stateStream.listen(
-        (state) {
-          // ignore: avoid_print
-          print('WebSocket state changed: $state');
-          if (state == WebSocketState.disconnected && _useWebSocket) {
-            // Could trigger reconnection or fallback to polling
-          }
-        },
-      );
-      
+      _wsStateSubscription = _webSocketDatasource!.stateStream.listen((state) {
+        // ignore: avoid_print
+        print('WebSocket state changed: $state');
+        if (state == WebSocketState.disconnected && _useWebSocket) {
+          // Could trigger reconnection or fallback to polling
+        }
+      });
+
       // ignore: avoid_print
       print('🔌 WebSocket connected successfully');
     } catch (e) {
@@ -406,7 +411,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     if (_webSocketDatasource?.isConnected ?? false) {
       try {
-        await _webSocketDatasource!.subscribeToConversation(event.conversationId);
+        await _webSocketDatasource!.subscribeToConversation(
+          event.conversationId,
+        );
         // ignore: avoid_print
         print('🔌 Subscribed to conversation: ${event.conversationId}');
       } catch (e) {

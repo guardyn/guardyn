@@ -294,7 +294,7 @@ async fn main() -> Result<()> {
         };
 
         let ws_server = websocket::WebSocketServer::new(ws_config, db.clone(), nats.clone());
-        
+
         tracing::info!(port = ws_port, "Starting WebSocket server");
         ws_server.spawn();
     }
