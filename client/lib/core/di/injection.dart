@@ -19,6 +19,7 @@ import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
+import 'package:guardyn_client/features/messaging/data/datasources/websocket_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
@@ -78,6 +79,11 @@ void _registerMessagingDependencies() {
 
   getIt.registerLazySingleton<KeyExchangeDatasource>(
     () => KeyExchangeDatasource(getIt<GrpcClients>()),
+  );
+
+  // WebSocket datasource for real-time messaging
+  getIt.registerLazySingleton<WebSocketDatasource>(
+    () => WebSocketDatasource(),
   );
 
   getIt.registerLazySingleton<MessageRepository>(

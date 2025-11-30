@@ -59,6 +59,17 @@ class AppConfig {
     throw UnsupportedError('getMessagingUri is only for web platforms');
   }
 
+  // WebSocket configuration
+  static String get websocketHost => authHost; // Same logic as gRPC hosts
+  static const int websocketPort = 8081;
+  static const bool websocketSecure = false; // Use 'ws://' for local dev
+
+  /// Get WebSocket URL with authentication token
+  static String getWebSocketUrl(String token) {
+    final protocol = websocketSecure ? 'wss' : 'ws';
+    return '$protocol://$websocketHost:$websocketPort/ws?token=$token';
+  }
+
   // For production (with TLS):
   // static const String authHost = 'auth.guardyn.io';
   // static const int authPort = 443;
