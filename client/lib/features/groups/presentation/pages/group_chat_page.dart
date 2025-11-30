@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
 import '../bloc/group_state.dart';
 import '../widgets/group_message_bubble.dart';
 import '../widgets/group_message_input.dart';
+import 'group_info_page.dart';
 
 /// Page for group chat messages
 class GroupChatPage extends StatefulWidget {
@@ -48,6 +50,33 @@ class _GroupChatPageState extends State<GroupChatPage> {
           textContent: text,
         ));
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _navigateToGroupInfo(BuildContext context) {
+    // Create a simple Group object for the info page
+    // In a full implementation, this would be fetched from the repository
+    final group = Group(
+      groupId: widget.groupId,
+      name: widget.groupName,
+      creatorUserId: '', // Unknown without fetching
+      members: const [], // Will be populated when we implement GetGroupById
+      createdAt: DateTime.now(),
+      memberCount: 0,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (navContext) => BlocProvider.value(
+          value: context.read<GroupBloc>(),
+          child: GroupInfoPage(
+            groupId: widget.groupId,
+            groupName: widget.groupName,
+            initialGroup: group,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -92,12 +121,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
                 IconButton(
                   icon: const Icon(Icons.group),
                   onPressed: () {
-                    // TODO: Show group members
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Group members - coming soon'),
-                      ),
-                    );
+                    _navigateToGroupInfo(context);
                   },
                 ),
               ],
