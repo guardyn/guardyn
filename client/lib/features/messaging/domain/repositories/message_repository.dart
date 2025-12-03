@@ -40,4 +40,12 @@ abstract class MessageRepository {
   Future<Either<Failure, void>> deleteMessage({
     required String messageId,
   });
+
+  /// Decrypt an encrypted message content
+  /// Used for WebSocket messages that arrive encrypted
+  Future<Either<Failure, String>> decryptMessageContent({
+    required String encryptedContent,
+    required String senderUserId,
+    required String senderDeviceId,
+  });
 }

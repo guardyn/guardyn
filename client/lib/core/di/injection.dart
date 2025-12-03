@@ -24,6 +24,7 @@ import 'package:guardyn_client/features/messaging/data/datasources/message_remot
 import 'package:guardyn_client/features/messaging/data/datasources/websocket_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
@@ -79,10 +80,7 @@ Future<void> configureDependencies() async {
 void _registerAuthDependencies() {
   // Data layer
   getIt.registerLazySingleton<AuthRemoteDatasource>(
-    () => AuthRemoteDatasource(
-      getIt<GrpcClients>(),
-      getIt<CryptoService>(),
-    ),
+    () => AuthRemoteDatasource(getIt<GrpcClients>(), getIt<CryptoService>()),
   );
 }
 
@@ -97,9 +95,7 @@ void _registerMessagingDependencies() {
   );
 
   // WebSocket datasource for real-time messaging
-  getIt.registerLazySingleton<WebSocketDatasource>(
-    () => WebSocketDatasource(),
-  );
+  getIt.registerLazySingleton<WebSocketDatasource>(() => WebSocketDatasource());
 
   getIt.registerLazySingleton<MessageRepository>(
     () => MessageRepositoryImpl(
@@ -127,6 +123,10 @@ void _registerMessagingDependencies() {
     () => MarkAsRead(getIt<MessageRepository>()),
   );
 
+  getIt.registerLazySingleton<DecryptMessage>(
+    () => DecryptMessage(getIt<MessageRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<MessageBloc>(
     () => MessageBloc(
@@ -134,6 +134,7 @@ void _registerMessagingDependencies() {
       getMessages: getIt<GetMessages>(),
       receiveMessages: getIt<ReceiveMessages>(),
       markAsRead: getIt<MarkAsRead>(),
+      decryptMessage: getIt<DecryptMessage>(),
     ),
   );
 }

@@ -32,6 +32,7 @@ import 'package:guardyn_client/features/groups/presentation/pages/group_list_pag
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
@@ -73,6 +74,7 @@ class GuardynApp extends StatelessWidget {
     final getMessages = GetMessages(messageRepository);
     final receiveMessages = ReceiveMessages(messageRepository);
     final markAsRead = MarkAsRead(messageRepository);
+    final decryptMessage = DecryptMessage(messageRepository);
 
     // Groups dependencies
     final groupRemoteDatasource = GroupRemoteDatasource(grpcClients);
@@ -106,6 +108,7 @@ class GuardynApp extends StatelessWidget {
             getMessages: getMessages,
             receiveMessages: receiveMessages,
             markAsRead: markAsRead,
+            decryptMessage: decryptMessage,
           ),
         ),
         BlocProvider(
