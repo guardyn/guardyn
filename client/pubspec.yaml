@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # UI & Icons
   cupertino_icons: ^1.0.8
@@ -39,7 +41,7 @@ dependencies:
 
   # Utilities
   logger: ^2.0.2+1
-  intl: ^0.18.1
+  intl: ^0.20.2
   uuid: ^4.0.0
 
   # E2EE Cryptography
