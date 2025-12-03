@@ -389,7 +389,10 @@ class WebSocketDatasource {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
       if (isConnected) {
-        _send({'type': 'heartbeat'});
+        _send({
+          'type': 'ping',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
       }
     });
   }

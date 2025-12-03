@@ -19,7 +19,7 @@ pub struct MessageEnvelope {
 /// NATS client for message routing
 pub struct NatsClient {
     client: async_nats::Client,
-    context: jetstream::Context,
+    pub context: jetstream::Context,
     messages_stream: Stream,
 }
 
