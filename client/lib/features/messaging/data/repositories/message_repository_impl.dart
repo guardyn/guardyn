@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dartz/dartz.dart';
@@ -414,13 +415,18 @@ class MessageRepositoryImpl implements MessageRepository {
 
   /// Decrypt message content with Double Ratchet
   ///
-  /// Returns plaintext if decryption successful, or original content if not encrypted
+  /// Returns plaintext if decryption successful, or original content if not encrypted.
+  /// Handles both base64-encoded content (from WebSocket) and raw bytes (from gRPC).
   Future<String> _decryptMessage({
     required String encryptedContent,
     required String senderUserId,
     required String senderDeviceId,
     required String currentUserId,
   }) async {
+    if (encryptedContent.isEmpty) {
+      return encryptedContent;
+    }
+    
     // Check if E2EE session exists
     final session = await cryptoService.getSession(
       remoteUserId: senderUserId,
@@ -429,11 +435,32 @@ class MessageRepositoryImpl implements MessageRepository {
 
     if (session == null) {
       // No E2EE session - return content as-is (not encrypted or legacy message)
+      _logger.d('No E2EE session for $senderUserId - returning content as-is');
       return encryptedContent;
     }
 
-    // Try to decrypt with Double Ratchet
-    final ciphertextBytes = Uint8List.fromList(encryptedContent.codeUnits);
+    // Try to detect if content is base64 encoded (from WebSocket)
+    // Base64 uses only A-Za-z0-9+/= characters
+    Uint8List ciphertextBytes;
+    try {
+      // Check if it looks like base64 (common pattern for encrypted messages)
+      final base64Regex = RegExp(r'^[A-Za-z0-9+/]+=*$');
+      if (base64Regex.hasMatch(encryptedContent) &&
+          encryptedContent.length > 20) {
+        // Looks like base64 - try to decode
+        ciphertextBytes = base64.decode(encryptedContent);
+        _logger.d('Decoded base64 content: ${ciphertextBytes.length} bytes');
+      } else {
+        // Not base64 - use codeUnits (raw bytes encoded as string)
+        ciphertextBytes = Uint8List.fromList(encryptedContent.codeUnits);
+        _logger.d('Using raw codeUnits: ${ciphertextBytes.length} bytes');
+      }
+    } catch (e) {
+      // Base64 decode failed - use codeUnits
+      ciphertextBytes = Uint8List.fromList(encryptedContent.codeUnits);
+      _logger.d('Base64 decode failed, using codeUnits: $e');
+    }
+    
     final associatedData = Uint8List.fromList(
       '$senderUserId|$currentUserId'.codeUnits,
     );
@@ -445,9 +472,12 @@ class MessageRepositoryImpl implements MessageRepository {
         ciphertext: ciphertextBytes,
         associatedData: associatedData,
       );
-      return String.fromCharCodes(decrypted);
+      final result = String.fromCharCodes(decrypted);
+      _logger.d('Decryption successful: ${result.length} chars');
+      return result;
     } catch (e) {
       // Decryption failed - message might not be encrypted
+      _logger.w('Decryption failed: $e - returning original content');
       return encryptedContent;
     }
   }

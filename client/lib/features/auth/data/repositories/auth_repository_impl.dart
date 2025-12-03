@@ -96,8 +96,19 @@ class AuthRepositoryImpl implements AuthRepository {
       final accessToken = await secureStorage.getAccessToken();
 
       if (accessToken != null) {
-        // Call backend to invalidate session
-        await remoteDatasource.logout(accessToken);
+        try {
+          // Call backend to invalidate session
+          await remoteDatasource.logout(accessToken);
+        } on AuthException catch (e) {
+          // If token is already invalid/expired, that's fine - user is already logged out on server
+          if (e.code == 'UNAUTHORIZED' || e.code == 'ErrorCode.UNAUTHORIZED') {
+            logger.w(
+              'Token already invalid during logout, continuing with local cleanup',
+            );
+          } else {
+            rethrow;
+          }
+        }
       }
 
       // Clear all local data

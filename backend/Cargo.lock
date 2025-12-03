@@ -1873,6 +1873,7 @@ dependencies = [
  "anyhow",
  "async-nats",
  "axum 0.7.9",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "config",
