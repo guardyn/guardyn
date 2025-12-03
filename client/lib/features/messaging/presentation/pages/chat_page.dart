@@ -48,48 +48,69 @@ class _ChatPageState extends State<ChatPage> {
     _presenceBloc.add(PresenceFetchUser(widget.conversationUserId));
     // Subscribe to real-time presence updates for the conversation partner
     _presenceBloc.add(PresenceSubscribe([widget.conversationUserId]));
-    
-    _loadMessagesWithConversationId();
+
     // Set active conversation (to suppress notifications for current chat)
-    context.read<MessageBloc>().add(MessageSetActiveConversation(widget.conversationUserId));
-    // Subscribe to real-time messages (streaming - may not work reliably via gRPC-Web)
-    context.read<MessageBloc>().add(const MessageSubscribeToStream());
-    // Start polling as fallback for reliable message delivery
-    context.read<MessageBloc>().add(MessageStartPolling(conversationUserId: widget.conversationUserId));
+    context.read<MessageBloc>().add(
+      MessageSetActiveConversation(widget.conversationUserId),
+    );
+
+    // Initialize chat: load messages and connect WebSocket
+    _initializeChat();
   }
 
-  Future<void> _loadMessagesWithConversationId() async {
-    // Get current user ID to generate conversation ID
+  /// Initialize chat: load messages and connect WebSocket
+  Future<void> _initializeChat() async {
+    // Get tokens and user ID
     final currentUserId = await _secureStorage.read(key: 'user_id');
-    
+    final accessToken = await _secureStorage.read(key: 'access_token');
+
     if (currentUserId != null && currentUserId.isNotEmpty) {
       // Generate deterministic conversation ID matching backend
       _conversationId = ConversationUtils.generateConversationId(
         currentUserId,
         widget.conversationUserId,
       );
-      
+
       // Load message history with conversation ID
       if (mounted) {
-        context.read<MessageBloc>().add(MessageLoadHistory(
-          conversationUserId: widget.conversationUserId,
-          conversationId: _conversationId,
-        ));
+        context.read<MessageBloc>().add(
+          MessageLoadHistory(
+            conversationUserId: widget.conversationUserId,
+            conversationId: _conversationId,
+          ),
+        );
       }
     } else {
       // Fallback: try loading without conversation ID
       if (mounted) {
-        context.read<MessageBloc>().add(MessageLoadHistory(
-          conversationUserId: widget.conversationUserId,
-        ));
+        context.read<MessageBloc>().add(
+          MessageLoadHistory(conversationUserId: widget.conversationUserId),
+        );
+      }
+    }
+
+    // Connect WebSocket for real-time messaging
+    if (accessToken != null && accessToken.isNotEmpty && mounted) {
+      context.read<MessageBloc>().add(
+        MessageConnectWebSocket(accessToken: accessToken),
+      );
+      // Subscribe to conversation after WebSocket connects
+      if (_conversationId != null) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && _conversationId != null) {
+            context.read<MessageBloc>().add(
+              MessageSubscribeConversation(conversationId: _conversationId!),
+            );
+          }
+        });
       }
     }
   }
 
   @override
   void dispose() {
-    // Stop polling when leaving chat
-    context.read<MessageBloc>().add(const MessageStopPolling());
+    // Disconnect WebSocket when leaving chat
+    context.read<MessageBloc>().add(const MessageDisconnectWebSocket());
     // Clear active conversation when leaving chat
     context.read<MessageBloc>().add(const MessageSetActiveConversation(null));
     // Stop presence subscription and set offline
@@ -111,12 +132,14 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _handleSendMessage(String text) {
-    context.read<MessageBloc>().add(MessageSend(
-          recipientUserId: widget.conversationUserId,
-          recipientDeviceId: widget.deviceId,
-          recipientUsername: widget.conversationUserName,
-          textContent: text,
-        ));
+    context.read<MessageBloc>().add(
+      MessageSend(
+        recipientUserId: widget.conversationUserId,
+        recipientDeviceId: widget.deviceId,
+        recipientUsername: widget.conversationUserName,
+        textContent: text,
+      ),
+    );
     // Scroll to bottom after sending
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
@@ -173,10 +196,7 @@ class _ChatPageState extends State<ChatPage> {
                 final state = snapshot.data;
                 if (state is PresenceLoaded) {
                   final presence = state.presenceMap[widget.conversationUserId];
-                  return OnlineIndicator(
-                    presenceInfo: presence,
-                    size: 10,
-                  );
+                  return OnlineIndicator(presenceInfo: presence, size: 10);
                 }
                 return const OnlineIndicator(size: 10);
               },
@@ -193,7 +213,8 @@ class _ChatPageState extends State<ChatPage> {
                     builder: (context, snapshot) {
                       final state = snapshot.data;
                       if (state is PresenceLoaded) {
-                        final presence = state.presenceMap[widget.conversationUserId];
+                        final presence =
+                            state.presenceMap[widget.conversationUserId];
                         if (presence != null) {
                           // Check if typing - either from typingUsers map or from presence itself
                           final isTyping =
@@ -209,7 +230,10 @@ class _ChatPageState extends State<ChatPage> {
                       }
                       return const Text(
                         'Connecting...',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                        ),
                       );
                     },
                   ),
@@ -279,8 +303,8 @@ class _ChatPageState extends State<ChatPage> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
-                            // Reload messages with conversation ID
-                            _loadMessagesWithConversationId();
+                            // Reload messages and reconnect WebSocket
+                            _initializeChat();
                           },
                           child: const Text('Retry'),
                         ),
@@ -299,10 +323,9 @@ class _ChatPageState extends State<ChatPage> {
                       child: Text(
                         'No messages yet.\nSend a message to start the conversation!',
                         style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.6),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -317,7 +340,8 @@ class _ChatPageState extends State<ChatPage> {
                       final message = messages[index];
                       return MessageBubble(
                         message: message,
-                        onLongPress: () => _handleMessageLongPress(message.messageId),
+                        onLongPress: () =>
+                            _handleMessageLongPress(message.messageId),
                       );
                     },
                   );
@@ -331,7 +355,8 @@ class _ChatPageState extends State<ChatPage> {
           // Message input
           BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
-              final isEnabled = state is! MessageSending && state is! MessageLoading;
+              final isEnabled =
+                  state is! MessageSending && state is! MessageLoading;
               return MessageInput(
                 onSend: _handleSendMessage,
                 onTypingChanged: _handleTypingChanged,

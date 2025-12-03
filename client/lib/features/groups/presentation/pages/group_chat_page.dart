@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../domain/entities/group.dart';
@@ -27,6 +28,31 @@ class GroupChatPage extends StatefulWidget {
 
 class _GroupChatPageState extends State<GroupChatPage> {
   final ScrollController _scrollController = ScrollController();
+  final _secureStorage = const FlutterSecureStorage();
+  late GroupBloc _groupBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _groupBloc = getIt<GroupBloc>();
+    _initializeChat();
+  }
+
+  Future<void> _initializeChat() async {
+    // Load messages first
+    _groupBloc.add(GroupLoadMessages(groupId: widget.groupId));
+    _groupBloc.add(GroupSetActive(widget.groupId));
+
+    // Connect WebSocket for real-time messaging
+    final accessToken = await _secureStorage.read(key: 'access_token');
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _groupBloc.add(GroupConnectWebSocket(accessToken: accessToken));
+      _groupBloc.add(GroupSubscribeWebSocket(groupId: widget.groupId));
+    } else {
+      // Fallback to polling if no token
+      _groupBloc.add(GroupStartPolling(groupId: widget.groupId));
+    }
+  }
 
   @override
   void dispose() {
@@ -81,16 +107,14 @@ class _GroupChatPageState extends State<GroupChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<GroupBloc>()
-        ..add(GroupLoadMessages(groupId: widget.groupId))
-        ..add(GroupStartPolling(groupId: widget.groupId))
-        ..add(GroupSetActive(widget.groupId)),
+    return BlocProvider.value(
+      value: _groupBloc,
       child: Builder(
         builder: (context) => PopScope(
           canPop: true,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop) {
+              context.read<GroupBloc>().add(const GroupDisconnectWebSocket());
               context.read<GroupBloc>().add(const GroupStopPolling());
               context.read<GroupBloc>().add(const GroupSetActive(null));
             }

@@ -71,10 +71,16 @@ class WebSocketDatasource {
   /// Whether WebSocket is connected
   bool get isConnected => _state == WebSocketState.connected;
 
+  /// Stream to notify about authentication errors (for token refresh)
+  final _authErrorController = StreamController<String>.broadcast();
+  Stream<String> get authErrorStream => _authErrorController.stream;
+
   /// Connect to WebSocket server
   Future<void> connect(String accessToken) async {
     if (_state == WebSocketState.connected ||
         _state == WebSocketState.connecting) {
+      // ignore: avoid_print
+      print('🔌 WebSocket already connected/connecting, skipping');
       return;
     }
 
@@ -82,35 +88,54 @@ class WebSocketDatasource {
     _updateState(WebSocketState.connecting);
 
     try {
-      final wsUrl = _buildWebSocketUrl(accessToken);
-      _logger.i(
-        'Connecting to WebSocket: ${wsUrl.replaceAll(accessToken, '***')}',
-      );
+      // Connect to WebSocket endpoint without token in URL
+      // Authentication happens via auth message after connection
+      final wsUrl = _buildWebSocketUrl();
+      // ignore: avoid_print
+      print('🔌 Connecting to WebSocket: $wsUrl');
+      _logger.i('Connecting to WebSocket: $wsUrl');
 
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
       // Wait for connection
+      // ignore: avoid_print
+      print('🔌 Waiting for WebSocket ready...');
       await _channel!.ready;
 
-      _updateState(WebSocketState.connected);
-      _reconnectAttempts = 0;
-      _logger.i('WebSocket connected successfully');
+      // ignore: avoid_print
+      print('🔌 WebSocket connection established, authenticating...');
+      _logger.i('WebSocket connection established, authenticating...');
 
-      // Start heartbeat
-      _startHeartbeat();
-
-      // Listen to messages
+      // Start listening to messages before sending auth
       _channel!.stream.listen(
         _handleMessage,
         onError: _handleError,
         onDone: _handleDone,
         cancelOnError: false,
       );
+
+      // Send authentication message
+      await _authenticate(accessToken);
     } catch (e) {
+      // ignore: avoid_print
+      print('🔌 WebSocket connection failed: $e');
       _logger.e('WebSocket connection failed: $e');
       _updateState(WebSocketState.disconnected);
       _scheduleReconnect();
     }
+  }
+
+  /// Send authentication message to WebSocket server
+  Future<void> _authenticate(String token) async {
+    final authMessage = {
+      'type': 'auth',
+      'payload': {
+        'token': token,
+        'device_id': 'flutter-client', // TODO: Get actual device ID
+      },
+    };
+    _send(authMessage);
+    _logger.d('Sent authentication message');
   }
 
   /// Disconnect from WebSocket server
@@ -203,9 +228,10 @@ class WebSocketDatasource {
 
   // Private methods
 
-  String _buildWebSocketUrl(String token) {
-    // Use static AppConfig methods
-    return AppConfig.getWebSocketUrl(token);
+  String _buildWebSocketUrl() {
+    // Build WebSocket URL without token (auth via message)
+    final protocol = AppConfig.websocketSecure ? 'wss' : 'ws';
+    return '$protocol://${AppConfig.websocketHost}:${AppConfig.websocketPort}/ws';
   }
 
   void _send(Map<String, dynamic> message) {
@@ -222,12 +248,17 @@ class WebSocketDatasource {
       _logger.d('WebSocket message received: $type');
 
       switch (type) {
+        case 'auth_response':
+          _handleAuthResponse(json);
+          break;
+        case 'message':
         case 'new_message':
           _handleNewMessage(json);
           break;
         case 'message_sent':
           _handleMessageSent(json);
           break;
+        case 'presence':
         case 'presence_update':
           _handlePresenceUpdate(json);
           break;
@@ -251,28 +282,70 @@ class WebSocketDatasource {
     }
   }
 
+  /// Handle authentication response from server
+  void _handleAuthResponse(Map<String, dynamic> json) {
+    final payload = json['payload'] as Map<String, dynamic>?;
+    final success = payload?['success'] as bool? ?? false;
+    final error = payload?['error'] as String?;
+
+    if (success) {
+      _logger.i('WebSocket authentication successful');
+      _updateState(WebSocketState.connected);
+      _reconnectAttempts = 0;
+      _startHeartbeat();
+    } else {
+      _logger.e('WebSocket authentication failed: $error');
+      _authErrorController.add(error ?? 'Authentication failed');
+      _updateState(WebSocketState.disconnected);
+      // Don't reconnect with same token - need new token
+    }
+  }
+
   void _handleNewMessage(Map<String, dynamic> json) {
     try {
+      // Handle both direct message format and payload-wrapped format
+      final payload = json['payload'] as Map<String, dynamic>? ?? json;
+
       final model = MessageModel(
-        messageId: json['message_id'] as String? ?? '',
-        conversationId: json['conversation_id'] as String? ?? '',
-        senderUserId: json['sender_id'] as String? ?? '',
-        senderDeviceId: '',
-        recipientUserId: json['recipient_id'] as String? ?? '',
-        recipientDeviceId: '',
+        messageId: payload['message_id'] as String? ?? '',
+        conversationId: payload['conversation_id'] as String? ?? '',
+        senderUserId:
+            payload['sender_id'] as String? ??
+            payload['sender_user_id'] as String? ??
+            '',
+        senderDeviceId: payload['sender_device_id'] as String? ?? '',
+        recipientUserId:
+            payload['recipient_id'] as String? ??
+            payload['recipient_user_id'] as String? ??
+            '',
+        recipientDeviceId: payload['recipient_device_id'] as String? ?? '',
         messageType: MessageType.text,
-        textContent: json['content'] as String? ?? '',
+        textContent:
+            payload['content'] as String? ??
+            payload['text_content'] as String? ??
+            '',
         metadata: {},
-        timestamp: DateTime.fromMillisecondsSinceEpoch(
-          json['timestamp'] as int? ?? 0,
-        ),
+        timestamp: _parseTimestamp(payload['timestamp']),
         deliveryStatus: DeliveryStatus.delivered,
       );
 
       _messageController.add(model);
+      _logger.d('New message received: ${model.messageId}');
     } catch (e) {
       _logger.e('Error handling new message: $e');
     }
+  }
+
+  /// Parse timestamp from various formats
+  DateTime _parseTimestamp(dynamic timestamp) {
+    if (timestamp == null) return DateTime.now();
+    if (timestamp is int) {
+      return DateTime.fromMillisecondsSinceEpoch(timestamp);
+    }
+    if (timestamp is String) {
+      return DateTime.tryParse(timestamp) ?? DateTime.now();
+    }
+    return DateTime.now();
   }
 
   void _handleMessageSent(Map<String, dynamic> json) {
@@ -361,5 +434,6 @@ class WebSocketDatasource {
     _presenceController.close();
     _typingController.close();
     _stateController.close();
+    _authErrorController.close();
   }
 }
