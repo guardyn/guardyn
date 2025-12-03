@@ -7,6 +7,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../data/datasources/websocket_datasource.dart';
 import '../../domain/entities/message.dart';
+import '../../domain/usecases/decrypt_message.dart';
 import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
 import '../../domain/usecases/receive_messages.dart';
@@ -20,6 +21,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final GetMessages getMessages;
   final ReceiveMessages receiveMessages;
   final MarkAsRead markAsRead;
+  final DecryptMessage decryptMessage;
 
   StreamSubscription<dynamic>? _messageStreamSubscription;
   StreamSubscription<dynamic>? _wsMessageSubscription;
@@ -42,6 +44,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     required this.getMessages,
     required this.receiveMessages,
     required this.markAsRead,
+    required this.decryptMessage,
   }) : super(MessageInitial()) {
     on<MessageLoadHistory>(_onLoadHistory);
     on<MessageSend>(_onSendMessage);
@@ -200,7 +203,10 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     );
   }
 
-  void _onMessageReceived(MessageReceived event, Emitter<MessageState> emit) {
+  Future<void> _onMessageReceived(
+    MessageReceived event,
+    Emitter<MessageState> emit,
+  ) async {
     // Get current messages if available
     final currentMessages = state is MessageLoaded
         ? (state as MessageLoaded).messages
@@ -212,12 +218,49 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     );
 
     if (!messageExists) {
+      var message = event.message;
+
+      // Decrypt message content if it's from another user (WebSocket messages arrive encrypted)
+      if (!message.isSentByMe && message.textContent.isNotEmpty) {
+        final decryptResult = await decryptMessage(
+          DecryptMessageParams(
+            encryptedContent: message.textContent,
+            senderUserId: message.senderUserId,
+            senderDeviceId: message.senderDeviceId,
+          ),
+        );
+
+        decryptResult.fold(
+          (failure) {
+            // Decryption failed, keep original content
+            // ignore: avoid_print
+            print('🔐 Message decryption failed: ${failure.message}');
+          },
+          (decryptedContent) {
+            // Create new message with decrypted content
+            message = Message(
+              messageId: message.messageId,
+              conversationId: message.conversationId,
+              senderUserId: message.senderUserId,
+              senderDeviceId: message.senderDeviceId,
+              recipientUserId: message.recipientUserId,
+              recipientDeviceId: message.recipientDeviceId,
+              messageType: message.messageType,
+              textContent: decryptedContent,
+              metadata: message.metadata,
+              timestamp: message.timestamp,
+              deliveryStatus: message.deliveryStatus,
+              currentUserId: message.currentUserId,
+            );
+          },
+        );
+      }
+
       // Add new message to the list
-      final updatedMessages = [event.message, ...currentMessages];
+      final updatedMessages = [message, ...currentMessages];
       emit(MessageLoaded(messages: updatedMessages));
 
       // Show notification if message is from another user and not in active conversation
-      final message = event.message;
       if (!message.isSentByMe &&
           message.senderUserId != _activeConversationUserId) {
         _showMessageNotification(message);
@@ -416,7 +459,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   /// Handle WebSocket connection failure - fallback to polling
   void _handleWebSocketFailure() {
     if (!_useWebSocket) return; // Already in fallback mode
-    
+
     _useWebSocket = false;
     // ignore: avoid_print
     print('📡 Falling back to polling for message delivery');

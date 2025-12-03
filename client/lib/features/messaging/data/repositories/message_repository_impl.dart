@@ -275,6 +275,33 @@ class MessageRepositoryImpl implements MessageRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, String>> decryptMessageContent({
+    required String encryptedContent,
+    required String senderUserId,
+    required String senderDeviceId,
+  }) async {
+    try {
+      final currentUserId = await secureStorage.getUserId();
+      if (currentUserId == null) {
+        return const Left(AuthFailure('User not authenticated'));
+      }
+
+      final decryptedContent = await _decryptMessage(
+        encryptedContent: encryptedContent,
+        senderUserId: senderUserId,
+        senderDeviceId: senderDeviceId,
+        currentUserId: currentUserId,
+      );
+
+      return Right(decryptedContent);
+    } catch (e) {
+      _logger.e('Failed to decrypt message: $e');
+      // Return original content on failure
+      return Right(encryptedContent);
+    }
+  }
+
   // Helper methods
 
   /// Generate deterministic conversation ID using UUID v5.
