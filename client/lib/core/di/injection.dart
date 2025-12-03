@@ -241,6 +241,7 @@ void _registerPresenceDependencies() {
       updateMyStatus: getIt<UpdateMyStatus>(),
       sendTypingIndicator: getIt<SendTypingIndicator>(),
       sendHeartbeat: getIt<SendHeartbeat>(),
+      presenceRepository: getIt<PresenceRepository>(),
     ),
   );
 }

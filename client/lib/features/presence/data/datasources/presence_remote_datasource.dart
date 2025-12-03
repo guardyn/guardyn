@@ -72,6 +72,25 @@ class PresenceRemoteDatasource {
     }
   }
 
+  /// Send typing indicator
+  Future<void> setTyping({
+    required String accessToken,
+    required String conversationUserId,
+    required bool isTyping,
+  }) async {
+    final request = proto.SetTypingRequest(
+      accessToken: accessToken,
+      conversationUserId: conversationUserId,
+      isTyping: isTyping,
+    );
+
+    final response = await _presenceClient.setTyping(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+  }
+
   /// Subscribe to presence updates (streaming)
   Stream<PresenceModel> subscribe({
     required String accessToken,

@@ -15,11 +15,17 @@ service PresenceService {
   // Get user's current status
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
 
+  // Get multiple users' presence status
+  rpc GetBulkStatus(GetBulkStatusRequest) returns (GetBulkStatusResponse);
+
   // Subscribe to presence updates (streaming)
   rpc Subscribe(SubscribeRequest) returns (stream PresenceUpdate);
 
   // Update last seen timestamp
   rpc UpdateLastSeen(UpdateLastSeenRequest) returns (UpdateLastSeenResponse);
+
+  // Send typing indicator
+  rpc SetTyping(SetTypingRequest) returns (SetTypingResponse);
 
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
@@ -113,6 +119,54 @@ message UpdateLastSeenResponse {
 
 message UpdateLastSeenSuccess {
   common.Timestamp last_seen = 1;
+}
+
+// ============================================================================
+// Bulk Status
+// ============================================================================
+
+message GetBulkStatusRequest {
+  string access_token = 1; // Authentication
+  repeated string user_ids = 2; // List of user IDs to query (max 100)
+}
+
+message GetBulkStatusResponse {
+  oneof result {
+    GetBulkStatusSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetBulkStatusSuccess {
+  repeated UserPresence presences = 1;
+}
+
+message UserPresence {
+  string user_id = 1;
+  UserStatus status = 2;
+  string custom_status_text = 3;
+  common.Timestamp last_seen = 4;
+}
+
+// ============================================================================
+// Typing Indicators
+// ============================================================================
+
+message SetTypingRequest {
+  string access_token = 1; // Authentication
+  string conversation_user_id = 2; // User ID of the conversation partner
+  bool is_typing = 3; // true when started typing, false when stopped
+}
+
+message SetTypingResponse {
+  oneof result {
+    SetTypingSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SetTypingSuccess {
+  bool acknowledged = 1;
 }
 
 // ============================================================================

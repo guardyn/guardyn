@@ -49,6 +49,14 @@ class PresenceServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getStatus, request, options: options);
   }
 
+  /// Get multiple users' presence status
+  $grpc.ResponseFuture<$0.GetBulkStatusResponse> getBulkStatus(
+    $0.GetBulkStatusRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getBulkStatus, request, options: options);
+  }
+
   /// Subscribe to presence updates (streaming)
   $grpc.ResponseStream<$0.PresenceUpdate> subscribe(
     $0.SubscribeRequest request, {
@@ -65,6 +73,14 @@ class PresenceServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$updateLastSeen, request, options: options);
+  }
+
+  /// Send typing indicator
+  $grpc.ResponseFuture<$0.SetTypingResponse> setTyping(
+    $0.SetTypingRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$setTyping, request, options: options);
   }
 
   /// Health check
@@ -87,6 +103,11 @@ class PresenceServiceClient extends $grpc.Client {
           '/guardyn.presence.PresenceService/GetStatus',
           ($0.GetStatusRequest value) => value.writeToBuffer(),
           $0.GetStatusResponse.fromBuffer);
+  static final _$getBulkStatus =
+      $grpc.ClientMethod<$0.GetBulkStatusRequest, $0.GetBulkStatusResponse>(
+          '/guardyn.presence.PresenceService/GetBulkStatus',
+          ($0.GetBulkStatusRequest value) => value.writeToBuffer(),
+          $0.GetBulkStatusResponse.fromBuffer);
   static final _$subscribe =
       $grpc.ClientMethod<$0.SubscribeRequest, $0.PresenceUpdate>(
           '/guardyn.presence.PresenceService/Subscribe',
@@ -97,6 +118,11 @@ class PresenceServiceClient extends $grpc.Client {
           '/guardyn.presence.PresenceService/UpdateLastSeen',
           ($0.UpdateLastSeenRequest value) => value.writeToBuffer(),
           $0.UpdateLastSeenResponse.fromBuffer);
+  static final _$setTyping =
+      $grpc.ClientMethod<$0.SetTypingRequest, $0.SetTypingResponse>(
+          '/guardyn.presence.PresenceService/SetTyping',
+          ($0.SetTypingRequest value) => value.writeToBuffer(),
+          $0.SetTypingResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.presence.PresenceService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -124,6 +150,15 @@ abstract class PresenceServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.GetStatusRequest.fromBuffer(value),
         ($0.GetStatusResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.GetBulkStatusRequest, $0.GetBulkStatusResponse>(
+            'GetBulkStatus',
+            getBulkStatus_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GetBulkStatusRequest.fromBuffer(value),
+            ($0.GetBulkStatusResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.SubscribeRequest, $0.PresenceUpdate>(
         'Subscribe',
         subscribe_Pre,
@@ -140,6 +175,13 @@ abstract class PresenceServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.UpdateLastSeenRequest.fromBuffer(value),
         ($0.UpdateLastSeenResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetTypingRequest, $0.SetTypingResponse>(
+        'SetTyping',
+        setTyping_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.SetTypingRequest.fromBuffer(value),
+        ($0.SetTypingResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -166,6 +208,15 @@ abstract class PresenceServiceBase extends $grpc.Service {
   $async.Future<$0.GetStatusResponse> getStatus(
       $grpc.ServiceCall call, $0.GetStatusRequest request);
 
+  $async.Future<$0.GetBulkStatusResponse> getBulkStatus_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetBulkStatusRequest> $request) async {
+    return getBulkStatus($call, await $request);
+  }
+
+  $async.Future<$0.GetBulkStatusResponse> getBulkStatus(
+      $grpc.ServiceCall call, $0.GetBulkStatusRequest request);
+
   $async.Stream<$0.PresenceUpdate> subscribe_Pre($grpc.ServiceCall $call,
       $async.Future<$0.SubscribeRequest> $request) async* {
     yield* subscribe($call, await $request);
@@ -182,6 +233,14 @@ abstract class PresenceServiceBase extends $grpc.Service {
 
   $async.Future<$0.UpdateLastSeenResponse> updateLastSeen(
       $grpc.ServiceCall call, $0.UpdateLastSeenRequest request);
+
+  $async.Future<$0.SetTypingResponse> setTyping_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.SetTypingRequest> $request) async {
+    return setTyping($call, await $request);
+  }
+
+  $async.Future<$0.SetTypingResponse> setTyping(
+      $grpc.ServiceCall call, $0.SetTypingRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {

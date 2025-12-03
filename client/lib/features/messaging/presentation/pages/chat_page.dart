@@ -43,8 +43,11 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     // Initialize presence bloc
     _presenceBloc = getIt<PresenceBloc>();
-    _presenceBloc.add(const PresenceStartHeartbeat());
+    // Set current user as online and start heartbeat
+    _presenceBloc.add(const PresenceSetOnline());
     _presenceBloc.add(PresenceFetchUser(widget.conversationUserId));
+    // Subscribe to real-time presence updates for the conversation partner
+    _presenceBloc.add(PresenceSubscribe([widget.conversationUserId]));
     
     _loadMessagesWithConversationId();
     // Set active conversation (to suppress notifications for current chat)
@@ -89,8 +92,9 @@ class _ChatPageState extends State<ChatPage> {
     context.read<MessageBloc>().add(const MessageStopPolling());
     // Clear active conversation when leaving chat
     context.read<MessageBloc>().add(const MessageSetActiveConversation(null));
-    // Stop presence heartbeat
-    _presenceBloc.add(const PresenceStopHeartbeat());
+    // Stop presence subscription and set offline
+    _presenceBloc.add(const PresenceUnsubscribe());
+    _presenceBloc.add(const PresenceSetOffline());
     _presenceBloc.close();
     _scrollController.dispose();
     super.dispose();
@@ -115,6 +119,15 @@ class _ChatPageState extends State<ChatPage> {
         ));
     // Scroll to bottom after sending
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _handleTypingChanged(bool isTyping) {
+    _presenceBloc.add(
+      PresenceSendTyping(
+        conversationId: widget.conversationUserId,
+        isTyping: isTyping,
+      ),
+    );
   }
 
   void _handleMessageLongPress(String messageId) {
@@ -182,8 +195,12 @@ class _ChatPageState extends State<ChatPage> {
                       if (state is PresenceLoaded) {
                         final presence = state.presenceMap[widget.conversationUserId];
                         if (presence != null) {
-                          // Check if typing
-                          final isTyping = state.typingUsers.containsKey(widget.conversationUserId);
+                          // Check if typing - either from typingUsers map or from presence itself
+                          final isTyping =
+                              state.typingUsers.containsKey(
+                                widget.conversationUserId,
+                              ) ||
+                              presence.isTyping;
                           if (isTyping) {
                             return const TypingIndicator(dotSize: 4);
                           }
@@ -317,6 +334,7 @@ class _ChatPageState extends State<ChatPage> {
               final isEnabled = state is! MessageSending && state is! MessageLoading;
               return MessageInput(
                 onSend: _handleSendMessage,
+                onTypingChanged: _handleTypingChanged,
                 enabled: isEnabled,
               );
             },
