@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
@@ -123,6 +124,24 @@ class GuardynApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Guardyn',
         theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+        // Localization support for international keyboard input
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en'),
+          Locale('ru'),
+          Locale('uk'),
+          Locale('de'),
+          Locale('fr'),
+          Locale('es'),
+          Locale('zh'),
+          Locale('ja'),
+          Locale('ko'),
+          Locale('ar'),
+        ],
         initialRoute: '/',
         routes: {
           '/': (context) => const SplashPage(),
