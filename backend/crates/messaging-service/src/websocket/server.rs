@@ -125,6 +125,14 @@ impl WebSocketServer {
             }
         });
 
+        // Start NATS message relay task - forwards messages from NATS to WebSocket clients
+        let nats_state = self.state.clone();
+        tokio::spawn(async move {
+            if let Err(e) = start_nats_message_relay(nats_state).await {
+                error!("NATS message relay failed: {}", e);
+            }
+        });
+
         info!(address = %addr, "Starting WebSocket server");
 
         let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -255,6 +263,78 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
     // Handle disconnect
     handle_disconnect(&ctx).await;
     info!(connection_id = %connection_id, "WebSocket connection closed");
+}
+
+/// Start NATS message relay - listens to all messages and forwards to WebSocket clients
+async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use async_nats::jetstream::consumer::pull::Config as ConsumerConfig;
+    use futures::StreamExt;
+
+    info!("Starting NATS message relay for WebSocket delivery");
+
+    // Create a consumer that listens to all messages (messages.*.*)
+    let consumer = state.nats.context
+        .create_consumer_on_stream(
+            ConsumerConfig {
+                name: Some("websocket-relay".to_string()),
+                durable_name: None, // Ephemeral consumer
+                filter_subject: "messages.>".to_string(),
+                ..Default::default()
+            },
+            "MESSAGES",
+        )
+        .await?;
+
+    info!("NATS consumer created for WebSocket relay");
+
+    // Process messages
+    let mut messages = consumer.messages().await?;
+    
+    while let Some(msg_result) = messages.next().await {
+        match msg_result {
+            Ok(msg) => {
+                // Parse the message envelope
+                if let Ok(envelope) = serde_json::from_slice::<crate::nats::MessageEnvelope>(&msg.payload) {
+                    let recipient_id = &envelope.recipient_user_id;
+                    
+                    debug!(
+                        message_id = %envelope.message_id,
+                        recipient_id = %recipient_id,
+                        "Relaying message via WebSocket"
+                    );
+
+                    // Create WebSocket message
+                    let ws_message = WsMessage::Message(super::messages::MessagePayload {
+                        message_id: envelope.message_id.clone(),
+                        sender_id: envelope.sender_user_id.clone(),
+                        recipient_id: recipient_id.clone(),
+                        content: String::from_utf8_lossy(&envelope.encrypted_content).to_string(),
+                        encrypted: true,
+                        content_type: "text".to_string(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        client_message_id: None,
+                    });
+
+                    // Send to recipient's WebSocket connections
+                    state.connection_manager.send_to_user(recipient_id, ws_message).await;
+                    
+                    // Acknowledge the message
+                    if let Err(e) = msg.ack().await {
+                        warn!("Failed to ack NATS message: {}", e);
+                    }
+                } else {
+                    warn!("Failed to parse message envelope from NATS");
+                    // Still ack to avoid blocking
+                    let _ = msg.ack().await;
+                }
+            }
+            Err(e) => {
+                error!("Error receiving NATS message: {}", e);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 impl Clone for WsContext {

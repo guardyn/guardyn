@@ -56,6 +56,7 @@ PID_FILE="/tmp/guardyn-pf-watchdog.pid"
 AUTH_PORT=50051
 MESSAGING_PORT=50052
 PRESENCE_PORT=50053
+WEBSOCKET_PORT=8081
 ENVOY_LOCAL_PORT=18080
 ENVOY_REMOTE_PORT=8080
 CHROMEDRIVER_PORT=4444
@@ -117,7 +118,8 @@ while [[ $# -gt 0 ]]; do
       fi
       # Kill any remaining port-forwards
       pkill -f "kubectl port-forward.*auth-service" 2>/dev/null || true
-      pkill -f "kubectl port-forward.*messaging-service" 2>/dev/null || true
+      pkill -f "kubectl port-forward.*messaging-service.*50052" 2>/dev/null || true
+      pkill -f "kubectl port-forward.*messaging-service.*8081" 2>/dev/null || true
       pkill -f "kubectl port-forward.*presence-service" 2>/dev/null || true
       pkill -f "kubectl port-forward.*guardyn-envoy" 2>/dev/null || true
       pkill -f "chromedriver.*--port=$CHROMEDRIVER_PORT" 2>/dev/null || true
@@ -128,7 +130,7 @@ while [[ $# -gt 0 ]]; do
       echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
       echo -e "${CYAN}Guardyn Port-Forward Status${NC}"
       echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-      
+
       check_port() {
         local port=$1
         local name=$2
@@ -138,13 +140,14 @@ while [[ $# -gt 0 ]]; do
           echo -e "${RED}❌ $name (port $port): Not running${NC}"
         fi
       }
-      
+
       check_port $AUTH_PORT "Auth Service"
-      check_port $MESSAGING_PORT "Messaging Service"
+      check_port $MESSAGING_PORT "Messaging gRPC"
+      check_port $WEBSOCKET_PORT "Messaging WebSocket"
       check_port $PRESENCE_PORT "Presence Service"
       check_port $ENVOY_LOCAL_PORT "Envoy Proxy"
       check_port $CHROMEDRIVER_PORT "ChromeDriver"
-      
+
       if [ -f "$PID_FILE" ]; then
         WATCHDOG_PID=$(cat "$PID_FILE")
         if kill -0 "$WATCHDOG_PID" 2>/dev/null; then
@@ -214,7 +217,7 @@ wait_for_port() {
   local name=$2
   local timeout=${3:-10}
   local elapsed=0
-  
+
   while [ $elapsed -lt $timeout ]; do
     if is_port_listening "$port"; then
       return 0
@@ -227,15 +230,15 @@ wait_for_port() {
 
 start_auth_forward() {
   log_info "Starting auth-service port-forward (port $AUTH_PORT)..."
-  
+
   # Kill any existing process on this port
   lsof -ti ":$AUTH_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
-  
+
   kubectl port-forward -n apps svc/auth-service "$AUTH_PORT:$AUTH_PORT" \
     >> "$LOG_DIR/auth-service.log" 2>&1 &
   PIDS["auth"]=$!
-  
+
   if wait_for_port "$AUTH_PORT" "auth-service" 10; then
     log_success "Auth service port-forward started (PID: ${PIDS[auth]})"
     return 0
@@ -247,33 +250,52 @@ start_auth_forward() {
 
 start_messaging_forward() {
   log_info "Starting messaging-service port-forward (port $MESSAGING_PORT)..."
-  
+
   lsof -ti ":$MESSAGING_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
-  
+
   kubectl port-forward -n apps svc/messaging-service "$MESSAGING_PORT:$MESSAGING_PORT" \
     >> "$LOG_DIR/messaging-service.log" 2>&1 &
   PIDS["messaging"]=$!
-  
+
   if wait_for_port "$MESSAGING_PORT" "messaging-service" 10; then
-    log_success "Messaging service port-forward started (PID: ${PIDS[messaging]})"
+    log_success "Messaging gRPC port-forward started (PID: ${PIDS[messaging]})"
     return 0
   else
-    log_error "Messaging service port-forward failed to start"
+    log_error "Messaging gRPC port-forward failed to start"
+    return 1
+  fi
+}
+
+start_websocket_forward() {
+  log_info "Starting messaging-service WebSocket port-forward (port $WEBSOCKET_PORT)..."
+
+  lsof -ti ":$WEBSOCKET_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
+  sleep 0.5
+
+  kubectl port-forward -n apps svc/messaging-service "$WEBSOCKET_PORT:$WEBSOCKET_PORT" \
+    >> "$LOG_DIR/websocket.log" 2>&1 &
+  PIDS["websocket"]=$!
+
+  if wait_for_port "$WEBSOCKET_PORT" "messaging-websocket" 10; then
+    log_success "Messaging WebSocket port-forward started (PID: ${PIDS[websocket]})"
+    return 0
+  else
+    log_error "Messaging WebSocket port-forward failed to start"
     return 1
   fi
 }
 
 start_presence_forward() {
   log_info "Starting presence-service port-forward (port $PRESENCE_PORT)..."
-  
+
   lsof -ti ":$PRESENCE_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
-  
+
   kubectl port-forward -n apps svc/presence-service "$PRESENCE_PORT:$PRESENCE_PORT" \
     >> "$LOG_DIR/presence-service.log" 2>&1 &
   PIDS["presence"]=$!
-  
+
   if wait_for_port "$PRESENCE_PORT" "presence-service" 10; then
     log_success "Presence service port-forward started (PID: ${PIDS[presence]})"
     return 0
@@ -287,16 +309,16 @@ start_envoy_forward() {
   if [ "$ENABLE_ENVOY" != true ]; then
     return 0
   fi
-  
+
   log_info "Starting Envoy proxy port-forward (port $ENVOY_LOCAL_PORT → $ENVOY_REMOTE_PORT)..."
-  
+
   lsof -ti ":$ENVOY_LOCAL_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
-  
+
   kubectl port-forward -n apps svc/guardyn-envoy "$ENVOY_LOCAL_PORT:$ENVOY_REMOTE_PORT" \
     >> "$LOG_DIR/envoy.log" 2>&1 &
   PIDS["envoy"]=$!
-  
+
   if wait_for_port "$ENVOY_LOCAL_PORT" "envoy" 10; then
     log_success "Envoy proxy port-forward started (PID: ${PIDS[envoy]})"
     return 0
@@ -310,15 +332,15 @@ start_chromedriver() {
   if [ "$ENABLE_CHROMEDRIVER" != true ]; then
     return 0
   fi
-  
+
   log_info "Starting ChromeDriver (port $CHROMEDRIVER_PORT)..."
-  
+
   lsof -ti ":$CHROMEDRIVER_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
-  
+
   # Find chromedriver
   CHROMEDRIVER_BIN=""
-  
+
   # Check common locations
   if command -v chromedriver &> /dev/null; then
     CHROMEDRIVER_BIN="chromedriver"
@@ -329,17 +351,17 @@ start_chromedriver() {
   elif [ -x "/usr/local/bin/chromedriver" ]; then
     CHROMEDRIVER_BIN="/usr/local/bin/chromedriver"
   fi
-  
+
   if [ -z "$CHROMEDRIVER_BIN" ]; then
     log_warning "ChromeDriver not found - skipping (install with: apt install chromium-chromedriver)"
     ENABLE_CHROMEDRIVER=false
     return 0
   fi
-  
+
   "$CHROMEDRIVER_BIN" --port="$CHROMEDRIVER_PORT" \
     >> "$LOG_DIR/chromedriver.log" 2>&1 &
   PIDS["chromedriver"]=$!
-  
+
   if wait_for_port "$CHROMEDRIVER_PORT" "chromedriver" 10; then
     log_success "ChromeDriver started (PID: ${PIDS[chromedriver]})"
     return 0
@@ -357,22 +379,22 @@ check_and_restart() {
   local name=$1
   local port=$2
   local start_func=$3
-  
+
   if ! is_port_listening "$port"; then
     local count=${RESTART_COUNTS[$name]:-0}
     count=$((count + 1))
     RESTART_COUNTS[$name]=$count
-    
+
     if [ $count -le $MAX_RETRIES ]; then
       log_warning "$name died (port $port), restarting (attempt $count/$MAX_RETRIES)..."
-      
+
       # Exponential backoff
       local delay=$((RETRY_DELAY * count))
       if [ $delay -gt 30 ]; then
         delay=30
       fi
       sleep $delay
-      
+
       if $start_func; then
         log_success "$name restarted successfully"
         RESTART_COUNTS[$name]=0
@@ -388,20 +410,21 @@ check_and_restart() {
 
 run_watchdog() {
   log_info "Starting watchdog loop (interval: ${CHECK_INTERVAL}s)..."
-  
+
   while true; do
     check_and_restart "auth" $AUTH_PORT start_auth_forward
     check_and_restart "messaging" $MESSAGING_PORT start_messaging_forward
+    check_and_restart "websocket" $WEBSOCKET_PORT start_websocket_forward
     check_and_restart "presence" $PRESENCE_PORT start_presence_forward
-    
+
     if [ "$ENABLE_ENVOY" = true ]; then
       check_and_restart "envoy" $ENVOY_LOCAL_PORT start_envoy_forward
     fi
-    
+
     if [ "$ENABLE_CHROMEDRIVER" = true ]; then
       check_and_restart "chromedriver" $CHROMEDRIVER_PORT start_chromedriver
     fi
-    
+
     sleep "$CHECK_INTERVAL"
   done
 }
@@ -412,7 +435,7 @@ run_watchdog() {
 
 cleanup() {
   log_info "Shutting down port-forwards..."
-  
+
   for name in "${!PIDS[@]}"; do
     pid=${PIDS[$name]}
     if kill -0 "$pid" 2>/dev/null; then
@@ -420,7 +443,7 @@ cleanup() {
       log_info "Stopped $name (PID: $pid)"
     fi
   done
-  
+
   rm -f "$PID_FILE"
   log_success "Cleanup complete"
   exit 0
@@ -435,44 +458,44 @@ trap cleanup SIGINT SIGTERM EXIT
 main() {
   # Create log directory
   mkdir -p "$LOG_DIR"
-  
+
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${CYAN}Guardyn Port-Forward Watchdog${NC}"
   echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
-  
+
   # Check prerequisites
   if ! command -v kubectl &> /dev/null; then
     log_error "kubectl not found"
     exit 1
   fi
-  
+
   if ! kubectl cluster-info &> /dev/null; then
     log_error "Kubernetes cluster not accessible"
     exit 1
   fi
-  
+
   # Check if pods are running
   log_info "Checking backend pods..."
-  
+
   AUTH_READY=$(kubectl get pods -n apps -l app=auth-service --no-headers 2>/dev/null | grep -c Running || echo 0)
   MSG_READY=$(kubectl get pods -n apps -l app=messaging-service --no-headers 2>/dev/null | grep -c Running || echo 0)
   PRESENCE_READY=$(kubectl get pods -n apps -l app=presence-service --no-headers 2>/dev/null | grep -c Running || echo 0)
-  
+
   if [ "$AUTH_READY" -eq 0 ]; then
     log_error "Auth service pods not running"
     exit 1
   fi
-  
+
   if [ "$MSG_READY" -eq 0 ]; then
     log_error "Messaging service pods not running"
     exit 1
   fi
-  
+
   if [ "$PRESENCE_READY" -eq 0 ]; then
     log_warning "Presence service pods not running - heartbeats will fail"
   fi
-  
+
   if [ "$ENABLE_ENVOY" = true ]; then
     ENVOY_READY=$(kubectl get pods -n apps -l app=guardyn-envoy --no-headers 2>/dev/null | grep -c Running || echo 0)
     if [ "$ENVOY_READY" -eq 0 ]; then
@@ -480,32 +503,34 @@ main() {
       ENABLE_ENVOY=false
     fi
   fi
-  
+
   log_success "Backend pods verified"
   echo ""
-  
+
   # Start initial port-forwards
   log_info "Starting port-forwards..."
-  
+
   start_auth_forward || exit 1
   start_messaging_forward || exit 1
+  start_websocket_forward || exit 1
   start_presence_forward || exit 1
-  
+
   if [ "$ENABLE_ENVOY" = true ]; then
     start_envoy_forward || true
   fi
-  
+
   if [ "$ENABLE_CHROMEDRIVER" = true ]; then
     start_chromedriver || true
   fi
-  
+
   echo ""
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${GREEN}All port-forwards active!${NC}"
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo -e "  Auth service:      ${CYAN}localhost:$AUTH_PORT${NC}"
-  echo -e "  Messaging service: ${CYAN}localhost:$MESSAGING_PORT${NC}"
+  echo -e "  Messaging gRPC:    ${CYAN}localhost:$MESSAGING_PORT${NC}"
+  echo -e "  Messaging WS:      ${CYAN}localhost:$WEBSOCKET_PORT${NC}"
   echo -e "  Presence service:  ${CYAN}localhost:$PRESENCE_PORT${NC}"
   if [ "$ENABLE_ENVOY" = true ]; then
     echo -e "  Envoy proxy:       ${CYAN}localhost:$ENVOY_LOCAL_PORT${NC} (for Chrome)"
@@ -518,14 +543,14 @@ main() {
   echo ""
   echo -e "${YELLOW}Press Ctrl+C to stop all port-forwards${NC}"
   echo ""
-  
+
   # Handle daemon mode
   if [ "$DAEMON_MODE" = true ]; then
     echo $$ > "$PID_FILE"
     log_info "Running in daemon mode (PID: $$)"
     FOREGROUND_MODE=false
   fi
-  
+
   # Run watchdog loop
   run_watchdog
 }
