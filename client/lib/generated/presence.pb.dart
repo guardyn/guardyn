@@ -929,6 +929,528 @@ class UpdateLastSeenSuccess extends $pb.GeneratedMessage {
   $1.Timestamp ensureLastSeen() => $_ensure(0);
 }
 
+class GetBulkStatusRequest extends $pb.GeneratedMessage {
+  factory GetBulkStatusRequest({
+    $core.String? accessToken,
+    $core.Iterable<$core.String>? userIds,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (userIds != null) result.userIds.addAll(userIds);
+    return result;
+  }
+
+  GetBulkStatusRequest._();
+
+  factory GetBulkStatusRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetBulkStatusRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBulkStatusRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..pPS(2, _omitFieldNames ? '' : 'userIds')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBulkStatusRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBulkStatusRequest copyWith(void Function(GetBulkStatusRequest) updates) =>
+      super.copyWith((message) => updates(message as GetBulkStatusRequest))
+          as GetBulkStatusRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetBulkStatusRequest create() => GetBulkStatusRequest._();
+  @$core.override
+  GetBulkStatusRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetBulkStatusRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBulkStatusRequest>(create);
+  static GetBulkStatusRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get userIds => $_getList(1);
+}
+
+enum GetBulkStatusResponse_Result { success, error, notSet }
+
+class GetBulkStatusResponse extends $pb.GeneratedMessage {
+  factory GetBulkStatusResponse({
+    GetBulkStatusSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetBulkStatusResponse._();
+
+  factory GetBulkStatusResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetBulkStatusResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, GetBulkStatusResponse_Result>
+      _GetBulkStatusResponse_ResultByTag = {
+    1: GetBulkStatusResponse_Result.success,
+    2: GetBulkStatusResponse_Result.error,
+    0: GetBulkStatusResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBulkStatusResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<GetBulkStatusSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: GetBulkStatusSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBulkStatusResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBulkStatusResponse copyWith(
+          void Function(GetBulkStatusResponse) updates) =>
+      super.copyWith((message) => updates(message as GetBulkStatusResponse))
+          as GetBulkStatusResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetBulkStatusResponse create() => GetBulkStatusResponse._();
+  @$core.override
+  GetBulkStatusResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetBulkStatusResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBulkStatusResponse>(create);
+  static GetBulkStatusResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  GetBulkStatusResponse_Result whichResult() =>
+      _GetBulkStatusResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  GetBulkStatusSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(GetBulkStatusSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  GetBulkStatusSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class GetBulkStatusSuccess extends $pb.GeneratedMessage {
+  factory GetBulkStatusSuccess({
+    $core.Iterable<UserPresence>? presences,
+  }) {
+    final result = create();
+    if (presences != null) result.presences.addAll(presences);
+    return result;
+  }
+
+  GetBulkStatusSuccess._();
+
+  factory GetBulkStatusSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetBulkStatusSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBulkStatusSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..pPM<UserPresence>(1, _omitFieldNames ? '' : 'presences',
+        subBuilder: UserPresence.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBulkStatusSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBulkStatusSuccess copyWith(void Function(GetBulkStatusSuccess) updates) =>
+      super.copyWith((message) => updates(message as GetBulkStatusSuccess))
+          as GetBulkStatusSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetBulkStatusSuccess create() => GetBulkStatusSuccess._();
+  @$core.override
+  GetBulkStatusSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetBulkStatusSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBulkStatusSuccess>(create);
+  static GetBulkStatusSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<UserPresence> get presences => $_getList(0);
+}
+
+class UserPresence extends $pb.GeneratedMessage {
+  factory UserPresence({
+    $core.String? userId,
+    UserStatus? status,
+    $core.String? customStatusText,
+    $1.Timestamp? lastSeen,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (status != null) result.status = status;
+    if (customStatusText != null) result.customStatusText = customStatusText;
+    if (lastSeen != null) result.lastSeen = lastSeen;
+    return result;
+  }
+
+  UserPresence._();
+
+  factory UserPresence.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UserPresence.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UserPresence',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aE<UserStatus>(2, _omitFieldNames ? '' : 'status',
+        enumValues: UserStatus.values)
+    ..aOS(3, _omitFieldNames ? '' : 'customStatusText')
+    ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'lastSeen',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserPresence clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserPresence copyWith(void Function(UserPresence) updates) =>
+      super.copyWith((message) => updates(message as UserPresence))
+          as UserPresence;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UserPresence create() => UserPresence._();
+  @$core.override
+  UserPresence createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UserPresence getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UserPresence>(create);
+  static UserPresence? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  UserStatus get status => $_getN(1);
+  @$pb.TagNumber(2)
+  set status(UserStatus value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStatus() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStatus() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get customStatusText => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set customStatusText($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCustomStatusText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCustomStatusText() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $1.Timestamp get lastSeen => $_getN(3);
+  @$pb.TagNumber(4)
+  set lastSeen($1.Timestamp value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLastSeen() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLastSeen() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $1.Timestamp ensureLastSeen() => $_ensure(3);
+}
+
+class SetTypingRequest extends $pb.GeneratedMessage {
+  factory SetTypingRequest({
+    $core.String? accessToken,
+    $core.String? conversationUserId,
+    $core.bool? isTyping,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (conversationUserId != null)
+      result.conversationUserId = conversationUserId;
+    if (isTyping != null) result.isTyping = isTyping;
+    return result;
+  }
+
+  SetTypingRequest._();
+
+  factory SetTypingRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetTypingRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetTypingRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'conversationUserId')
+    ..aOB(3, _omitFieldNames ? '' : 'isTyping')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTypingRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTypingRequest copyWith(void Function(SetTypingRequest) updates) =>
+      super.copyWith((message) => updates(message as SetTypingRequest))
+          as SetTypingRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetTypingRequest create() => SetTypingRequest._();
+  @$core.override
+  SetTypingRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetTypingRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetTypingRequest>(create);
+  static SetTypingRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get conversationUserId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set conversationUserId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConversationUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConversationUserId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get isTyping => $_getBF(2);
+  @$pb.TagNumber(3)
+  set isTyping($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasIsTyping() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearIsTyping() => $_clearField(3);
+}
+
+enum SetTypingResponse_Result { success, error, notSet }
+
+class SetTypingResponse extends $pb.GeneratedMessage {
+  factory SetTypingResponse({
+    SetTypingSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  SetTypingResponse._();
+
+  factory SetTypingResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetTypingResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, SetTypingResponse_Result>
+      _SetTypingResponse_ResultByTag = {
+    1: SetTypingResponse_Result.success,
+    2: SetTypingResponse_Result.error,
+    0: SetTypingResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetTypingResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<SetTypingSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: SetTypingSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTypingResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTypingResponse copyWith(void Function(SetTypingResponse) updates) =>
+      super.copyWith((message) => updates(message as SetTypingResponse))
+          as SetTypingResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetTypingResponse create() => SetTypingResponse._();
+  @$core.override
+  SetTypingResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetTypingResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetTypingResponse>(create);
+  static SetTypingResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  SetTypingResponse_Result whichResult() =>
+      _SetTypingResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  SetTypingSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(SetTypingSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  SetTypingSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class SetTypingSuccess extends $pb.GeneratedMessage {
+  factory SetTypingSuccess({
+    $core.bool? acknowledged,
+  }) {
+    final result = create();
+    if (acknowledged != null) result.acknowledged = acknowledged;
+    return result;
+  }
+
+  SetTypingSuccess._();
+
+  factory SetTypingSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetTypingSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetTypingSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.presence'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'acknowledged')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTypingSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetTypingSuccess copyWith(void Function(SetTypingSuccess) updates) =>
+      super.copyWith((message) => updates(message as SetTypingSuccess))
+          as SetTypingSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetTypingSuccess create() => SetTypingSuccess._();
+  @$core.override
+  SetTypingSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetTypingSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetTypingSuccess>(create);
+  static SetTypingSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get acknowledged => $_getBF(0);
+  @$pb.TagNumber(1)
+  set acknowledged($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAcknowledged() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAcknowledged() => $_clearField(1);
+}
+
 class HealthRequest extends $pb.GeneratedMessage {
   factory HealthRequest() => create();
 

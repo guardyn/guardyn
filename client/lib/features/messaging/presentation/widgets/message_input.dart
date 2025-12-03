@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSend;
+  final Function(bool)? onTypingChanged;
   final bool enabled;
 
   const MessageInput({
     super.key,
     required this.onSend,
+    this.onTypingChanged,
     this.enabled = true,
   });
 
@@ -17,6 +21,8 @@ class MessageInput extends StatefulWidget {
 class _MessageInputState extends State<MessageInput> {
   final TextEditingController _controller = TextEditingController();
   bool _hasText = false;
+  bool _isTyping = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
@@ -26,14 +32,43 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
+    // Send typing stopped when disposing
+    if (_isTyping) {
+      widget.onTypingChanged?.call(false);
+    }
     _controller.dispose();
     super.dispose();
   }
 
   void _onTextChanged() {
+    final hasText = _controller.text.trim().isNotEmpty;
+    
     setState(() {
-      _hasText = _controller.text.trim().isNotEmpty;
+      _hasText = hasText;
     });
+
+    // Handle typing indicator
+    if (hasText && !_isTyping) {
+      _isTyping = true;
+      widget.onTypingChanged?.call(true);
+    }
+
+    // Reset typing timer - will stop typing indicator after 3 seconds of no input
+    _typingTimer?.cancel();
+    if (hasText) {
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        if (_isTyping && _controller.text.trim().isNotEmpty) {
+          // Still has text but stopped typing - keep typing indicator for continuous typing
+          // Re-send typing true to reset backend timeout
+          widget.onTypingChanged?.call(true);
+        }
+      });
+    } else if (_isTyping) {
+      // Text cleared, stop typing
+      _isTyping = false;
+      widget.onTypingChanged?.call(false);
+    }
   }
 
   void _handleSend() {
@@ -44,6 +79,12 @@ class _MessageInputState extends State<MessageInput> {
       setState(() {
         _hasText = false;
       });
+      // Stop typing indicator on send
+      _typingTimer?.cancel();
+      if (_isTyping) {
+        _isTyping = false;
+        widget.onTypingChanged?.call(false);
+      }
     }
   }
 

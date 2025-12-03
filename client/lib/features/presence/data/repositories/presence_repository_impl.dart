@@ -174,9 +174,28 @@ class PresenceRepositoryImpl implements PresenceRepository {
     required String conversationId,
     required bool isTyping,
   }) async {
-    // Typing indicator not implemented in backend yet
-    // This is a no-op for now
-    return const Right(null);
+    try {
+      // Get access token
+      final accessToken = await secureStorage.getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('No access token found'));
+      }
+
+      // conversationId is actually the other user's ID for 1-on-1 chats
+      await remoteDatasource.setTyping(
+        accessToken: accessToken,
+        conversationUserId: conversationId,
+        isTyping: isTyping,
+      );
+
+      return const Right(null);
+    } on GrpcError catch (e) {
+      _logger.w('gRPC error sending typing indicator: ${e.message}');
+      return Left(_handleGrpcError(e));
+    } catch (e) {
+      _logger.e('Error sending typing indicator: $e');
+      return Left(UnknownFailure(e.toString()));
+    }
   }
 
   @override

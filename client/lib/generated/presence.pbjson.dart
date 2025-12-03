@@ -349,6 +349,180 @@ final $typed_data.Uint8List updateLastSeenSuccessDescriptor = $convert.base64Dec
     'ChVVcGRhdGVMYXN0U2VlblN1Y2Nlc3MSNgoJbGFzdF9zZWVuGAEgASgLMhkuZ3VhcmR5bi5jb2'
     '1tb24uVGltZXN0YW1wUghsYXN0U2Vlbg==');
 
+@$core.Deprecated('Use getBulkStatusRequestDescriptor instead')
+const GetBulkStatusRequest$json = {
+  '1': 'GetBulkStatusRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'user_ids', '3': 2, '4': 3, '5': 9, '10': 'userIds'},
+  ],
+};
+
+/// Descriptor for `GetBulkStatusRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBulkStatusRequestDescriptor = $convert.base64Decode(
+    'ChRHZXRCdWxrU3RhdHVzUmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2'
+    'VuEhkKCHVzZXJfaWRzGAIgAygJUgd1c2VySWRz');
+
+@$core.Deprecated('Use getBulkStatusResponseDescriptor instead')
+const GetBulkStatusResponse$json = {
+  '1': 'GetBulkStatusResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.presence.GetBulkStatusSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `GetBulkStatusResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBulkStatusResponseDescriptor = $convert.base64Decode(
+    'ChVHZXRCdWxrU3RhdHVzUmVzcG9uc2USQgoHc3VjY2VzcxgBIAEoCzImLmd1YXJkeW4ucHJlc2'
+    'VuY2UuR2V0QnVsa1N0YXR1c1N1Y2Nlc3NIAFIHc3VjY2VzcxI1CgVlcnJvchgCIAEoCzIdLmd1'
+    'YXJkeW4uY29tbW9uLkVycm9yUmVzcG9uc2VIAFIFZXJyb3JCCAoGcmVzdWx0');
+
+@$core.Deprecated('Use getBulkStatusSuccessDescriptor instead')
+const GetBulkStatusSuccess$json = {
+  '1': 'GetBulkStatusSuccess',
+  '2': [
+    {
+      '1': 'presences',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.guardyn.presence.UserPresence',
+      '10': 'presences'
+    },
+  ],
+};
+
+/// Descriptor for `GetBulkStatusSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBulkStatusSuccessDescriptor = $convert.base64Decode(
+    'ChRHZXRCdWxrU3RhdHVzU3VjY2VzcxI8CglwcmVzZW5jZXMYASADKAsyHi5ndWFyZHluLnByZX'
+    'NlbmNlLlVzZXJQcmVzZW5jZVIJcHJlc2VuY2Vz');
+
+@$core.Deprecated('Use userPresenceDescriptor instead')
+const UserPresence$json = {
+  '1': 'UserPresence',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {
+      '1': 'status',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.guardyn.presence.UserStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'custom_status_text',
+      '3': 3,
+      '4': 1,
+      '5': 9,
+      '10': 'customStatusText'
+    },
+    {
+      '1': 'last_seen',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'lastSeen'
+    },
+  ],
+};
+
+/// Descriptor for `UserPresence`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List userPresenceDescriptor = $convert.base64Decode(
+    'CgxVc2VyUHJlc2VuY2USFwoHdXNlcl9pZBgBIAEoCVIGdXNlcklkEjQKBnN0YXR1cxgCIAEoDj'
+    'IcLmd1YXJkeW4ucHJlc2VuY2UuVXNlclN0YXR1c1IGc3RhdHVzEiwKEmN1c3RvbV9zdGF0dXNf'
+    'dGV4dBgDIAEoCVIQY3VzdG9tU3RhdHVzVGV4dBI2CglsYXN0X3NlZW4YBCABKAsyGS5ndWFyZH'
+    'luLmNvbW1vbi5UaW1lc3RhbXBSCGxhc3RTZWVu');
+
+@$core.Deprecated('Use setTypingRequestDescriptor instead')
+const SetTypingRequest$json = {
+  '1': 'SetTypingRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {
+      '1': 'conversation_user_id',
+      '3': 2,
+      '4': 1,
+      '5': 9,
+      '10': 'conversationUserId'
+    },
+    {'1': 'is_typing', '3': 3, '4': 1, '5': 8, '10': 'isTyping'},
+  ],
+};
+
+/// Descriptor for `SetTypingRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setTypingRequestDescriptor = $convert.base64Decode(
+    'ChBTZXRUeXBpbmdSZXF1ZXN0EiEKDGFjY2Vzc190b2tlbhgBIAEoCVILYWNjZXNzVG9rZW4SMA'
+    'oUY29udmVyc2F0aW9uX3VzZXJfaWQYAiABKAlSEmNvbnZlcnNhdGlvblVzZXJJZBIbCglpc190'
+    'eXBpbmcYAyABKAhSCGlzVHlwaW5n');
+
+@$core.Deprecated('Use setTypingResponseDescriptor instead')
+const SetTypingResponse$json = {
+  '1': 'SetTypingResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.presence.SetTypingSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `SetTypingResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setTypingResponseDescriptor = $convert.base64Decode(
+    'ChFTZXRUeXBpbmdSZXNwb25zZRI+CgdzdWNjZXNzGAEgASgLMiIuZ3VhcmR5bi5wcmVzZW5jZS'
+    '5TZXRUeXBpbmdTdWNjZXNzSABSB3N1Y2Nlc3MSNQoFZXJyb3IYAiABKAsyHS5ndWFyZHluLmNv'
+    'bW1vbi5FcnJvclJlc3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use setTypingSuccessDescriptor instead')
+const SetTypingSuccess$json = {
+  '1': 'SetTypingSuccess',
+  '2': [
+    {'1': 'acknowledged', '3': 1, '4': 1, '5': 8, '10': 'acknowledged'},
+  ],
+};
+
+/// Descriptor for `SetTypingSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setTypingSuccessDescriptor = $convert.base64Decode(
+    'ChBTZXRUeXBpbmdTdWNjZXNzEiIKDGFja25vd2xlZGdlZBgBIAEoCFIMYWNrbm93bGVkZ2Vk');
+
 @$core.Deprecated('Use healthRequestDescriptor instead')
 const HealthRequest$json = {
   '1': 'HealthRequest',

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/presence_info.dart';
+import '../../domain/repositories/presence_repository.dart';
 import '../../domain/usecases/get_bulk_presence.dart';
 import '../../domain/usecases/get_user_presence.dart';
 import '../../domain/usecases/send_heartbeat.dart';
@@ -20,6 +21,7 @@ class PresenceBloc extends Bloc<PresenceEvent, PresenceState> {
   final UpdateMyStatus updateMyStatus;
   final SendTypingIndicator sendTypingIndicator;
   final SendHeartbeat sendHeartbeat;
+  final PresenceRepository presenceRepository;
 
   Timer? _heartbeatTimer;
   StreamSubscription<PresenceInfo>? _presenceSubscription;
@@ -36,6 +38,7 @@ class PresenceBloc extends Bloc<PresenceEvent, PresenceState> {
     required this.updateMyStatus,
     required this.sendTypingIndicator,
     required this.sendHeartbeat,
+    required this.presenceRepository,
   }) : super(const PresenceInitial()) {
     on<PresenceFetchUser>(_onFetchUser);
     on<PresenceFetchBulk>(_onFetchBulk);
@@ -145,6 +148,16 @@ class PresenceBloc extends Bloc<PresenceEvent, PresenceState> {
     Emitter<PresenceState> emit,
   ) {
     _presenceCache[event.presenceInfo.userId] = event.presenceInfo;
+    
+    // Update typing users from presence info
+    if (event.presenceInfo.isTyping &&
+        event.presenceInfo.typingInConversationId != null) {
+      _typingUsers[event.presenceInfo.userId] =
+          event.presenceInfo.typingInConversationId!;
+    } else {
+      _typingUsers.remove(event.presenceInfo.userId);
+    }
+    
     emit(PresenceLoaded(
       presenceMap: Map.from(_presenceCache),
       typingUsers: Map.from(_typingUsers),
@@ -207,11 +220,49 @@ class PresenceBloc extends Bloc<PresenceEvent, PresenceState> {
     PresenceSubscribe event,
     Emitter<PresenceState> emit,
   ) {
-    // Subscription would be handled by repository
-    // For now, just update state to show subscription is active
+    // Cancel existing subscription if any
+    _presenceSubscription?.cancel();
+
+    // Subscribe to real-time presence updates from repository
+    _presenceSubscription = presenceRepository
+        .subscribeToPresence(event.userIds)
+        .listen(
+          (presenceInfo) {
+            // Update cache and typing status from the update
+            _presenceCache[presenceInfo.userId] = presenceInfo;
+
+            // Handle typing indicator from presence update
+            if (presenceInfo.isTyping &&
+                presenceInfo.typingInConversationId != null) {
+              _typingUsers[presenceInfo.userId] =
+                  presenceInfo.typingInConversationId!;
+            } else {
+              _typingUsers.remove(presenceInfo.userId);
+            }
+
+            // Emit updated state
+            add(PresenceUserChanged(presenceInfo));
+          },
+          onError: (error) {
+            // Log error but don't crash
+            // ignore: avoid_print
+            print('Presence subscription error: $error');
+          },
+          cancelOnError: false,
+        );
+
+    // Update state to show subscription is active
     final currentState = state;
     if (currentState is PresenceLoaded) {
       emit(currentState.copyWith(isSubscribed: true));
+    } else {
+      emit(
+        PresenceLoaded(
+          presenceMap: Map.from(_presenceCache),
+          typingUsers: Map.from(_typingUsers),
+          isSubscribed: true,
+        ),
+      );
     }
   }
 
