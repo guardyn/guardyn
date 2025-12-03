@@ -161,6 +161,7 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
         content_type: send.content_type.clone(),
         timestamp: timestamp_str.clone(),
         client_message_id: send.client_message_id.clone(),
+        x3dh_prekey: None, // WebSocket messages don't include X3DH prekey directly
     };
 
     // Store in ScyllaDB via the database client

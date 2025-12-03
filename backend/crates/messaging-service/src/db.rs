@@ -644,6 +644,7 @@ impl DatabaseClient {
                     delivery_status,
                     media_id: String::new(),
                     is_deleted,
+                    x3dh_prekey: String::new(), // Not stored in DB
                 };
 
                 // Update or create conversation
@@ -866,6 +867,7 @@ impl DatabaseClient {
                     delivery_status: 0,
                     media_id: String::new(),
                     is_deleted: false,
+                    x3dh_prekey: String::new(),
                 };
 
                 let conversation = crate::proto::messaging::Conversation {

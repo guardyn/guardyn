@@ -130,10 +130,17 @@ class MessageModel extends Message {
   }
 
   static Map<String, String> _extractMetadata(proto.Message protoMessage) {
-    return {
+    final metadata = {
       'client_message_id': protoMessage.clientMessageId,
       'media_id': protoMessage.mediaId,
       'is_deleted': protoMessage.isDeleted.toString(),
     };
+    
+    // Include X3DH prekey if present (for first message in session)
+    if (protoMessage.x3dhPrekey.isNotEmpty) {
+      metadata['x3dh_prekey'] = protoMessage.x3dhPrekey;
+    }
+
+    return metadata;
   }
 }

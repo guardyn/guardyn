@@ -80,6 +80,10 @@ message SendMessageRequest {
 
   // Recipient username for display (used in conversation list)
   string recipient_username = 9;
+
+  // X3DH prekey data for first message (allows recipient to create responder session)
+  // Base64-encoded X3DHPrekeyMessage containing: sender_identity_key, ephemeral_key, used_otpk_id
+  string x3dh_prekey = 10;
 }
 
 enum MessageType {
@@ -146,6 +150,9 @@ message Message {
 
   // Deletion flag
   bool is_deleted = 13;
+
+  // X3DH prekey data for first message (allows recipient to create responder session)
+  string x3dh_prekey = 14;
 }
 
 // ============================================================================

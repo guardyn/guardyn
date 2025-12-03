@@ -27,6 +27,7 @@ class MessageRemoteDatasource {
     required String recipientUsername,
     required String textContent,
     Map<String, String>? metadata,
+    String? x3dhPrekey,
   }) async {
     final request = proto.SendMessageRequest(
       accessToken: accessToken,
@@ -38,6 +39,11 @@ class MessageRemoteDatasource {
       clientMessageId: _generateMessageId(),
       clientTimestamp: _createTimestamp(DateTime.now()),
     );
+
+    // Set X3DH prekey for first message in session
+    if (x3dhPrekey != null && x3dhPrekey.isNotEmpty) {
+      request.x3dhPrekey = x3dhPrekey;
+    }
 
     final response = await _messagingClient.sendMessage(request);
 

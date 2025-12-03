@@ -48,8 +48,13 @@ class CryptoService {
     return _x3dh?.exportKeyBundle(oneTimePreKeyIndex: oneTimePreKeyIndex);
   }
 
+  /// X3DH prekey data to include in first message
+  /// Key: sessionId, Value: X3DHPrekeyMessage
+  final Map<String, X3DHPrekeyMessage> _pendingPrekeyMessages = {};
+
   /// Create a new session as initiator (Alice)
-  Future<DoubleRatchet> createSessionAsInitiator({
+  /// Returns the ratchet and X3DH prekey data to include in first message
+  Future<(DoubleRatchet, X3DHPrekeyMessage)> createSessionAsInitiator({
     required String recipientUserId,
     required String recipientDeviceId,
     required X3DHKeyBundle remoteKeyBundle,
@@ -76,7 +81,35 @@ class CryptoService {
     _sessions[sessionId] = ratchet;
     await _saveSession(sessionId, ratchet);
 
-    return ratchet;
+    // Create X3DH prekey message data
+    final prekeyMessage = X3DHPrekeyMessage(
+      senderIdentityKey: _x3dh!.identityKey.publicKey,
+      ephemeralKey: ephemeralPublicKey,
+      usedOneTimePreKeyId: remoteKeyBundle.oneTimePreKeyId,
+    );
+
+    // Store for first message
+    _pendingPrekeyMessages[sessionId] = prekeyMessage;
+
+    return (ratchet, prekeyMessage);
+  }
+
+  /// Get pending X3DH prekey message for a session (for first message)
+  X3DHPrekeyMessage? getPendingPrekeyMessage({
+    required String remoteUserId,
+    required String remoteDeviceId,
+  }) {
+    final sessionId = _makeSessionId(remoteUserId, remoteDeviceId);
+    return _pendingPrekeyMessages.remove(sessionId);
+  }
+
+  /// Check if this is a new session (first message needs prekey data)
+  bool isNewSession({
+    required String remoteUserId,
+    required String remoteDeviceId,
+  }) {
+    final sessionId = _makeSessionId(remoteUserId, remoteDeviceId);
+    return _pendingPrekeyMessages.containsKey(sessionId);
   }
 
   /// Create a new session as responder (Bob)

@@ -43,9 +43,11 @@ abstract class MessageRepository {
 
   /// Decrypt an encrypted message content
   /// Used for WebSocket messages that arrive encrypted
+  /// If x3dhPrekey is provided, creates responder session before decryption
   Future<Either<Failure, String>> decryptMessageContent({
     required String encryptedContent,
     required String senderUserId,
     required String senderDeviceId,
+    String? x3dhPrekey,
   });
 }
