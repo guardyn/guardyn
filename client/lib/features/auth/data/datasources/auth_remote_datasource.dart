@@ -51,6 +51,8 @@ class AuthRemoteDatasource {
         'Network error: ${e.message}',
         code: e.code.toString(),
       );
+    } on AuthException {
+      rethrow;
     } catch (e) {
       logger.e('Unexpected error during registration: $e');
       throw AuthException('Registration failed: $e');
@@ -92,6 +94,8 @@ class AuthRemoteDatasource {
         'Network error: ${e.message}',
         code: e.code.toString(),
       );
+    } on AuthException {
+      rethrow;
     } catch (e) {
       logger.e('Unexpected error during login: $e');
       throw AuthException('Login failed: $e');
@@ -121,6 +125,8 @@ class AuthRemoteDatasource {
         'Network error: ${e.message}',
         code: e.code.toString(),
       );
+    } on AuthException {
+      rethrow;
     } catch (e) {
       logger.e('Unexpected error during logout: $e');
       throw AuthException('Logout failed: $e');
@@ -158,6 +164,8 @@ class AuthRemoteDatasource {
         'Network error: ${e.message}',
         code: e.code.toString(),
       );
+    } on AuthException {
+      rethrow;
     } catch (e) {
       logger.e('Unexpected error during user search: $e');
       throw AuthException('User search failed: $e');

@@ -316,6 +316,21 @@ class WebSocketDatasource {
       // Handle both direct message format and payload-wrapped format
       final payload = json['payload'] as Map<String, dynamic>? ?? json;
 
+      // Get content - may be base64 encoded if encrypted
+      String content =
+          payload['content'] as String? ??
+          payload['text_content'] as String? ??
+          '';
+
+      // Check if content is encrypted (from NATS relay with base64)
+      final isEncrypted = payload['encrypted'] as bool? ?? false;
+
+      // Note: Content stays as-is (base64 if encrypted) - decryption happens in MessageBloc
+      // which will base64 decode before decrypting
+      _logger.d(
+        'Received message: encrypted=$isEncrypted, contentLength=${content.length}',
+      );
+
       final model = MessageModel(
         messageId: payload['message_id'] as String? ?? '',
         conversationId: payload['conversation_id'] as String? ?? '',
@@ -330,19 +345,18 @@ class WebSocketDatasource {
             '',
         recipientDeviceId: payload['recipient_device_id'] as String? ?? '',
         messageType: MessageType.text,
-        textContent:
-            payload['content'] as String? ??
-            payload['text_content'] as String? ??
-            '',
-        metadata: {},
+        textContent: content,
+        metadata: {'encrypted': isEncrypted.toString()},
         timestamp: _parseTimestamp(payload['timestamp']),
         deliveryStatus: DeliveryStatus.delivered,
       );
 
       _messageController.add(model);
-      _logger.d('New message received: ${model.messageId}');
-    } catch (e) {
-      _logger.e('Error handling new message: $e');
+      _logger.i(
+        'New message received via WebSocket: ${model.messageId} from ${model.senderUserId}',
+      );
+    } catch (e, stackTrace) {
+      _logger.e('Error handling new message: $e\n$stackTrace');
     }
   }
 

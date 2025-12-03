@@ -235,7 +235,8 @@ start_auth_forward() {
   lsof -ti ":$AUTH_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
 
-  kubectl port-forward -n apps svc/auth-service "$AUTH_PORT:$AUTH_PORT" \
+  # Use --address=0.0.0.0 to allow Android emulator connections via 10.0.2.2
+  kubectl port-forward -n apps svc/auth-service "$AUTH_PORT:$AUTH_PORT" --address=0.0.0.0 \
     >> "$LOG_DIR/auth-service.log" 2>&1 &
   PIDS["auth"]=$!
 
@@ -254,7 +255,8 @@ start_messaging_forward() {
   lsof -ti ":$MESSAGING_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
 
-  kubectl port-forward -n apps svc/messaging-service "$MESSAGING_PORT:$MESSAGING_PORT" \
+  # Use --address=0.0.0.0 to allow Android emulator connections via 10.0.2.2
+  kubectl port-forward -n apps svc/messaging-service "$MESSAGING_PORT:$MESSAGING_PORT" --address=0.0.0.0 \
     >> "$LOG_DIR/messaging-service.log" 2>&1 &
   PIDS["messaging"]=$!
 
@@ -273,7 +275,8 @@ start_websocket_forward() {
   lsof -ti ":$WEBSOCKET_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
 
-  kubectl port-forward -n apps svc/messaging-service "$WEBSOCKET_PORT:$WEBSOCKET_PORT" \
+  # Use --address=0.0.0.0 to allow Android emulator connections via 10.0.2.2
+  kubectl port-forward -n apps svc/messaging-service "$WEBSOCKET_PORT:$WEBSOCKET_PORT" --address=0.0.0.0 \
     >> "$LOG_DIR/websocket.log" 2>&1 &
   PIDS["websocket"]=$!
 
@@ -292,7 +295,8 @@ start_presence_forward() {
   lsof -ti ":$PRESENCE_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
 
-  kubectl port-forward -n apps svc/presence-service "$PRESENCE_PORT:$PRESENCE_PORT" \
+  # Use --address=0.0.0.0 to allow Android emulator connections via 10.0.2.2
+  kubectl port-forward -n apps svc/presence-service "$PRESENCE_PORT:$PRESENCE_PORT" --address=0.0.0.0 \
     >> "$LOG_DIR/presence-service.log" 2>&1 &
   PIDS["presence"]=$!
 
@@ -315,7 +319,8 @@ start_envoy_forward() {
   lsof -ti ":$ENVOY_LOCAL_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
 
-  kubectl port-forward -n apps svc/guardyn-envoy "$ENVOY_LOCAL_PORT:$ENVOY_REMOTE_PORT" \
+  # Use --address=0.0.0.0 for consistency (mainly used by web, but available to all)
+  kubectl port-forward -n apps svc/guardyn-envoy "$ENVOY_LOCAL_PORT:$ENVOY_REMOTE_PORT" --address=0.0.0.0 \
     >> "$LOG_DIR/envoy.log" 2>&1 &
   PIDS["envoy"]=$!
 

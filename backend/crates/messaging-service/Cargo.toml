@@ -30,6 +30,7 @@ ed25519-dalek = { version = "2.1", features = ["serde"] }
 x25519-dalek = { version = "2.0", features = ["serde", "static_secrets"] }
 rand = "0.8"
 bytes = "1.5"
+base64 = "0.22"
 
 # WebSocket support
 axum.workspace = true
