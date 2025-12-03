@@ -145,3 +145,28 @@ class GroupSetActive extends GroupEvent {
   @override
   List<Object?> get props => [groupId];
 }
+
+/// Connect to WebSocket for real-time group messaging
+class GroupConnectWebSocket extends GroupEvent {
+  final String accessToken;
+
+  const GroupConnectWebSocket({required this.accessToken});
+
+  @override
+  List<Object?> get props => [accessToken];
+}
+
+/// Disconnect from WebSocket
+class GroupDisconnectWebSocket extends GroupEvent {
+  const GroupDisconnectWebSocket();
+}
+
+/// Subscribe to a group via WebSocket
+class GroupSubscribeWebSocket extends GroupEvent {
+  final String groupId;
+
+  const GroupSubscribeWebSocket({required this.groupId});
+
+  @override
+  List<Object?> get props => [groupId];
+}

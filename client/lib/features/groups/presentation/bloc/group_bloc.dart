@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../../../core/di/injection.dart';
+import '../../../messaging/data/datasources/websocket_datasource.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/usecases/add_group_member.dart';
 import '../../domain/usecases/create_group.dart';
@@ -28,6 +30,12 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
   Timer? _pollingTimer;
   String? _activeGroupId;
+  
+  /// WebSocket datasource for real-time messaging
+  WebSocketDatasource? _webSocketDatasource;
+  StreamSubscription<dynamic>? _wsMessageSubscription;
+  StreamSubscription<dynamic>? _wsStateSubscription;
+  bool _useWebSocket = true;
 
   GroupBloc({
     required this.createGroup,
@@ -51,6 +59,10 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     on<GroupStartPolling>(_onStartPolling);
     on<GroupStopPolling>(_onStopPolling);
     on<GroupSetActive>(_onSetActive);
+    // WebSocket events
+    on<GroupConnectWebSocket>(_onConnectWebSocket);
+    on<GroupDisconnectWebSocket>(_onDisconnectWebSocket);
+    on<GroupSubscribeWebSocket>(_onSubscribeWebSocket);
   }
 
   Future<void> _onLoadAll(
@@ -328,9 +340,115 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     );
   }
 
+  // ========================================================================
+  // WebSocket Handlers
+  // ========================================================================
+
+  /// Connect to WebSocket for real-time group messaging
+  Future<void> _onConnectWebSocket(
+    GroupConnectWebSocket event,
+    Emitter<GroupState> emit,
+  ) async {
+    try {
+      _webSocketDatasource ??= getIt<WebSocketDatasource>();
+
+      // Cancel existing subscriptions
+      await _wsMessageSubscription?.cancel();
+      await _wsStateSubscription?.cancel();
+
+      // Stop any existing polling
+      _pollingTimer?.cancel();
+
+      // Connect to WebSocket
+      await _webSocketDatasource!.connect(event.accessToken);
+
+      // Mark WebSocket as active
+      _useWebSocket = true;
+
+      // Subscribe to incoming messages (group messages come through the same stream)
+      _wsMessageSubscription = _webSocketDatasource!.messageStream.listen(
+        (message) {
+          // Convert to GroupMessage if it's for a group
+          // For now, we use polling as the primary source for group messages
+          // since WebSocket protocol needs to distinguish between DM and group messages
+        },
+        onError: (error) {
+          // ignore: avoid_print
+          print('🔌 Group WebSocket message stream error: $error');
+          _handleWebSocketFailure();
+        },
+      );
+
+      // Subscribe to connection state changes
+      _wsStateSubscription = _webSocketDatasource!.stateStream.listen((
+        wsState,
+      ) {
+        // ignore: avoid_print
+        print('🔌 Group WebSocket state changed: $wsState');
+        if (wsState == WebSocketState.disconnected && _useWebSocket) {
+          _handleWebSocketFailure();
+        }
+      });
+
+      // ignore: avoid_print
+      print('🔌 Group WebSocket connected successfully');
+    } catch (e) {
+      // ignore: avoid_print
+      print('🔌 Group WebSocket connection failed: $e');
+      _handleWebSocketFailure();
+    }
+  }
+
+  /// Handle WebSocket connection failure - fallback to polling
+  void _handleWebSocketFailure() {
+    if (!_useWebSocket) return; // Already in fallback mode
+
+    _useWebSocket = false;
+    // ignore: avoid_print
+    print('📡 Falling back to polling for group message delivery');
+
+    // Start polling if we have a group active
+    if (_activeGroupId != null) {
+      add(GroupStartPolling(groupId: _activeGroupId!));
+    }
+  }
+
+  /// Disconnect from WebSocket
+  Future<void> _onDisconnectWebSocket(
+    GroupDisconnectWebSocket event,
+    Emitter<GroupState> emit,
+  ) async {
+    await _wsMessageSubscription?.cancel();
+    await _wsStateSubscription?.cancel();
+    await _webSocketDatasource?.disconnect();
+    // ignore: avoid_print
+    print('🔌 Group WebSocket disconnected');
+  }
+
+  /// Subscribe to a group via WebSocket
+  Future<void> _onSubscribeWebSocket(
+    GroupSubscribeWebSocket event,
+    Emitter<GroupState> emit,
+  ) async {
+    if (_webSocketDatasource?.isConnected ?? false) {
+      try {
+        // Subscribe to group conversation
+        await _webSocketDatasource!.subscribeToConversation(event.groupId);
+        // ignore: avoid_print
+        print('🔌 Subscribed to group: ${event.groupId}');
+      } catch (e) {
+        // ignore: avoid_print
+        print('🔌 Failed to subscribe to group: $e');
+      }
+    }
+  }
+
   @override
   Future<void> close() {
     _pollingTimer?.cancel();
+    _wsMessageSubscription?.cancel();
+    _wsStateSubscription?.cancel();
+    _webSocketDatasource?.disconnect();
     return super.close();
   }
 }

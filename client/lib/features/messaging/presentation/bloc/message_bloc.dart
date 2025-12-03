@@ -346,6 +346,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   // WebSocket Handlers
   // ========================================================================
 
+  /// Subscription to WebSocket auth errors
+  StreamSubscription<dynamic>? _wsAuthErrorSubscription;
+
   /// Connect to WebSocket for real-time messaging
   Future<void> _onConnectWebSocket(
     MessageConnectWebSocket event,
@@ -357,9 +360,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       // Cancel existing subscriptions
       await _wsMessageSubscription?.cancel();
       await _wsStateSubscription?.cancel();
+      await _wsAuthErrorSubscription?.cancel();
+
+      // Stop any existing polling
+      _pollingTimer?.cancel();
 
       // Connect to WebSocket
       await _webSocketDatasource!.connect(event.accessToken);
+
+      // Mark WebSocket as active
+      _useWebSocket = true;
 
       // Subscribe to incoming messages
       _wsMessageSubscription = _webSocketDatasource!.messageStream.listen(
@@ -368,27 +378,57 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
         onError: (error) {
           // ignore: avoid_print
-          print('WebSocket message stream error: $error');
-          // Fall back to polling if WebSocket fails
-          _useWebSocket = false;
+          print('🔌 WebSocket message stream error: $error');
+          _handleWebSocketFailure();
         },
       );
 
       // Subscribe to connection state changes
-      _wsStateSubscription = _webSocketDatasource!.stateStream.listen((state) {
+      _wsStateSubscription = _webSocketDatasource!.stateStream.listen((
+        wsState,
+      ) {
         // ignore: avoid_print
-        print('WebSocket state changed: $state');
-        if (state == WebSocketState.disconnected && _useWebSocket) {
-          // Could trigger reconnection or fallback to polling
+        print('🔌 WebSocket state changed: $wsState');
+        if (wsState == WebSocketState.disconnected && _useWebSocket) {
+          _handleWebSocketFailure();
         }
       });
 
+      // Subscribe to auth errors (token expired)
+      _wsAuthErrorSubscription = _webSocketDatasource!.authErrorStream.listen((
+        error,
+      ) {
+        // ignore: avoid_print
+        print('🔌 WebSocket auth error: $error');
+        _handleWebSocketFailure();
+        // TODO: Trigger token refresh and reconnect
+      });
+
       // ignore: avoid_print
-      print('🔌 WebSocket connected successfully');
+      print('🔌 WebSocket connecting - waiting for auth response...');
     } catch (e) {
       // ignore: avoid_print
       print('🔌 WebSocket connection failed: $e');
-      _useWebSocket = false;
+      _handleWebSocketFailure();
+    }
+  }
+
+  /// Handle WebSocket connection failure - fallback to polling
+  void _handleWebSocketFailure() {
+    if (!_useWebSocket) return; // Already in fallback mode
+    
+    _useWebSocket = false;
+    // ignore: avoid_print
+    print('📡 Falling back to polling for message delivery');
+
+    // Start polling if we have a conversation active
+    if (_pollingConversationUserId != null) {
+      add(
+        MessageStartPolling(
+          conversationUserId: _pollingConversationUserId!,
+          conversationId: _pollingConversationId,
+        ),
+      );
     }
   }
 
@@ -446,6 +486,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     _messageStreamSubscription?.cancel();
     _wsMessageSubscription?.cancel();
     _wsStateSubscription?.cancel();
+    _wsAuthErrorSubscription?.cancel();
     _webSocketDatasource?.disconnect();
     return super.close();
   }
