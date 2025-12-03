@@ -53,7 +53,7 @@ data:
                         allow_origin_string_match:
                         - prefix: "*"
                         allow_methods: GET, PUT, DELETE, POST, OPTIONS
-                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout
+                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,authorization
                         max_age: "1728000"
                         expose_headers: custom-header-1,grpc-status,grpc-message
                   # Messaging service routes
@@ -70,7 +70,24 @@ data:
                         allow_origin_string_match:
                         - prefix: "*"
                         allow_methods: GET, PUT, DELETE, POST, OPTIONS
-                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout
+                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,authorization
+                        max_age: "1728000"
+                        expose_headers: custom-header-1,grpc-status,grpc-message
+                  # Presence service routes
+                  - match:
+                      prefix: "/guardyn.presence.PresenceService"
+                    route:
+                      cluster: presence_service
+                      timeout: 0s
+                      max_stream_duration:
+                        grpc_timeout_header_max: 0s
+                    typed_per_filter_config:
+                      envoy.filters.http.cors:
+                        "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                        allow_origin_string_match:
+                        - prefix: "*"
+                        allow_methods: GET, PUT, DELETE, POST, OPTIONS
+                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,authorization
                         max_age: "1728000"
                         expose_headers: custom-header-1,grpc-status,grpc-message
               http_filters:
@@ -114,3 +131,18 @@ data:
                   socket_address:
                     address: messaging-service.apps.svc.cluster.local
                     port_value: 50052
+      
+      - name: presence_service
+        connect_timeout: 0.25s
+        type: STRICT_DNS
+        http2_protocol_options: {}
+        lb_policy: ROUND_ROBIN
+        load_assignment:
+          cluster_name: presence_service
+          endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: presence-service.apps.svc.cluster.local
+                    port_value: 50053
