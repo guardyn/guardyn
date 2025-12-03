@@ -293,17 +293,38 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
     while let Some(msg_result) = messages.next().await {
         match msg_result {
             Ok(msg) => {
-                // Parse the message envelope
-                if let Ok(envelope) = serde_json::from_slice::<crate::nats::MessageEnvelope>(&msg.payload) {
+                // First, try to parse as WsMessage (from WebSocket handlers)
+                if let Ok(ws_message) = serde_json::from_slice::<WsMessage>(&msg.payload) {
+                    // Extract recipient from the subject: messages.user.{recipient_id}
+                    let subject_parts: Vec<&str> = msg.subject.as_str().split('.').collect();
+                    if subject_parts.len() >= 3 && subject_parts[1] == "user" {
+                        let recipient_id = subject_parts[2];
+                        
+                        debug!(
+                            recipient_id = %recipient_id,
+                            "Relaying WsMessage via WebSocket"
+                        );
+
+                        // Send to recipient's WebSocket connections
+                        state.connection_manager.send_to_user(recipient_id, ws_message).await;
+                    }
+                    
+                    // Acknowledge the message
+                    if let Err(e) = msg.ack().await {
+                        warn!("Failed to ack NATS message: {}", e);
+                    }
+                }
+                // Fallback: try to parse as MessageEnvelope (from gRPC handlers)
+                else if let Ok(envelope) = serde_json::from_slice::<crate::nats::MessageEnvelope>(&msg.payload) {
                     let recipient_id = &envelope.recipient_user_id;
                     
                     debug!(
                         message_id = %envelope.message_id,
                         recipient_id = %recipient_id,
-                        "Relaying message via WebSocket"
+                        "Relaying MessageEnvelope via WebSocket"
                     );
 
-                    // Create WebSocket message
+                    // Create WebSocket message from envelope
                     let ws_message = WsMessage::Message(super::messages::MessagePayload {
                         message_id: envelope.message_id.clone(),
                         sender_id: envelope.sender_user_id.clone(),
@@ -311,7 +332,9 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                         content: String::from_utf8_lossy(&envelope.encrypted_content).to_string(),
                         encrypted: true,
                         content_type: "text".to_string(),
-                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        timestamp: chrono::DateTime::from_timestamp(envelope.timestamp, 0)
+                            .map(|dt| dt.to_rfc3339())
+                            .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
                         client_message_id: None,
                     });
 
@@ -323,7 +346,7 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                         warn!("Failed to ack NATS message: {}", e);
                     }
                 } else {
-                    warn!("Failed to parse message envelope from NATS");
+                    warn!("Failed to parse message from NATS (neither WsMessage nor MessageEnvelope)");
                     // Still ack to avoid blocking
                     let _ = msg.ack().await;
                 }

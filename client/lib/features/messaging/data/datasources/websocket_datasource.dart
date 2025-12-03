@@ -169,10 +169,12 @@ class WebSocketDatasource {
 
     final message = {
       'type': 'send_message',
-      'recipient_id': recipientId,
-      'content': content,
-      'content_type': contentType,
-      'encrypted': encrypted,
+      'payload': {
+        'recipient_id': recipientId,
+        'content': content,
+        'content_type': contentType,
+        'encrypted': encrypted,
+      },
     };
 
     _send(message);
@@ -186,8 +188,10 @@ class WebSocketDatasource {
 
     final message = {
       'type': 'subscribe',
-      'subscription_type': 'conversation',
-      'target_id': conversationId,
+      'payload': {
+        'subscription_type': 'conversation',
+        'target_ids': [conversationId],
+      },
     };
 
     _send(message);
@@ -202,8 +206,10 @@ class WebSocketDatasource {
 
     final message = {
       'type': 'subscribe',
-      'subscription_type': 'presence',
-      'target_id': userId,
+      'payload': {
+        'subscription_type': 'presence',
+        'target_ids': [userId],
+      },
     };
 
     _send(message);
@@ -214,13 +220,17 @@ class WebSocketDatasource {
   Future<void> sendTypingIndicator({
     required String conversationId,
     required bool isTyping,
+    String? userId,
   }) async {
     if (!isConnected) return;
 
     final message = {
-      'type': 'typing_indicator',
-      'conversation_id': conversationId,
-      'is_typing': isTyping,
+      'type': 'typing',
+      'payload': {
+        'user_id': userId ?? '', // Server will use authenticated user if empty
+        'conversation_id': conversationId,
+        'is_typing': isTyping,
+      },
     };
 
     _send(message);
@@ -362,8 +372,14 @@ class WebSocketDatasource {
   }
 
   void _handleServerError(Map<String, dynamic> json) {
-    final error = json['error'] as String?;
-    _logger.e('WebSocket server error: $error');
+    // Server sends: {"type": "error", "payload": {"code": "...", "message": "..."}}
+    final payload = json['payload'] as Map<String, dynamic>?;
+    final code = payload?['code'] as String? ?? 'UNKNOWN';
+    final message = payload?['message'] as String? ?? 'Unknown error';
+    final context = payload?['context'] as String?;
+    _logger.e(
+      'WebSocket server error [$code]: $message${context != null ? ' (context: $context)' : ''}',
+    );
   }
 
   void _handleError(Object error) {
@@ -391,7 +407,9 @@ class WebSocketDatasource {
       if (isConnected) {
         _send({
           'type': 'ping',
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'payload': {
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          },
         });
       }
     });
