@@ -161,6 +161,7 @@ async fn stream_messages_e2ee(
                         delivery_status: DeliveryStatus::Delivered as i32,
                         is_deleted: false,
                         media_id: "".to_string(),
+                        x3dh_prekey: "".to_string(), // Empty for stored messages
                     };
 
                     // Send decrypted message to client
@@ -277,6 +278,7 @@ async fn stream_messages_e2ee(
                         delivery_status: DeliveryStatus::Delivered as i32,
                         is_deleted: false,
                         media_id: "".to_string(),
+                        x3dh_prekey: envelope.x3dh_prekey.clone().unwrap_or_default(),
                     };
 
                     if tx.send(Ok(message)).await.is_err() {

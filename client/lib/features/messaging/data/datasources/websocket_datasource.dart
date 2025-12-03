@@ -346,7 +346,13 @@ class WebSocketDatasource {
         recipientDeviceId: payload['recipient_device_id'] as String? ?? '',
         messageType: MessageType.text,
         textContent: content,
-        metadata: {'encrypted': isEncrypted.toString()},
+        metadata: {
+          'encrypted': isEncrypted.toString(),
+          // Include X3DH prekey if present (for first message in session)
+          if (payload['x3dh_prekey'] != null &&
+              (payload['x3dh_prekey'] as String).isNotEmpty)
+            'x3dh_prekey': payload['x3dh_prekey'] as String,
+        },
         timestamp: _parseTimestamp(payload['timestamp']),
         deliveryStatus: DeliveryStatus.delivered,
       );

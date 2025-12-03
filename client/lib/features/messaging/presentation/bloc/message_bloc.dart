@@ -222,11 +222,15 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
       // Decrypt message content if it's from another user (WebSocket messages arrive encrypted)
       if (!message.isSentByMe && message.textContent.isNotEmpty) {
+        // Get X3DH prekey data from message metadata (for first message)
+        final x3dhPrekey = message.metadata['x3dh_prekey'];
+        
         final decryptResult = await decryptMessage(
           DecryptMessageParams(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
             senderDeviceId: message.senderDeviceId,
+            x3dhPrekey: x3dhPrekey,
           ),
         );
 

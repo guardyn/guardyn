@@ -32,6 +32,7 @@ class SendMessageRequest extends $pb.GeneratedMessage {
     $1.Timestamp? clientTimestamp,
     $core.String? mediaId,
     $core.String? recipientUsername,
+    $core.String? x3dhPrekey,
   }) {
     final result = create();
     if (accessToken != null) result.accessToken = accessToken;
@@ -43,6 +44,7 @@ class SendMessageRequest extends $pb.GeneratedMessage {
     if (clientTimestamp != null) result.clientTimestamp = clientTimestamp;
     if (mediaId != null) result.mediaId = mediaId;
     if (recipientUsername != null) result.recipientUsername = recipientUsername;
+    if (x3dhPrekey != null) result.x3dhPrekey = x3dhPrekey;
     return result;
   }
 
@@ -72,6 +74,7 @@ class SendMessageRequest extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.create)
     ..aOS(8, _omitFieldNames ? '' : 'mediaId')
     ..aOS(9, _omitFieldNames ? '' : 'recipientUsername')
+    ..aOS(10, _omitFieldNames ? '' : 'x3dhPrekey')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -179,6 +182,17 @@ class SendMessageRequest extends $pb.GeneratedMessage {
   $core.bool hasRecipientUsername() => $_has(8);
   @$pb.TagNumber(9)
   void clearRecipientUsername() => $_clearField(9);
+
+  /// X3DH prekey data for first message (allows recipient to create responder session)
+  /// Base64-encoded X3DHPrekeyMessage containing: sender_identity_key, ephemeral_key, used_otpk_id
+  @$pb.TagNumber(10)
+  $core.String get x3dhPrekey => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set x3dhPrekey($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasX3dhPrekey() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearX3dhPrekey() => $_clearField(10);
 }
 
 enum SendMessageResponse_Result { success, error, notSet }
@@ -437,6 +451,7 @@ class Message extends $pb.GeneratedMessage {
     DeliveryStatus? deliveryStatus,
     $core.String? mediaId,
     $core.bool? isDeleted,
+    $core.String? x3dhPrekey,
   }) {
     final result = create();
     if (messageId != null) result.messageId = messageId;
@@ -452,6 +467,7 @@ class Message extends $pb.GeneratedMessage {
     if (deliveryStatus != null) result.deliveryStatus = deliveryStatus;
     if (mediaId != null) result.mediaId = mediaId;
     if (isDeleted != null) result.isDeleted = isDeleted;
+    if (x3dhPrekey != null) result.x3dhPrekey = x3dhPrekey;
     return result;
   }
 
@@ -487,6 +503,7 @@ class Message extends $pb.GeneratedMessage {
         enumValues: DeliveryStatus.values)
     ..aOS(12, _omitFieldNames ? '' : 'mediaId')
     ..aOB(13, _omitFieldNames ? '' : 'isDeleted')
+    ..aOS(14, _omitFieldNames ? '' : 'x3dhPrekey')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -632,6 +649,16 @@ class Message extends $pb.GeneratedMessage {
   $core.bool hasIsDeleted() => $_has(12);
   @$pb.TagNumber(13)
   void clearIsDeleted() => $_clearField(13);
+
+  /// X3DH prekey data for first message (allows recipient to create responder session)
+  @$pb.TagNumber(14)
+  $core.String get x3dhPrekey => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set x3dhPrekey($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasX3dhPrekey() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearX3dhPrekey() => $_clearField(14);
 }
 
 class GetMessagesRequest extends $pb.GeneratedMessage {

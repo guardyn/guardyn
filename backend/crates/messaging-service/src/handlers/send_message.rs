@@ -171,6 +171,11 @@ pub async fn send_message(
         recipient_user_id: request.recipient_user_id.clone(),
         encrypted_content: request.encrypted_content,
         timestamp: server_timestamp,
+        x3dh_prekey: if request.x3dh_prekey.is_empty() {
+            None
+        } else {
+            Some(request.x3dh_prekey)
+        },
     };
 
     if let Err(e) = nats.publish_message(&envelope).await {

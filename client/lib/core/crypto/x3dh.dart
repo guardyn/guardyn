@@ -402,3 +402,81 @@ class X3DHProtocol {
     );
   }
 }
+
+/// X3DH prekey message data to include with first encrypted message
+///
+/// This allows the recipient to derive the shared secret and
+/// create their Double Ratchet session as responder
+class X3DHPrekeyMessage {
+  /// Sender's identity public key (Ed25519)
+  final Uint8List senderIdentityKey;
+
+  /// Ephemeral public key used for X3DH (X25519)
+  final Uint8List ephemeralKey;
+
+  /// ID of the one-time prekey that was used (if any)
+  final int? usedOneTimePreKeyId;
+
+  X3DHPrekeyMessage({
+    required this.senderIdentityKey,
+    required this.ephemeralKey,
+    this.usedOneTimePreKeyId,
+  });
+
+  /// Serialize to bytes for transmission
+  Uint8List toBytes() {
+    // Format: identity_key (32) + ephemeral_key (32) + has_otpk (1) + otpk_id (4 if has_otpk)
+    final hasOtpk = usedOneTimePreKeyId != null;
+    final length = 32 + 32 + 1 + (hasOtpk ? 4 : 0);
+    final bytes = Uint8List(length);
+
+    bytes.setRange(0, 32, senderIdentityKey);
+    bytes.setRange(32, 64, ephemeralKey);
+    bytes[64] = hasOtpk ? 1 : 0;
+
+    if (hasOtpk) {
+      final byteData = ByteData.view(bytes.buffer);
+      byteData.setUint32(65, usedOneTimePreKeyId!, Endian.little);
+    }
+
+    return bytes;
+  }
+
+  /// Deserialize from bytes
+  factory X3DHPrekeyMessage.fromBytes(Uint8List bytes) {
+    if (bytes.length < 65) {
+      throw ProtocolException('Invalid X3DH prekey message length');
+    }
+
+    final senderIdentityKey = Uint8List.fromList(bytes.sublist(0, 32));
+    final ephemeralKey = Uint8List.fromList(bytes.sublist(32, 64));
+    final hasOtpk = bytes[64] == 1;
+
+    int? usedOneTimePreKeyId;
+    if (hasOtpk) {
+      if (bytes.length < 69) {
+        throw ProtocolException('Invalid X3DH prekey message: missing OTPK ID');
+      }
+      final byteData = ByteData.view(
+        Uint8List.fromList(bytes.sublist(65, 69)).buffer,
+      );
+      usedOneTimePreKeyId = byteData.getUint32(0, Endian.little);
+    }
+
+    return X3DHPrekeyMessage(
+      senderIdentityKey: senderIdentityKey,
+      ephemeralKey: ephemeralKey,
+      usedOneTimePreKeyId: usedOneTimePreKeyId,
+    );
+  }
+
+  /// Encode to base64 for inclusion in message metadata
+  String toBase64() {
+    return base64Encode(toBytes());
+  }
+
+  /// Decode from base64
+  factory X3DHPrekeyMessage.fromBase64(String encoded) {
+    return X3DHPrekeyMessage.fromBytes(base64Decode(encoded));
+  }
+}

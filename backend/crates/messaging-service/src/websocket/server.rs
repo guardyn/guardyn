@@ -325,6 +325,7 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                             .map(|dt| dt.to_rfc3339())
                             .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
                         client_message_id: None,
+                        x3dh_prekey: envelope.x3dh_prekey.clone(),
                     });
 
                     // Send to recipient's WebSocket connections

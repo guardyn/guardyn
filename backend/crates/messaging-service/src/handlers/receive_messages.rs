@@ -95,6 +95,7 @@ async fn stream_messages(
                         delivery_status: convert_delivery_status(&delivery_state.status),
                         is_deleted: false,
                         media_id: "".to_string(),
+                        x3dh_prekey: "".to_string(), // Empty for stored messages
                     };
 
                     // Send to client
@@ -192,6 +193,7 @@ async fn poll_nats_messages(
             delivery_status: DeliveryStatus::Delivered as i32,
             is_deleted: false,
             media_id: "".to_string(),
+            x3dh_prekey: envelope.x3dh_prekey.clone().unwrap_or_default(),
         };
 
         // Send message to client

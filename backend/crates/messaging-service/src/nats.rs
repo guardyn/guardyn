@@ -14,6 +14,9 @@ pub struct MessageEnvelope {
     pub recipient_user_id: String,
     pub encrypted_content: Vec<u8>,
     pub timestamp: i64,
+    /// X3DH prekey data for first message in session (Base64 encoded)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x3dh_prekey: Option<String>,
 }
 
 /// NATS client for message routing

@@ -95,6 +95,7 @@ const SendMessageRequest$json = {
       '5': 9,
       '10': 'recipientUsername'
     },
+    {'1': 'x3dh_prekey', '3': 10, '4': 1, '5': 9, '10': 'x3dhPrekey'},
   ],
 };
 
@@ -108,7 +109,7 @@ final $typed_data.Uint8List sendMessageRequestDescriptor = $convert.base64Decode
     '9pZBgGIAEoCVIPY2xpZW50TWVzc2FnZUlkEkQKEGNsaWVudF90aW1lc3RhbXAYByABKAsyGS5n'
     'dWFyZHluLmNvbW1vbi5UaW1lc3RhbXBSD2NsaWVudFRpbWVzdGFtcBIZCghtZWRpYV9pZBgIIA'
     'EoCVIHbWVkaWFJZBItChJyZWNpcGllbnRfdXNlcm5hbWUYCSABKAlSEXJlY2lwaWVudFVzZXJu'
-    'YW1l');
+    'YW1lEh8KC3gzZGhfcHJla2V5GAogASgJUgp4M2RoUHJla2V5');
 
 @$core.Deprecated('Use sendMessageResponseDescriptor instead')
 const SendMessageResponse$json = {
@@ -247,6 +248,7 @@ const Message$json = {
     },
     {'1': 'media_id', '3': 12, '4': 1, '5': 9, '10': 'mediaId'},
     {'1': 'is_deleted', '3': 13, '4': 1, '5': 8, '10': 'isDeleted'},
+    {'1': 'x3dh_prekey', '3': 14, '4': 1, '5': 9, '10': 'x3dhPrekey'},
   ],
 };
 
@@ -263,7 +265,8 @@ final $typed_data.Uint8List messageDescriptor = $convert.base64Decode(
     'cnZlcl90aW1lc3RhbXAYCiABKAsyGS5ndWFyZHluLmNvbW1vbi5UaW1lc3RhbXBSD3NlcnZlcl'
     'RpbWVzdGFtcBJKCg9kZWxpdmVyeV9zdGF0dXMYCyABKA4yIS5ndWFyZHluLm1lc3NhZ2luZy5E'
     'ZWxpdmVyeVN0YXR1c1IOZGVsaXZlcnlTdGF0dXMSGQoIbWVkaWFfaWQYDCABKAlSB21lZGlhSW'
-    'QSHQoKaXNfZGVsZXRlZBgNIAEoCFIJaXNEZWxldGVk');
+    'QSHQoKaXNfZGVsZXRlZBgNIAEoCFIJaXNEZWxldGVkEh8KC3gzZGhfcHJla2V5GA4gASgJUgp4'
+    'M2RoUHJla2V5');
 
 @$core.Deprecated('Use getMessagesRequestDescriptor instead')
 const GetMessagesRequest$json = {

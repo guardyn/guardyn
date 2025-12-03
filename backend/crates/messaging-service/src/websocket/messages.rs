@@ -131,6 +131,9 @@ pub struct MessagePayload {
     /// Client message ID if provided
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_message_id: Option<String>,
+    /// X3DH prekey data for first message in session (Base64 encoded)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x3dh_prekey: Option<String>,
 }
 
 /// Message sent confirmation

@@ -161,6 +161,7 @@ pub async fn send_group_message(
             recipient_user_id: member.user_id.clone(),
             encrypted_content: request.encrypted_content.clone(),
             timestamp: server_timestamp_millis / 1000, // Convert millis to seconds for NATS
+            x3dh_prekey: None, // Group messages don't use X3DH prekey
         };
 
         // Publish to NATS
