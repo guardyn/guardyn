@@ -161,7 +161,8 @@ class X3DHKeyBundle {
       'signed_pre_key': base64Encode(signedPreKey),
       'signed_pre_key_signature': base64Encode(signedPreKeySignature),
       'signed_pre_key_id': signedPreKeyId,
-      if (oneTimePreKey != null) 'one_time_pre_key': base64Encode(oneTimePreKey!),
+      if (oneTimePreKey != null)
+        'one_time_pre_key': base64Encode(oneTimePreKey!),
       if (oneTimePreKeyId != null) 'one_time_pre_key_id': oneTimePreKeyId,
     };
   }
@@ -194,9 +195,7 @@ class X3DHProtocol {
   });
 
   /// Initialize X3DH with new keys
-  static Future<X3DHProtocol> initialize({
-    int oneTimePreKeyCount = 100,
-  }) async {
+  static Future<X3DHProtocol> initialize({int oneTimePreKeyCount = 100}) async {
     final identity = await IdentityKeyPair.generate();
     final signedPreKey = await SignedPreKey.generate(
       identityKey: identity,
@@ -223,13 +222,15 @@ class X3DHProtocol {
       signedPreKeySignature: signedPreKey.signature,
       signedPreKeyId: signedPreKey.keyId,
       oneTimePreKey:
-          oneTimePreKeyIndex != null && oneTimePreKeyIndex < oneTimePreKeys.length
-              ? oneTimePreKeys[oneTimePreKeyIndex].publicKey
-              : null,
+          oneTimePreKeyIndex != null &&
+              oneTimePreKeyIndex < oneTimePreKeys.length
+          ? oneTimePreKeys[oneTimePreKeyIndex].publicKey
+          : null,
       oneTimePreKeyId:
-          oneTimePreKeyIndex != null && oneTimePreKeyIndex < oneTimePreKeys.length
-              ? oneTimePreKeys[oneTimePreKeyIndex].keyId
-              : null,
+          oneTimePreKeyIndex != null &&
+              oneTimePreKeyIndex < oneTimePreKeys.length
+          ? oneTimePreKeys[oneTimePreKeyIndex].keyId
+          : null,
     );
   }
 
@@ -243,7 +244,7 @@ class X3DHProtocol {
   ///
   /// Returns shared secret and ephemeral public key
   static Future<(Uint8List sharedSecret, Uint8List ephemeralPublicKey)>
-      initiateKeyAgreement(
+  initiateKeyAgreement(
     IdentityKeyPair localIdentity,
     X3DHKeyBundle remoteBundle,
   ) async {
@@ -261,7 +262,9 @@ class X3DHProtocol {
     final localIdentityPair = await algorithm.newKeyPairFromSeed(
       localIdentity.privateKey,
     );
-    final localEphemeralPair = await algorithm.newKeyPairFromSeed(ephemeralKeyPair.privateKey);
+    final localEphemeralPair = await algorithm.newKeyPairFromSeed(
+      ephemeralKeyPair.privateKey,
+    );
 
     // Remote public keys
     final remoteIdentityKey = SimplePublicKey(
@@ -299,8 +302,10 @@ class X3DHProtocol {
 
     // DH4 = DH(EKa, OPKb) - Optional, if one-time prekey available
     if (remoteBundle.oneTimePreKey != null) {
-      final remoteOneTimeKey =
-          SimplePublicKey(remoteBundle.oneTimePreKey!, type: KeyPairType.x25519);
+      final remoteOneTimeKey = SimplePublicKey(
+        remoteBundle.oneTimePreKey!,
+        type: KeyPairType.x25519,
+      );
       final dh4 = await algorithm.sharedSecretKey(
         keyPair: localEphemeralPair,
         remotePublicKey: remoteOneTimeKey,
@@ -423,11 +428,13 @@ class X3DHProtocol {
         'key_id': signedPreKey.keyId,
       },
       'one_time_pre_keys': oneTimePreKeys
-          .map((k) => {
-                'private': base64Encode(k.privateKey),
-                'public': base64Encode(k.publicKey),
-                'key_id': k.keyId,
-              })
+          .map(
+            (k) => {
+              'private': base64Encode(k.privateKey),
+              'public': base64Encode(k.publicKey),
+              'key_id': k.keyId,
+            },
+          )
           .toList(),
     };
   }
@@ -450,11 +457,13 @@ class X3DHProtocol {
         keyId: signedPreKeyData['key_id'],
       ),
       oneTimePreKeys: oneTimePreKeysData
-          .map((k) => OneTimePreKey(
-                privateKey: base64Decode(k['private']),
-                publicKey: base64Decode(k['public']),
-                keyId: k['key_id'],
-              ))
+          .map(
+            (k) => OneTimePreKey(
+              privateKey: base64Decode(k['private']),
+              publicKey: base64Decode(k['public']),
+              keyId: k['key_id'],
+            ),
+          )
           .toList(),
     );
   }
