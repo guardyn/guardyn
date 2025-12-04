@@ -117,10 +117,12 @@ graph LR
 
 | Key Type               | Algorithm | Lifetime    | Purpose                           |
 | ---------------------- | --------- | ----------- | --------------------------------- |
-| Identity Key (IK)      | Ed25519   | Permanent   | Long-term identity verification   |
+| Identity Key (IK)      | Ed25519*  | Permanent   | Long-term identity verification   |
 | Signed Pre-Key (SPK)   | X25519    | 1-4 weeks   | Medium-term key agreement         |
 | SPK Signature          | Ed25519   | Same as SPK | Proves SPK authenticity           |
 | One-Time Pre-Key (OPK) | X25519    | Single use  | Forward secrecy for first message |
+
+> **\*Important Note on Identity Keys:** The Identity Key is stored as Ed25519 for digital signatures, but for Diffie-Hellman operations it is converted to X25519 using **Birational Equivalence mapping** between the twisted Edwards curve (Ed25519) and Montgomery curve (X25519). This is the same approach used by Signal Protocol. In the Guardyn implementation, a separate X25519 key derived from the identity seed is used for DH operations.
 
 ### X3DH Protocol Flow
 
@@ -181,7 +183,7 @@ graph TD
 
     subgraph "Key Derivation"
         Concat["Concatenate: DH1 || DH2 || DH3 || DH4"]
-        HKDF["HKDF-SHA256"]
+        HKDF["HKDF-SHA256<br/>info = 'X3DH'"]
         SK["Shared Secret - 32 bytes"]
     end
 
@@ -194,6 +196,14 @@ graph TD
 
     style SK fill:#50C878,stroke:#333,stroke-width:2px
 ```
+
+> **HKDF Parameters:**
+>
+> - **Hash**: SHA-256
+> - **Salt**: None (empty)
+> - **IKM**: DH1 || DH2 || DH3 [|| DH4]
+> - **Info**: `"X3DH"` (ASCII bytes)
+> - **Output Length**: 32 bytes
 
 ---
 
@@ -494,6 +504,8 @@ Guardyn uses `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`:
 | AEAD      | AES-128-GCM | Message encryption |
 | Hash      | SHA-256     | Key derivation     |
 | Signature | Ed25519     | Authentication     |
+
+> **Note on AES Key Sizes:** MLS uses **AES-128-GCM** (128-bit keys) as specified in RFC 9420 for the `MLS_128_*` ciphersuites, which provides approximately 128 bits of security. In contrast, the Double Ratchet protocol for 1-on-1 messaging uses **AES-256-GCM** (256-bit keys), providing approximately 256 bits of security. Both are considered secure for current and near-future threats. The choice of AES-128 for MLS aligns with the standard ciphersuite definitions, while AES-256 for Double Ratchet provides an extra security margin for long-term message confidentiality.
 
 ---
 

@@ -309,10 +309,11 @@ class X3DHProtocol {
     }
 
     // Derive shared secret using HKDF
+    // IMPORTANT: info must be 'X3DH' to match Rust backend implementation
     final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
     final sharedSecret = await hkdf.deriveKey(
       secretKey: SecretKey(dhOutputs),
-      info: utf8.encode('guardyn-x3dh'),
+      info: utf8.encode('X3DH'),
       nonce: Uint8List(0),
     );
 
@@ -397,10 +398,11 @@ class X3DHProtocol {
     }
 
     // Derive shared secret using HKDF
+    // IMPORTANT: info must be 'X3DH' to match Rust backend implementation
     final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
     final sharedSecret = await hkdf.deriveKey(
       secretKey: SecretKey(dhOutputs),
-      info: utf8.encode('guardyn-x3dh'),
+      info: utf8.encode('X3DH'),
       nonce: Uint8List(0),
     );
 
