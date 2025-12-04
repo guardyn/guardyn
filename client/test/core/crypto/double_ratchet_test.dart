@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +79,37 @@ void main() {
       final bytes = original.toBytes();
       final restored = EncryptedMessage.fromBytes(bytes);
 
+      expect(restored.header.messageNumber, equals(original.header.messageNumber));
+      expect(restored.ciphertext, equals(original.ciphertext));
+    });
+
+    test('deserialization works with base64 decoded bytes (non-zero offset)', () async {
+      // This test verifies that fromBytes works correctly when the input
+      // bytes have a non-zero offset in their underlying buffer, which
+      // can happen with base64.decode() output
+      final keyPair = await X25519KeyPair.generate();
+      final header = MessageHeader(
+        dhPublicKey: keyPair.publicKey,
+        previousChainLength: 5,
+        messageNumber: 100,
+      );
+
+      final original = EncryptedMessage(
+        header: header,
+        ciphertext: Uint8List.fromList([1, 2, 3, 4, 5]),
+      );
+
+      final bytes = original.toBytes();
+
+      // Simulate base64 encode/decode cycle which may create non-zero offset
+      final base64Encoded = base64Encode(bytes);
+      final base64Decoded = base64Decode(base64Encoded);
+
+      // The decoded bytes should work correctly even if offset is non-zero
+      final restored = EncryptedMessage.fromBytes(base64Decoded);
+
+      expect(restored.header.dhPublicKey, equals(original.header.dhPublicKey));
+      expect(restored.header.previousChainLength, equals(original.header.previousChainLength));
       expect(restored.header.messageNumber, equals(original.header.messageNumber));
       expect(restored.ciphertext, equals(original.ciphertext));
     });

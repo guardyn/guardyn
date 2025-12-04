@@ -268,14 +268,20 @@ class EncryptedMessage {
   /// Uses Big-Endian (Network Byte Order) per RFC 1700
   factory EncryptedMessage.fromBytes(Uint8List bytes) {
     if (bytes.length < 4) {
-      throw ProtocolException('Message too short');
+      throw ProtocolException('Message too short: ${bytes.length} bytes');
     }
 
-    final byteData = ByteData.view(bytes.buffer);
+    // IMPORTANT: Use offsetInBytes to handle bytes created from base64.decode
+    // which may have non-zero offset in the underlying buffer
+    final byteData = ByteData.view(
+      bytes.buffer,
+      bytes.offsetInBytes,
+      bytes.lengthInBytes,
+    );
     final headerLen = byteData.getUint32(0, Endian.big);
 
     if (bytes.length < 4 + headerLen) {
-      throw ProtocolException('Invalid message format');
+      throw ProtocolException('Invalid message format: need ${4 + headerLen} bytes, got ${bytes.length}');
     }
 
     final header = MessageHeader.fromBytes(

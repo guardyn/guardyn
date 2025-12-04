@@ -143,7 +143,7 @@ class CryptoService {
       // Save updated state
       await _saveX3DHState();
       debugPrint(
-        '🔐 replenishOneTimePreKeys: complete, now have ${availableOneTimePreKeyCount} keys',
+        '🔐 replenishOneTimePreKeys: complete, now have $availableOneTimePreKeyCount keys',
       );
     } finally {
       _isReplenishing = false;
