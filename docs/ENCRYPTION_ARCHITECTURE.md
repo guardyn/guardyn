@@ -362,7 +362,7 @@ graph TB
         PT[Plaintext Message]
         MK[Message Key<br/>from Chain Ratchet]
         NONCE[Nonce<br/>12 bytes random]
-        AAD[Associated Data<br/>Header bytes]
+        AAD[Associated Data<br/>User-provided]
 
         PT --> AES[AES-256-GCM<br/>Authenticated Encryption]
         MK --> AES
@@ -425,6 +425,8 @@ The `EncryptedMessage` structure contains two top-level fields: `header` and `ci
 > **Note:** Integer fields (Header Length, Previous Chain Length, Message Number) are encoded in **Big-Endian (Network Byte Order)** per RFC 1700 for cross-platform compatibility.
 
 > **Security Note:** Each message uses a **cryptographically secure random 12-byte nonce** generated via `OsRng` (Rust) / `Random.secure()` (Dart). The nonce is prepended to the ciphertext, ensuring unique encryption even when the same message key is used (which should never happen in Double Ratchet, but defense-in-depth).
+
+> **Associated Data (AAD) Note:** The `associated_data` parameter is passed separately to `encrypt()`/`decrypt()` functions and is **not** automatically derived from the header. This allows flexibility in what data is authenticated. Recommended AAD values include: conversation ID or session metadata, header bytes (for binding ciphertext to its header), or application-specific context (e.g., message type, sender ID). Both sender and receiver must use the **identical AAD** for encryption and decryption, otherwise authentication will fail.
 
 ### X3DH Prekey Message Format
 
