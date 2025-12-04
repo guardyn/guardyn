@@ -1805,6 +1805,7 @@ name = "guardyn-crypto"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "curve25519-dalek",
  "ed25519-dalek",
  "guardyn-common",
  "hkdf",
