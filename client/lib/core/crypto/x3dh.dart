@@ -235,6 +235,12 @@ class X3DHProtocol {
 
   /// Perform X3DH key agreement as initiator (Alice)
   ///
+  /// X3DH computes:
+  /// - DH1 = DH(IKa, SPKb) - Alice's identity key with Bob's signed prekey
+  /// - DH2 = DH(EKa, IKb) - Alice's ephemeral key with Bob's identity key
+  /// - DH3 = DH(EKa, SPKb) - Alice's ephemeral key with Bob's signed prekey
+  /// - DH4 = DH(EKa, OPKb) - Alice's ephemeral key with Bob's one-time prekey (optional)
+  ///
   /// Returns shared secret and ephemeral public key
   static Future<(Uint8List sharedSecret, Uint8List ephemeralPublicKey)>
       initiateKeyAgreement(
@@ -246,36 +252,52 @@ class X3DHProtocol {
       throw ProtocolException('Invalid key bundle signature');
     }
 
-    // Generate ephemeral key pair
+    // Generate ephemeral key pair for this session
     final ephemeralKeyPair = await X25519KeyPair.generate();
 
-    // Perform 3 or 4 DH operations
     final algorithm = X25519();
 
-    // Convert Ed25519 identity key to X25519 for DH
-    // Note: In production, you'd store X25519 identity keys separately
-    // For simplicity, we use the ephemeral key for DH operations
+    // Create key pairs from seeds
+    final localIdentityPair = await algorithm.newKeyPairFromSeed(
+      localIdentity.privateKey,
+    );
     final localEphemeralPair = await algorithm.newKeyPairFromSeed(ephemeralKeyPair.privateKey);
 
-    // DH1 = DH(IKa, SPKb) - Using ephemeral as proxy for identity
-    // DH2 = DH(EKa, IKb) - Ephemeral with remote identity (converted)
-    // DH3 = DH(EKa, SPKb)
-    // DH4 = DH(EKa, OPKb) - Optional, if one-time prekey available
+    // Remote public keys
+    final remoteIdentityKey = SimplePublicKey(
+      remoteBundle.identityKey,
+      type: KeyPairType.x25519,
+    );
+    final remoteSignedPreKey = SimplePublicKey(
+      remoteBundle.signedPreKey,
+      type: KeyPairType.x25519,
+    );
 
-    final remoteSignedPreKey =
-        SimplePublicKey(remoteBundle.signedPreKey, type: KeyPairType.x25519);
+    // DH1 = DH(IKa, SPKb) - Alice's identity with Bob's signed prekey
+    final dh1 = await algorithm.sharedSecretKey(
+      keyPair: localIdentityPair,
+      remotePublicKey: remoteSignedPreKey,
+    );
 
-    // DH3: Ephemeral with signed pre-key
+    // DH2 = DH(EKa, IKb) - Alice's ephemeral with Bob's identity
+    final dh2 = await algorithm.sharedSecretKey(
+      keyPair: localEphemeralPair,
+      remotePublicKey: remoteIdentityKey,
+    );
+
+    // DH3 = DH(EKa, SPKb) - Alice's ephemeral with Bob's signed prekey
     final dh3 = await algorithm.sharedSecretKey(
       keyPair: localEphemeralPair,
       remotePublicKey: remoteSignedPreKey,
     );
 
-    // Combine DH outputs (simplified - in full implementation, combine all DHs)
+    // Combine DH outputs: DH1 || DH2 || DH3 [|| DH4]
     final dhOutputs = <int>[];
+    dhOutputs.addAll(await dh1.extractBytes());
+    dhOutputs.addAll(await dh2.extractBytes());
     dhOutputs.addAll(await dh3.extractBytes());
 
-    // If one-time prekey available, add DH4
+    // DH4 = DH(EKa, OPKb) - Optional, if one-time prekey available
     if (remoteBundle.oneTimePreKey != null) {
       final remoteOneTimeKey =
           SimplePublicKey(remoteBundle.oneTimePreKey!, type: KeyPairType.x25519);
@@ -302,6 +324,12 @@ class X3DHProtocol {
 
   /// Complete X3DH key agreement as responder (Bob)
   ///
+  /// X3DH computes (symmetric with initiator):
+  /// - DH1 = DH(SPKb, IKa) - Bob's signed prekey with Alice's identity key
+  /// - DH2 = DH(IKb, EKa) - Bob's identity key with Alice's ephemeral key
+  /// - DH3 = DH(SPKb, EKa) - Bob's signed prekey with Alice's ephemeral key
+  /// - DH4 = DH(OPKb, EKa) - Bob's one-time prekey with Alice's ephemeral key (optional)
+  ///
   /// Returns shared secret
   Future<Uint8List> completeKeyAgreement({
     required Uint8List remoteIdentityKey,
@@ -310,30 +338,57 @@ class X3DHProtocol {
   }) async {
     final algorithm = X25519();
 
-    // Get signed pre-key pair
-    final localSignedPreKeyPair =
-        await algorithm.newKeyPairFromSeed(signedPreKey.privateKey);
+    // Create key pairs from seeds
+    final localIdentityPair = await algorithm.newKeyPairFromSeed(
+      identityKey.privateKey,
+    );
+    final localSignedPreKeyPair = await algorithm.newKeyPairFromSeed(
+      signedPreKey.privateKey,
+    );
 
-    final remoteEphemeral =
-        SimplePublicKey(remoteEphemeralKey, type: KeyPairType.x25519);
+    // Remote public keys
+    final remoteIdentity = SimplePublicKey(
+      remoteIdentityKey,
+      type: KeyPairType.x25519,
+    );
+    final remoteEphemeral = SimplePublicKey(
+      remoteEphemeralKey,
+      type: KeyPairType.x25519,
+    );
 
-    // DH3: Signed pre-key with remote ephemeral
+    // DH1 = DH(SPKb, IKa) - Bob's signed prekey with Alice's identity
+    final dh1 = await algorithm.sharedSecretKey(
+      keyPair: localSignedPreKeyPair,
+      remotePublicKey: remoteIdentity,
+    );
+
+    // DH2 = DH(IKb, EKa) - Bob's identity with Alice's ephemeral
+    final dh2 = await algorithm.sharedSecretKey(
+      keyPair: localIdentityPair,
+      remotePublicKey: remoteEphemeral,
+    );
+
+    // DH3 = DH(SPKb, EKa) - Bob's signed prekey with Alice's ephemeral
     final dh3 = await algorithm.sharedSecretKey(
       keyPair: localSignedPreKeyPair,
       remotePublicKey: remoteEphemeral,
     );
 
+    // Combine DH outputs: DH1 || DH2 || DH3 [|| DH4]
     final dhOutputs = <int>[];
+    dhOutputs.addAll(await dh1.extractBytes());
+    dhOutputs.addAll(await dh2.extractBytes());
     dhOutputs.addAll(await dh3.extractBytes());
 
-    // If one-time prekey was used, add DH4
+    // DH4 = DH(OPKb, EKa) - Optional, if one-time prekey was used
     if (usedOneTimePreKeyId != null) {
       final otpk = oneTimePreKeys.firstWhere(
         (k) => k.keyId == usedOneTimePreKeyId,
         orElse: () => throw ProtocolException('One-time prekey not found'),
       );
-      final localOneTimeKeyPair =
-          await algorithm.newKeyPairFromSeed(otpk.privateKey);
+      final localOneTimeKeyPair = await algorithm.newKeyPairFromSeed(
+        otpk.privateKey,
+      );
       final dh4 = await algorithm.sharedSecretKey(
         keyPair: localOneTimeKeyPair,
         remotePublicKey: remoteEphemeral,

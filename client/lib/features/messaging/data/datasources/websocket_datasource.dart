@@ -77,6 +77,9 @@ class WebSocketDatasource {
 
   /// Connect to WebSocket server
   Future<void> connect(String accessToken) async {
+    // ignore: avoid_print
+    print('🔌 WebSocket connect() called, current state: $_state');
+    
     if (_state == WebSocketState.connected ||
         _state == WebSocketState.connecting) {
       // ignore: avoid_print
@@ -330,6 +333,14 @@ class WebSocketDatasource {
       _logger.d(
         'Received message: encrypted=$isEncrypted, contentLength=${content.length}',
       );
+
+      // Log X3DH prekey presence
+      final x3dhPrekey = payload['x3dh_prekey'] as String?;
+      if (x3dhPrekey != null && x3dhPrekey.isNotEmpty) {
+        _logger.i(
+          'Message contains X3DH prekey data (${x3dhPrekey.length} chars)',
+        );
+      }
 
       final model = MessageModel(
         messageId: payload['message_id'] as String? ?? '',

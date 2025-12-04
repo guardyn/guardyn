@@ -225,6 +225,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         // Get X3DH prekey data from message metadata (for first message)
         final x3dhPrekey = message.metadata['x3dh_prekey'];
         
+        // ignore: avoid_print
+        print(
+          '🔐 Decrypting message from ${message.senderUserId}, x3dhPrekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
+        );
+        
         final decryptResult = await decryptMessage(
           DecryptMessageParams(
             encryptedContent: message.textContent,
@@ -401,6 +406,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     MessageConnectWebSocket event,
     Emitter<MessageState> emit,
   ) async {
+    // ignore: avoid_print
+    print('🔌 MessageBloc: _onConnectWebSocket called');
     try {
       _webSocketDatasource ??= getIt<WebSocketDatasource>();
 
@@ -413,7 +420,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       _pollingTimer?.cancel();
 
       // Connect to WebSocket
+      // ignore: avoid_print
+      print('🔌 MessageBloc: calling _webSocketDatasource.connect()');
       await _webSocketDatasource!.connect(event.accessToken);
+      // ignore: avoid_print
+      print('🔌 MessageBloc: WebSocket connect() completed');
 
       // Mark WebSocket as active
       _useWebSocket = true;

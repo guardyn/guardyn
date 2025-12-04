@@ -164,6 +164,13 @@ pub async fn send_message(
     }
 
     // Publish to NATS for real-time delivery
+    let has_x3dh_prekey = !request.x3dh_prekey.is_empty();
+    tracing::debug!(
+        "Creating message envelope with x3dh_prekey: {} (len={})",
+        has_x3dh_prekey,
+        request.x3dh_prekey.len()
+    );
+    
     let envelope = MessageEnvelope {
         message_id: message_id.clone(),
         sender_user_id: sender_user_id.clone(),

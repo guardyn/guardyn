@@ -146,11 +146,15 @@ class MessageRepositoryImpl implements MessageRepository {
       if (currentUserId != null) {
         final decryptedMessages = <Message>[];
         for (final message in messages) {
+          // Extract X3DH prekey from message metadata (for first message in session)
+          final x3dhPrekey = message.metadata['x3dh_prekey'];
+          
           final decryptedContent = await _decryptMessage(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
             senderDeviceId: message.senderDeviceId,
             currentUserId: currentUserId,
+            x3dhPrekey: x3dhPrekey,
           );
           decryptedMessages.add(MessageModel(
             messageId: message.messageId,
@@ -200,11 +204,15 @@ class MessageRepositoryImpl implements MessageRepository {
       await for (final message in messageStream) {
         // E2EE: Decrypt received message
         if (currentUserId != null) {
+          // Extract X3DH prekey from message metadata (for first message in session)
+          final x3dhPrekey = message.metadata['x3dh_prekey'];
+          
           final decryptedContent = await _decryptMessage(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
             senderDeviceId: message.senderDeviceId,
             currentUserId: currentUserId,
+            x3dhPrekey: x3dhPrekey,
           );
           yield Right(MessageModel(
             messageId: message.messageId,
@@ -353,15 +361,27 @@ class MessageRepositoryImpl implements MessageRepository {
   }) async {
     String? x3dhPrekey;
     
+    // ignore: avoid_print
+    print(
+      '🔐 _encryptMessageWithPrekey: checking session for $recipientUserId:$recipientDeviceId',
+    );
+    // ignore: avoid_print
+    print('🔐 CryptoService initialized: ${cryptoService.isInitialized}');
+    
     // Check if E2EE session exists
     var session = await cryptoService.getSession(
       remoteUserId: recipientUserId,
       remoteDeviceId: recipientDeviceId,
     );
 
+    // ignore: avoid_print
+    print('🔐 Existing session: ${session != null}');
+
     // No session? Create one via X3DH key exchange
     if (session == null) {
       _logger.i('No E2EE session for $recipientUserId:$recipientDeviceId, initiating X3DH');
+      // ignore: avoid_print
+      print('🔐 No session found, creating new X3DH session...');
       try {
         final prekeyMessage = await _createE2ESessionWithPrekey(
           recipientUserId: recipientUserId,
@@ -374,14 +394,23 @@ class MessageRepositoryImpl implements MessageRepository {
         );
         // Get X3DH prekey data for first message
         x3dhPrekey = prekeyMessage?.toBase64();
+        // ignore: avoid_print
+        print(
+          '🔐 Session created, prekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
+        );
         _logger.i(
           'E2EE session created successfully, prekey: ${x3dhPrekey != null}',
         );
       } catch (e) {
+        // ignore: avoid_print
+        print('🔐 Failed to create E2EE session: $e');
         _logger.w('Failed to create E2EE session: $e. Sending plaintext.');
         // Fall back to plaintext if session creation fails
         return (plaintext, null);
       }
+    } else {
+      // ignore: avoid_print
+      print('🔐 Session already exists, no prekey needed');
     }
 
     // Encrypt with Double Ratchet
@@ -476,6 +505,11 @@ class MessageRepositoryImpl implements MessageRepository {
     required String currentUserId,
     String? x3dhPrekey,
   }) async {
+    // ignore: avoid_print
+    print(
+      '🔐 _decryptMessage: from $senderUserId, x3dhPrekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
+    );
+    
     if (encryptedContent.isEmpty) {
       return encryptedContent;
     }
@@ -488,6 +522,8 @@ class MessageRepositoryImpl implements MessageRepository {
 
     // If no session but we have X3DH prekey data, create responder session
     if (session == null && x3dhPrekey != null && x3dhPrekey.isNotEmpty) {
+      // ignore: avoid_print
+      print('🔐 No session found, creating responder session with X3DH prekey');
       _logger.i('Creating responder session with X3DH prekey data');
       try {
         await _createResponderSession(
@@ -562,7 +598,17 @@ class MessageRepositoryImpl implements MessageRepository {
     required String x3dhPrekey,
   }) async {
     try {
+      // Ensure X3DH is initialized
+      if (!cryptoService.isInitialized) {
+        _logger.w('X3DH not initialized, cannot create responder session');
+        throw Exception('X3DH not initialized');
+      }
+
+      _logger.d('Creating responder session for $senderUserId:$senderDeviceId');
       final prekeyMessage = X3DHPrekeyMessage.fromBase64(x3dhPrekey);
+      _logger.d(
+        'Parsed prekey message: identityKey=${prekeyMessage.senderIdentityKey.length} bytes, ephemeralKey=${prekeyMessage.ephemeralKey.length} bytes',
+      );
 
       await cryptoService.createSessionAsResponder(
         senderUserId: senderUserId,
@@ -571,8 +617,9 @@ class MessageRepositoryImpl implements MessageRepository {
         remoteEphemeralKey: prekeyMessage.ephemeralKey,
         usedOneTimePreKeyId: prekeyMessage.usedOneTimePreKeyId,
       );
+      _logger.i('Responder session created successfully for $senderUserId');
     } catch (e) {
-      _logger.e('Failed to parse X3DH prekey message: $e');
+      _logger.e('Failed to create responder session: $e');
       rethrow;
     }
   }

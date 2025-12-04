@@ -305,6 +305,7 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                         message_id = %envelope.message_id,
                         recipient_id = %recipient_id,
                         sender_id = %envelope.sender_user_id,
+                        has_x3dh_prekey = envelope.x3dh_prekey.is_some(),
                         "Relaying MessageEnvelope via WebSocket"
                     );
 
