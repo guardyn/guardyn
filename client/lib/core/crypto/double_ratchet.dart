@@ -5,6 +5,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
@@ -116,8 +117,12 @@ class _MessageKey {
   Future<Uint8List> encrypt(Uint8List plaintext, Uint8List associatedData) async {
     final algorithm = AesGcm.with256bits();
     final secretKey = SecretKey(key);
-    // Use zero nonce for compatibility with backend (in production, use random nonce)
-    final nonce = Uint8List(12);
+    
+    // Generate cryptographically secure random nonce (12 bytes)
+    final random = Random.secure();
+    final nonce = Uint8List.fromList(
+      List<int>.generate(12, (_) => random.nextInt(256)),
+    );
 
     final secretBox = await algorithm.encrypt(
       plaintext,
@@ -210,16 +215,18 @@ class MessageHeader {
   });
 
   /// Serialize header to bytes
+  /// Uses Big-Endian (Network Byte Order) per RFC 1700
   Uint8List toBytes() {
     final bytes = Uint8List(40);
     bytes.setRange(0, 32, dhPublicKey);
     final byteData = ByteData.view(bytes.buffer);
-    byteData.setUint32(32, previousChainLength, Endian.little);
-    byteData.setUint32(36, messageNumber, Endian.little);
+    byteData.setUint32(32, previousChainLength, Endian.big);
+    byteData.setUint32(36, messageNumber, Endian.big);
     return bytes;
   }
 
   /// Deserialize header from bytes
+  /// Uses Big-Endian (Network Byte Order) per RFC 1700
   factory MessageHeader.fromBytes(Uint8List bytes) {
     if (bytes.length < 40) {
       throw ProtocolException('Invalid header length');
@@ -227,8 +234,8 @@ class MessageHeader {
 
     final dhPublicKey = Uint8List.fromList(bytes.sublist(0, 32));
     final byteData = ByteData.view(Uint8List.fromList(bytes.sublist(32, 40)).buffer);
-    final previousChainLength = byteData.getUint32(0, Endian.little);
-    final messageNumber = byteData.getUint32(4, Endian.little);
+    final previousChainLength = byteData.getUint32(0, Endian.big);
+    final messageNumber = byteData.getUint32(4, Endian.big);
 
     return MessageHeader(
       dhPublicKey: dhPublicKey,
@@ -246,24 +253,26 @@ class EncryptedMessage {
   EncryptedMessage({required this.header, required this.ciphertext});
 
   /// Serialize message to bytes
+  /// Uses Big-Endian (Network Byte Order) per RFC 1700
   Uint8List toBytes() {
     final headerBytes = header.toBytes();
     final result = Uint8List(4 + headerBytes.length + ciphertext.length);
     final byteData = ByteData.view(result.buffer);
-    byteData.setUint32(0, headerBytes.length, Endian.little);
+    byteData.setUint32(0, headerBytes.length, Endian.big);
     result.setRange(4, 4 + headerBytes.length, headerBytes);
     result.setRange(4 + headerBytes.length, result.length, ciphertext);
     return result;
   }
 
   /// Deserialize message from bytes
+  /// Uses Big-Endian (Network Byte Order) per RFC 1700
   factory EncryptedMessage.fromBytes(Uint8List bytes) {
     if (bytes.length < 4) {
       throw ProtocolException('Message too short');
     }
 
     final byteData = ByteData.view(bytes.buffer);
-    final headerLen = byteData.getUint32(0, Endian.little);
+    final headerLen = byteData.getUint32(0, Endian.big);
 
     if (bytes.length < 4 + headerLen) {
       throw ProtocolException('Invalid message format');

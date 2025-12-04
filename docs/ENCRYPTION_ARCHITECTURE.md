@@ -101,7 +101,8 @@ graph LR
         B_OPK[One-Time Pre-Keys<br/>X25519<br/>Single-use]
     end
 
-    A_IK -.->|signs| A_EK
+    %% Note: Ephemeral Key (A_EK) is NOT signed - it's generated per-session
+    %% Only Bob's Signed Pre-Key is signed by his Identity Key
     B_IK -->|signs| B_SPK
     B_SPK --> B_SPK_Sig
 
@@ -350,6 +351,10 @@ graph TB
 | Previous Chain Length | 4 bytes      | Messages sent on previous chain     |
 | Message Number        | 4 bytes      | Message index in current chain      |
 | **Total**             | **40 bytes** | Header size                         |
+
+> **Note:** Integer fields (Previous Chain Length, Message Number) are encoded in **Big-Endian (Network Byte Order)** per RFC 1700 for cross-platform compatibility.
+
+> **Security Note:** Each message uses a **cryptographically secure random 12-byte nonce** generated via `OsRng` (Rust) / `Random.secure()` (Dart). The nonce is prepended to the ciphertext, ensuring unique encryption even when the same message key is used (which should never happen in Double Ratchet, but defense-in-depth).
 
 ---
 
