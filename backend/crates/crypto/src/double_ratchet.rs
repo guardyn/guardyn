@@ -8,6 +8,7 @@ use aes_gcm::{
 };
 use hkdf::Hkdf;
 use rand::rngs::OsRng;
+use rand::RngCore;
 use sha2::Sha256;
 use std::collections::HashMap;
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
@@ -63,7 +64,11 @@ impl MessageKey {
     /// Encrypt plaintext with AES-256-GCM
     fn encrypt(&self, plaintext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
         let cipher = Aes256Gcm::new((&self.key).into());
-        let nonce = Nonce::from_slice(&[0u8; 12]); // In production, use random nonce
+        
+        // Generate cryptographically secure random nonce (12 bytes)
+        let mut nonce_bytes = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
 
         let mut ciphertext = cipher
             .encrypt(nonce, aes_gcm::aead::Payload { msg: plaintext, aad: associated_data })
@@ -132,8 +137,9 @@ impl MessageHeader {
     fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(self.dh_public_key.as_bytes());
-        bytes.extend_from_slice(&self.previous_chain_length.to_le_bytes());
-        bytes.extend_from_slice(&self.message_number.to_le_bytes());
+        // Use Big-Endian (Network Byte Order) per RFC 1700
+        bytes.extend_from_slice(&self.previous_chain_length.to_be_bytes());
+        bytes.extend_from_slice(&self.message_number.to_be_bytes());
         bytes
     }
 
@@ -148,11 +154,12 @@ impl MessageHeader {
 
         let mut prev_chain_bytes = [0u8; 4];
         prev_chain_bytes.copy_from_slice(&bytes[32..36]);
-        let previous_chain_length = u32::from_le_bytes(prev_chain_bytes);
+        // Use Big-Endian (Network Byte Order) per RFC 1700
+        let previous_chain_length = u32::from_be_bytes(prev_chain_bytes);
 
         let mut msg_num_bytes = [0u8; 4];
         msg_num_bytes.copy_from_slice(&bytes[36..40]);
-        let message_number = u32::from_le_bytes(msg_num_bytes);
+        let message_number = u32::from_be_bytes(msg_num_bytes);
 
         Ok(Self {
             dh_public_key,
@@ -172,7 +179,8 @@ impl EncryptedMessage {
     pub fn to_bytes(&self) -> Vec<u8> {
         let header_bytes = self.header.to_bytes();
         let mut result = Vec::new();
-        result.extend_from_slice(&(header_bytes.len() as u32).to_le_bytes());
+        // Use Big-Endian (Network Byte Order) per RFC 1700
+        result.extend_from_slice(&(header_bytes.len() as u32).to_be_bytes());
         result.extend_from_slice(&header_bytes);
         result.extend_from_slice(&self.ciphertext);
         result
@@ -185,7 +193,8 @@ impl EncryptedMessage {
 
         let mut header_len_bytes = [0u8; 4];
         header_len_bytes.copy_from_slice(&bytes[..4]);
-        let header_len = u32::from_le_bytes(header_len_bytes) as usize;
+        // Use Big-Endian (Network Byte Order) per RFC 1700
+        let header_len = u32::from_be_bytes(header_len_bytes) as usize;
 
         if bytes.len() < 4 + header_len {
             return Err(CryptoError::Protocol("Invalid message format".to_string()));
