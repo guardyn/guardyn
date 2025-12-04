@@ -261,7 +261,10 @@ class X3DHProtocol {
   });
 
   /// Initialize X3DH with new keys
-  static Future<X3DHProtocol> initialize({int oneTimePreKeyCount = 100}) async {
+  /// 
+  /// Note: Reduced default oneTimePreKeyCount to 10 for faster initialization.
+  /// In production, keys can be replenished in background after login.
+  static Future<X3DHProtocol> initialize({int oneTimePreKeyCount = 10}) async {
     final identity = await IdentityKeyPair.generate();
     final signedPreKey = await SignedPreKey.generate(
       identityKey: identity,
@@ -271,6 +274,10 @@ class X3DHProtocol {
     final oneTimePreKeys = <OneTimePreKey>[];
     for (int i = 0; i < oneTimePreKeyCount; i++) {
       oneTimePreKeys.add(await OneTimePreKey.generate(i + 1));
+      // Yield to allow UI to remain responsive
+      if (i % 5 == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
     }
 
     return X3DHProtocol(

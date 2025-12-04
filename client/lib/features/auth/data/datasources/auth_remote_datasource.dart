@@ -178,7 +178,9 @@ class AuthRemoteDatasource {
     // Initialize X3DH if not already done
     if (!cryptoService.isInitialized) {
       logger.i('Initializing X3DH protocol for key bundle generation');
-      await cryptoService.initializeX3DH(oneTimePreKeyCount: 100);
+      // Use 10 one-time pre-keys for faster initialization (MVP)
+      // More keys can be replenished in background after login
+      await cryptoService.initializeX3DH(oneTimePreKeyCount: 10);
     }
 
     // Export real cryptographic key bundle
