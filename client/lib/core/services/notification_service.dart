@@ -10,58 +10,103 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notifications =
-      FlutterLocalNotificationsPlugin();
+  FlutterLocalNotificationsPlugin? _notifications;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isInitialized = false;
+  bool _initializationFailed = false;
+
+  /// Check if notifications are supported on current platform
+  bool get _isSupported {
+    if (kIsWeb) return false;
+    return Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isLinux;
+  }
 
   /// Initialize the notification service
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized || _initializationFailed) return;
 
-    // Android settings
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    // iOS/macOS settings
-    const darwinSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
-    // Linux settings
-    final linuxSettings = LinuxInitializationSettings(
-      defaultActionName: 'Open',
-      defaultIcon: AssetsLinuxIcon('assets/images/logo.svg'),
-    );
-
-    final initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: darwinSettings,
-      macOS: darwinSettings,
-      linux: linuxSettings,
-    );
-
-    await _notifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
-
-    // Request permissions on Android 13+
-    if (!kIsWeb && Platform.isAndroid) {
-      await _notifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+    // Skip initialization on unsupported platforms
+    if (!_isSupported) {
+      debugPrint(
+        'NotificationService: Notifications not supported on this platform',
+      );
+      _isInitialized = true;
+      return;
     }
 
-    _isInitialized = true;
+    try {
+      _notifications = FlutterLocalNotificationsPlugin();
+
+      // Android settings
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
+
+      // iOS/macOS settings
+      const darwinSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+
+      // Linux settings
+      final linuxSettings = LinuxInitializationSettings(
+        defaultActionName: 'Open',
+        defaultIcon: AssetsLinuxIcon('assets/images/logo.svg'),
+      );
+
+      final initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: darwinSettings,
+        macOS: darwinSettings,
+        linux: linuxSettings,
+      );
+
+      final initialized = await _notifications!.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
+
+      if (initialized != true) {
+        debugPrint('NotificationService: Plugin initialization returned false');
+        _initializationFailed = true;
+        _notifications = null;
+        return;
+      }
+
+      // Request permissions on Android 13+
+      if (Platform.isAndroid) {
+        try {
+          await _notifications!
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.requestNotificationsPermission();
+        } catch (e) {
+          debugPrint(
+            'NotificationService: Failed to request Android permissions: $e',
+          );
+          // Continue - notifications might still work
+        }
+      }
+
+      _isInitialized = true;
+      debugPrint('NotificationService: Initialized successfully');
+    } catch (e, stackTrace) {
+      debugPrint('NotificationService: Initialization failed: $e');
+      debugPrint('Stack trace: $stackTrace');
+      _initializationFailed = true;
+      _notifications = null;
+      // Don't rethrow - app should work without notifications
+    }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap - can navigate to specific conversation
-    // ignore: avoid_print
-    print('Notification tapped: ${response.payload}');
+    debugPrint('Notification tapped: ${response.payload}');
   }
 
   /// Show a message notification with sound
@@ -70,17 +115,19 @@ class NotificationService {
     required String messagePreview,
     String? conversationId,
   }) async {
-    if (!_isInitialized) await initialize();
+    if (!_isInitialized && !_initializationFailed) await initialize();
 
     // Play notification sound
     await _playNotificationSound();
 
-    // Show system notification
-    await _showSystemNotification(
-      title: senderName,
-      body: messagePreview,
-      payload: conversationId,
-    );
+    // Show system notification (if available)
+    if (_notifications != null) {
+      await _showSystemNotification(
+        title: senderName,
+        body: messagePreview,
+        payload: conversationId,
+      );
+    }
   }
 
   /// Play notification sound
@@ -89,8 +136,7 @@ class NotificationService {
       await _audioPlayer.play(AssetSource('sounds/notification.mp3'));
     } catch (e) {
       // Silently fail if audio playback fails
-      // ignore: avoid_print
-      print('Failed to play notification sound: $e');
+      debugPrint('Failed to play notification sound: $e');
     }
   }
 
@@ -100,6 +146,8 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    if (_notifications == null) return;
+
     const androidDetails = AndroidNotificationDetails(
       'messages',
       'Messages',
@@ -128,13 +176,17 @@ class NotificationService {
       linux: linuxDetails,
     );
 
-    await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      notificationDetails,
-      payload: payload,
-    );
+    try {
+      await _notifications!.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        notificationDetails,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('Failed to show notification: $e');
+    }
   }
 
   /// Dispose resources
