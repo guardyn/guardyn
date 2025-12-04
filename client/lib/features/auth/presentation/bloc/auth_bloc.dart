@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
@@ -13,6 +14,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUser loginUser;
   final LogoutUser logoutUser;
   final AuthRepository authRepository;
+  final CryptoService cryptoService;
   final Logger logger = Logger();
 
   AuthBloc({
@@ -20,11 +22,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.loginUser,
     required this.logoutUser,
     required this.authRepository,
+    required this.cryptoService,
   }) : super(AuthInitial()) {
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthCheckStatus>(_onCheckStatus);
+  }
+
+  /// Trigger background key replenishment after successful auth
+  void _triggerBackgroundKeyReplenishment() {
+    // Fire and forget - don't await, let it run in background
+    Future.microtask(() async {
+      try {
+        final newKeys = await cryptoService
+            .replenishOneTimePreKeysInBackground();
+        if (newKeys.isNotEmpty) {
+          logger.i(
+            'Generated ${newKeys.length} new one-time pre-keys in background',
+          );
+          // TODO: Upload new keys to server when API is available
+        }
+      } catch (e) {
+        logger.w('Background key replenishment failed: $e');
+        // Non-fatal, keys can be replenished later
+      }
+    });
   }
 
   Future<void> _onRegisterRequested(
@@ -40,6 +63,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       logger.i('Registration successful: ${user.userId}');
       emit(AuthAuthenticated(user));
+      
+      // Trigger background key replenishment after successful registration
+      _triggerBackgroundKeyReplenishment();
     } on AuthException catch (e) {
       logger.e('Registration failed: ${e.message}');
       emit(AuthError(e.message));
@@ -61,6 +87,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       logger.i('Login successful: ${user.userId}');
       emit(AuthAuthenticated(user));
+      
+      // Trigger background key replenishment after successful login
+      _triggerBackgroundKeyReplenishment();
     } on AuthException catch (e) {
       logger.e('Login failed: ${e.message}');
       emit(AuthError(e.message));
