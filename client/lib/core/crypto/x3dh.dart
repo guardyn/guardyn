@@ -2,12 +2,17 @@
 ///
 /// Based on Signal Protocol specification
 /// Compatible with Guardyn backend Rust implementation
+///
+/// Key conversion: Ed25519 identity keys are converted to X25519 for DH operations
+/// using the birational equivalence between twisted Edwards curve (Ed25519) and
+/// Montgomery curve (Curve25519/X25519). This is the same approach used by Signal Protocol.
 library;
 
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:pinenacl/tweetnacl.dart' show TweetNaClExt;
 
 import 'crypto_exceptions.dart';
 import 'double_ratchet.dart';
@@ -63,6 +68,37 @@ class IdentityKeyPair {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Convert Ed25519 public key to X25519 for Diffie-Hellman operations.
+  ///
+  /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+  /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+  Uint8List toX25519PublicKey() {
+    final x25519Pk = Uint8List(32);
+    // Use TweetNaClExt's crypto_sign_ed25519_pk_to_x25519_pk
+    TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk(x25519Pk, publicKey);
+    return x25519Pk;
+  }
+
+  /// Convert Ed25519 signing key to X25519 StaticSecret for Diffie-Hellman operations.
+  ///
+  /// The Ed25519 secret key (64 bytes = 32 byte seed + 32 byte public) needs to be
+  /// converted to X25519 secret key (32 bytes) using proper scalar derivation.
+  ///
+  /// Note: The Ed25519 seed (first 32 bytes) is hashed with SHA-512 to get the
+  /// Ed25519 scalar. For X25519, we need to apply the same clamping as X25519.
+  Uint8List toX25519SecretKey() {
+    // Ed25519 uses: scalar = SHA512(seed)[0:32] with clamping
+    // For X25519 conversion, we need the full 64-byte Ed25519 secret key
+    // which is: seed (32 bytes) + public key (32 bytes)
+    final ed25519Sk = Uint8List(64);
+    ed25519Sk.setRange(0, 32, privateKey);
+    ed25519Sk.setRange(32, 64, publicKey);
+
+    final x25519Sk = Uint8List(32);
+    TweetNaClExt.crypto_sign_ed25519_sk_to_x25519_sk(x25519Sk, ed25519Sk);
+    return x25519Sk;
   }
 }
 
@@ -182,6 +218,17 @@ class X3DHKeyBundle {
   }
 }
 
+/// Convert Ed25519 public key to X25519 using birational equivalence mapping.
+///
+/// This is a helper function for X3DH protocol that converts Ed25519 identity
+/// public keys (used for signatures) to X25519 public keys (used for DH).
+/// Uses the standard conversion from twisted Edwards to Montgomery curve.
+Uint8List _ed25519PublicToX25519(Uint8List ed25519PublicKey) {
+  final x25519Pk = Uint8List(32);
+  TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk(x25519Pk, ed25519PublicKey);
+  return x25519Pk;
+}
+
 /// X3DH protocol implementation
 class X3DHProtocol {
   final IdentityKeyPair identityKey;
@@ -242,6 +289,9 @@ class X3DHProtocol {
   /// - DH3 = DH(EKa, SPKb) - Alice's ephemeral key with Bob's signed prekey
   /// - DH4 = DH(EKa, OPKb) - Alice's ephemeral key with Bob's one-time prekey (optional)
   ///
+  /// Note: Ed25519 identity keys are converted to X25519 using birational equivalence
+  /// mapping between twisted Edwards curve and Montgomery curve. This is the Signal Protocol approach.
+  ///
   /// Returns shared secret and ephemeral public key
   static Future<(Uint8List sharedSecret, Uint8List ephemeralPublicKey)>
   initiateKeyAgreement(
@@ -258,17 +308,24 @@ class X3DHProtocol {
 
     final algorithm = X25519();
 
-    // Create key pairs from seeds
+    // Convert Ed25519 identity keys to X25519 for DH operations
+    // This uses birational equivalence mapping between curves
+    final localX25519Secret = localIdentity.toX25519SecretKey();
+    final remoteX25519Identity = _ed25519PublicToX25519(
+      remoteBundle.identityKey,
+    );
+
+    // Create X25519 key pairs
     final localIdentityPair = await algorithm.newKeyPairFromSeed(
-      localIdentity.privateKey,
+      localX25519Secret,
     );
     final localEphemeralPair = await algorithm.newKeyPairFromSeed(
       ephemeralKeyPair.privateKey,
     );
 
-    // Remote public keys
+    // Remote public keys (signed prekey and one-time prekey are already X25519)
     final remoteIdentityKey = SimplePublicKey(
-      remoteBundle.identityKey,
+      remoteX25519Identity,
       type: KeyPairType.x25519,
     );
     final remoteSignedPreKey = SimplePublicKey(
@@ -336,6 +393,9 @@ class X3DHProtocol {
   /// - DH3 = DH(SPKb, EKa) - Bob's signed prekey with Alice's ephemeral key
   /// - DH4 = DH(OPKb, EKa) - Bob's one-time prekey with Alice's ephemeral key (optional)
   ///
+  /// Note: Ed25519 identity keys are converted to X25519 using birational equivalence
+  /// mapping between twisted Edwards curve and Montgomery curve. This is the Signal Protocol approach.
+  ///
   /// Returns shared secret
   Future<Uint8List> completeKeyAgreement({
     required Uint8List remoteIdentityKey,
@@ -344,17 +404,21 @@ class X3DHProtocol {
   }) async {
     final algorithm = X25519();
 
-    // Create key pairs from seeds
+    // Convert Ed25519 identity keys to X25519 for DH operations
+    final localX25519Secret = identityKey.toX25519SecretKey();
+    final remoteX25519Identity = _ed25519PublicToX25519(remoteIdentityKey);
+
+    // Create X25519 key pairs
     final localIdentityPair = await algorithm.newKeyPairFromSeed(
-      identityKey.privateKey,
+      localX25519Secret,
     );
     final localSignedPreKeyPair = await algorithm.newKeyPairFromSeed(
       signedPreKey.privateKey,
     );
 
-    // Remote public keys
+    // Remote public keys (ephemeral key is already X25519)
     final remoteIdentity = SimplePublicKey(
-      remoteIdentityKey,
+      remoteX25519Identity,
       type: KeyPairType.x25519,
     );
     final remoteEphemeral = SimplePublicKey(

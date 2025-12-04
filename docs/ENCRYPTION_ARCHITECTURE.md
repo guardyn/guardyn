@@ -122,7 +122,13 @@ graph LR
 | SPK Signature          | Ed25519   | Same as SPK | Proves SPK authenticity           |
 | One-Time Pre-Key (OPK) | X25519    | Single use  | Forward secrecy for first message |
 
-> **\*Important Note on Identity Keys:** The Identity Key is stored as Ed25519 for digital signatures, but for Diffie-Hellman operations it is converted to X25519 using **Birational Equivalence mapping** between the twisted Edwards curve (Ed25519) and Montgomery curve (X25519). This is the same approach used by Signal Protocol. In the Guardyn implementation, a separate X25519 key derived from the identity seed is used for DH operations.
+> **\*Important Note on Identity Keys:** The Identity Key is stored as Ed25519 for digital signatures, but for Diffie-Hellman operations it is converted to X25519 using **Birational Equivalence mapping** between the twisted Edwards curve (Ed25519) and Montgomery curve (X25519). This is the same approach used by Signal Protocol.
+>
+> **Conversion Details:**
+> - **Public key conversion:** Uses the formula `X_mont = (1 + Y_ed) / (1 - Y_ed) mod p` where `Y_ed` is the Ed25519 y-coordinate
+> - **Secret key conversion:** The Ed25519 seed is hashed with SHA-512, then the first 32 bytes are clamped for X25519 use
+> - **Rust implementation:** Uses `ed25519_dalek::VerifyingKey::to_montgomery()` and `SigningKey::to_scalar_bytes()`
+> - **Dart implementation:** Uses `pinenacl` library's `TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk()` and `crypto_sign_ed25519_sk_to_x25519_sk()`
 
 ### X3DH Protocol Flow
 

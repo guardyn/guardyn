@@ -47,6 +47,7 @@ dependencies:
   # E2EE Cryptography
   cryptography: ^2.7.0
   pointycastle: ^3.7.3
+  pinenacl: ^0.6.0  # For Ed25519 ↔ X25519 key conversion
 
   # SVG Support
   flutter_svg: ^2.0.9

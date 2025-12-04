@@ -1,6 +1,10 @@
 /// X3DH (Extended Triple Diffie-Hellman) key agreement protocol
 ///
 /// Used for initial key exchange in 1-on-1 messaging
+///
+/// Key conversion: Ed25519 identity keys are converted to X25519 for DH operations
+/// using the birational equivalence between twisted Edwards curve (Ed25519) and
+/// Montgomery curve (Curve25519/X25519). This is the same approach used by Signal Protocol.
 use crate::{CryptoError, Result};
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
@@ -52,9 +56,27 @@ impl IdentityKeyPair {
         Ok(())
     }
 
-    /// Export public key bytes
+    /// Export public key bytes (Ed25519 format for signatures)
     pub fn public_bytes(&self) -> Vec<u8> {
         self.public.to_bytes().to_vec()
+    }
+
+    /// Convert Ed25519 public key to X25519 for Diffie-Hellman operations.
+    ///
+    /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+    /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+    pub fn to_x25519_public(&self) -> X25519PublicKey {
+        let montgomery = self.public.to_montgomery();
+        X25519PublicKey::from(montgomery.to_bytes())
+    }
+
+    /// Convert Ed25519 signing key to X25519 StaticSecret for Diffie-Hellman operations.
+    ///
+    /// The scalar bytes from Ed25519 signing key can be directly used as X25519 secret
+    /// because both use the same underlying curve25519 scalar multiplication.
+    pub fn to_x25519_secret(&self) -> StaticSecret {
+        let scalar_bytes = self.secret.to_scalar_bytes();
+        StaticSecret::from(scalar_bytes)
     }
 }
 
@@ -207,35 +229,39 @@ impl X3DHProtocol {
     /// Perform 4-DH key agreement as initiator (Alice)
     ///
     /// Inputs:
-    /// - local_identity_key: Alice's long-term identity key
-    /// - local_ephemeral_key: Alice's ephemeral key (generated for this exchange)
+    /// - local_identity: Alice's long-term identity key pair (Ed25519, converted to X25519 for DH)
     /// - peer_bundle: Bob's public key bundle
-    /// - one_time_key_id: ID of the one-time pre-key to use (if available)
+    /// - use_one_time_key: Whether to use a one-time pre-key (if available)
     ///
-    /// Returns: 32-byte shared secret
+    /// Returns: (32-byte shared secret, ephemeral public key to send to peer)
     pub fn initiate_key_agreement(
-        local_identity_secret: &StaticSecret,
+        local_identity: &IdentityKeyPair,
         peer_bundle: &X3DHKeyBundle,
         use_one_time_key: bool,
     ) -> Result<(Vec<u8>, X25519PublicKey)> {
-        // Parse peer's keys
-        let peer_identity = x25519_public_from_bytes(&peer_bundle.identity_key)?;
+        // Convert peer's Ed25519 identity key to X25519 for DH
+        let peer_identity = ed25519_public_to_x25519(&peer_bundle.identity_key)?;
         let peer_signed_pre_key = x25519_public_from_bytes(&peer_bundle.signed_pre_key)?;
 
-        // Verify signed pre-key signature
+        // Verify signed pre-key signature (using Ed25519)
         IdentityKeyPair::verify(
             &peer_bundle.identity_key,
             &peer_bundle.signed_pre_key,
             &peer_bundle.signed_pre_key_signature,
         )?;
 
+        // Convert local Ed25519 identity key to X25519 for DH operations
+        let local_identity_x25519 = local_identity.to_x25519_secret();
+
         // Generate ephemeral key for this exchange
         let ephemeral_secret = StaticSecret::random_from_rng(OsRng);
-        let ephemeral_public = X25519PublicKey::from(&ephemeral_secret);        // Perform 4-DH:
-        // DH1 = DH(IK_A, SPK_B)
-        let dh1 = local_identity_secret.diffie_hellman(&peer_signed_pre_key);
+        let ephemeral_public = X25519PublicKey::from(&ephemeral_secret);
 
-        // DH2 = DH(EK_A, IK_B)
+        // Perform 4-DH:
+        // DH1 = DH(IK_A, SPK_B) - Alice's identity (converted to X25519) with Bob's signed prekey
+        let dh1 = local_identity_x25519.diffie_hellman(&peer_signed_pre_key);
+
+        // DH2 = DH(EK_A, IK_B) - Alice's ephemeral with Bob's identity (converted to X25519)
         let dh2 = ephemeral_secret.diffie_hellman(&peer_identity);
 
         // DH3 = DH(EK_A, SPK_B)
@@ -266,8 +292,8 @@ impl X3DHProtocol {
     ///
     /// Inputs:
     /// - key_material: Bob's key material (identity, signed pre-key, one-time keys)
-    /// - peer_identity_public: Alice's identity public key
-    /// - peer_ephemeral_public: Alice's ephemeral public key
+    /// - peer_identity_bytes: Alice's identity public key (Ed25519 format)
+    /// - peer_ephemeral_bytes: Alice's ephemeral public key (X25519 format)
     /// - one_time_key_id: Which one-time key was used (if any)
     ///
     /// Returns: 32-byte shared secret
@@ -277,19 +303,19 @@ impl X3DHProtocol {
         peer_ephemeral_bytes: &[u8],
         one_time_key_id: Option<u32>,
     ) -> Result<Vec<u8>> {
-        let peer_identity = x25519_public_from_bytes(peer_identity_bytes)?;
+        // Convert peer's Ed25519 identity key to X25519 for DH
+        let peer_identity_x25519 = ed25519_public_to_x25519(peer_identity_bytes)?;
         let peer_ephemeral = x25519_public_from_bytes(peer_ephemeral_bytes)?;
 
-        // Perform 4-DH (same as initiator):
-        // DH1 = DH(SPK_B, IK_A)
-        let dh1 = key_material.signed_pre_key.dh(&peer_identity);
+        // Convert local Ed25519 identity key to X25519 for DH operations
+        let local_identity_x25519 = key_material.identity_key.to_x25519_secret();
 
-        // DH2 = DH(IK_B, EK_A) - need to convert identity key to X25519
-        // Note: In real implementation, identity keys should be X25519, not Ed25519
-        // For now, we assume conversion or separate X25519 identity key
-        // This is a simplification - in production, use proper key conversion
-        let identity_x25519_secret = StaticSecret::random_from_rng(OsRng); // TODO: Derive from Ed25519
-        let dh2_bytes = identity_x25519_secret.diffie_hellman(&peer_ephemeral).as_bytes().to_vec();
+        // Perform 4-DH (symmetric with initiator):
+        // DH1 = DH(SPK_B, IK_A) - Bob's signed prekey with Alice's identity (converted to X25519)
+        let dh1 = key_material.signed_pre_key.dh(&peer_identity_x25519);
+
+        // DH2 = DH(IK_B, EK_A) - Bob's identity (converted to X25519) with Alice's ephemeral
+        let dh2_bytes = local_identity_x25519.diffie_hellman(&peer_ephemeral).as_bytes().to_vec();
 
         // DH3 = DH(SPK_B, EK_A)
         let dh3 = key_material.signed_pre_key.dh(&peer_ephemeral);
@@ -312,7 +338,25 @@ impl X3DHProtocol {
     }
 }
 
-/// Helper: Convert bytes to X25519 public key
+/// Helper: Convert Ed25519 public key bytes to X25519 public key
+///
+/// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+/// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+fn ed25519_public_to_x25519(ed25519_bytes: &[u8]) -> Result<X25519PublicKey> {
+    if ed25519_bytes.len() != 32 {
+        return Err(CryptoError::InvalidKey("Ed25519 public key must be 32 bytes".into()));
+    }
+
+    let verifying_key = VerifyingKey::from_bytes(
+        ed25519_bytes.try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid Ed25519 public key length".into()))?
+    ).map_err(|e| CryptoError::InvalidKey(format!("Invalid Ed25519 public key: {}", e)))?;
+
+    let montgomery = verifying_key.to_montgomery();
+    Ok(X25519PublicKey::from(montgomery.to_bytes()))
+}
+
+/// Helper: Convert bytes to X25519 public key (for already X25519 formatted keys)
 fn x25519_public_from_bytes(bytes: &[u8]) -> Result<X25519PublicKey> {
     if bytes.len() != 32 {
         return Err(CryptoError::InvalidKey("X25519 public key must be 32 bytes".into()));
@@ -389,21 +433,70 @@ mod tests {
 
     #[test]
     fn test_x3dh_key_agreement() {
-        // Bob generates key material
+        // Alice and Bob generate key material
+        let alice_material = X3DHKeyMaterial::generate(10).unwrap();
         let bob_material = X3DHKeyMaterial::generate(10).unwrap();
         let bob_bundle = bob_material.export_bundle();
 
-        // Alice initiates key agreement
-        let alice_identity_secret = StaticSecret::random_from_rng(OsRng);
-        let (alice_shared_secret, _alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
-            &alice_identity_secret,
+        // Alice initiates key agreement with Bob's bundle
+        let (alice_shared_secret, alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
+            &alice_material.identity_key,
             &bob_bundle,
             true,
         ).unwrap();
 
         assert_eq!(alice_shared_secret.len(), 32);
 
-        // Note: Full responder test requires proper key conversion
-        // This is a basic test of the initiator side
+        // Bob responds to complete the key agreement
+        let bob_shared_secret = X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &alice_material.identity_key.public_bytes(),
+            alice_ephemeral.as_bytes(),
+            Some(0), // Using first one-time prekey
+        ).unwrap();
+
+        assert_eq!(bob_shared_secret.len(), 32);
+
+        // Both sides should derive the same shared secret
+        assert_eq!(alice_shared_secret, bob_shared_secret,
+            "Alice and Bob should derive identical shared secrets");
+    }
+
+    #[test]
+    fn test_ed25519_to_x25519_conversion() {
+        let identity = IdentityKeyPair::generate().unwrap();
+
+        // Convert to X25519 keys
+        let x25519_public = identity.to_x25519_public();
+        let x25519_secret = identity.to_x25519_secret();
+
+        // Verify the conversion is consistent
+        let derived_public = X25519PublicKey::from(&x25519_secret);
+        assert_eq!(x25519_public.as_bytes(), derived_public.as_bytes(),
+            "X25519 public key derived from secret should match converted public key");
+    }
+
+    #[test]
+    fn test_x3dh_without_one_time_key() {
+        let alice_material = X3DHKeyMaterial::generate(0).unwrap(); // No OTKs
+        let bob_material = X3DHKeyMaterial::generate(0).unwrap();
+        let bob_bundle = bob_material.export_bundle();
+
+        // Alice initiates without one-time key
+        let (alice_shared_secret, alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
+            &alice_material.identity_key,
+            &bob_bundle,
+            false, // No one-time key
+        ).unwrap();
+
+        // Bob responds
+        let bob_shared_secret = X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &alice_material.identity_key.public_bytes(),
+            alice_ephemeral.as_bytes(),
+            None, // No one-time key
+        ).unwrap();
+
+        assert_eq!(alice_shared_secret, bob_shared_secret);
     }
 }
