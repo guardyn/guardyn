@@ -370,12 +370,14 @@ graph TB
     end
 
     subgraph "Wire Format"
+        HDR_LEN[Header Length<br/>4 bytes Big-Endian]
         HDR[Header<br/>40 bytes]
         WIRE_NONCE[Nonce<br/>12 bytes]
         CIPHER[Ciphertext]
         TAG[Auth Tag<br/>16 bytes]
 
-        HDR --> MSG[Encrypted Message]
+        HDR_LEN --> MSG[Encrypted Message]
+        HDR --> MSG
         WIRE_NONCE --> MSG
         CIPHER --> MSG
         TAG --> MSG
@@ -395,6 +397,17 @@ graph TB
 | Previous Chain Length | 4 bytes      | Messages sent on previous chain     |
 | Message Number        | 4 bytes      | Message index in current chain      |
 | **Total**             | **40 bytes** | Header size                         |
+
+### Encrypted Message Wire Format
+
+| Field         | Size              | Description                                |
+| ------------- | ----------------- | ------------------------------------------ |
+| Header Length | 4 bytes           | Length of header (Big-Endian)              |
+| Header        | 40 bytes          | Message header (see above)                 |
+| Nonce         | 12 bytes          | Random nonce for AES-GCM                   |
+| Ciphertext    | Variable          | Encrypted message content                  |
+| Auth Tag      | 16 bytes          | AES-GCM authentication tag                 |
+| **Total**     | **72 + N bytes**  | Where N is plaintext length                |
 
 > **Note:** Integer fields (Previous Chain Length, Message Number) are encoded in **Big-Endian (Network Byte Order)** per RFC 1700 for cross-platform compatibility.
 
@@ -838,11 +851,12 @@ graph LR
 
 ### Flutter Client (Dart)
 
-| File                                         | Description                   |
-| -------------------------------------------- | ----------------------------- |
-| `client/lib/core/crypto/double_ratchet.dart` | Double Ratchet implementation |
-| `client/lib/core/crypto/x3dh.dart`           | X3DH key exchange             |
-| `client/lib/core/crypto/key_pair.dart`       | Key pair management           |
+| File                                           | Description                              |
+| ---------------------------------------------- | ---------------------------------------- |
+| `client/lib/core/crypto/double_ratchet.dart`   | Double Ratchet + X25519KeyPair           |
+| `client/lib/core/crypto/x3dh.dart`             | X3DH key exchange + IdentityKeyPair      |
+| `client/lib/core/crypto/crypto_service.dart`   | High-level encryption service            |
+| `client/lib/core/crypto/crypto_exceptions.dart`| Crypto-specific exception types          |
 
 ### Protocol Definitions
 
