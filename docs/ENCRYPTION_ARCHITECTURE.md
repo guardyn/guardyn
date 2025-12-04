@@ -203,7 +203,7 @@ graph TD
     style SK fill:#50C878,stroke:#333,stroke-width:2px
 ```
 
-> **HKDF Parameters:**
+> **HKDF Parameters (X3DH Initial Key Agreement):**
 >
 > - **Hash**: SHA-256
 > - **Salt**: None (empty)
@@ -295,6 +295,34 @@ sequenceDiagram
         Alice->>Alice: Generate new DH_A' keypair
     end
 ```
+
+### HKDF Parameters for Double Ratchet
+
+The Double Ratchet uses different HKDF configurations for different key derivation operations:
+
+> **DH Ratchet (Root Key Update):**
+>
+> - **Hash**: SHA-256
+> - **Salt**: Current Root Key (32 bytes)
+> - **IKM**: DH output from X25519 exchange
+> - **Info**: `"guardyn-root-key"` (ASCII bytes)
+> - **Output Length**: 64 bytes (split: first 32 bytes → new Root Key, last 32 bytes → new Chain Key)
+
+> **Symmetric Ratchet (Chain Key → Next Chain Key):**
+>
+> - **Hash**: SHA-256
+> - **Salt**: None (empty)
+> - **IKM**: Current Chain Key (32 bytes)
+> - **Info**: `"guardyn-chain-key"` (ASCII bytes)
+> - **Output Length**: 32 bytes
+
+> **Symmetric Ratchet (Chain Key → Message Key):**
+>
+> - **Hash**: SHA-256
+> - **Salt**: None (empty)
+> - **IKM**: Current Chain Key (32 bytes)
+> - **Info**: `"guardyn-message-key"` (ASCII bytes)
+> - **Output Length**: 32 bytes
 
 ### Symmetric Ratchet (Chain Key Derivation)
 
