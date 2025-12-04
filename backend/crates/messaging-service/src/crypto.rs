@@ -4,12 +4,11 @@
 
 use anyhow::{Context, Result, anyhow};
 use guardyn_crypto::{
-    x3dh::{X3DHProtocol, X3DHKeyBundle},
+    x3dh::{X3DHProtocol, X3DHKeyBundle, IdentityKeyPair},
     double_ratchet::DoubleRatchet,
 };
 use crate::models::RatchetSession;
 use std::sync::Arc;
-use rand::rngs::OsRng;
 
 // Import generated proto types
 use crate::proto::auth::{
@@ -48,13 +47,15 @@ impl CryptoManager {
         // Parse key bundle into X3DH types
         let x3dh_bundle = self.parse_key_bundle(&key_bundle)?;
 
-        // Generate local ephemeral key for X3DH
-        // TODO: This is a placeholder - in production, use proper identity key management
-        let local_identity_secret = x25519_dalek::StaticSecret::random_from_rng(OsRng);
+        // Generate or use local identity key for X3DH
+        // Per ENCRYPTION_ARCHITECTURE.md: Identity Keys are Ed25519, converted to X25519 for DH operations
+        // TODO: In production, load from secure storage instead of generating new key
+        let local_identity = IdentityKeyPair::generate()
+            .context("Failed to generate identity key pair")?;
 
         // Perform X3DH key agreement (Alice side)
         let (shared_secret, ephemeral_public) = X3DHProtocol::initiate_key_agreement(
-            &local_identity_secret,
+            &local_identity,
             &x3dh_bundle,
             false, // Don't use one-time keys for MVP
         ).context("X3DH key agreement failed")?;
