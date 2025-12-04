@@ -26,7 +26,13 @@ class CryptoService {
 
   /// Initialize the crypto service
   Future<void> initialize() async {
+    // ignore: avoid_print
+    print('🔐 CryptoService.initialize() called');
     await _loadX3DHState();
+    // ignore: avoid_print
+    print(
+      '🔐 CryptoService after _loadX3DHState: isInitialized=$isInitialized',
+    );
   }
 
   /// Check if X3DH protocol is initialized
@@ -148,15 +154,24 @@ class CryptoService {
     required String remoteDeviceId,
   }) async {
     final sessionId = _makeSessionId(remoteUserId, remoteDeviceId);
+    // ignore: avoid_print
+    print('🔐 CryptoService.getSession: sessionId=$sessionId');
 
     if (_sessions.containsKey(sessionId)) {
+      // ignore: avoid_print
+      print('🔐 CryptoService.getSession: found in memory cache');
       return _sessions[sessionId];
     }
 
     // Try to load from storage
     final ratchet = await _loadSession(sessionId);
     if (ratchet != null) {
+      // ignore: avoid_print
+      print('🔐 CryptoService.getSession: loaded from storage');
       _sessions[sessionId] = ratchet;
+    } else {
+      // ignore: avoid_print
+      print('🔐 CryptoService.getSession: not found');
     }
     return ratchet;
   }
@@ -220,6 +235,27 @@ class CryptoService {
     final sessionId = _makeSessionId(remoteUserId, remoteDeviceId);
     _sessions.remove(sessionId);
     await _storage.delete(key: '$_sessionPrefix$sessionId');
+    // ignore: avoid_print
+    print('🔐 CryptoService.deleteSession: deleted session $sessionId');
+  }
+
+  /// Clear all sessions (for testing new key exchange)
+  Future<void> clearAllSessions() async {
+    // ignore: avoid_print
+    print('🔐 CryptoService.clearAllSessions: clearing all sessions');
+    _sessions.clear();
+    _pendingPrekeyMessages.clear();
+    // Delete all sessions from storage
+    final allKeys = await _storage.readAll();
+    int count = 0;
+    for (final key in allKeys.keys) {
+      if (key.startsWith(_sessionPrefix)) {
+        await _storage.delete(key: key);
+        count++;
+      }
+    }
+    // ignore: avoid_print
+    print('🔐 CryptoService.clearAllSessions: deleted $count sessions');
   }
 
   /// Clear all crypto state (logout)

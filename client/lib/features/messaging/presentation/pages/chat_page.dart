@@ -90,7 +90,13 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     // Connect WebSocket for real-time messaging
+    // ignore: avoid_print
+    print(
+      '🔌 ChatPage: accessToken present: ${accessToken != null && accessToken.isNotEmpty}',
+    );
     if (accessToken != null && accessToken.isNotEmpty && mounted) {
+      // ignore: avoid_print
+      print('🔌 ChatPage: Calling MessageConnectWebSocket');
       context.read<MessageBloc>().add(
         MessageConnectWebSocket(accessToken: accessToken),
       );
