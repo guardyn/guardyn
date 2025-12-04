@@ -1,6 +1,4 @@
 <?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
- "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
 <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
  width="512" height="512" viewBox="100 200 730 750"
  preserveAspectRatio="xMidYMid meet">
@@ -11,9 +9,7 @@
     <stop offset="100%" style="stop-color:#3D6B4A;stop-opacity:1" />
   </linearGradient>
 </defs>
-<metadata>
-Created by potrace 1.16, written by Peter Selinger 2001-2019
-</metadata>
+<!-- Logo created with potrace -->
 <g transform="translate(0.000000,1120.000000) scale(0.100000,-0.100000)"
 fill="url(#shieldGradient)" stroke="none">
 <path d="M4535 9029 c-55 -22 -143 -56 -195 -75 -52 -19 -120 -46 -150 -58
