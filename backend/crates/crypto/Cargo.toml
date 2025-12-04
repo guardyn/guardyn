@@ -23,6 +23,7 @@ openmls_basic_credential.workspace = true
 # Curve25519 for key exchange
 x25519-dalek.workspace = true
 ed25519-dalek.workspace = true
+curve25519-dalek = "4"
 
 # Additional crypto primitives
 rand = "0.8"

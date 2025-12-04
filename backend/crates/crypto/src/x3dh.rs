@@ -6,6 +6,7 @@
 /// using the birational equivalence between twisted Edwards curve (Ed25519) and
 /// Montgomery curve (Curve25519/X25519). This is the same approach used by Signal Protocol.
 use crate::{CryptoError, Result};
+use curve25519_dalek::scalar::clamp_integer;
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 use rand::rngs::OsRng;
@@ -72,11 +73,21 @@ impl IdentityKeyPair {
 
     /// Convert Ed25519 signing key to X25519 StaticSecret for Diffie-Hellman operations.
     ///
-    /// The scalar bytes from Ed25519 signing key can be directly used as X25519 secret
-    /// because both use the same underlying curve25519 scalar multiplication.
+    /// The conversion process (matching TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk):
+    /// 1. Compute SHA512(seed)[0:32] via to_scalar_bytes()
+    /// 2. Apply X25519 clamping:
+    ///    - Clear bottom 3 bits of byte 0 (divisible by 8)
+    ///    - Clear top bit of byte 31 (< 2^255)
+    ///    - Set second-to-top bit of byte 31 (>= 2^254)
+    ///
+    /// Note: We use clamp_integer() which applies ONLY clamping without mod l reduction.
+    /// This matches TweetNaCl exactly, unlike to_scalar() which also reduces mod l.
     pub fn to_x25519_secret(&self) -> StaticSecret {
-        let scalar_bytes = self.secret.to_scalar_bytes();
-        StaticSecret::from(scalar_bytes)
+        // Get raw SHA512(seed)[0:32] bytes
+        let raw_scalar_bytes = self.secret.to_scalar_bytes();
+        // Apply clamping (matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk)
+        let clamped_bytes = clamp_integer(raw_scalar_bytes);
+        StaticSecret::from(clamped_bytes)
     }
 }
 

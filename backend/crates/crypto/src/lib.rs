@@ -13,6 +13,9 @@ pub mod key_storage;
 #[cfg(test)]
 mod mls_tests;
 
+#[cfg(test)]
+mod x3dh_conversion_tests;
+
 pub use x3dh::{X3DHKeyBundle, X3DHProtocol};
 pub use double_ratchet::DoubleRatchet;
 pub use mls::{MlsGroupManager, create_test_credential};

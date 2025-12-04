@@ -37,6 +37,25 @@ class IdentityKeyPair {
     );
   }
 
+  /// Create key pair from a 32-byte seed (deterministic).
+  ///
+  /// This is useful for testing with known test vectors to verify
+  /// cross-platform compatibility between Rust and Dart implementations.
+  static Future<IdentityKeyPair> fromSeed(Uint8List seed) async {
+    if (seed.length != 32) {
+      throw ArgumentError('Seed must be exactly 32 bytes');
+    }
+    final algorithm = Ed25519();
+    final keyPair = await algorithm.newKeyPairFromSeed(seed);
+    final privateKeyData = await keyPair.extractPrivateKeyBytes();
+    final publicKeyData = (await keyPair.extractPublicKey()).bytes;
+
+    return IdentityKeyPair(
+      privateKey: Uint8List.fromList(privateKeyData),
+      publicKey: Uint8List.fromList(publicKeyData),
+    );
+  }
+
   /// Create key pair from existing bytes
   factory IdentityKeyPair.fromBytes({
     required Uint8List privateKey,

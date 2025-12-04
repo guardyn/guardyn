@@ -126,9 +126,12 @@ graph LR
 >
 > **Conversion Details:**
 > - **Public key conversion:** Uses the formula `X_mont = (1 + Y_ed) / (1 - Y_ed) mod p` where `Y_ed` is the Ed25519 y-coordinate
-> - **Secret key conversion:** The Ed25519 seed is hashed with SHA-512, then the first 32 bytes are clamped for X25519 use
-> - **Rust implementation:** Uses `ed25519_dalek::VerifyingKey::to_montgomery()` and `SigningKey::to_scalar_bytes()`
+> - **Secret key conversion:** The Ed25519 seed is hashed with SHA-512, then the first 32 bytes are **clamped** (NOT reduced) for X25519 use
+>   - Clamping operations (per RFC 7748): Clear bottom 3 bits of byte 0, clear top bit of byte 31, set second-to-top bit of byte 31
+> - **Rust implementation:** Uses `ed25519_dalek::VerifyingKey::to_montgomery()` for public key, and `curve25519_dalek::scalar::clamp_integer(signing_key.to_scalar_bytes())` for secret key
 > - **Dart implementation:** Uses `pinenacl` library's `TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk()` and `crypto_sign_ed25519_sk_to_x25519_sk()`
+>
+> ⚠️ **WARNING**: Do NOT use `ed25519_dalek::SigningKey::to_scalar()` - it performs modular reduction which breaks compatibility with TweetNaCl!
 
 ### X3DH Protocol Flow
 
