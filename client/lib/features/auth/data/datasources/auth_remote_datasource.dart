@@ -174,13 +174,14 @@ class AuthRemoteDatasource {
 
   /// Generate real X3DH KeyBundle for registration/login
   /// Uses CryptoService to create cryptographically secure keys
+  /// 
+  /// Uses minimal keys for fast startup (5 keys).
+  /// Call [replenishKeysInBackground] after successful auth to generate more.
   Future<common.KeyBundle> _generateX3DHKeyBundle() async {
-    // Initialize X3DH if not already done
+    // Initialize X3DH if not already done (uses fast minimal key count)
     if (!cryptoService.isInitialized) {
-      logger.i('Initializing X3DH protocol for key bundle generation');
-      // Use 10 one-time pre-keys for faster initialization (MVP)
-      // More keys can be replenished in background after login
-      await cryptoService.initializeX3DH(oneTimePreKeyCount: 10);
+      logger.i('Initializing X3DH protocol with minimal keys for fast startup');
+      await cryptoService.initializeX3DH(); // Uses default initialKeyCount (5)
     }
 
     // Export real cryptographic key bundle

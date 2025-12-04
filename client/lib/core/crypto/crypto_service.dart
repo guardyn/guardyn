@@ -4,13 +4,28 @@
 library;
 
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'crypto_exceptions.dart';
 import 'double_ratchet.dart';
 import 'x3dh.dart';
+
+/// Configuration for one-time pre-key management
+class OneTimePreKeyConfig {
+  /// Number of keys to generate on initial registration (fast startup)
+  static const int initialKeyCount = 5;
+
+  /// Target number of keys to maintain on server
+  static const int targetKeyCount = 100;
+
+  /// Threshold below which to trigger replenishment
+  static const int replenishThreshold = 20;
+
+  /// Number of keys to generate in each background batch
+  static const int batchSize = 20;
+}
 
 /// Service for E2EE cryptographic operations
 class CryptoService {
@@ -20,6 +35,9 @@ class CryptoService {
   final FlutterSecureStorage _storage;
   X3DHProtocol? _x3dh;
   final Map<String, DoubleRatchet> _sessions = {};
+  
+  /// Flag to prevent multiple simultaneous replenishment operations
+  bool _isReplenishing = false;
 
   CryptoService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -42,11 +60,130 @@ class CryptoService {
   Uint8List? get identityPublicKey => _x3dh?.identityKey.publicKey;
 
   /// Initialize X3DH protocol (first time setup)
-  Future<void> initializeX3DH({int oneTimePreKeyCount = 100}) async {
+  /// Uses minimal keys for fast startup, replenish in background after login
+  Future<void> initializeX3DH({int? oneTimePreKeyCount}) async {
+    final keyCount = oneTimePreKeyCount ?? OneTimePreKeyConfig.initialKeyCount;
+    debugPrint(
+      '🔐 CryptoService.initializeX3DH: generating $keyCount one-time pre-keys',
+    );
+    
     _x3dh = await X3DHProtocol.initialize(
-      oneTimePreKeyCount: oneTimePreKeyCount,
+      oneTimePreKeyCount: keyCount,
     );
     await _saveX3DHState();
+    
+    debugPrint('🔐 CryptoService.initializeX3DH: complete');
+  }
+
+  /// Get current number of available one-time pre-keys
+  int get availableOneTimePreKeyCount => _x3dh?.oneTimePreKeys.length ?? 0;
+
+  /// Check if one-time pre-keys need replenishment
+  bool get needsKeyReplenishment =>
+      availableOneTimePreKeyCount < OneTimePreKeyConfig.replenishThreshold;
+
+  /// Replenish one-time pre-keys in background
+  ///
+  /// Call this after successful login to ensure sufficient keys are available.
+  /// Returns the list of new public keys to upload to server.
+  Future<List<Uint8List>> replenishOneTimePreKeysInBackground({
+    int? targetCount,
+  }) async {
+    if (_x3dh == null) {
+      debugPrint('🔐 replenishOneTimePreKeys: X3DH not initialized');
+      return [];
+    }
+
+    if (_isReplenishing) {
+      debugPrint('🔐 replenishOneTimePreKeys: already in progress');
+      return [];
+    }
+
+    final target = targetCount ?? OneTimePreKeyConfig.targetKeyCount;
+    final currentCount = availableOneTimePreKeyCount;
+
+    if (currentCount >= target) {
+      debugPrint(
+        '🔐 replenishOneTimePreKeys: already have $currentCount keys (target: $target)',
+      );
+      return [];
+    }
+
+    _isReplenishing = true;
+    final newPublicKeys = <Uint8List>[];
+
+    try {
+      final keysToGenerate = target - currentCount;
+      debugPrint(
+        '🔐 replenishOneTimePreKeys: generating $keysToGenerate new keys',
+      );
+
+      // Generate in batches to keep UI responsive
+      final startId = _x3dh!.oneTimePreKeys.isEmpty
+          ? 1
+          : _x3dh!.oneTimePreKeys
+                    .map((k) => k.keyId)
+                    .reduce((a, b) => a > b ? a : b) +
+                1;
+
+      for (int i = 0; i < keysToGenerate; i++) {
+        final newKey = await OneTimePreKey.generate(startId + i);
+        _x3dh!.oneTimePreKeys.add(newKey);
+        newPublicKeys.add(newKey.publicKey);
+
+        // Yield to UI every batch
+        if (i % OneTimePreKeyConfig.batchSize == 0 && i > 0) {
+          await Future<void>.delayed(Duration.zero);
+          debugPrint(
+            '🔐 replenishOneTimePreKeys: generated ${i + 1}/$keysToGenerate keys',
+          );
+        }
+      }
+
+      // Save updated state
+      await _saveX3DHState();
+      debugPrint(
+        '🔐 replenishOneTimePreKeys: complete, now have ${availableOneTimePreKeyCount} keys',
+      );
+    } finally {
+      _isReplenishing = false;
+    }
+
+    return newPublicKeys;
+  }
+
+  /// Handle server notification about remaining key count
+  ///
+  /// Call this when server reports remaining one-time pre-key count.
+  /// If below threshold, triggers background replenishment.
+  Future<List<Uint8List>> handleServerKeyCountNotification(
+    int remainingCount,
+  ) async {
+    debugPrint('🔐 Server reports $remainingCount one-time pre-keys remaining');
+
+    if (remainingCount < OneTimePreKeyConfig.replenishThreshold) {
+      debugPrint(
+        '🔐 Below threshold (${OneTimePreKeyConfig.replenishThreshold}), triggering replenishment',
+      );
+      return replenishOneTimePreKeysInBackground();
+    }
+
+    return [];
+  }
+
+  /// Export multiple key bundles for batch upload to server
+  List<X3DHKeyBundle> exportKeyBundles({int count = 1}) {
+    if (_x3dh == null) return [];
+
+    final bundles = <X3DHKeyBundle>[];
+    final availableCount = _x3dh!.oneTimePreKeys.length;
+    final exportCount = count.clamp(0, availableCount);
+
+    for (int i = 0; i < exportCount; i++) {
+      bundles.add(_x3dh!.exportKeyBundle(oneTimePreKeyIndex: i));
+    }
+
+    return bundles;
   }
 
   /// Export key bundle for server registration

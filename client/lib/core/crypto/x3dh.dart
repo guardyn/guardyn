@@ -262,9 +262,13 @@ class X3DHProtocol {
 
   /// Initialize X3DH with new keys
   /// 
-  /// Note: Reduced default oneTimePreKeyCount to 10 for faster initialization.
-  /// In production, keys can be replenished in background after login.
-  static Future<X3DHProtocol> initialize({int oneTimePreKeyCount = 10}) async {
+  /// Key replenishment strategy:
+  /// - Initial: 5 keys for fast startup (< 1 second)
+  /// - Background: Replenish to 100 keys after successful auth
+  /// - Threshold: Trigger replenishment when < 20 keys remain
+  ///
+  /// See [OneTimePreKeyConfig] in crypto_service.dart for configuration.
+  static Future<X3DHProtocol> initialize({int oneTimePreKeyCount = 5}) async {
     final identity = await IdentityKeyPair.generate();
     final signedPreKey = await SignedPreKey.generate(
       identityKey: identity,

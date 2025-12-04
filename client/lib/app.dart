@@ -100,6 +100,7 @@ class GuardynApp extends StatelessWidget {
             loginUser: loginUser,
             logoutUser: logoutUser,
             authRepository: authRepository,
+            cryptoService: cryptoService,
           ),
         ),
         BlocProvider(
