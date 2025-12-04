@@ -554,6 +554,7 @@ class X3DHPrekeyMessage {
   });
 
   /// Serialize to bytes for transmission
+  /// Uses Big-Endian (Network Byte Order) per RFC 1700 for cross-platform compatibility
   Uint8List toBytes() {
     // Format: identity_key (32) + ephemeral_key (32) + has_otpk (1) + otpk_id (4 if has_otpk)
     final hasOtpk = usedOneTimePreKeyId != null;
@@ -566,13 +567,14 @@ class X3DHPrekeyMessage {
 
     if (hasOtpk) {
       final byteData = ByteData.view(bytes.buffer);
-      byteData.setUint32(65, usedOneTimePreKeyId!, Endian.little);
+      byteData.setUint32(65, usedOneTimePreKeyId!, Endian.big);
     }
 
     return bytes;
   }
 
   /// Deserialize from bytes
+  /// Uses Big-Endian (Network Byte Order) per RFC 1700 for cross-platform compatibility
   factory X3DHPrekeyMessage.fromBytes(Uint8List bytes) {
     if (bytes.length < 65) {
       throw ProtocolException('Invalid X3DH prekey message length');
@@ -590,7 +592,7 @@ class X3DHPrekeyMessage {
       final byteData = ByteData.view(
         Uint8List.fromList(bytes.sublist(65, 69)).buffer,
       );
-      usedOneTimePreKeyId = byteData.getUint32(0, Endian.little);
+      usedOneTimePreKeyId = byteData.getUint32(0, Endian.big);
     }
 
     return X3DHPrekeyMessage(
