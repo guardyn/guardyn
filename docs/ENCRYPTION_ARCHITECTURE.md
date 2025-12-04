@@ -400,18 +400,47 @@ graph TB
 
 ### Encrypted Message Wire Format
 
-| Field         | Size              | Description                                |
-| ------------- | ----------------- | ------------------------------------------ |
-| Header Length | 4 bytes           | Length of header (Big-Endian)              |
-| Header        | 40 bytes          | Message header (see above)                 |
-| Nonce         | 12 bytes          | Random nonce for AES-GCM                   |
-| Ciphertext    | Variable          | Encrypted message content                  |
-| Auth Tag      | 16 bytes          | AES-GCM authentication tag                 |
-| **Total**     | **72 + N bytes**  | Where N is plaintext length                |
+The `EncryptedMessage` structure contains two top-level fields: `header` and `ciphertext`. The `ciphertext` field internally contains the nonce, encrypted content, and authentication tag.
 
-> **Note:** Integer fields (Previous Chain Length, Message Number) are encoded in **Big-Endian (Network Byte Order)** per RFC 1700 for cross-platform compatibility.
+**Top-Level Structure:**
+
+| Field         | Size             | Description                                |
+| ------------- | ---------------- | ------------------------------------------ |
+| Header Length | 4 bytes          | Length of header (Big-Endian)              |
+| Header        | 40 bytes         | Message header (see above)                 |
+| Ciphertext    | 28 + N bytes     | AES-GCM encrypted payload (see breakdown)  |
+| **Total**     | **72 + N bytes** | Where N is plaintext length                |
+
+**Ciphertext Field Breakdown:**
+
+| Offset | Size        | Description                     |
+| ------ | ----------- | ------------------------------- |
+| 0      | 12 bytes    | Random nonce for AES-GCM        |
+| 12     | N bytes     | Encrypted message content       |
+| 12 + N | 16 bytes    | AES-GCM authentication tag      |
+
+> **Note:** Integer fields (Header Length, Previous Chain Length, Message Number) are encoded in **Big-Endian (Network Byte Order)** per RFC 1700 for cross-platform compatibility.
 
 > **Security Note:** Each message uses a **cryptographically secure random 12-byte nonce** generated via `OsRng` (Rust) / `Random.secure()` (Dart). The nonce is prepended to the ciphertext, ensuring unique encryption even when the same message key is used (which should never happen in Double Ratchet, but defense-in-depth).
+
+### X3DH Prekey Message Format
+
+When Alice sends her first message to Bob, she includes X3DH key material so Bob can derive the same shared secret. This data is encoded in the `X3DHPrekeyMessage` structure:
+
+| Field              | Size     | Description                                       |
+| ------------------ | -------- | ------------------------------------------------- |
+| Sender Identity Key| 32 bytes | Alice's Ed25519 public key                        |
+| Ephemeral Key      | 32 bytes | Alice's X25519 ephemeral public key               |
+| Has One-Time Key   | 1 byte   | Flag: 1 if OPK was used, 0 otherwise              |
+| One-Time Key ID    | 4 bytes  | OPK ID (Big-Endian, present only if flag = 1)     |
+| **Total**          | **65 or 69 bytes** | Depending on OPK usage                |
+
+This structure is Base64-encoded and transmitted as metadata with the first encrypted message. The recipient uses this information to:
+
+1. Convert Alice's Ed25519 identity key to X25519
+2. Perform the same 4-DH computations
+3. Derive the identical shared secret
+4. Initialize their Double Ratchet session
 
 ---
 
