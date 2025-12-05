@@ -118,6 +118,8 @@ pub struct MessagePayload {
     pub message_id: String,
     /// Sender user ID
     pub sender_id: String,
+    /// Sender device ID (required for E2EE session lookup)
+    pub sender_device_id: String,
     /// Recipient user ID
     pub recipient_id: String,
     /// Message content

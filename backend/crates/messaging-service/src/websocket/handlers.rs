@@ -155,6 +155,7 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
     let message = MessagePayload {
         message_id: message_id.clone(),
         sender_id: sender_id.clone(),
+        sender_device_id: String::new(), // TODO: Get from authentication context
         recipient_id: send.recipient_id.clone(),
         content: send.content.clone(),
         encrypted: send.encrypted,
