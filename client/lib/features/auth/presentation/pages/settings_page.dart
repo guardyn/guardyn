@@ -44,11 +44,12 @@ class _SettingsPageState extends State<SettingsPage> {
             SnackBar(content: Text(state.message), backgroundColor: Colors.red),
           );
         } else if (state is AuthUnauthenticated) {
-          if (state.message != null && !_showedDeleteMessage) {
+          final message = state.message;
+          if (message != null && !_showedDeleteMessage) {
             _showedDeleteMessage = true;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message!),
+                content: Text(message),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
