@@ -53,9 +53,6 @@ Future<void> configureDependencies() async {
   // Register crypto service for E2EE
   final cryptoService = CryptoService();
   await cryptoService.initialize();
-  // TEMPORARY: Clear old sessions to test new X3DH implementation
-  // TODO: Remove this after testing
-  await cryptoService.clearAllSessions();
   getIt.registerSingleton<CryptoService>(cryptoService);
 
   // Register notification service

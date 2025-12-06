@@ -277,7 +277,9 @@ class X3DHProtocol {
 
     final oneTimePreKeys = <OneTimePreKey>[];
     for (int i = 0; i < oneTimePreKeyCount; i++) {
-      oneTimePreKeys.add(await OneTimePreKey.generate(i + 1));
+      oneTimePreKeys.add(
+        await OneTimePreKey.generate(i),
+      ); // Use 0-based keyId to match server storage
       // Yield to allow UI to remain responsive
       if (i % 5 == 0) {
         await Future<void>.delayed(Duration.zero);

@@ -35,12 +35,12 @@ class CryptoService {
   final FlutterSecureStorage _storage;
   X3DHProtocol? _x3dh;
   final Map<String, DoubleRatchet> _sessions = {};
-  
+
   /// Flag to prevent multiple simultaneous replenishment operations
   bool _isReplenishing = false;
 
   CryptoService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   /// Initialize the crypto service
   Future<void> initialize() async {
@@ -66,12 +66,10 @@ class CryptoService {
     debugPrint(
       '🔐 CryptoService.initializeX3DH: generating $keyCount one-time pre-keys',
     );
-    
-    _x3dh = await X3DHProtocol.initialize(
-      oneTimePreKeyCount: keyCount,
-    );
+
+    _x3dh = await X3DHProtocol.initialize(oneTimePreKeyCount: keyCount);
     await _saveX3DHState();
-    
+
     debugPrint('🔐 CryptoService.initializeX3DH: complete');
   }
 
@@ -119,8 +117,9 @@ class CryptoService {
       );
 
       // Generate in batches to keep UI responsive
+      // Use 0-based keyId to match server storage
       final startId = _x3dh!.oneTimePreKeys.isEmpty
-          ? 1
+          ? 0
           : _x3dh!.oneTimePreKeys
                     .map((k) => k.keyId)
                     .reduce((a, b) => a > b ? a : b) +
@@ -207,8 +206,10 @@ class CryptoService {
     }
 
     // Perform X3DH key agreement
-    final (sharedSecret, ephemeralPublicKey) =
-        await X3DHProtocol.initiateKeyAgreement(
+    final (
+      sharedSecret,
+      ephemeralPublicKey,
+    ) = await X3DHProtocol.initiateKeyAgreement(
       _x3dh!.identityKey,
       remoteKeyBundle,
     );

@@ -303,8 +303,20 @@ impl DatabaseClient {
             None => return Ok(None),
         };
         
-        // TODO: Get one-time pre-keys (implement range scan)
-        let one_time_pre_keys = vec![];
+        // Get one-time pre-keys using range scan
+        let otk_prefix = format!("/devices/{}/{}/one_time_keys/", user_id, device_id);
+        let start_key = otk_prefix.clone().into_bytes();
+        let mut end_key = start_key.clone();
+        // Increment the last byte to get exclusive upper bound for the prefix
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1; // '/' + 1 = '0', so we scan all keys under the prefix
+        }
+        
+        let otk_kvs = self.client.scan(start_key..end_key, 100).await?;
+        let mut one_time_pre_keys = Vec::with_capacity(otk_kvs.len());
+        for kv in otk_kvs {
+            one_time_pre_keys.push(kv.1);
+        }
         
         Ok(Some(KeyBundle {
             identity_key,
