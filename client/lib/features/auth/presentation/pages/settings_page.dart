@@ -13,19 +13,35 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  bool _isNavigating = false;
+
+  void _navigateToLogin(BuildContext context) {
+    if (_isNavigating) return;
+    _isNavigating = true;
+    
+    // Use addPostFrameCallback to ensure navigation happens after current frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAccountDeleted) {
-          // Show success message and navigate to login
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 2),
             ),
           );
+          // Navigate to login page after account deletion
+          _navigateToLogin(context);
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -35,7 +51,7 @@ class _SettingsPageState extends State<SettingsPage> {
           );
         } else if (state is AuthUnauthenticated) {
           // Navigate to login page
-          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+          _navigateToLogin(context);
         }
       },
       child: Scaffold(
