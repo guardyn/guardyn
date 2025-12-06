@@ -20,11 +20,13 @@ class _SettingsPageState extends State<SettingsPage> {
   void _navigateToLogin() {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    
+
     // Schedule navigation for the next frame to avoid widget lifecycle conflicts
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
       }
     });
   }
@@ -36,7 +38,7 @@ class _SettingsPageState extends State<SettingsPage> {
       listenWhen: (previous, current) => !_hasNavigated,
       listener: (context, state) {
         if (_hasNavigated || !mounted) return;
-        
+
         if (state is AuthAccountDeleted && !_showedDeleteMessage) {
           _showedDeleteMessage = true;
           // Show success message using root scaffold messenger
@@ -50,10 +52,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // Navigate will be triggered by AuthUnauthenticated that follows
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
           );
         } else if (state is AuthUnauthenticated) {
           // Navigate to login page
@@ -61,20 +60,18 @@ class _SettingsPageState extends State<SettingsPage> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Settings'),
-        ),
+        appBar: AppBar(title: const Text('Settings')),
         body: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
             final isDeleting = state is AuthAccountDeleting;
-            
+
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 // Account section
                 _buildSectionHeader('Account'),
                 const SizedBox(height: 8),
-                
+
                 // Logout button
                 ListTile(
                   leading: const Icon(Icons.logout),
@@ -82,13 +79,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: const Text('Sign out from this device'),
                   onTap: isDeleting ? null : () => _showLogoutDialog(context),
                 ),
-                
+
                 const Divider(),
-                
+
                 // Danger zone
                 _buildSectionHeader('Danger Zone', color: Colors.red),
                 const SizedBox(height: 8),
-                
+
                 // Delete account button
                 Card(
                   color: Colors.red.shade50,
@@ -118,12 +115,14 @@ class _SettingsPageState extends State<SettingsPage> {
                             Icons.arrow_forward_ios,
                             color: Colors.red.shade700,
                           ),
-                    onTap: isDeleting ? null : () => _showDeleteAccountDialog(context),
+                    onTap: isDeleting
+                        ? null
+                        : () => _showDeleteAccountDialog(context),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Warning text
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -197,6 +196,14 @@ class _SettingsPageState extends State<SettingsPage> {
     final passwordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool obscurePassword = true;
+    bool isDisposed = false;
+
+    void disposeController() {
+      if (!isDisposed) {
+        isDisposed = true;
+        passwordController.dispose();
+      }
+    }
 
     showDialog(
       context: context,
@@ -224,9 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'The following data will be permanently deleted:',
-                ),
+                const Text('The following data will be permanently deleted:'),
                 const SizedBox(height: 8),
                 const Text('• Your profile and account information'),
                 const Text('• All your messages and conversations'),
@@ -246,7 +251,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setDialogState(() {
@@ -271,8 +278,8 @@ class _SettingsPageState extends State<SettingsPage> {
           actions: [
             TextButton(
               onPressed: () {
-                passwordController.dispose();
                 Navigator.pop(dialogContext);
+                disposeController();
               },
               child: const Text('Cancel'),
             ),
@@ -284,9 +291,9 @@ class _SettingsPageState extends State<SettingsPage> {
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   final password = passwordController.text;
-                  passwordController.dispose();
                   Navigator.pop(dialogContext);
-                  
+                  disposeController();
+
                   // Show final confirmation
                   _showFinalConfirmation(context, password);
                 }

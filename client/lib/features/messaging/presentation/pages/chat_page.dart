@@ -37,10 +37,13 @@ class _ChatPageState extends State<ChatPage> {
   final _secureStorage = const FlutterSecureStorage();
   String? _conversationId;
   late PresenceBloc _presenceBloc;
+  late MessageBloc _messageBloc;
 
   @override
   void initState() {
     super.initState();
+    // Store reference to MessageBloc for safe use in dispose()
+    _messageBloc = context.read<MessageBloc>();
     // Initialize presence bloc
     _presenceBloc = getIt<PresenceBloc>();
     // Set current user as online and start heartbeat
@@ -115,10 +118,10 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
-    // Disconnect WebSocket when leaving chat
-    context.read<MessageBloc>().add(const MessageDisconnectWebSocket());
+    // Disconnect WebSocket when leaving chat (using stored reference)
+    _messageBloc.add(const MessageDisconnectWebSocket());
     // Clear active conversation when leaving chat
-    context.read<MessageBloc>().add(const MessageSetActiveConversation(null));
+    _messageBloc.add(const MessageSetActiveConversation(null));
     // Stop presence subscription and set offline
     _presenceBloc.add(const PresenceUnsubscribe());
     _presenceBloc.add(const PresenceSetOffline());
