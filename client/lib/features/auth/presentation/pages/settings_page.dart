@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
@@ -13,14 +14,14 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isNavigating = false;
+  bool _hasNavigated = false;
 
-  void _navigateToLogin(BuildContext context) {
-    if (_isNavigating) return;
-    _isNavigating = true;
+  void _navigateToLogin() {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
     
-    // Use addPostFrameCallback to ensure navigation happens after current frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Schedule navigation for the next frame to avoid widget lifecycle conflicts
+    SchedulerBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       }
@@ -30,9 +31,13 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
+      // Stop listening once we've navigated
+      listenWhen: (previous, current) => !_hasNavigated,
       listener: (context, state) {
+        if (_hasNavigated) return;
+        
         if (state is AuthAccountDeleted) {
-          // Show success message
+          // Show success message using root scaffold messenger
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
@@ -41,7 +46,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           );
           // Navigate to login page after account deletion
-          _navigateToLogin(context);
+          _navigateToLogin();
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -51,7 +56,7 @@ class _SettingsPageState extends State<SettingsPage> {
           );
         } else if (state is AuthUnauthenticated) {
           // Navigate to login page
-          _navigateToLogin(context);
+          _navigateToLogin();
         }
       },
       child: Scaffold(
