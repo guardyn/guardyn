@@ -13,6 +13,7 @@ import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart'
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/login_page.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/registration_page.dart';
+import 'package:guardyn_client/features/auth/presentation/pages/settings_page.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/splash_page.dart';
 import 'package:guardyn_client/features/chat/presentation/pages/home_page.dart';
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
@@ -156,6 +157,7 @@ class GuardynApp extends StatelessWidget {
           '/login': (context) => const LoginPage(),
           '/register': (context) => const RegistrationPage(),
           '/home': (context) => const HomePage(),
+          '/settings': (context) => const SettingsPage(),
           '/groups': (context) => const GroupListPage(),
           '/groups/create': (context) => const GroupCreatePage(),
         },

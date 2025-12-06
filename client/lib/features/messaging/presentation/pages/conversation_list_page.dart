@@ -92,7 +92,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {
-              // TODO: Implement settings
+              Navigator.pushNamed(context, '/settings');
             },
           ),
         ],

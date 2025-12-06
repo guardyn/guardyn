@@ -42,6 +42,9 @@ service AuthService {
   // Get user profile by user ID (internal service-to-service)
   rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
 
+  // Delete user account and all associated data
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -325,3 +328,24 @@ message GetUserProfileResponse {
 // ============================================================================
 
 message HealthRequest {}
+
+// ============================================================================
+// Delete Account
+// ============================================================================
+
+message DeleteAccountRequest {
+  string access_token = 1; // Authentication - identifies the user to delete
+  string password = 2; // Password confirmation for security
+}
+
+message DeleteAccountResponse {
+  oneof result {
+    DeleteAccountSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteAccountSuccess {
+  string user_id = 1; // UUID of the deleted user
+  string message = 2; // Confirmation message
+}

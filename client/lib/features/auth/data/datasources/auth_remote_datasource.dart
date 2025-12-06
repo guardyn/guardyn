@@ -172,6 +172,43 @@ class AuthRemoteDatasource {
     }
   }
 
+  /// Delete user account permanently
+  Future<DeleteAccountSuccess> deleteAccount({
+    required String accessToken,
+    required String password,
+  }) async {
+    try {
+      final request = DeleteAccountRequest()
+        ..accessToken = accessToken
+        ..password = password;
+
+      final response = await grpcClients.authClient.deleteAccount(request);
+
+      if (response.hasSuccess()) {
+        logger.i('Account deleted successfully: ${response.success.userId}');
+        return response.success;
+      } else if (response.hasError()) {
+        throw AuthException(
+          response.error.message,
+          code: response.error.code.toString(),
+        );
+      } else {
+        throw AuthException('Unknown error during account deletion');
+      }
+    } on GrpcError catch (e) {
+      logger.e('gRPC error during account deletion: ${e.message}');
+      throw AuthException(
+        'Network error: ${e.message}',
+        code: e.code.toString(),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      logger.e('Unexpected error during account deletion: $e');
+      throw AuthException('Account deletion failed: $e');
+    }
+  }
+
   /// Generate real X3DH KeyBundle for registration/login
   /// Uses CryptoService to create cryptographically secure keys
   /// 

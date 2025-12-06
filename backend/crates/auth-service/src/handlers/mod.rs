@@ -9,3 +9,4 @@ pub mod key_bundle;
 pub mod mls_key_package;
 pub mod search_users;
 pub mod get_user_profile;
+pub mod delete_account;

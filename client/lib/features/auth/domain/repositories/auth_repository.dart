@@ -21,6 +21,12 @@ abstract class AuthRepository {
   /// Throws [AuthException] on failure
   Future<void> logout();
 
+  /// Delete user account permanently
+  /// This removes all user data from the server and local storage
+  ///
+  /// Throws [AuthException] on failure
+  Future<void> deleteAccount({required String password});
+
   /// Get the currently authenticated user (from secure storage)
   Future<User?> getCurrentUser();
 

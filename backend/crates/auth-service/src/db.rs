@@ -348,4 +348,77 @@ impl DatabaseClient {
     pub async fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         self.client.get(key.to_vec()).await.map_err(Into::into)
     }
+
+    /// Delete a key from TiKV
+    pub async fn delete(&self, key: &[u8]) -> Result<()> {
+        self.client.delete(key.to_vec()).await.map_err(Into::into)
+    }
+
+    /// Delete all user data from TiKV
+    /// This removes: user profile, username mapping, identity key, devices, sessions, MLS key packages
+    pub async fn delete_user(&self, user_id: &str, username: &str) -> Result<()> {
+        // 1. Delete user profile
+        let profile_key = format!("/users/{}/profile", user_id).into_bytes();
+        self.client.delete(profile_key).await?;
+
+        // 2. Delete username -> user_id mapping
+        let username_key = format!("/users/username/{}", username).into_bytes();
+        self.client.delete(username_key).await?;
+
+        // 3. Delete identity key
+        let identity_key = format!("/users/{}/identity_key", user_id).into_bytes();
+        self.client.delete(identity_key).await?;
+
+        // 4. Delete all devices and their keys using range scan
+        let devices_prefix = format!("/devices/{}/", user_id);
+        let start_key = devices_prefix.clone().into_bytes();
+        let mut end_key = start_key.clone();
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1;
+        }
+        
+        let device_keys = self.client.scan(start_key..end_key, 1000).await?;
+        for kv in device_keys {
+            let key_bytes: Vec<u8> = kv.0.into();
+            self.client.delete(key_bytes).await?;
+        }
+
+        // 5. Delete all sessions for this user using range scan
+        let sessions_prefix = format!("/sessions/user/{}/", user_id);
+        let start_key = sessions_prefix.clone().into_bytes();
+        let mut end_key = start_key.clone();
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1;
+        }
+        
+        let session_keys = self.client.scan(start_key..end_key, 1000).await?;
+        for kv in session_keys {
+            // Get the session token from the value to also delete from main sessions index
+            let session_token = String::from_utf8_lossy(&kv.1);
+            if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
+                let token_key = format!("/sessions/{}", session.session_token).into_bytes();
+                let _ = self.client.delete(token_key).await;
+            }
+            
+            let key_bytes: Vec<u8> = kv.0.into();
+            self.client.delete(key_bytes).await?;
+        }
+
+        // 6. Delete MLS key packages
+        let mls_prefix = format!("/mls/user/{}/", user_id);
+        let start_key = mls_prefix.clone().into_bytes();
+        let mut end_key = start_key.clone();
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1;
+        }
+        
+        let mls_keys = self.client.scan(start_key..end_key, 100).await?;
+        for kv in mls_keys {
+            let key_bytes: Vec<u8> = kv.0.into();
+            self.client.delete(key_bytes).await?;
+        }
+
+        tracing::info!("Deleted all auth data for user: {}", user_id);
+        Ok(())
+    }
 }
