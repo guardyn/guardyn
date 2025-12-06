@@ -192,20 +192,14 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final passwordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool obscurePassword = true;
-    bool isDisposed = false;
 
-    void disposeController() {
-      if (!isDisposed) {
-        isDisposed = true;
-        passwordController.dispose();
-      }
-    }
-
-    showDialog(
+    // We dispose the controller only after the dialog is fully closed to
+    // avoid rebuilds referencing a disposed notifier during animations.
+    final password = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
@@ -279,7 +273,6 @@ class _SettingsPageState extends State<SettingsPage> {
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                disposeController();
               },
               child: const Text('Cancel'),
             ),
@@ -290,12 +283,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
-                  final password = passwordController.text;
-                  Navigator.pop(dialogContext);
-                  disposeController();
-
-                  // Show final confirmation
-                  _showFinalConfirmation(context, password);
+                  final pwd = passwordController.text;
+                  Navigator.pop(dialogContext, pwd);
                 }
               },
               child: const Text('Continue'),
@@ -304,6 +293,15 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+
+    // Safe disposal after the dialog lifecycle completes.
+    passwordController.dispose();
+
+    if (!mounted || password == null || password.isEmpty) {
+      return;
+    }
+
+    _showFinalConfirmation(context, password);
   }
 
   void _showFinalConfirmation(BuildContext context, String password) {
