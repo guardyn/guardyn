@@ -295,6 +295,31 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
+  Future<Either<Failure, int>> clearChat({
+    required String conversationId,
+  }) async {
+    try {
+      // Get access token
+      final accessToken = await secureStorage.getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('No access token found'));
+      }
+
+      // Clear chat via datasource
+      final deletedCount = await remoteDatasource.clearChat(
+        accessToken: accessToken,
+        conversationId: conversationId,
+      );
+
+      return Right(deletedCount);
+    } on GrpcError catch (e) {
+      return Left(_handleGrpcError(e));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, String>> decryptMessageContent({
     required String encryptedContent,
     required String senderUserId,

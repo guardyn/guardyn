@@ -289,18 +289,18 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
 
     // Process messages
     let mut messages = consumer.messages().await?;
-
+    
     while let Some(msg_result) = messages.next().await {
         match msg_result {
             Ok(msg) => {
                 let subject = msg.subject.as_str();
                 debug!(subject = %subject, "NATS message received");
-
+                
                 // First, try to parse as MessageEnvelope (from gRPC handlers)
                 // Subject format: messages.{recipient_id}.{message_id}
                 if let Ok(envelope) = serde_json::from_slice::<crate::nats::MessageEnvelope>(&msg.payload) {
                     let recipient_id = &envelope.recipient_user_id;
-
+                    
                     info!(
                         message_id = %envelope.message_id,
                         recipient_id = %recipient_id,
@@ -338,9 +338,9 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                         connection_count = conn_count,
                         "Sending message to WebSocket connections"
                     );
-
+                    
                     state.connection_manager.send_to_user(recipient_id, ws_message).await;
-
+                    
                     // Acknowledge the message
                     if let Err(e) = msg.ack().await {
                         warn!("Failed to ack NATS message: {}", e);
@@ -352,7 +352,7 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                     let subject_parts: Vec<&str> = subject.split('.').collect();
                     if subject_parts.len() >= 3 && subject_parts[1] == "user" {
                         let recipient_id = subject_parts[2];
-
+                        
                         debug!(
                             recipient_id = %recipient_id,
                             "Relaying WsMessage via WebSocket"
@@ -361,7 +361,7 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                         // Send to recipient's WebSocket connections
                         state.connection_manager.send_to_user(recipient_id, ws_message).await;
                     }
-
+                    
                     // Acknowledge the message
                     if let Err(e) = msg.ack().await {
                         warn!("Failed to ack NATS message: {}", e);

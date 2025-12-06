@@ -54,6 +54,9 @@ service MessagingService {
   // Leave a group
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse);
 
+  // Clear all messages in a conversation (local delete for current user)
+  rpc ClearChat(ClearChatRequest) returns (ClearChatResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -259,6 +262,27 @@ message DeleteMessageSuccess {
   bool deleted = 1;
   string message_id = 2; // Echo back the message ID
   common.Timestamp timestamp = 3; // Server timestamp of deletion
+}
+
+// ============================================================================
+// Clear Chat History
+// ============================================================================
+
+message ClearChatRequest {
+  string access_token = 1;
+  string conversation_id = 2; // Conversation to clear
+}
+
+message ClearChatResponse {
+  oneof result {
+    ClearChatSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ClearChatSuccess {
+  uint32 deleted_count = 1; // Number of messages deleted
+  common.Timestamp timestamp = 2; // Server timestamp of operation
 }
 
 // ============================================================================

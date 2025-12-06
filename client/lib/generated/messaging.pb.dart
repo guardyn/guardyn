@@ -1797,6 +1797,234 @@ class DeleteMessageSuccess extends $pb.GeneratedMessage {
   $1.Timestamp ensureTimestamp() => $_ensure(2);
 }
 
+class ClearChatRequest extends $pb.GeneratedMessage {
+  factory ClearChatRequest({
+    $core.String? accessToken,
+    $core.String? conversationId,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (conversationId != null) result.conversationId = conversationId;
+    return result;
+  }
+
+  ClearChatRequest._();
+
+  factory ClearChatRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClearChatRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClearChatRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'conversationId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearChatRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearChatRequest copyWith(void Function(ClearChatRequest) updates) =>
+      super.copyWith((message) => updates(message as ClearChatRequest))
+          as ClearChatRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClearChatRequest create() => ClearChatRequest._();
+  @$core.override
+  ClearChatRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClearChatRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClearChatRequest>(create);
+  static ClearChatRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get conversationId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set conversationId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasConversationId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearConversationId() => $_clearField(2);
+}
+
+enum ClearChatResponse_Result { success, error, notSet }
+
+class ClearChatResponse extends $pb.GeneratedMessage {
+  factory ClearChatResponse({
+    ClearChatSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  ClearChatResponse._();
+
+  factory ClearChatResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClearChatResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, ClearChatResponse_Result>
+      _ClearChatResponse_ResultByTag = {
+    1: ClearChatResponse_Result.success,
+    2: ClearChatResponse_Result.error,
+    0: ClearChatResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClearChatResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<ClearChatSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: ClearChatSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearChatResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearChatResponse copyWith(void Function(ClearChatResponse) updates) =>
+      super.copyWith((message) => updates(message as ClearChatResponse))
+          as ClearChatResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClearChatResponse create() => ClearChatResponse._();
+  @$core.override
+  ClearChatResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClearChatResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClearChatResponse>(create);
+  static ClearChatResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  ClearChatResponse_Result whichResult() =>
+      _ClearChatResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  ClearChatSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(ClearChatSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ClearChatSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class ClearChatSuccess extends $pb.GeneratedMessage {
+  factory ClearChatSuccess({
+    $core.int? deletedCount,
+    $1.Timestamp? timestamp,
+  }) {
+    final result = create();
+    if (deletedCount != null) result.deletedCount = deletedCount;
+    if (timestamp != null) result.timestamp = timestamp;
+    return result;
+  }
+
+  ClearChatSuccess._();
+
+  factory ClearChatSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClearChatSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClearChatSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'deletedCount',
+        fieldType: $pb.PbFieldType.OU3)
+    ..aOM<$1.Timestamp>(2, _omitFieldNames ? '' : 'timestamp',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearChatSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearChatSuccess copyWith(void Function(ClearChatSuccess) updates) =>
+      super.copyWith((message) => updates(message as ClearChatSuccess))
+          as ClearChatSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClearChatSuccess create() => ClearChatSuccess._();
+  @$core.override
+  ClearChatSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClearChatSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClearChatSuccess>(create);
+  static ClearChatSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get deletedCount => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set deletedCount($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeletedCount() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeletedCount() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $1.Timestamp get timestamp => $_getN(1);
+  @$pb.TagNumber(2)
+  set timestamp($1.Timestamp value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTimestamp() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTimestamp() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.Timestamp ensureTimestamp() => $_ensure(1);
+}
+
 class TypingIndicatorRequest extends $pb.GeneratedMessage {
   factory TypingIndicatorRequest({
     $core.String? accessToken,

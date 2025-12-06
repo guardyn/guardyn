@@ -706,6 +706,55 @@ impl DatabaseClient {
         Ok(())
     }
 
+    /// Clear all messages in a conversation (mark as deleted)
+    /// Returns the number of messages that were marked as deleted
+    pub async fn clear_chat(&self, conversation_id: &str) -> Result<usize> {
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
+
+        // First, get all message IDs in the conversation
+        let select_query = "SELECT message_id FROM guardyn.messages 
+                           WHERE conversation_id = ? AND is_deleted = false 
+                           ALLOW FILTERING";
+
+        let result = self
+            .scylla
+            .query_unpaged(select_query, (conversation_uuid,))
+            .await
+            .context("Failed to fetch messages for clearing")?;
+
+        let mut deleted_count = 0usize;
+
+        // Mark each message as deleted
+        let update_query = "UPDATE guardyn.messages 
+                           SET is_deleted = true 
+                           WHERE conversation_id = ? AND message_id = ?";
+
+        if let Some(rows) = result.rows {
+            for row in rows {
+                // Extract message_id from row
+                let message_id = row.columns.get(0)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_uuid());
+                
+                if let Some(msg_id) = message_id {
+                    self.scylla
+                        .query_unpaged(update_query, (conversation_uuid, msg_id))
+                        .await
+                        .context("Failed to mark message as deleted")?;
+                    deleted_count += 1;
+                }
+            }
+        }
+
+        tracing::info!(
+            conversation_id = %conversation_id,
+            deleted_count = deleted_count,
+            "Cleared chat messages"
+        );
+
+        Ok(deleted_count)
+    }
+
     // ========================================================================
     // Conversation Operations (ScyllaDB - conversations table)
     // ========================================================================
