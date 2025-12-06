@@ -55,6 +55,7 @@ class GuardynApp extends StatelessWidget {
     final authRepository = AuthRepositoryImpl(
       remoteDatasource: remoteDatasource,
       secureStorage: secureStorage,
+      cryptoService: cryptoService,
     );
 
     final registerUser = RegisterUser(authRepository);

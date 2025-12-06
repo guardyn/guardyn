@@ -1,3 +1,4 @@
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:guardyn_client/features/auth/domain/entities/user.dart';
@@ -8,11 +9,13 @@ import 'package:logger/logger.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDatasource remoteDatasource;
   final SecureStorage secureStorage;
+  final CryptoService cryptoService;
   final Logger logger = Logger();
 
   AuthRepositoryImpl({
     required this.remoteDatasource,
     required this.secureStorage,
+    required this.cryptoService,
   });
 
   @override
@@ -113,12 +116,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Clear all local data
       await secureStorage.clearAll();
+      // Clear all crypto state (X3DH keys and sessions)
+      await cryptoService.clearAll();
 
       logger.i('User logged out and local data cleared');
     } catch (e) {
       logger.e('Logout failed: $e');
       // Still clear local data even if backend call fails
       await secureStorage.clearAll();
+      await cryptoService.clearAll();
       rethrow;
     }
   }
