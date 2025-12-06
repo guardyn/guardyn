@@ -39,22 +39,21 @@ class _SettingsPageState extends State<SettingsPage> {
       listener: (context, state) {
         if (_hasNavigated || !mounted) return;
 
-        if (state is AuthAccountDeleted && !_showedDeleteMessage) {
-          _showedDeleteMessage = true;
-          // Show success message using root scaffold messenger
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-          // Navigate will be triggered by AuthUnauthenticated that follows
-        } else if (state is AuthError) {
+        if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message), backgroundColor: Colors.red),
           );
         } else if (state is AuthUnauthenticated) {
+          if (state.message != null && !_showedDeleteMessage) {
+            _showedDeleteMessage = true;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message!),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
           // Navigate to login page
           _navigateToLogin();
         }
