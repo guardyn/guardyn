@@ -64,7 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       logger.i('Registration successful: ${user.userId}');
       emit(AuthAuthenticated(user));
-      
+
       // Trigger background key replenishment after successful registration
       _triggerBackgroundKeyReplenishment();
     } on AuthException catch (e) {
@@ -88,7 +88,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       logger.i('Login successful: ${user.userId}');
       emit(AuthAuthenticated(user));
-      
+
       // Trigger background key replenishment after successful login
       _triggerBackgroundKeyReplenishment();
     } on AuthException catch (e) {
@@ -129,12 +129,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       await authRepository.deleteAccount(password: event.password);
       logger.i('Account deleted successfully');
-      // Emit AuthAccountDeleted with a flag that UI can use
-      // Then emit AuthUnauthenticated so the bloc is in correct state for login page
-      emit(AuthAccountDeleted('Your account has been permanently deleted'));
-      // Small delay to allow UI to show the success message before state change
-      await Future.delayed(const Duration(milliseconds: 100));
-      emit(AuthUnauthenticated());
+      // Emit AuthUnauthenticated with a message so UI can show success
+      emit(
+        AuthUnauthenticated(
+          message: 'Your account has been permanently deleted',
+        ),
+      );
     } on AuthException catch (e) {
       logger.e('Account deletion failed: ${e.message}');
       emit(AuthError(e.message));

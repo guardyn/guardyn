@@ -88,6 +88,7 @@ pub async fn handle(
     }
 
     // 4. Delete all user data from auth-service
+    tracing::info!("Deleting user account: {} ({})", user.username, user_id);
     if let Err(e) = service.db.delete_user(&user_id, &user.username).await {
         tracing::error!("Failed to delete user data: {}", e);
         let error = ErrorResponse {

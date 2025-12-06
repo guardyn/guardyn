@@ -23,7 +23,14 @@ class AuthAuthenticated extends AuthState {
 }
 
 /// User is not authenticated
-class AuthUnauthenticated extends AuthState {}
+class AuthUnauthenticated extends AuthState {
+  final String? message;
+
+  AuthUnauthenticated({this.message});
+
+  @override
+  List<Object?> get props => [message];
+}
 
 /// Authentication error
 class AuthError extends AuthState {
@@ -38,12 +45,3 @@ class AuthError extends AuthState {
 /// Account deletion in progress
 class AuthAccountDeleting extends AuthState {}
 
-/// Account successfully deleted
-class AuthAccountDeleted extends AuthState {
-  final String message;
-
-  AuthAccountDeleted(this.message);
-
-  @override
-  List<Object?> get props => [message];
-}
