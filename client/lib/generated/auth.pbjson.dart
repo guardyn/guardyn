@@ -930,3 +930,65 @@ const HealthRequest$json = {
 /// Descriptor for `HealthRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List healthRequestDescriptor =
     $convert.base64Decode('Cg1IZWFsdGhSZXF1ZXN0');
+
+@$core.Deprecated('Use deleteAccountRequestDescriptor instead')
+const DeleteAccountRequest$json = {
+  '1': 'DeleteAccountRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'password', '3': 2, '4': 1, '5': 9, '10': 'password'},
+  ],
+};
+
+/// Descriptor for `DeleteAccountRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteAccountRequestDescriptor = $convert.base64Decode(
+    'ChREZWxldGVBY2NvdW50UmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2'
+    'VuEhoKCHBhc3N3b3JkGAIgASgJUghwYXNzd29yZA==');
+
+@$core.Deprecated('Use deleteAccountResponseDescriptor instead')
+const DeleteAccountResponse$json = {
+  '1': 'DeleteAccountResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.DeleteAccountSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `DeleteAccountResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteAccountResponseDescriptor = $convert.base64Decode(
+    'ChVEZWxldGVBY2NvdW50UmVzcG9uc2USPgoHc3VjY2VzcxgBIAEoCzIiLmd1YXJkeW4uYXV0aC'
+    '5EZWxldGVBY2NvdW50U3VjY2Vzc0gAUgdzdWNjZXNzEjUKBWVycm9yGAIgASgLMh0uZ3VhcmR5'
+    'bi5jb21tb24uRXJyb3JSZXNwb25zZUgAUgVlcnJvckIICgZyZXN1bHQ=');
+
+@$core.Deprecated('Use deleteAccountSuccessDescriptor instead')
+const DeleteAccountSuccess$json = {
+  '1': 'DeleteAccountSuccess',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'message', '3': 2, '4': 1, '5': 9, '10': 'message'},
+  ],
+};
+
+/// Descriptor for `DeleteAccountSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteAccountSuccessDescriptor = $convert.base64Decode(
+    'ChREZWxldGVBY2NvdW50U3VjY2VzcxIXCgd1c2VyX2lkGAEgASgJUgZ1c2VySWQSGAoHbWVzc2'
+    'FnZRgCIAEoCVIHbWVzc2FnZQ==');

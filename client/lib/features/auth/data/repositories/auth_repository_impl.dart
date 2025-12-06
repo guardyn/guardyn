@@ -130,6 +130,33 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccount({required String password}) async {
+    try {
+      final accessToken = await secureStorage.getAccessToken();
+
+      if (accessToken == null) {
+        throw AuthException('Not authenticated');
+      }
+
+      // Call backend to delete account
+      await remoteDatasource.deleteAccount(
+        accessToken: accessToken,
+        password: password,
+      );
+
+      // Clear all local data
+      await secureStorage.clearAll();
+      // Clear all crypto state (X3DH keys and sessions)
+      await cryptoService.clearAll();
+
+      logger.i('Account deleted and local data cleared');
+    } catch (e) {
+      logger.e('Account deletion failed: $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<User?> getCurrentUser() async {
     try {
       final userId = await secureStorage.getUserId();

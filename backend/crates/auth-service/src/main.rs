@@ -39,6 +39,7 @@ use proto::auth::{
     GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
     SearchUsersRequest, SearchUsersResponse,
     GetUserProfileRequest, GetUserProfileResponse,
+    DeleteAccountRequest, DeleteAccountResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -145,6 +146,13 @@ impl AuthService for AuthServiceImpl {
         )
         .await;
         Ok(Response::new(response))
+    }
+
+    async fn delete_account(
+        &self,
+        request: Request<DeleteAccountRequest>,
+    ) -> Result<Response<DeleteAccountResponse>, Status> {
+        handlers::delete_account::handle(self, request).await
     }
 
     async fn health(

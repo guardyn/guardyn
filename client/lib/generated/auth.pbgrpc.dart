@@ -121,6 +121,14 @@ class AuthServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getUserProfile, request, options: options);
   }
 
+  /// Delete user account and all associated data
+  $grpc.ResponseFuture<$0.DeleteAccountResponse> deleteAccount(
+    $0.DeleteAccountRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteAccount, request, options: options);
+  }
+
   /// Health check
   $grpc.ResponseFuture<$1.HealthStatus> health(
     $0.HealthRequest request, {
@@ -185,6 +193,11 @@ class AuthServiceClient extends $grpc.Client {
           '/guardyn.auth.AuthService/GetUserProfile',
           ($0.GetUserProfileRequest value) => value.writeToBuffer(),
           $0.GetUserProfileResponse.fromBuffer);
+  static final _$deleteAccount =
+      $grpc.ClientMethod<$0.DeleteAccountRequest, $0.DeleteAccountResponse>(
+          '/guardyn.auth.AuthService/DeleteAccount',
+          ($0.DeleteAccountRequest value) => value.writeToBuffer(),
+          $0.DeleteAccountResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.auth.AuthService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -289,6 +302,15 @@ abstract class AuthServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetUserProfileRequest.fromBuffer(value),
         ($0.GetUserProfileResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.DeleteAccountRequest, $0.DeleteAccountResponse>(
+            'DeleteAccount',
+            deleteAccount_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.DeleteAccountRequest.fromBuffer(value),
+            ($0.DeleteAccountResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -392,6 +414,15 @@ abstract class AuthServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetUserProfileResponse> getUserProfile(
       $grpc.ServiceCall call, $0.GetUserProfileRequest request);
+
+  $async.Future<$0.DeleteAccountResponse> deleteAccount_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DeleteAccountRequest> $request) async {
+    return deleteAccount($call, await $request);
+  }
+
+  $async.Future<$0.DeleteAccountResponse> deleteAccount(
+      $grpc.ServiceCall call, $0.DeleteAccountRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {

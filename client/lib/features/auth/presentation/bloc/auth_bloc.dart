@@ -27,6 +27,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
+    on<AuthDeleteAccountRequested>(_onDeleteAccountRequested);
     on<AuthCheckStatus>(_onCheckStatus);
   }
 
@@ -117,6 +118,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       logger.e('Unexpected error during logout: $e');
       emit(AuthError('Logout failed: $e'));
       emit(AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onDeleteAccountRequested(
+    AuthDeleteAccountRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthAccountDeleting());
+    try {
+      await authRepository.deleteAccount(password: event.password);
+      logger.i('Account deleted successfully');
+      emit(AuthAccountDeleted('Your account has been permanently deleted'));
+      // Navigate to unauthenticated state after a brief delay to show message
+      emit(AuthUnauthenticated());
+    } on AuthException catch (e) {
+      logger.e('Account deletion failed: ${e.message}');
+      emit(AuthError(e.message));
+    } catch (e) {
+      logger.e('Unexpected error during account deletion: $e');
+      emit(AuthError('Account deletion failed: $e'));
     }
   }
 

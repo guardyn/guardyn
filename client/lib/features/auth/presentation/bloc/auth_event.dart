@@ -35,5 +35,15 @@ class AuthLoginRequested extends AuthEvent {
 /// Event to logout the current user
 class AuthLogoutRequested extends AuthEvent {}
 
+/// Event to delete user account permanently
+class AuthDeleteAccountRequested extends AuthEvent {
+  final String password;
+
+  AuthDeleteAccountRequested({required this.password});
+
+  @override
+  List<Object?> get props => [password];
+}
+
 /// Event to check authentication status (on app start)
 class AuthCheckStatus extends AuthEvent {}
