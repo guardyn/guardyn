@@ -41,6 +41,10 @@ abstract class MessageRepository {
     required String messageId,
   });
 
+  /// Clear all messages in a conversation
+  /// Returns the number of messages deleted
+  Future<Either<Failure, int>> clearChat({required String conversationId});
+
   /// Decrypt an encrypted message content
   /// Used for WebSocket messages that arrive encrypted
   /// If x3dhPrekey is provided, creates responder session before decryption

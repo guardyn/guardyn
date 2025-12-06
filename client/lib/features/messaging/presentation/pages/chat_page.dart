@@ -127,6 +127,36 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
+  void _showClearChatDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear chat'),
+        content: Text(
+          'Are you sure you want to delete all messages with ${widget.conversationUserName}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              if (_conversationId != null) {
+                context.read<MessageBloc>().add(
+                  MessageClearChat(conversationId: _conversationId!),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -261,11 +291,25 @@ class _ChatPageState extends State<ChatPage> {
               // TODO: Implement voice call
             },
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // TODO: Implement chat settings
+            onSelected: (value) {
+              if (value == 'clear_chat') {
+                _showClearChatDialog();
+              }
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'clear_chat',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_sweep, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Clear chat', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

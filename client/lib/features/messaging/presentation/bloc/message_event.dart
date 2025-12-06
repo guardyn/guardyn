@@ -143,3 +143,13 @@ class MessageSendTypingIndicator extends MessageEvent {
   @override
   List<Object?> get props => [conversationId, isTyping];
 }
+
+/// Clear all messages in the current conversation
+class MessageClearChat extends MessageEvent {
+  final String conversationId;
+
+  const MessageClearChat({required this.conversationId});
+
+  @override
+  List<Object?> get props => [conversationId];
+}

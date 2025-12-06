@@ -7,6 +7,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../data/datasources/websocket_datasource.dart';
 import '../../domain/entities/message.dart';
+import '../../domain/usecases/clear_chat.dart';
 import '../../domain/usecases/decrypt_message.dart';
 import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
@@ -22,6 +23,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final ReceiveMessages receiveMessages;
   final MarkAsRead markAsRead;
   final DecryptMessage decryptMessage;
+  final ClearChat clearChat;
 
   StreamSubscription<dynamic>? _messageStreamSubscription;
   StreamSubscription<dynamic>? _wsMessageSubscription;
@@ -45,12 +47,14 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     required this.receiveMessages,
     required this.markAsRead,
     required this.decryptMessage,
+    required this.clearChat,
   }) : super(MessageInitial()) {
     on<MessageLoadHistory>(_onLoadHistory);
     on<MessageSend>(_onSendMessage);
     on<MessageReceived>(_onMessageReceived);
     on<MessageMarkAsRead>(_onMarkAsRead);
     on<MessageDelete>(_onDeleteMessage);
+    on<MessageClearChat>(_onClearChat);
     on<MessageSubscribeToStream>(_onSubscribeToStream);
     on<MessageSetActiveConversation>(_onSetActiveConversation);
     on<MessageStartPolling>(_onStartPolling);
@@ -358,6 +362,36 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         MessageLoaded(messages: updatedMessages, hasMore: currentState.hasMore),
       );
     }
+  }
+
+  /// Clear all messages in the conversation
+  Future<void> _onClearChat(
+    MessageClearChat event,
+    Emitter<MessageState> emit,
+  ) async {
+    // Store current messages in case of error
+    final currentMessages = state is MessageLoaded
+        ? (state as MessageLoaded).messages
+        : <Message>[];
+
+    // Show loading state
+    emit(MessageLoading());
+
+    final result = await clearChat(
+      ClearChatParams(conversationId: event.conversationId),
+    );
+
+    result.fold(
+      (failure) {
+        emit(MessageError(failure.message, currentMessages));
+      },
+      (deletedCount) {
+        // ignore: avoid_print
+        print('🗑️ Cleared $deletedCount messages from chat');
+        // Emit empty message list
+        emit(const MessageLoaded(messages: [], hasMore: false));
+      },
+    );
   }
 
   Future<void> _onSubscribeToStream(

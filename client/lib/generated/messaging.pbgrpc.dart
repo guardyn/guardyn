@@ -155,6 +155,14 @@ class MessagingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$leaveGroup, request, options: options);
   }
 
+  /// Clear all messages in a conversation (local delete for current user)
+  $grpc.ResponseFuture<$0.ClearChatResponse> clearChat(
+    $0.ClearChatRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clearChat, request, options: options);
+  }
+
   /// Health check
   $grpc.ResponseFuture<$1.HealthStatus> health(
     $0.HealthRequest request, {
@@ -240,6 +248,11 @@ class MessagingServiceClient extends $grpc.Client {
           '/guardyn.messaging.MessagingService/LeaveGroup',
           ($0.LeaveGroupRequest value) => value.writeToBuffer(),
           $0.LeaveGroupResponse.fromBuffer);
+  static final _$clearChat =
+      $grpc.ClientMethod<$0.ClearChatRequest, $0.ClearChatResponse>(
+          '/guardyn.messaging.MessagingService/ClearChat',
+          ($0.ClearChatRequest value) => value.writeToBuffer(),
+          $0.ClearChatResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.messaging.MessagingService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -379,6 +392,13 @@ abstract class MessagingServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.LeaveGroupRequest.fromBuffer(value),
         ($0.LeaveGroupResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClearChatRequest, $0.ClearChatResponse>(
+        'ClearChat',
+        clearChat_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.ClearChatRequest.fromBuffer(value),
+        ($0.ClearChatResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -515,6 +535,14 @@ abstract class MessagingServiceBase extends $grpc.Service {
 
   $async.Future<$0.LeaveGroupResponse> leaveGroup(
       $grpc.ServiceCall call, $0.LeaveGroupRequest request);
+
+  $async.Future<$0.ClearChatResponse> clearChat_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ClearChatRequest> $request) async {
+    return clearChat($call, await $request);
+  }
+
+  $async.Future<$0.ClearChatResponse> clearChat(
+      $grpc.ServiceCall call, $0.ClearChatRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {

@@ -45,6 +45,7 @@ use proto::messaging::{
     GetConversationsRequest, GetConversationsResponse,
     MarkAsReadRequest, MarkAsReadResponse,
     DeleteMessageRequest, DeleteMessageResponse,
+    ClearChatRequest, ClearChatResponse,
     TypingIndicatorRequest, TypingIndicatorResponse,
     CreateGroupRequest, CreateGroupResponse,
     AddGroupMemberRequest, AddGroupMemberResponse,
@@ -194,6 +195,13 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<LeaveGroupRequest>,
     ) -> Result<Response<LeaveGroupResponse>, Status> {
         handlers::leave_group(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn clear_chat(
+        &self,
+        request: Request<ClearChatRequest>,
+    ) -> Result<Response<ClearChatResponse>, Status> {
+        handlers::clear_chat(request.into_inner(), self.db.clone()).await
     }
 
     async fn health(

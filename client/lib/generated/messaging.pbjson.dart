@@ -641,6 +641,76 @@ final $typed_data.Uint8List deleteMessageSuccessDescriptor = $convert.base64Deco
     'NhZ2VfaWQYAiABKAlSCW1lc3NhZ2VJZBI3Cgl0aW1lc3RhbXAYAyABKAsyGS5ndWFyZHluLmNv'
     'bW1vbi5UaW1lc3RhbXBSCXRpbWVzdGFtcA==');
 
+@$core.Deprecated('Use clearChatRequestDescriptor instead')
+const ClearChatRequest$json = {
+  '1': 'ClearChatRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'conversation_id', '3': 2, '4': 1, '5': 9, '10': 'conversationId'},
+  ],
+};
+
+/// Descriptor for `ClearChatRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearChatRequestDescriptor = $convert.base64Decode(
+    'ChBDbGVhckNoYXRSZXF1ZXN0EiEKDGFjY2Vzc190b2tlbhgBIAEoCVILYWNjZXNzVG9rZW4SJw'
+    'oPY29udmVyc2F0aW9uX2lkGAIgASgJUg5jb252ZXJzYXRpb25JZA==');
+
+@$core.Deprecated('Use clearChatResponseDescriptor instead')
+const ClearChatResponse$json = {
+  '1': 'ClearChatResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.ClearChatSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `ClearChatResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearChatResponseDescriptor = $convert.base64Decode(
+    'ChFDbGVhckNoYXRSZXNwb25zZRI/CgdzdWNjZXNzGAEgASgLMiMuZ3VhcmR5bi5tZXNzYWdpbm'
+    'cuQ2xlYXJDaGF0U3VjY2Vzc0gAUgdzdWNjZXNzEjUKBWVycm9yGAIgASgLMh0uZ3VhcmR5bi5j'
+    'b21tb24uRXJyb3JSZXNwb25zZUgAUgVlcnJvckIICgZyZXN1bHQ=');
+
+@$core.Deprecated('Use clearChatSuccessDescriptor instead')
+const ClearChatSuccess$json = {
+  '1': 'ClearChatSuccess',
+  '2': [
+    {'1': 'deleted_count', '3': 1, '4': 1, '5': 13, '10': 'deletedCount'},
+    {
+      '1': 'timestamp',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'timestamp'
+    },
+  ],
+};
+
+/// Descriptor for `ClearChatSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearChatSuccessDescriptor = $convert.base64Decode(
+    'ChBDbGVhckNoYXRTdWNjZXNzEiMKDWRlbGV0ZWRfY291bnQYASABKA1SDGRlbGV0ZWRDb3VudB'
+    'I3Cgl0aW1lc3RhbXAYAiABKAsyGS5ndWFyZHluLmNvbW1vbi5UaW1lc3RhbXBSCXRpbWVzdGFt'
+    'cA==');
+
 @$core.Deprecated('Use typingIndicatorRequestDescriptor instead')
 const TypingIndicatorRequest$json = {
   '1': 'TypingIndicatorRequest',

@@ -156,6 +156,25 @@ class MessageRemoteDatasource {
     }
   }
 
+  /// Clear all messages in a conversation via gRPC
+  Future<int> clearChat({
+    required String accessToken,
+    required String conversationId,
+  }) async {
+    final request = proto.ClearChatRequest(
+      accessToken: accessToken,
+      conversationId: conversationId,
+    );
+
+    final response = await _messagingClient.clearChat(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.deletedCount;
+  }
+
   /// Get conversations list via gRPC
   Future<List<proto.Conversation>> getConversations({
     required String accessToken,
