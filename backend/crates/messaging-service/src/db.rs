@@ -68,6 +68,7 @@ impl DatabaseClient {
                     client_timestamp BIGINT,
                     delivery_status INT,
                     is_deleted BOOLEAN,
+                    x3dh_prekey TEXT,
                     PRIMARY KEY (conversation_id, message_id)
                 ) WITH CLUSTERING ORDER BY (message_id DESC)",
                 &[],
@@ -226,6 +227,9 @@ impl DatabaseClient {
             let is_deleted: bool = row.columns[11].as_ref()
                 .and_then(|v| v.as_boolean())
                 .unwrap_or(false);
+            let x3dh_prekey: Option<String> = row.columns[12].as_ref()
+                .and_then(|v| v.as_text())
+                .map(|s| s.to_string());
 
             let msg = StoredMessage {
                 conversation_id: conversation_id.to_string(),
@@ -240,6 +244,7 @@ impl DatabaseClient {
                 client_timestamp,
                 delivery_status,
                 is_deleted,
+                x3dh_prekey,
             };
             Ok(Some(msg))
         } else {
@@ -325,8 +330,8 @@ impl DatabaseClient {
             conversation_id, message_id, sender_user_id, sender_device_id,
             recipient_user_id, recipient_device_id, encrypted_content,
             message_type, server_timestamp, client_timestamp,
-            delivery_status, is_deleted
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            delivery_status, is_deleted, x3dh_prekey
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         tracing::debug!("Parsing conversation_id: {}", msg.conversation_id);
         let conversation_uuid = uuid::Uuid::parse_str(&msg.conversation_id)
@@ -342,7 +347,7 @@ impl DatabaseClient {
                 e
             })?;
 
-        tracing::debug!("Executing ScyllaDB query with {} params", 12);
+        tracing::debug!("Executing ScyllaDB query with {} params", 13);
         let result = self.scylla
             .query_unpaged(
                 query,
@@ -359,6 +364,7 @@ impl DatabaseClient {
                     msg.client_timestamp,
                     msg.delivery_status,
                     msg.is_deleted,
+                    &msg.x3dh_prekey,
                 ),
             )
             .await;
@@ -384,7 +390,7 @@ impl DatabaseClient {
         let query = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
                             recipient_user_id, recipient_device_id, encrypted_content, \
                             message_type, server_timestamp, client_timestamp, \
-                            delivery_status, is_deleted \
+                            delivery_status, is_deleted, x3dh_prekey \
                      FROM guardyn.messages 
                      WHERE conversation_id = ? 
                      LIMIT ?";
@@ -405,7 +411,7 @@ impl DatabaseClient {
                 // 0: conversation_id, 1: message_id, 2: sender_user_id, 3: sender_device_id,
                 // 4: recipient_user_id, 5: recipient_device_id (nullable), 6: encrypted_content,
                 // 7: message_type, 8: server_timestamp, 9: client_timestamp,
-                // 10: delivery_status, 11: is_deleted
+                // 10: delivery_status, 11: is_deleted, 12: x3dh_prekey (nullable)
 
                 // Safe extraction with error context
                 let conversation_id = row.columns.get(0)
@@ -474,6 +480,11 @@ impl DatabaseClient {
                     .and_then(|c| c.as_boolean())
                     .ok_or_else(|| anyhow::anyhow!("Missing is_deleted"))?;
 
+                let x3dh_prekey = row.columns.get(12)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string()); // Nullable field
+
                 let msg = StoredMessage {
                     conversation_id,
                     message_id,
@@ -487,6 +498,7 @@ impl DatabaseClient {
                     client_timestamp,
                     delivery_status,
                     is_deleted,
+                    x3dh_prekey,
                 };
                 messages.push(msg);
             }
@@ -509,7 +521,7 @@ impl DatabaseClient {
         let query_sender = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
                             recipient_user_id, recipient_device_id, encrypted_content, \
                             message_type, server_timestamp, client_timestamp, \
-                            delivery_status, is_deleted \
+                            delivery_status, is_deleted, x3dh_prekey \
                      FROM guardyn.messages \
                      WHERE sender_user_id = ? \
                      LIMIT ? \
@@ -518,7 +530,7 @@ impl DatabaseClient {
         let query_recipient = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
                             recipient_user_id, recipient_device_id, encrypted_content, \
                             message_type, server_timestamp, client_timestamp, \
-                            delivery_status, is_deleted \
+                            delivery_status, is_deleted, x3dh_prekey \
                      FROM guardyn.messages \
                      WHERE recipient_user_id = ? \
                      LIMIT ? \
@@ -616,6 +628,12 @@ impl DatabaseClient {
                     .and_then(|c| c.as_boolean())
                     .unwrap_or(false);
 
+                let x3dh_prekey = row.columns.get(12)
+                    .and_then(|c| c.as_ref())
+                    .and_then(|c| c.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+
                 // Determine the other user in the conversation
                 let other_user_id = if sender_user_id == user_id {
                     recipient_user_id.clone()
@@ -644,7 +662,7 @@ impl DatabaseClient {
                     delivery_status,
                     media_id: String::new(),
                     is_deleted,
-                    x3dh_prekey: String::new(), // Not stored in DB
+                    x3dh_prekey,
                 };
 
                 // Update or create conversation
@@ -735,7 +753,7 @@ impl DatabaseClient {
                 let message_id = row.columns.get(0)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid());
-                
+
                 if let Some(msg_id) = message_id {
                     self.scylla
                         .query_unpaged(update_query, (conversation_uuid, msg_id))

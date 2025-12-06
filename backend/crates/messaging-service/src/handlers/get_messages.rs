@@ -85,7 +85,7 @@ pub async fn get_messages(
             delivery_status: m.delivery_status,
             is_deleted: m.is_deleted,
             media_id: String::new(), // TODO: Implement media references
-            x3dh_prekey: String::new(), // Not stored in DB
+            x3dh_prekey: m.x3dh_prekey.unwrap_or_default(), // Return stored X3DH prekey
         })
         .collect();
 

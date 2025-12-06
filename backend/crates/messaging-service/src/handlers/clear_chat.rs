@@ -11,11 +11,21 @@ pub async fn clear_chat(
     request: ClearChatRequest,
     db: Arc<DatabaseClient>,
 ) -> Result<Response<ClearChatResponse>, Status> {
+    tracing::info!(
+        conversation_id = %request.conversation_id,
+        token_length = request.access_token.len(),
+        "ClearChat handler invoked"
+    );
+
     // Validate JWT token
     let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
     if crate::jwt::validate_and_extract(&request.access_token, &jwt_secret).is_err() {
+        tracing::warn!(
+            conversation_id = %request.conversation_id,
+            "ClearChat: JWT validation failed"
+        );
         return Ok(Response::new(ClearChatResponse {
             result: Some(clear_chat_response::Result::Error(ErrorResponse {
                 code: 16, // UNAUTHENTICATED
