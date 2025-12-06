@@ -129,9 +129,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       await authRepository.deleteAccount(password: event.password);
       logger.i('Account deleted successfully');
+      // Emit only AuthAccountDeleted - the UI will handle navigation to login
+      // Do NOT emit AuthUnauthenticated here as it causes _dependents.isEmpty error
       emit(AuthAccountDeleted('Your account has been permanently deleted'));
-      // Navigate to unauthenticated state after a brief delay to show message
-      emit(AuthUnauthenticated());
     } on AuthException catch (e) {
       logger.e('Account deletion failed: ${e.message}');
       emit(AuthError(e.message));
