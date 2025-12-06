@@ -170,6 +170,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    // Capture the bloc reference before showing the dialog
+    final authBloc = context.read<AuthBloc>();
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -183,7 +186,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              context.read<AuthBloc>().add(AuthLogoutRequested());
+              // Use pre-captured bloc reference to avoid context issues
+              authBloc.add(AuthLogoutRequested());
             },
             child: const Text('Logout'),
           ),
@@ -305,6 +309,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showFinalConfirmation(BuildContext context, String password) {
+    // Capture the bloc reference before showing the dialog
+    // This ensures we can access it even after the dialog is closed
+    final authBloc = context.read<AuthBloc>();
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -324,10 +332,11 @@ class _SettingsPageState extends State<SettingsPage> {
               foregroundColor: Colors.white,
             ),
             onPressed: () {
+              // Close the dialog first
               Navigator.pop(dialogContext);
-              context.read<AuthBloc>().add(
-                AuthDeleteAccountRequested(password: password),
-              );
+              // Use the pre-captured bloc reference to dispatch the event
+              // This avoids issues with context being invalid after navigation
+              authBloc.add(AuthDeleteAccountRequested(password: password));
             },
             child: const Text('Yes, delete my account'),
           ),
