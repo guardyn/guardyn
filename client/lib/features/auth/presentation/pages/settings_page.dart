@@ -15,6 +15,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _hasNavigated = false;
+  bool _showedDeleteMessage = false;
 
   void _navigateToLogin() {
     if (_hasNavigated || !mounted) return;
@@ -34,9 +35,10 @@ class _SettingsPageState extends State<SettingsPage> {
       // Stop listening once we've navigated
       listenWhen: (previous, current) => !_hasNavigated,
       listener: (context, state) {
-        if (_hasNavigated) return;
+        if (_hasNavigated || !mounted) return;
         
-        if (state is AuthAccountDeleted) {
+        if (state is AuthAccountDeleted && !_showedDeleteMessage) {
+          _showedDeleteMessage = true;
           // Show success message using root scaffold messenger
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -45,8 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
               duration: const Duration(seconds: 2),
             ),
           );
-          // Navigate to login page after account deletion
-          _navigateToLogin();
+          // Navigate will be triggered by AuthUnauthenticated that follows
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
