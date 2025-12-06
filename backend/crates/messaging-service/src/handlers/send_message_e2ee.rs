@@ -162,6 +162,12 @@ pub async fn send_message_e2ee(
             .unwrap_or(server_timestamp),
         delivery_status: DeliveryStatus::Pending.to_i32(),
         is_deleted: false,
+        // Store X3DH prekey for first message (required for recipient to create session)
+        x3dh_prekey: if request.x3dh_prekey.is_empty() {
+            None
+        } else {
+            Some(request.x3dh_prekey.clone())
+        },
     };
 
     tracing::debug!(

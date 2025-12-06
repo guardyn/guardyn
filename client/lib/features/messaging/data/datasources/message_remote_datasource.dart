@@ -161,16 +161,33 @@ class MessageRemoteDatasource {
     required String accessToken,
     required String conversationId,
   }) async {
+    // ignore: avoid_print
+    print('🗑️ ClearChat: Sending request for conversation $conversationId');
+    
     final request = proto.ClearChatRequest(
       accessToken: accessToken,
       conversationId: conversationId,
     );
 
     final response = await _messagingClient.clearChat(request);
+    
+    // ignore: avoid_print
+    print('🗑️ ClearChat: Response received - hasError=${response.hasError()}, hasSuccess=${response.hasSuccess()}');
 
     if (response.hasError()) {
+      // ignore: avoid_print
+      print('🗑️ ClearChat: Error - code=${response.error.code.value}, message=${response.error.message}');
       throw GrpcError.custom(response.error.code.value, response.error.message);
     }
+    
+    if (!response.hasSuccess()) {
+      // ignore: avoid_print
+      print('🗑️ ClearChat: No success response - response is empty or malformed');
+      throw GrpcError.custom(13, 'Empty response from server');
+    }
+    
+    // ignore: avoid_print
+    print('🗑️ ClearChat: Success - deletedCount=${response.success.deletedCount}');
 
     return response.success.deletedCount;
   }

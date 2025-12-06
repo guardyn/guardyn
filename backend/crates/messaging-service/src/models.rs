@@ -16,6 +16,9 @@ pub struct StoredMessage {
     pub client_timestamp: i64,
     pub delivery_status: i32,
     pub is_deleted: bool,
+    /// X3DH prekey data for first message in session (Base64 encoded)
+    /// Required for recipient to create responder session when receiving first message
+    pub x3dh_prekey: Option<String>,
 }
 
 /// Delivery state tracked in TiKV

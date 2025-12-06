@@ -95,7 +95,7 @@ async fn stream_messages(
                         delivery_status: convert_delivery_status(&delivery_state.status),
                         is_deleted: false,
                         media_id: "".to_string(),
-                        x3dh_prekey: "".to_string(), // Empty for stored messages
+                        x3dh_prekey: "".to_string(), // TODO: Fetch from ScyllaDB with message content
                     };
 
                     // Send to client
