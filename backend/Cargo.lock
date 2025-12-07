@@ -1762,6 +1762,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "async-nats",
+ "chrono",
  "config",
  "guardyn-common",
  "guardyn-crypto",

@@ -447,6 +447,39 @@ pub mod get_user_profile_response {
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct HealthRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteAccountRequest {
+    /// Authentication - identifies the user to delete
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Password confirmation for security
+    #[prost(string, tag = "2")]
+    pub password: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteAccountResponse {
+    #[prost(oneof = "delete_account_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<delete_account_response::Result>,
+}
+/// Nested message and enum types in `DeleteAccountResponse`.
+pub mod delete_account_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::DeleteAccountSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteAccountSuccess {
+    /// UUID of the deleted user
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Confirmation message
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
 /// Generated client implementations.
 pub mod auth_service_client {
     #![allow(
@@ -809,6 +842,31 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetUserProfile"));
             self.inner.unary(req, path, codec).await
         }
+        /// Delete user account and all associated data
+        pub async fn delete_account(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteAccountRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteAccountResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/DeleteAccount",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "DeleteAccount"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Health check
         pub async fn health(
             &mut self,
@@ -929,6 +987,14 @@ pub mod auth_service_server {
             request: tonic::Request<super::GetUserProfileRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetUserProfileResponse>,
+            tonic::Status,
+        >;
+        /// Delete user account and all associated data
+        async fn delete_account(
+            &self,
+            request: tonic::Request<super::DeleteAccountRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteAccountResponse>,
             tonic::Status,
         >;
         /// Health check
@@ -1496,6 +1562,51 @@ pub mod auth_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetUserProfileSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/DeleteAccount" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteAccountSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::DeleteAccountRequest>
+                    for DeleteAccountSvc<T> {
+                        type Response = super::DeleteAccountResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteAccountRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::delete_account(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteAccountSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
