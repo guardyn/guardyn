@@ -70,3 +70,90 @@ delete-user username:
 delete-all-users:
     @echo "[users] ⚠️  Deleting ALL user data..."
     bash infra/scripts/user-management.sh delete-all
+
+# =============================================================================
+# Local Development Commands (Fast Rebuild)
+# =============================================================================
+# These commands run services locally with port-forwards to cluster databases.
+# Benefits: ~5-10 sec rebuild (vs ~60+ sec with Docker), hot-reload, direct debug
+
+# Start port-forwards to cluster databases only
+dev-ports:
+    @echo "[dev] Starting port-forwards to databases..."
+    bash infra/scripts/dev-local.sh ports-only
+
+# Stop all port-forwards
+dev-stop:
+    @echo "[dev] Stopping all port-forwards..."
+    bash infra/scripts/dev-local.sh stop
+
+# Check port-forward status
+dev-status:
+    @echo "[dev] Checking port-forward status..."
+    bash infra/scripts/dev-local.sh status
+
+# Run auth-service locally (with port-forwards)
+dev-auth:
+    @echo "[dev] Starting auth-service locally..."
+    bash infra/scripts/dev-local.sh auth
+
+# Run messaging-service locally (with port-forwards)
+dev-messaging:
+    @echo "[dev] Starting messaging-service locally..."
+    bash infra/scripts/dev-local.sh messaging
+
+# Run presence-service locally (with port-forwards)
+dev-presence:
+    @echo "[dev] Starting presence-service locally..."
+    bash infra/scripts/dev-local.sh presence
+
+# Run media-service locally (with port-forwards)
+dev-media:
+    @echo "[dev] Starting media-service locally..."
+    bash infra/scripts/dev-local.sh media
+
+# Run all services locally in tmux
+dev-all:
+    @echo "[dev] Starting all services in tmux..."
+    bash infra/scripts/dev-local.sh all
+
+# Run a service with hot-reload (requires cargo-watch)
+dev-watch service:
+    @echo "[dev] Starting {{service}} with hot-reload..."
+    cd backend && cargo watch -x "run --bin {{service}}"
+
+# =============================================================================
+# Resource Optimization Commands
+# =============================================================================
+
+# Scale down services for development (saves ~9 pods)
+scale-dev:
+    @echo "[scale] Scaling services to dev mode (1 replica each)..."
+    kubectl scale deployment -n apps auth-service --replicas=1
+    kubectl scale deployment -n apps messaging-service --replicas=1
+    kubectl scale deployment -n apps presence-service --replicas=1
+    kubectl scale deployment -n apps media-service --replicas=1
+    @echo "[scale] Done. Pods reduced from ~10 to ~4 in apps namespace."
+
+# Scale up services for testing (original replicas)
+scale-prod:
+    @echo "[scale] Scaling services to prod mode..."
+    kubectl scale deployment -n apps auth-service --replicas=2
+    kubectl scale deployment -n apps messaging-service --replicas=3
+    kubectl scale deployment -n apps presence-service --replicas=2
+    kubectl scale deployment -n apps media-service --replicas=2
+    @echo "[scale] Done. Services scaled to production replicas."
+
+# Show current resource usage
+resources:
+    @echo "[resources] Current pod resource usage:"
+    @echo "=== Apps namespace ==="
+    kubectl top pods -n apps 2>/dev/null || echo "Metrics not available (install metrics-server)"
+    @echo ""
+    @echo "=== Data namespace ==="
+    kubectl top pods -n data 2>/dev/null || echo "Metrics not available"
+    @echo ""
+    @echo "=== Pod counts ==="
+    @echo "Apps: $(kubectl get pods -n apps --no-headers 2>/dev/null | wc -l) pods"
+    @echo "Data: $(kubectl get pods -n data --no-headers 2>/dev/null | wc -l) pods"
+

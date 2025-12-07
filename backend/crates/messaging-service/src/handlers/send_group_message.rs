@@ -15,7 +15,7 @@ pub async fn send_group_message(
     nats: Arc<NatsClient>,
 ) -> Result<Response<SendGroupMessageResponse>, Status> {
     // Validate JWT token and extract user_id (sender)
-    let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
+    let jwt_secret = std::env::var("JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
     let (sender_user_id, sender_device_id, _sender_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {

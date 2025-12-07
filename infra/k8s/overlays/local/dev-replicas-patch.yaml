@@ -1,0 +1,39 @@
+# Development replicas patch - reduces all services to 1 replica
+# Apply with: kubectl apply -k infra/k8s/overlays/local
+# This saves ~9 pods and significant memory/CPU for local development
+
+# Auth Service: 2 -> 1 replica
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: apps
+spec:
+  replicas: 1
+---
+# Messaging Service: 3 -> 1 replica
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging-service
+  namespace: apps
+spec:
+  replicas: 1
+---
+# Presence Service: 2 -> 1 replica
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presence-service
+  namespace: apps
+spec:
+  replicas: 1
+---
+# Media Service: 2 -> 1 replica
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+  namespace: apps
+spec:
+  replicas: 1

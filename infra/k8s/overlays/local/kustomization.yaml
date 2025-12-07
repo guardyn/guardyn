@@ -11,3 +11,10 @@ bases:
   - ../../base/apps
 resources:
   - ../../base/monitoring
+
+# Development optimizations - reduce resource usage
+patchesStrategicMerge:
+  # Reduce all services to 1 replica for local development
+  - dev-replicas-patch.yaml
+  # Reduce ScyllaDB to 1 node for local development
+  - scylla-dev-patch.yaml

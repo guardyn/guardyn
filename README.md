@@ -12,9 +12,9 @@
   <a href="#-current-status"><strong>Project Status</strong></a> •
   <a href="#-technical-approach"><strong>Architecture</strong></a> •
   <a href="#-getting-started"><strong>Get Started</strong></a> •
+  <a href="docs/DEVELOPER_QUICKSTART.md"><strong>Developer Guide</strong></a> •
   <a href="docs/IMPLEMENTATION_PLAN.md"><strong>Documentation</strong></a> •
-  <a href="CONTRIBUTING.md"><strong>Contributing</strong></a> •
-  <a href="CODE_OF_CONDUCT.md"><strong>Code of Conduct</strong></a>
+  <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
 </p>
 
 <p align="center">
@@ -344,10 +344,18 @@ For detailed implementation status, see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMP
 
 **Status:** Infrastructure operational, services ready for testing
 
+**📚 [Developer Quick Start Guide →](docs/DEVELOPER_QUICKSTART.md)**
+
+For complete onboarding, see our dedicated developer guide covering:
+- Environment setup (10 minutes)
+- Development workflows (local vs. Kubernetes)
+- Project structure and conventions
+- Common tasks and troubleshooting
+
 **Prerequisites:**
 
 - Nix package manager
-- 16GB RAM minimum
+- 16GB RAM minimum (8GB with `just scale-dev`)
 - Docker or Podman
 
 **Quick Start:**
@@ -368,11 +376,22 @@ just k8s-deploy scylladb  # Deploy ScyllaDB
 just k8s-deploy monitoring  # Deploy observability
 just verify-kube        # Run smoke tests
 
+# Optimize for local development (saves resources)
+just scale-dev          # Reduce replicas to 1 each
+just port-forward       # Start port forwarding
+
 # Access Grafana at http://localhost:3000
 # Default credentials: admin/admin
 ```
 
-**Full setup guide:** [`docs/infra_poc.md`](docs/infra_poc.md)
+**Documentation:**
+
+| Guide | Description |
+|-------|-------------|
+| [Developer Quick Start](docs/DEVELOPER_QUICKSTART.md) | Complete onboarding guide |
+| [Dev Optimization](docs/DEV_OPTIMIZATION.md) | Speed up local development |
+| [Infrastructure Setup](docs/infra_poc.md) | Full infrastructure guide |
+| [Architecture](docs/ARCHITECTURE.md) | System design overview |
 
 **Current Limitations:**
 

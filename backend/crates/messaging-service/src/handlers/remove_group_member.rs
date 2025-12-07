@@ -13,7 +13,7 @@ pub async fn remove_group_member(
     db: Arc<DatabaseClient>,
 ) -> Result<Response<RemoveGroupMemberResponse>, Status> {
     // Validate JWT token and extract user_id (requester)
-    let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
+    let jwt_secret = std::env::var("JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
     
     let (requester_user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
