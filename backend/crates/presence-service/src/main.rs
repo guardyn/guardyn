@@ -164,23 +164,32 @@ impl PresenceService for PresenceServiceImpl {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize observability (tracing, logging, metrics)
-    let log_level = std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
-    let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok();
+    let log_level = std::env::var("LOG_LEVEL")
+        .or_else(|_| std::env::var("GUARDYN_OBSERVABILITY__LOG_LEVEL"))
+        .unwrap_or_else(|_| "info".to_string());
+    let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .or_else(|_| std::env::var("GUARDYN_OBSERVABILITY__OTLP_ENDPOINT"))
+        .ok()
+        .filter(|s| !s.is_empty());
     let _tracing_guard = observability::init_tracing("presence-service", &log_level, otlp_endpoint.as_deref());
 
     tracing::info!("Starting Presence Service");
 
     // Load configuration from environment
-    let jwt_secret =
-        std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
+    let jwt_secret = std::env::var("JWT_SECRET")
+        .unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
 
     let tikv_pd_endpoints = std::env::var("TIKV_PD_ENDPOINTS")
+        .or_else(|_| std::env::var("GUARDYN_DATABASE__TIKV_PD_ENDPOINTS"))
         .unwrap_or_else(|_| "tikv-pd.data.svc.cluster.local:2379".to_string());
 
-    let nats_url =
-        std::env::var("NATS_URL").unwrap_or_else(|_| "nats://nats.messaging.svc.cluster.local:4222".to_string());
+    let nats_url = std::env::var("NATS_URL")
+        .or_else(|_| std::env::var("GUARDYN_MESSAGING__NATS_URL"))
+        .unwrap_or_else(|_| "nats://nats.messaging.svc.cluster.local:4222".to_string());
 
-    let grpc_port = std::env::var("GRPC_PORT").unwrap_or_else(|_| "50053".to_string());
+    let grpc_port = std::env::var("GRPC_PORT")
+        .or_else(|_| std::env::var("GUARDYN_PORT"))
+        .unwrap_or_else(|_| "50053".to_string());
     let grpc_addr = format!("0.0.0.0:{}", grpc_port).parse()?;
 
     tracing::info!(

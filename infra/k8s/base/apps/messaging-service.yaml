@@ -49,11 +49,6 @@ spec:
           value: "info"
         - name: RUST_LOG
           value: "info,guardyn_messaging_service=debug"
-        - name: GUARDYN_JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: guardyn-backend-secrets
-              key: jwt-secret
         # Feature Flags for Cryptography
         - name: ENABLE_MLS
           value: "false"  # Gradual rollout: set to "true" to enable MLS group encryption

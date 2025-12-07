@@ -1,0 +1,29 @@
+# ScyllaDB development patch - reduces to 1 node
+# This saves 8 containers (from 12 to 4) and ~4GB RAM
+# For local development only - DO NOT use in production
+
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: guardyn-scylla
+  namespace: data
+spec:
+  # Enable developer mode for reduced resource usage
+  developerMode: true
+  datacenter:
+    name: dc1
+    racks:
+    - name: rack1
+      # Reduce from 3 to 1 member for dev
+      members: 1
+      # Keep storage same as base to avoid Forbidden error
+      storage:
+        capacity: 4Gi
+        storageClassName: local-path
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi

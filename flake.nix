@@ -23,6 +23,7 @@
             rust-bin.stable.latest.default
             rust-analyzer
             cargo
+            cargo-watch
             cargo-audit
             cargo-deny
             wasm-pack
@@ -38,6 +39,7 @@
             trivy
             syft
             k6
+            tmux
           ];
           RUSTFLAGS = "-C opt-level=z";
         };

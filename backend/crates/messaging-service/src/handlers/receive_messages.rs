@@ -29,7 +29,7 @@ pub async fn receive_messages(
     nats: Arc<NatsClient>,
 ) -> Result<Response<ReceiverStream<Result<Message, Status>>>, Status> {
     // Validate access token and extract user_id + device_id
-    let jwt_secret = std::env::var("GUARDYN_JWT_SECRET")
+    let jwt_secret = std::env::var("JWT_SECRET")
         .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
 
     let (user_id, device_id, _username) = crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
