@@ -327,8 +327,10 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
 
-    // Safe disposal after the dialog lifecycle completes.
-    passwordController.dispose();
+    // NOTE: Do NOT dispose passwordController here!
+    // The dialog may still be animating closed and Flutter may rebuild
+    // the TextFormField during animation, causing "used after dispose" error.
+    // Let Dart's garbage collector handle cleanup automatically.
 
     if (!mounted || password == null || password.isEmpty) {
       return;
