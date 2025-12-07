@@ -123,9 +123,11 @@ class _ChatPageState extends State<ChatPage> {
     // Clear active conversation when leaving chat
     _messageBloc.add(const MessageSetActiveConversation(null));
     // Stop presence subscription and set offline
-    _presenceBloc.add(const PresenceUnsubscribe());
-    _presenceBloc.add(const PresenceSetOffline());
-    _presenceBloc.close();
+    // Note: Don't close _presenceBloc - it's a singleton managed by GetIt
+    if (!_presenceBloc.isClosed) {
+      _presenceBloc.add(const PresenceUnsubscribe());
+      _presenceBloc.add(const PresenceSetOffline());
+    }
     _scrollController.dispose();
     super.dispose();
   }
