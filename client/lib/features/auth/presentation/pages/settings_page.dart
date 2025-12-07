@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
@@ -15,14 +17,78 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _hasNavigated = false;
   bool _showedDeleteMessage = false;
+  bool _isDeleting = false;
+
+  late final AuthBloc _authBloc;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // Capture bloc reference in initState to avoid context issues later
+    _authBloc = context.read<AuthBloc>();
+
+    // Listen to auth state changes via stream (not BlocConsumer)
+    // This gives us more control over subscription lifecycle
+    _authSubscription = _authBloc.stream.listen(_handleAuthStateChange);
+
+    // Also check current state
+    _handleAuthStateChange(_authBloc.state);
+  }
+
+  @override
+  void dispose() {
+    // Cancel subscription before widget is disposed
+    _authSubscription?.cancel();
+    _authSubscription = null;
+    super.dispose();
+  }
+
+  void _handleAuthStateChange(AuthState state) {
+    if (_hasNavigated || !mounted) return;
+
+    if (state is AuthAccountDeleting) {
+      if (mounted) {
+        setState(() {
+          _isDeleting = true;
+        });
+      }
+    } else if (state is AuthError) {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+        );
+      }
+    } else if (state is AuthUnauthenticated) {
+      final message = state.message;
+      if (message != null && !_showedDeleteMessage && mounted) {
+        _showedDeleteMessage = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      // Navigate to login page
+      _navigateToLogin();
+    }
+  }
 
   void _navigateToLogin() {
     if (_hasNavigated) return;
     _hasNavigated = true;
 
-    // Use Future.microtask to defer navigation until after current frame
-    // This avoids issues with InheritedWidget dependencies during dispose
-    Future.microtask(() {
+    // Cancel subscription immediately to prevent further callbacks
+    _authSubscription?.cancel();
+    _authSubscription = null;
+
+    // Navigate after a small delay to allow cleanup
+    Future.delayed(const Duration(milliseconds: 50), () {
       if (mounted) {
         Navigator.of(
           context,
@@ -38,124 +104,86 @@ class _SettingsPageState extends State<SettingsPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return BlocConsumer<AuthBloc, AuthState>(
-      // Stop listening/building once we've navigated
-      listenWhen: (previous, current) => !_hasNavigated && mounted,
-      buildWhen: (previous, current) => !_hasNavigated && mounted,
-      listener: (context, state) {
-        if (_hasNavigated || !mounted) return;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Account section
+          _buildSectionHeader('Account'),
+          const SizedBox(height: 8),
 
-        if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
-        } else if (state is AuthUnauthenticated) {
-          final message = state.message;
-          if (message != null && !_showedDeleteMessage) {
-            _showedDeleteMessage = true;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-          // Navigate to login page
-          _navigateToLogin();
-        }
-      },
-      builder: (context, state) {
-        final isDeleting = state is AuthAccountDeleting;
-
-        return Scaffold(
-          appBar: AppBar(title: const Text('Settings')),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // Account section
-              _buildSectionHeader('Account'),
-              const SizedBox(height: 8),
-
-              // Logout button
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Logout'),
-                subtitle: const Text('Sign out from this device'),
-                onTap: isDeleting ? null : () => _showLogoutDialog(context),
-              ),
-
-              const Divider(),
-
-              // Danger zone
-              _buildSectionHeader('Danger Zone', color: Colors.red),
-              const SizedBox(height: 8),
-
-              // Delete account button
-              Card(
-                color: Colors.red.shade50,
-                child: ListTile(
-                  leading: Icon(
-                    Icons.delete_forever,
-                    color: Colors.red.shade700,
-                  ),
-                  title: Text(
-                    'Delete Account',
-                    style: TextStyle(
-                      color: Colors.red.shade700,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Permanently delete your account and all data',
-                    style: TextStyle(color: Colors.red.shade600),
-                  ),
-                  trailing: isDeleting
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.red.shade700,
-                        ),
-                  onTap: isDeleting
-                      ? null
-                      : () => _showDeleteAccountDialog(context),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Warning text
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.amber.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Deleting your account is permanent and cannot be undone. All your messages, conversations, and data will be erased.',
-                        style: TextStyle(
-                          color: Colors.amber.shade900,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          // Logout button
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            subtitle: const Text('Sign out from this device'),
+            onTap: _isDeleting ? null : () => _showLogoutDialog(context),
           ),
-        );
-      },
+
+          const Divider(),
+
+          // Danger zone
+          _buildSectionHeader('Danger Zone', color: Colors.red),
+          const SizedBox(height: 8),
+
+          // Delete account button
+          Card(
+            color: Colors.red.shade50,
+            child: ListTile(
+              leading: Icon(Icons.delete_forever, color: Colors.red.shade700),
+              title: Text(
+                'Delete Account',
+                style: TextStyle(
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                'Permanently delete your account and all data',
+                style: TextStyle(color: Colors.red.shade600),
+              ),
+              trailing: _isDeleting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.arrow_forward_ios, color: Colors.red.shade700),
+              onTap: _isDeleting
+                  ? null
+                  : () => _showDeleteAccountDialog(context),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Warning text
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber, color: Colors.amber.shade700),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Deleting your account is permanent and cannot be undone. All your messages, conversations, and data will be erased.',
+                    style: TextStyle(
+                      color: Colors.amber.shade900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -174,9 +202,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showLogoutDialog(BuildContext context) {
-    // Capture the bloc reference before showing the dialog
-    final authBloc = context.read<AuthBloc>();
-
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -191,7 +216,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () {
               Navigator.pop(dialogContext);
               // Use pre-captured bloc reference to avoid context issues
-              authBloc.add(AuthLogoutRequested());
+              _authBloc.add(AuthLogoutRequested());
             },
             child: const Text('Logout'),
           ),
@@ -309,14 +334,10 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    _showFinalConfirmation(context, password);
+    _showFinalConfirmation(password);
   }
 
-  void _showFinalConfirmation(BuildContext context, String password) {
-    // Capture the bloc reference before showing the dialog
-    // This ensures we can access it even after the dialog is closed
-    final authBloc = context.read<AuthBloc>();
-
+  void _showFinalConfirmation(String password) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -340,7 +361,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.pop(dialogContext);
               // Use the pre-captured bloc reference to dispatch the event
               // This avoids issues with context being invalid after navigation
-              authBloc.add(AuthDeleteAccountRequested(password: password));
+              _authBloc.add(AuthDeleteAccountRequested(password: password));
             },
             child: const Text('Yes, delete my account'),
           ),
