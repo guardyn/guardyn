@@ -51,3 +51,22 @@ test-chat:
 test-messaging:
     @echo "[test] Running all messaging E2E tests"
     bash backend/crates/e2e-tests/scripts/test-two-user-chat.sh --all
+
+# =============================================================================
+# User Management Commands
+# =============================================================================
+
+# List all registered users
+list-users:
+    @echo "[users] Listing registered users..."
+    bash infra/scripts/user-management.sh list
+
+# Delete a specific user and all their data
+delete-user username:
+    @echo "[users] Deleting user: {{username}}"
+    bash infra/scripts/user-management.sh delete "{{username}}"
+
+# Delete ALL users and data (DANGEROUS!)
+delete-all-users:
+    @echo "[users] ⚠️  Deleting ALL user data..."
+    bash infra/scripts/user-management.sh delete-all
