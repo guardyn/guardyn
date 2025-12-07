@@ -295,7 +295,9 @@ class PresenceBloc extends Bloc<PresenceEvent, PresenceState> {
     PresenceSetOnline event,
     Emitter<PresenceState> emit,
   ) async {
+    if (isClosed) return;
     add(const PresenceUpdateMyStatus(PresenceStatus.online));
+    if (isClosed) return;
     add(const PresenceStartHeartbeat());
   }
 
@@ -304,7 +306,9 @@ class PresenceBloc extends Bloc<PresenceEvent, PresenceState> {
     PresenceSetOffline event,
     Emitter<PresenceState> emit,
   ) async {
+    if (isClosed) return;
     add(const PresenceUpdateMyStatus(PresenceStatus.offline));
+    if (isClosed) return;
     add(const PresenceStopHeartbeat());
   }
 
