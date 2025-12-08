@@ -52,12 +52,8 @@ class _ChatPageState extends State<ChatPage> {
     // Subscribe to real-time presence updates for the conversation partner
     _presenceBloc.add(PresenceSubscribe([widget.conversationUserId]));
 
-    // Set active conversation (to suppress notifications for current chat)
-    context.read<MessageBloc>().add(
-      MessageSetActiveConversation(widget.conversationUserId),
-    );
-
     // Initialize chat: load messages and connect WebSocket
+    // Note: Active conversation is set in _initializeChat after getting currentUserId
     _initializeChat();
   }
 
@@ -74,6 +70,18 @@ class _ChatPageState extends State<ChatPage> {
         widget.conversationUserId,
       );
 
+      // Set active conversation with all required info (userId, conversationId, currentUserId)
+      // This enables proper filtering of incoming messages
+      if (mounted) {
+        context.read<MessageBloc>().add(
+          MessageSetActiveConversation(
+            widget.conversationUserId,
+            conversationId: _conversationId,
+            currentUserId: currentUserId,
+          ),
+        );
+      }
+
       // Load message history with conversation ID
       if (mounted) {
         context.read<MessageBloc>().add(
@@ -86,6 +94,10 @@ class _ChatPageState extends State<ChatPage> {
     } else {
       // Fallback: try loading without conversation ID
       if (mounted) {
+        // Set active conversation without currentUserId
+        context.read<MessageBloc>().add(
+          MessageSetActiveConversation(widget.conversationUserId),
+        );
         context.read<MessageBloc>().add(
           MessageLoadHistory(conversationUserId: widget.conversationUserId),
         );

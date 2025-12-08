@@ -369,10 +369,16 @@ class WebSocketDatasource {
       );
 
       _messageController.add(model);
+      // ignore: avoid_print
+      print(
+        '📬 WebSocket new message: id=${model.messageId}, from=${model.senderUserId}, to=${model.recipientUserId}, conversationId=${model.conversationId}',
+      );
       _logger.i(
         'New message received via WebSocket: ${model.messageId} from ${model.senderUserId}',
       );
     } catch (e, stackTrace) {
+      // ignore: avoid_print
+      print('❌ WebSocket message parsing error: $e');
       _logger.e('Error handling new message: $e\n$stackTrace');
     }
   }

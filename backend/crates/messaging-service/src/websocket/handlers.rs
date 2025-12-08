@@ -14,6 +14,15 @@ use crate::nats::NatsClient;
 use super::connection::ConnectionManager;
 use super::messages::*;
 
+/// Generate deterministic conversation ID from two user IDs
+fn generate_conversation_id(user1: &str, user2: &str) -> String {
+    let mut users = vec![user1, user2];
+    users.sort();
+    let namespace = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    let data = format!("{}:{}", users[0], users[1]);
+    Uuid::new_v5(&namespace, data.as_bytes()).to_string()
+}
+
 /// Context for handling WebSocket messages
 pub struct WsContext {
     pub connection_id: String,
@@ -149,11 +158,15 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
     let timestamp = chrono::Utc::now();
     let timestamp_str = timestamp.to_rfc3339();
 
+    // Generate deterministic conversation ID
+    let conversation_id = generate_conversation_id(&sender_id, &send.recipient_id);
+
     // Store message in database
     // Note: In production, this would call the existing send_message handler
     // For now, we'll create a simplified version
     let message = MessagePayload {
         message_id: message_id.clone(),
+        conversation_id: Some(conversation_id),
         sender_id: sender_id.clone(),
         sender_device_id: String::new(), // TODO: Get from authentication context
         recipient_id: send.recipient_id.clone(),

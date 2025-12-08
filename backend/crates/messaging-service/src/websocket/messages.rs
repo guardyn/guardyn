@@ -116,6 +116,9 @@ fn default_content_type() -> String {
 pub struct MessagePayload {
     /// Server-generated message ID
     pub message_id: String,
+    /// Conversation ID (deterministic from sender+recipient for 1-on-1)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
     /// Sender user ID
     pub sender_id: String,
     /// Sender device ID (required for E2EE session lookup)

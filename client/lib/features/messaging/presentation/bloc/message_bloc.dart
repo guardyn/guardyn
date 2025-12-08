@@ -41,6 +41,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   /// Currently open conversation user ID (to suppress notifications for active chat)
   String? _activeConversationUserId;
 
+  /// Currently open conversation ID (for filtering incoming messages)
+  String? _activeConversationId;
+
+  /// Current user ID (for determining isSentByMe)
+  String? _currentUserId;
+
   MessageBloc({
     required this.sendMessage,
     required this.getMessages,
@@ -72,6 +78,12 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) {
     _activeConversationUserId = event.userId;
+    _activeConversationId = event.conversationId;
+    _currentUserId = event.currentUserId;
+    // ignore: avoid_print
+    print(
+      '📱 Active conversation set: userId=${event.userId}, conversationId=${event.conversationId}, currentUserId=${event.currentUserId}',
+    );
   }
 
   /// Start polling for new messages (fallback for gRPC streaming)
@@ -211,6 +223,14 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     MessageReceived event,
     Emitter<MessageState> emit,
   ) async {
+    // ignore: avoid_print
+    print(
+      '📨 MessageReceived: messageId=${event.message.messageId}, sender=${event.message.senderUserId}, recipient=${event.message.recipientUserId}, conversationId=${event.message.conversationId}',
+    );
+    print(
+      '📨 Active conversation: userId=$_activeConversationUserId, conversationId=$_activeConversationId, currentUserId=$_currentUserId',
+    );
+
     // Get current messages if available
     final currentMessages = state is MessageLoaded
         ? (state as MessageLoaded).messages
@@ -224,16 +244,57 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     if (!messageExists) {
       var message = event.message;
 
+      // Determine if this message belongs to the current conversation
+      // For 1-on-1 chats: message is relevant if sender OR recipient is the active conversation partner
+      final isForCurrentConversation =
+          _activeConversationUserId != null &&
+          (message.senderUserId == _activeConversationUserId ||
+              message.recipientUserId == _activeConversationUserId);
+
+      // ignore: avoid_print
+      print('📨 Message for current conversation: $isForCurrentConversation');
+
+      // Only process messages for the current conversation
+      if (!isForCurrentConversation && _activeConversationUserId != null) {
+        // Message is for another conversation - show notification but don't add to UI
+        // ignore: avoid_print
+        print(
+          '📨 Message not for current conversation, showing notification only',
+        );
+        if (message.senderUserId != _currentUserId) {
+          _showMessageNotification(message);
+        }
+        return;
+      }
+
+      // Set currentUserId if not already set (needed for isSentByMe)
+      if (message.currentUserId == null && _currentUserId != null) {
+        message = Message(
+          messageId: message.messageId,
+          conversationId: message.conversationId,
+          senderUserId: message.senderUserId,
+          senderDeviceId: message.senderDeviceId,
+          recipientUserId: message.recipientUserId,
+          recipientDeviceId: message.recipientDeviceId,
+          messageType: message.messageType,
+          textContent: message.textContent,
+          metadata: message.metadata,
+          timestamp: message.timestamp,
+          deliveryStatus: message.deliveryStatus,
+          currentUserId: _currentUserId,
+        );
+      }
+
       // Decrypt message content if it's from another user (WebSocket messages arrive encrypted)
       if (!message.isSentByMe && message.textContent.isNotEmpty) {
         // Get X3DH prekey data from message metadata (for first message)
         final x3dhPrekey = message.metadata['x3dh_prekey'];
-        
+
         // ignore: avoid_print
         print(
           '🔐 Decrypting message from ${message.senderUserId}, x3dhPrekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
         );
-        
+
         final decryptResult = await decryptMessage(
           DecryptMessageParams(
             encryptedContent: message.textContent,
