@@ -66,6 +66,9 @@ export TIKV_PD_ENDPOINTS="127.0.0.1:${TIKV_PD_PORT}"
 # ScyllaDB configuration
 export GUARDYN_DATABASE__SCYLLADB_NODES="127.0.0.1:${SCYLLADB_PORT}"
 export SCYLLADB_ENDPOINTS="127.0.0.1:${SCYLLADB_PORT}"
+# For local dev with single ScyllaDB node - use consistency level "one"
+export SCYLLA_CONSISTENCY="one"
+export SCYLLA_REPLICATION_FACTOR="1"
 
 # NATS configuration
 export GUARDYN_MESSAGING__NATS_URL="nats://127.0.0.1:${NATS_PORT}"
@@ -308,15 +311,29 @@ run_service() {
     cd "${BACKEND_DIR}"
 
     # Check if cargo-watch is available for hot reload
-    if command -v cargo-watch &>/dev/null; then
-        log_info "Using cargo-watch for hot reload..."
-        log_info "Binary: ${bin_name}, Port: ${port}"
-        cargo watch -x "run --bin ${bin_name}"
-    else
-        log_warn "cargo-watch not found. Install with: cargo install cargo-watch"
-        log_info "Running without hot reload..."
-        cargo run --bin "${bin_name}"
-    fi
+    # Run inside nix develop to ensure cargo is available
+    log_info "Using nix develop to ensure cargo toolchain..."
+    log_info "Binary: ${bin_name}, Port: ${port}"
+    
+    cd "${PROJECT_ROOT}"
+    nix develop --command bash -c "cd backend && \
+        export GUARDYN_HOST='0.0.0.0' && \
+        export GUARDYN_PORT='${port}' && \
+        export GUARDYN_SERVICE_NAME='${service}' && \
+        export GRPC_PORT='${port}' && \
+        export GUARDYN_OBSERVABILITY__LOG_LEVEL='debug' && \
+        export GUARDYN_DATABASE__TIKV_PD_ENDPOINTS='127.0.0.1:${TIKV_PD_PORT}' && \
+        export GUARDYN_DATABASE__SCYLLADB_NODES='127.0.0.1:${SCYLLADB_PORT}' && \
+        export GUARDYN_MESSAGING__NATS_URL='nats://127.0.0.1:${NATS_PORT}' && \
+        export SCYLLA_CONSISTENCY='one' && \
+        export SCYLLA_REPLICATION_FACTOR='1' && \
+        export JWT_SECRET='${JWT_SECRET}' && \
+        export RUST_LOG='info,guardyn=debug' && \
+        if command -v cargo-watch &>/dev/null; then \
+            cargo watch -x 'run --bin ${bin_name}'; \
+        else \
+            cargo run --bin ${bin_name}; \
+        fi"
 }
 
 # Run all services in separate terminals (requires tmux or screen)
@@ -334,6 +351,8 @@ export GUARDYN_DATABASE__TIKV_PD_ENDPOINTS='127.0.0.1:${TIKV_PD_PORT}' && \
 export TIKV_PD_ENDPOINTS='127.0.0.1:${TIKV_PD_PORT}' && \
 export GUARDYN_DATABASE__SCYLLADB_NODES='127.0.0.1:${SCYLLADB_PORT}' && \
 export GUARDYN_MESSAGING__NATS_URL='nats://127.0.0.1:${NATS_PORT}' && \
+export SCYLLA_CONSISTENCY='one' && \
+export SCYLLA_REPLICATION_FACTOR='1' && \
 export GUARDYN_OBSERVABILITY__OTLP_ENDPOINT='' && \
 export GUARDYN_OBSERVABILITY__LOG_LEVEL='debug' && \
 export RUST_LOG='info,guardyn=debug'"

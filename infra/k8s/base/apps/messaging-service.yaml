@@ -41,6 +41,13 @@ spec:
           value: "guardyn-scylla-client.data.svc.cluster.local:9042"
         - name: SCYLLADB_ENDPOINTS
           value: "guardyn-scylla-client.data.svc.cluster.local:9042"
+        # ScyllaDB Consistency Configuration
+        # For local dev with single node: use "one"
+        # For production with 3+ nodes: use "local_quorum"
+        - name: SCYLLA_CONSISTENCY
+          value: "one"
+        - name: SCYLLA_REPLICATION_FACTOR
+          value: "1"
         - name: GUARDYN_MESSAGING__NATS_URL
           value: "nats://nats.messaging.svc.cluster.local:4222"
         - name: GUARDYN_OBSERVABILITY__OTLP_ENDPOINT
