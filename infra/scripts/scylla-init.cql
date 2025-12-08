@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS messages (
   client_timestamp BIGINT,
   delivery_status INT,
   is_deleted BOOLEAN,
+  x3dh_prekey BLOB,
   PRIMARY KEY (conversation_id, message_id)
 ) WITH CLUSTERING ORDER BY (message_id DESC)
   AND comment = '1-on-1 encrypted messages'
