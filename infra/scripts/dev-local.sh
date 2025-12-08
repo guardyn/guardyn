@@ -213,22 +213,55 @@ start_all_port_forwards() {
 check_port_forwards() {
     local all_running=true
 
+    # Service name -> port mapping
+    declare -A ports=(
+        ["tikv-pd"]="${TIKV_PD_PORT}"
+        ["tikv-store"]="${TIKV_STORE_PORT}"
+        ["scylladb"]="${SCYLLADB_PORT}"
+        ["nats"]="${NATS_PORT}"
+        ["minio"]="${MINIO_PORT}"
+    )
+
+    echo ""
+    echo "Port-forward status:"
+    echo "===================="
+
     for service in tikv-pd tikv-store scylladb nats minio; do
         local pid_file="${PID_DIR}/pf-${service}.pid"
+        local port="${ports[$service]}"
         if [[ -f "${pid_file}" ]]; then
             local pid
             pid=$(cat "${pid_file}" 2>/dev/null || echo "")
             if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
-                log_success "${service}: running (PID: ${pid})"
+                log_success "${service}: localhost:${port} (PID: ${pid})"
             else
-                log_error "${service}: not running"
+                log_error "${service}: not running (port ${port})"
                 all_running=false
             fi
         else
-            log_error "${service}: not started"
+            log_error "${service}: not started (port ${port})"
             all_running=false
         fi
     done
+
+    echo ""
+    echo "Local services (if running):"
+    echo "============================"
+    for svc_port in 50051 50052 50053 50054; do
+        local svc_name=""
+        case ${svc_port} in
+            50051) svc_name="auth-service" ;;
+            50052) svc_name="messaging-service" ;;
+            50053) svc_name="presence-service" ;;
+            50054) svc_name="media-service" ;;
+        esac
+        if nc -z localhost ${svc_port} 2>/dev/null; then
+            log_success "${svc_name}: localhost:${svc_port}"
+        else
+            echo -e "  ${svc_name}: not running (port ${svc_port})"
+        fi
+    done
+    echo ""
 
     ${all_running}
 }
@@ -294,8 +327,9 @@ run_all_services() {
         # Kill existing session if present
         tmux kill-session -t guardyn-dev 2>/dev/null || true
 
-        # Common env exports
+        # Common env exports (shared by all services)
         local common_env="export JWT_SECRET='${JWT_SECRET}' && \
+export GUARDYN_HOST='0.0.0.0' && \
 export GUARDYN_DATABASE__TIKV_PD_ENDPOINTS='127.0.0.1:${TIKV_PD_PORT}' && \
 export TIKV_PD_ENDPOINTS='127.0.0.1:${TIKV_PD_PORT}' && \
 export GUARDYN_DATABASE__SCYLLADB_NODES='127.0.0.1:${SCYLLADB_PORT}' && \
@@ -309,23 +343,24 @@ export RUST_LOG='info,guardyn=debug'"
 
         # Auth Service
         tmux new-window -t guardyn-dev -n auth
-        tmux send-keys -t guardyn-dev:auth "cd ${BACKEND_DIR} && ${common_env} && GUARDYN_PORT=50051 cargo watch -x 'run --bin auth-service'" Enter
+        tmux send-keys -t guardyn-dev:auth "cd ${PROJECT_ROOT} && nix develop --command bash -c '${common_env} && GUARDYN_SERVICE_NAME=auth-service GUARDYN_PORT=50051 cargo watch -x \"run --bin auth-service\" -C backend'" Enter
 
         # Messaging Service
         tmux new-window -t guardyn-dev -n messaging
-        tmux send-keys -t guardyn-dev:messaging "cd ${BACKEND_DIR} && ${common_env} && GUARDYN_PORT=50052 AUTH_SERVICE_URL='http://127.0.0.1:50051' cargo watch -x 'run --bin guardyn-messaging-service'" Enter
+        tmux send-keys -t guardyn-dev:messaging "cd ${PROJECT_ROOT} && nix develop --command bash -c '${common_env} && GUARDYN_SERVICE_NAME=messaging-service GUARDYN_PORT=50052 AUTH_SERVICE_URL=\"http://127.0.0.1:50051\" cargo watch -x \"run --bin guardyn-messaging-service\" -C backend'" Enter
 
         # Presence Service
         tmux new-window -t guardyn-dev -n presence
-        tmux send-keys -t guardyn-dev:presence "cd ${BACKEND_DIR} && ${common_env} && GUARDYN_PORT=50053 cargo watch -x 'run --bin guardyn-presence-service'" Enter
+        tmux send-keys -t guardyn-dev:presence "cd ${PROJECT_ROOT} && nix develop --command bash -c '${common_env} && GUARDYN_SERVICE_NAME=presence-service GUARDYN_PORT=50053 cargo watch -x \"run --bin guardyn-presence-service\" -C backend'" Enter
 
         # Media Service
         tmux new-window -t guardyn-dev -n media
-        tmux send-keys -t guardyn-dev:media "cd ${BACKEND_DIR} && ${common_env} && GUARDYN_PORT=50054 S3_ENDPOINT='http://127.0.0.1:${MINIO_PORT}' S3_ACCESS_KEY='minioadmin' S3_SECRET_KEY='minioadmin-secret-password' cargo watch -x 'run --bin guardyn-media-service'" Enter
+        tmux send-keys -t guardyn-dev:media "cd ${PROJECT_ROOT} && nix develop --command bash -c '${common_env} && GUARDYN_SERVICE_NAME=media-service GUARDYN_PORT=50054 S3_ENDPOINT=\"http://127.0.0.1:${MINIO_PORT}\" S3_ACCESS_KEY=\"minioadmin\" S3_SECRET_KEY=\"minioadmin-secret-password\" cargo watch -x \"run --bin guardyn-media-service\" -C backend'" Enter
 
         log_success "All services started in tmux session 'guardyn-dev'"
-        log_info "Attach with: tmux attach -t guardyn-dev"
-        tmux attach -t guardyn-dev
+        log_info "To view logs: tmux attach -t guardyn-dev"
+        log_info "To check status: just dev-status"
+        log_info "To stop all: just dev-kill"
     else
         log_error "tmux is required to run all services. Install with: sudo apt install tmux"
         log_info "Alternatively, run services individually in separate terminals:"

@@ -117,6 +117,35 @@ dev-all:
     @echo "[dev] Starting all services in tmux..."
     bash infra/scripts/dev-local.sh all
 
+# Run Envoy LOCALLY for Flutter Web (gRPC-Web proxy to local services)
+# This is the recommended way for development - enables hot reload!
+# Uses port 18080 to avoid conflict with k3d (which uses 8080)
+dev-envoy-local:
+    @echo "[dev] Starting local Envoy on :18080 → localhost:50051-50054..."
+    @echo "[dev] Make sure services are running: just dev-all"
+    @docker rm -f envoy-local 2>/dev/null || true
+    docker run -d --name envoy-local \
+        --network host \
+        -v $(pwd)/client/envoy-local.yaml:/etc/envoy/envoy.yaml:ro \
+        envoyproxy/envoy:v1.28-latest
+    @sleep 2 && nc -z localhost 18080 && echo "[dev] ✅ Envoy running on port 18080" || echo "[dev] ❌ Envoy failed to start"
+
+# Stop local Envoy
+dev-envoy-stop:
+    @echo "[dev] Stopping local Envoy..."
+    docker stop envoy-local 2>/dev/null || true
+
+# Run Envoy port-forward from k8s (for testing with cluster services)
+dev-envoy-k8s:
+    @echo "[dev] Starting Envoy port-forward from k8s on :18080..."
+    kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
+
+# Run Flutter Web client (requires dev-envoy-local in another terminal)
+dev-web:
+    @echo "[dev] Starting Flutter Web on :3000..."
+    @echo "[dev] Make sure Envoy is running: just dev-envoy-local"
+    cd client && flutter run -d chrome --web-port=3000
+
 # Stop all services (tmux session + port-forwards)
 dev-kill:
     @echo "[dev] Stopping all services and port-forwards..."
@@ -140,6 +169,12 @@ scale-dev:
     kubectl scale deployment -n apps presence-service --replicas=1
     kubectl scale deployment -n apps media-service --replicas=1
     @echo "[scale] Done. Pods reduced from ~10 to ~4 in apps namespace."
+
+# Scale down ALL app services to 0 (for local dev mode)
+scale-local:
+    @echo "[scale] Scaling all app services to 0 (local dev mode)..."
+    kubectl scale deployment -n apps auth-service messaging-service presence-service media-service guardyn-envoy --replicas=0
+    @echo "[scale] Done. All app pods stopped. Use 'just dev-all' + 'just dev-envoy-local' for local development."
 
 # Scale up services for testing (original replicas)
 scale-prod:
