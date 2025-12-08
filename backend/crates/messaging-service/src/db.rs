@@ -8,21 +8,43 @@ use anyhow::{Context, Result};
 use serde_json;
 use tikv_client::{RawClient, TransactionClient};
 use scylla::{Session, SessionBuilder};
+use scylla::statement::Consistency;
 use std::sync::Arc;
 
 /// Combined database client
 pub struct DatabaseClient {
     tikv: Arc<RawClient>,
     scylla: Arc<Session>,
+    /// Consistency level for ScyllaDB queries (configurable via SCYLLA_CONSISTENCY env var)
+    consistency: Consistency,
 }
 
 impl DatabaseClient {
     /// Initialize database connections
+    /// 
+    /// Environment variables:
+    /// - SCYLLA_CONSISTENCY: "one", "local_one", "local_quorum" (default), "quorum", "all"
+    /// - SCYLLA_REPLICATION_FACTOR: integer (default: 3 for production, use 1 for local dev)
     pub async fn new(tikv_endpoints: Vec<String>, scylla_nodes: Vec<String>) -> Result<Self> {
         // Connect to TiKV
         let tikv = RawClient::new(tikv_endpoints)
             .await
             .context("Failed to connect to TiKV")?;
+
+        // Determine consistency level from environment
+        let consistency = match std::env::var("SCYLLA_CONSISTENCY")
+            .unwrap_or_else(|_| "local_quorum".to_string())
+            .to_lowercase()
+            .as_str()
+        {
+            "one" => Consistency::One,
+            "local_one" => Consistency::LocalOne,
+            "quorum" => Consistency::Quorum,
+            "all" => Consistency::All,
+            "local_quorum" | _ => Consistency::LocalQuorum,
+        };
+        
+        tracing::info!("ScyllaDB consistency level: {:?}", consistency);
 
         // Connect to ScyllaDB
         let scylla = SessionBuilder::new()
@@ -31,24 +53,37 @@ impl DatabaseClient {
             .await
             .context("Failed to connect to ScyllaDB")?;
 
-        // Initialize ScyllaDB schema
+        // Initialize ScyllaDB schema with configurable replication factor
         Self::init_scylla_schema(&scylla).await?;
 
         Ok(Self {
             tikv: Arc::new(tikv),
             scylla: Arc::new(scylla),
+            consistency,
         })
     }
 
     /// Initialize ScyllaDB keyspace and tables
+    /// 
+    /// Uses SCYLLA_REPLICATION_FACTOR env var (default: 3)
+    /// For local development with single node, set SCYLLA_REPLICATION_FACTOR=1
     async fn init_scylla_schema(session: &Session) -> Result<()> {
+        // Get replication factor from environment (default: 3 for production)
+        let replication_factor: u32 = std::env::var("SCYLLA_REPLICATION_FACTOR")
+            .unwrap_or_else(|_| "3".to_string())
+            .parse()
+            .unwrap_or(3);
+        
+        tracing::info!("ScyllaDB replication factor: {}", replication_factor);
+        
         // Create keyspace if not exists
+        let keyspace_query = format!(
+            "CREATE KEYSPACE IF NOT EXISTS guardyn 
+             WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': {}}}",
+            replication_factor
+        );
         session
-            .query_unpaged(
-                "CREATE KEYSPACE IF NOT EXISTS guardyn 
-                 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3}",
-                &[],
-            )
+            .query_unpaged(keyspace_query.as_str(), &[])
             .await
             .context("Failed to create keyspace")?;
 
@@ -142,6 +177,27 @@ impl DatabaseClient {
         Ok(())
     }
 
+    /// Helper method to execute ScyllaDB query with configured consistency level
+    /// Uses the consistency level set via SCYLLA_CONSISTENCY environment variable
+    async fn scylla_query<V>(&self, query_str: &str, values: V) -> Result<scylla::QueryResult>
+    where
+        V: scylla::serialize::row::SerializeRow,
+    {
+        let mut query = scylla::query::Query::new(query_str);
+        query.set_consistency(self.consistency);
+        tracing::debug!("Executing ScyllaDB query with consistency {:?}: {}", self.consistency, query_str);
+        match self.scylla.query_unpaged(query, values).await {
+            Ok(result) => {
+                tracing::debug!("ScyllaDB query successful");
+                Ok(result)
+            }
+            Err(e) => {
+                tracing::error!("ScyllaDB query failed: {:?}", e);
+                Err(anyhow::anyhow!("ScyllaDB query failed: {}", e))
+            }
+        }
+    }
+
     // ========================================================================
     // Low-level TiKV Operations
     // ========================================================================
@@ -180,8 +236,7 @@ impl DatabaseClient {
         let message_uuid = uuid::Uuid::parse_str(message_id)
             .context("Invalid message_id UUID")?;
 
-        let rows = self.scylla
-            .query_unpaged(query, (message_uuid,))
+        let rows = self.scylla_query(query, (message_uuid,))
             .await
             .context("Failed to query message by ID")?;
 
@@ -348,9 +403,11 @@ impl DatabaseClient {
             })?;
 
         tracing::debug!("Executing ScyllaDB query with {} params", 13);
+        let mut scylla_query = scylla::query::Query::new(query);
+        scylla_query.set_consistency(self.consistency);
         let result = self.scylla
             .query_unpaged(
-                query,
+                scylla_query,
                 (
                     conversation_uuid,
                     message_uuid,
@@ -397,9 +454,7 @@ impl DatabaseClient {
 
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
 
-        let rows = self
-            .scylla
-            .query_unpaged(query, (conversation_uuid, limit))
+        let rows = self.scylla_query(query, (conversation_uuid, limit))
             .await
             .context("Failed to fetch messages from ScyllaDB")?;
 
@@ -536,10 +591,10 @@ impl DatabaseClient {
                      LIMIT ? \
                      ALLOW FILTERING";
 
-        // Run both queries concurrently
+        // Run both queries concurrently with configured consistency
         let (sender_result, recipient_result) = tokio::join!(
-            self.scylla.query_unpaged(query_sender, (user_id.to_string(), limit * 5)),
-            self.scylla.query_unpaged(query_recipient, (user_id.to_string(), limit * 5))
+            self.scylla_query(query_sender, (user_id.to_string(), limit * 5)),
+            self.scylla_query(query_recipient, (user_id.to_string(), limit * 5))
         );
 
         let sender_rows = sender_result
@@ -716,8 +771,7 @@ impl DatabaseClient {
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
         let message_uuid = uuid::Uuid::parse_str(message_id)?;
 
-        self.scylla
-            .query_unpaged(query, (conversation_uuid, message_uuid))
+        self.scylla_query(query, (conversation_uuid, message_uuid))
             .await
             .context("Failed to delete message")?;
 
@@ -734,9 +788,7 @@ impl DatabaseClient {
                            WHERE conversation_id = ? AND is_deleted = false 
                            ALLOW FILTERING";
 
-        let result = self
-            .scylla
-            .query_unpaged(select_query, (conversation_uuid,))
+        let result = self.scylla_query(select_query, (conversation_uuid,))
             .await
             .context("Failed to fetch messages for clearing")?;
 
@@ -755,8 +807,7 @@ impl DatabaseClient {
                     .and_then(|c| c.as_uuid());
 
                 if let Some(msg_id) = message_id {
-                    self.scylla
-                        .query_unpaged(update_query, (conversation_uuid, msg_id))
+                    self.scylla_query(update_query, (conversation_uuid, msg_id))
                         .await
                         .context("Failed to mark message as deleted")?;
                     deleted_count += 1;
@@ -821,9 +872,11 @@ impl DatabaseClient {
              VALUES (?, ?, ?, ?, ?, ?, ?, 0)"
         };
 
+        let mut scylla_insert = scylla::query::Query::new(insert_query);
+        scylla_insert.set_consistency(self.consistency);
         self.scylla
             .query_unpaged(
-                insert_query,
+                scylla_insert,
                 (
                     user_id.to_string(),
                     conversation_uuid,
@@ -852,17 +905,24 @@ impl DatabaseClient {
         user_id: &str,
         limit: i32,
     ) -> Result<Vec<crate::proto::messaging::Conversation>> {
-        let query = "SELECT conversation_id, other_user_id, other_username, 
-                            last_message_id, last_message_preview, last_message_time, unread_count
-                     FROM guardyn.conversations 
-                     WHERE user_id = ? 
-                     LIMIT ?";
+        tracing::debug!("get_user_conversations called for user_id: {}, limit: {}", user_id, limit);
+        
+        let query_str = "SELECT conversation_id, other_user_id, other_username, 
+                                last_message_id, last_message_preview, last_message_time, unread_count
+                         FROM guardyn.conversations 
+                         WHERE user_id = ? 
+                         LIMIT ?";
 
-        let rows = self
-            .scylla
-            .query_unpaged(query, (user_id.to_string(), limit))
-            .await
-            .context("Failed to fetch conversations")?;
+        let rows = match self.scylla_query(query_str, (user_id.to_string(), limit)).await {
+            Ok(result) => {
+                tracing::debug!("ScyllaDB query succeeded, rows count: {:?}", result.rows.as_ref().map(|r| r.len()));
+                result
+            }
+            Err(e) => {
+                tracing::error!("ScyllaDB query failed with error: {:?}", e);
+                return Err(anyhow::anyhow!("Failed to fetch conversations: {}", e));
+            }
+        };
 
         let mut conversations = Vec::new();
         let mut seen_conversations = std::collections::HashSet::new();
@@ -1106,9 +1166,11 @@ impl DatabaseClient {
             group_uuid, message_uuid, msg.sender_user_id, msg.mls_epoch, msg.metadata.len()
         );
 
+        let mut store_query = scylla::query::Query::new(query);
+        store_query.set_consistency(self.consistency);
         let result = self.scylla
             .query_unpaged(
-                query,
+                store_query,
                 (
                     group_uuid,
                     message_timeuuid,
@@ -1147,9 +1209,7 @@ impl DatabaseClient {
 
         let group_uuid = uuid::Uuid::parse_str(group_id)?;
 
-        let rows = self
-            .scylla
-            .query_unpaged(query, (group_uuid, limit))
+        let rows = self.scylla_query(query, (group_uuid, limit))
             .await
             .context("Failed to fetch group messages from ScyllaDB")?;
 
@@ -1391,12 +1451,12 @@ impl DatabaseClient {
             .unwrap_or_else(|_| uuid::Uuid::new_v4());
 
         // Store message in ScyllaDB
-        self.scylla
-            .query_unpaged(
-                "INSERT INTO guardyn.messages (
+        let insert_query = "INSERT INTO guardyn.messages (
                     conversation_id, message_id, sender_user_id, recipient_user_id,
                     encrypted_content, message_type, server_timestamp, delivery_status, is_deleted
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        self.scylla_query(
+                insert_query,
                 (
                     conversation_id,
                     message_uuid,
@@ -1472,8 +1532,7 @@ impl DatabaseClient {
             .context("Invalid message ID")?;
 
         // Update delivery status to Read (2)
-        self.scylla
-            .query_unpaged(
+        self.scylla_query(
                 "UPDATE guardyn.messages SET delivery_status = 2 WHERE message_id = ? ALLOW FILTERING",
                 (message_uuid,),
             )
