@@ -117,6 +117,12 @@ dev-all:
     @echo "[dev] Starting all services in tmux..."
     bash infra/scripts/dev-local.sh all
 
+# Stop all services (tmux session + port-forwards)
+dev-kill:
+    @echo "[dev] Stopping all services and port-forwards..."
+    tmux kill-session -t guardyn-dev 2>/dev/null || true
+    bash infra/scripts/dev-local.sh stop
+
 # Run a service with hot-reload (requires cargo-watch)
 dev-watch service:
     @echo "[dev] Starting {{service}} with hot-reload..."

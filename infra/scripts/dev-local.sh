@@ -393,7 +393,7 @@ main() {
             ;;
         status)
             ensure_pid_dir
-            check_port_forwards
+            check_port_forwards || true  # Don't fail on status check
             ;;
         help|--help|-h)
             usage
