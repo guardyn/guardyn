@@ -77,11 +77,17 @@ class MessageSubscribeToStream extends MessageEvent {
 /// Set the active conversation (to suppress notifications for current chat)
 class MessageSetActiveConversation extends MessageEvent {
   final String? userId;
+  final String? conversationId;
+  final String? currentUserId;
 
-  const MessageSetActiveConversation(this.userId);
+  const MessageSetActiveConversation(
+    this.userId, {
+    this.conversationId,
+    this.currentUserId,
+  });
 
   @override
-  List<Object?> get props => [userId];
+  List<Object?> get props => [userId, conversationId, currentUserId];
 }
 
 /// Start polling for new messages (fallback for gRPC streaming issues)

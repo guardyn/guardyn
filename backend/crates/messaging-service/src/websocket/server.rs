@@ -265,6 +265,15 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
     info!(connection_id = %connection_id, "WebSocket connection closed");
 }
 
+/// Generate deterministic conversation ID from two user IDs
+fn generate_conversation_id(user1: &str, user2: &str) -> String {
+    let mut users = vec![user1, user2];
+    users.sort();
+    let namespace = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    let data = format!("{}:{}", users[0], users[1]);
+    uuid::Uuid::new_v5(&namespace, data.as_bytes()).to_string()
+}
+
 /// Start NATS message relay - listens to all messages and forwards to WebSocket clients
 async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use async_nats::jetstream::consumer::pull::Config as ConsumerConfig;
@@ -315,9 +324,13 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                     // Just convert bytes back to String, don't re-encode!
                     let content = String::from_utf8_lossy(&envelope.encrypted_content).to_string();
 
+                    // Generate deterministic conversation ID for 1-on-1 chat
+                    let conversation_id = generate_conversation_id(&envelope.sender_user_id, recipient_id);
+
                     // Create WebSocket message from envelope
                     let ws_message = WsMessage::Message(super::messages::MessagePayload {
                         message_id: envelope.message_id.clone(),
+                        conversation_id: Some(conversation_id),
                         sender_id: envelope.sender_user_id.clone(),
                         sender_device_id: envelope.sender_device_id.clone(),
                         recipient_id: recipient_id.clone(),
