@@ -66,8 +66,16 @@ pub async fn handle(
         .unwrap()
         .as_secs() as i64;
     
+    // Generate device_id if not provided by client
+    let device_id = if req.device_id.is_empty() {
+        uuid::Uuid::new_v4().to_string()
+    } else {
+        req.device_id.clone()
+    };
+    
+    tracing::info!("Login device_id: {} (from_request: {})", device_id, !req.device_id.is_empty());
+    
     // Check if device exists, create if new
-    let device_id = req.device_id.clone();
     if let Ok(None) = service.db.get_device(&user.user_id, &device_id).await {
         let device = Device {
             device_id: device_id.clone(),
