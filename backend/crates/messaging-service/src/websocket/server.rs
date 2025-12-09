@@ -281,13 +281,26 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
 
     info!("Starting NATS message relay for WebSocket delivery");
 
-    // Create a consumer that listens to all messages (messages.*.*)
+    // Generate unique consumer name for this pod instance
+    // This allows multiple messaging-service pods to each receive all messages
+    // (broadcast pattern instead of queue group)
+    let pod_id = std::env::var("HOSTNAME")
+        .unwrap_or_else(|_| Uuid::new_v4().to_string());
+    let consumer_name = format!("websocket-relay-{}", pod_id);
+
+    info!(consumer_name = %consumer_name, "Creating ephemeral NATS consumer");
+
+    // Create an ephemeral consumer that listens to all messages (messages.*.*)
+    // Each pod creates its own consumer with unique name to receive ALL messages (broadcast)
+    // This is necessary because WebSocket connections are local to each pod
     let consumer = state.nats.context
         .create_consumer_on_stream(
             ConsumerConfig {
-                name: Some("websocket-relay".to_string()),
-                durable_name: None, // Ephemeral consumer
+                name: Some(consumer_name.clone()),
+                durable_name: None, // Ephemeral consumer - auto-deleted on disconnect
                 filter_subject: "messages.>".to_string(),
+                // Enable deliver_all to ensure we get messages even during reconnect
+                deliver_policy: async_nats::jetstream::consumer::DeliverPolicy::New,
                 ..Default::default()
             },
             "MESSAGES",
