@@ -117,19 +117,6 @@ dev-all:
     @echo "[dev] Starting all services in tmux..."
     bash infra/scripts/dev-local.sh all
 
-# Run Envoy LOCALLY for Flutter Web (gRPC-Web proxy to local services)
-# This is the recommended way for development - enables hot reload!
-# Uses port 18080 to avoid conflict with k3d (which uses 8080)
-dev-envoy-local:
-    @echo "[dev] Starting local Envoy on :18080 → localhost:50051-50054..."
-    @echo "[dev] Make sure services are running: just dev-all"
-    @docker rm -f envoy-local 2>/dev/null || true
-    docker run -d --name envoy-local \
-        --network host \
-        -v $(pwd)/client/envoy-local.yaml:/etc/envoy/envoy.yaml:ro \
-        envoyproxy/envoy:v1.28-latest
-    @sleep 2 && nc -z localhost 18080 && echo "[dev] ✅ Envoy running on port 18080" || echo "[dev] ❌ Envoy failed to start"
-
 # Stop local Envoy
 dev-envoy-stop:
     @echo "[dev] Stopping local Envoy..."
@@ -139,12 +126,6 @@ dev-envoy-stop:
 dev-envoy-k8s:
     @echo "[dev] Starting Envoy port-forward from k8s on :18080..."
     kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
-
-# Run Flutter Web client (requires dev-envoy-local in another terminal)
-dev-web:
-    @echo "[dev] Starting Flutter Web on :3000..."
-    @echo "[dev] Make sure Envoy is running: just dev-envoy-local"
-    cd client && flutter run -d chrome --web-port=3000
 
 # Stop all services (tmux session + port-forwards)
 dev-kill:
@@ -197,4 +178,51 @@ resources:
     @echo "=== Pod counts ==="
     @echo "Apps: $(kubectl get pods -n apps --no-headers 2>/dev/null | wc -l) pods"
     @echo "Data: $(kubectl get pods -n data --no-headers 2>/dev/null | wc -l) pods"
+
+# =============================================================================
+# Flutter Client Commands
+# =============================================================================
+
+# Run Flutter Linux client (requires dev-all + dev-envoy-local)
+dev-linux:
+    @echo "[dev] Starting Flutter Linux client..."
+    @echo "[dev] Make sure services are running: just dev-all && just dev-envoy-local"
+    cd client && flutter run -d linux
+
+# Run Flutter Android client (requires dev-all + dev-envoy-local + emulator)
+dev-android:
+    @echo "[dev] Starting Flutter Android client..."
+    @echo "[dev] Make sure services are running: just dev-all && just dev-envoy-local"
+    @echo "[dev] Make sure Android emulator is running: flutter run -d <emulator_id> OR: flutter emulators --launch <emulator_id>"
+    cd client && flutter run -d emulator-5554
+
+# List available Flutter devices
+dev-devices:
+    @echo "[dev] Available Flutter devices:"
+    flutter devices
+
+# Run Envoy LOCALLY for Flutter Web (gRPC-Web proxy to local services)
+# This is the recommended way for development - enables hot reload!
+# Uses port 18080 to avoid conflict with k3d (which uses 8080)
+dev-envoy-local:
+    @echo "[dev] Starting local Envoy on :18080 → localhost:50051-50054..."
+    @echo "[dev] Make sure services are running: just dev-all"
+    @docker rm -f envoy-local 2>/dev/null || true
+    docker run -d --name envoy-local \
+        --network host \
+        -v $(pwd)/client/envoy-local.yaml:/etc/envoy/envoy.yaml:ro \
+        envoyproxy/envoy:v1.28-latest
+    @sleep 2 && nc -z localhost 18080 && echo "[dev] ✅ Envoy running on port 18080" || echo "[dev] ❌ Envoy failed to start"
+
+
+# Run Flutter Web client (requires dev-envoy-local in another terminal)
+dev-web:
+    @echo "[dev] Starting Flutter Web on :3000..."
+    @echo "[dev] Make sure Envoy is running: just dev-envoy-local"
+    cd client && flutter run -d chrome --web-port=3000
+
+# Run Flutter Web client in release mode
+dev-web-release:
+    @echo "[dev] Starting Flutter Web in release mode on :3000..."
+    cd client && flutter run -d chrome --web-port=3000 --release
 
