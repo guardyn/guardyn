@@ -271,9 +271,11 @@ class GroupRemoteDatasource {
   }
 
   DateTime _timestampFromProto(proto_common.Timestamp ts) {
+    // Server sends UTC timestamps, convert to local time for display
     return DateTime.fromMillisecondsSinceEpoch(
       ts.seconds.toInt() * 1000 + ts.nanos ~/ 1000000,
-    );
+      isUtc: true,
+    ).toLocal();
   }
 
   GroupMessageType _messageTypeFromProto(proto.MessageType type) {

@@ -384,13 +384,23 @@ class WebSocketDatasource {
   }
 
   /// Parse timestamp from various formats
+  /// Server sends UTC timestamps, convert to local time for display
   DateTime _parseTimestamp(dynamic timestamp) {
     if (timestamp == null) return DateTime.now();
     if (timestamp is int) {
-      return DateTime.fromMillisecondsSinceEpoch(timestamp);
+      // Server sends epoch milliseconds in UTC
+      return DateTime.fromMillisecondsSinceEpoch(
+        timestamp,
+        isUtc: true,
+      ).toLocal();
     }
     if (timestamp is String) {
-      return DateTime.tryParse(timestamp) ?? DateTime.now();
+      final parsed = DateTime.tryParse(timestamp);
+      if (parsed != null) {
+        // If parsed DateTime is UTC, convert to local
+        return parsed.isUtc ? parsed.toLocal() : parsed;
+      }
+      return DateTime.now();
     }
     return DateTime.now();
   }
