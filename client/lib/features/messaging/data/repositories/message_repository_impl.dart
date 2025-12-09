@@ -26,9 +26,9 @@ class MessageRepositoryImpl implements MessageRepository {
   final Logger _logger = Logger();
 
   MessageRepositoryImpl(
-    this.remoteDatasource, 
+    this.remoteDatasource,
     this.keyExchangeDatasource,
-    this.secureStorage, 
+    this.secureStorage,
     this.cryptoService,
   );
 
@@ -44,6 +44,7 @@ class MessageRepositoryImpl implements MessageRepository {
       // Get access token
       final accessToken = await secureStorage.getAccessToken();
       if (accessToken == null) {
+        _logger.e('sendMessage: No access token found');
         return const Left(AuthFailure('No access token found'));
       }
 
@@ -52,6 +53,9 @@ class MessageRepositoryImpl implements MessageRepository {
       final currentDeviceId = await secureStorage.getDeviceId();
 
       if (currentUserId == null || currentDeviceId == null) {
+        _logger.e(
+          'sendMessage: User not authenticated - userId: $currentUserId, deviceId: $currentDeviceId',
+        );
         return const Left(AuthFailure('User not authenticated'));
       }
 
@@ -83,7 +87,10 @@ class MessageRepositoryImpl implements MessageRepository {
       );
 
       // Create complete message with sender info
-      final conversationId = _deriveConversationId(currentUserId, recipientUserId);
+      final conversationId = _deriveConversationId(
+        currentUserId,
+        recipientUserId,
+      );
 
       final completeMessage = MessageModel(
         messageId: messageModel.messageId,
@@ -124,11 +131,12 @@ class MessageRepositoryImpl implements MessageRepository {
 
       // Get current user ID for determining sent/received
       final currentUserId = await secureStorage.getUserId();
-      
+
       // Generate conversation ID if not provided
       // Backend requires conversation_id for GetMessages
-      final effectiveConversationId = conversationId ?? 
-          (currentUserId != null 
+      final effectiveConversationId =
+          conversationId ??
+          (currentUserId != null
               ? _deriveConversationId(currentUserId, conversationUserId)
               : null);
 
@@ -148,7 +156,7 @@ class MessageRepositoryImpl implements MessageRepository {
         for (final message in messages) {
           // Extract X3DH prekey from message metadata (for first message in session)
           final x3dhPrekey = message.metadata['x3dh_prekey'];
-          
+
           final decryptedContent = await _decryptMessage(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
@@ -156,20 +164,22 @@ class MessageRepositoryImpl implements MessageRepository {
             currentUserId: currentUserId,
             x3dhPrekey: x3dhPrekey,
           );
-          decryptedMessages.add(MessageModel(
-            messageId: message.messageId,
-            conversationId: message.conversationId,
-            senderUserId: message.senderUserId,
-            senderDeviceId: message.senderDeviceId,
-            recipientUserId: message.recipientUserId,
-            recipientDeviceId: message.recipientDeviceId,
-            messageType: message.messageType,
-            textContent: decryptedContent,
-            metadata: message.metadata,
-            timestamp: message.timestamp,
-            deliveryStatus: message.deliveryStatus,
-            currentUserId: currentUserId,
-          ));
+          decryptedMessages.add(
+            MessageModel(
+              messageId: message.messageId,
+              conversationId: message.conversationId,
+              senderUserId: message.senderUserId,
+              senderDeviceId: message.senderDeviceId,
+              recipientUserId: message.recipientUserId,
+              recipientDeviceId: message.recipientDeviceId,
+              messageType: message.messageType,
+              textContent: decryptedContent,
+              metadata: message.metadata,
+              timestamp: message.timestamp,
+              deliveryStatus: message.deliveryStatus,
+              currentUserId: currentUserId,
+            ),
+          );
         }
         return Right(decryptedMessages);
       }
@@ -206,7 +216,7 @@ class MessageRepositoryImpl implements MessageRepository {
         if (currentUserId != null) {
           // Extract X3DH prekey from message metadata (for first message in session)
           final x3dhPrekey = message.metadata['x3dh_prekey'];
-          
+
           final decryptedContent = await _decryptMessage(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
@@ -214,20 +224,22 @@ class MessageRepositoryImpl implements MessageRepository {
             currentUserId: currentUserId,
             x3dhPrekey: x3dhPrekey,
           );
-          yield Right(MessageModel(
-            messageId: message.messageId,
-            conversationId: message.conversationId,
-            senderUserId: message.senderUserId,
-            senderDeviceId: message.senderDeviceId,
-            recipientUserId: message.recipientUserId,
-            recipientDeviceId: message.recipientDeviceId,
-            messageType: message.messageType,
-            textContent: decryptedContent,
-            metadata: message.metadata,
-            timestamp: message.timestamp,
-            deliveryStatus: message.deliveryStatus,
-            currentUserId: currentUserId,
-          ));
+          yield Right(
+            MessageModel(
+              messageId: message.messageId,
+              conversationId: message.conversationId,
+              senderUserId: message.senderUserId,
+              senderDeviceId: message.senderDeviceId,
+              recipientUserId: message.recipientUserId,
+              recipientDeviceId: message.recipientDeviceId,
+              messageType: message.messageType,
+              textContent: decryptedContent,
+              metadata: message.metadata,
+              timestamp: message.timestamp,
+              deliveryStatus: message.deliveryStatus,
+              currentUserId: currentUserId,
+            ),
+          );
         } else {
           yield Right(message);
         }
@@ -240,9 +252,7 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Future<Either<Failure, void>> markAsRead({
-    required String messageId,
-  }) async {
+  Future<Either<Failure, void>> markAsRead({required String messageId}) async {
     try {
       // Get access token
       final accessToken = await secureStorage.getAccessToken();
@@ -385,14 +395,14 @@ class MessageRepositoryImpl implements MessageRepository {
     required String currentUserId,
   }) async {
     String? x3dhPrekey;
-    
+
     // ignore: avoid_print
     print(
       '🔐 _encryptMessageWithPrekey: checking session for $recipientUserId:$recipientDeviceId',
     );
     // ignore: avoid_print
     print('🔐 CryptoService initialized: ${cryptoService.isInitialized}');
-    
+
     // Check if E2EE session exists
     var session = await cryptoService.getSession(
       remoteUserId: recipientUserId,
@@ -404,7 +414,9 @@ class MessageRepositoryImpl implements MessageRepository {
 
     // No session? Create one via X3DH key exchange
     if (session == null) {
-      _logger.i('No E2EE session for $recipientUserId:$recipientDeviceId, initiating X3DH');
+      _logger.i(
+        'No E2EE session for $recipientUserId:$recipientDeviceId, initiating X3DH',
+      );
       // ignore: avoid_print
       print('🔐 No session found, creating new X3DH session...');
       try {
@@ -534,11 +546,11 @@ class MessageRepositoryImpl implements MessageRepository {
     print(
       '🔐 _decryptMessage: from $senderUserId, x3dhPrekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
     );
-    
+
     if (encryptedContent.isEmpty) {
       return encryptedContent;
     }
-    
+
     // Check if E2EE session exists
     var session = await cryptoService.getSession(
       remoteUserId: senderUserId,
@@ -594,7 +606,7 @@ class MessageRepositoryImpl implements MessageRepository {
       ciphertextBytes = Uint8List.fromList(encryptedContent.codeUnits);
       _logger.d('Base64 decode failed, using codeUnits: $e');
     }
-    
+
     final associatedData = Uint8List.fromList(
       '$senderUserId|$currentUserId'.codeUnits,
     );

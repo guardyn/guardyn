@@ -47,19 +47,29 @@ class SecureStorage {
 
   // User info management
   Future<void> saveUserId(String userId) async {
+    // ignore: avoid_print
+    print('🔒 SecureStorage.saveUserId: $userId');
     await _storage.write(key: _keyUserId, value: userId);
   }
 
   Future<String?> getUserId() async {
-    return await _storage.read(key: _keyUserId);
+    final userId = await _storage.read(key: _keyUserId);
+    // ignore: avoid_print
+    print('🔒 SecureStorage.getUserId: $userId');
+    return userId;
   }
 
   Future<void> saveDeviceId(String deviceId) async {
+    // ignore: avoid_print
+    print('🔒 SecureStorage.saveDeviceId: $deviceId');
     await _storage.write(key: _keyDeviceId, value: deviceId);
   }
 
   Future<String?> getDeviceId() async {
-    return await _storage.read(key: _keyDeviceId);
+    final deviceId = await _storage.read(key: _keyDeviceId);
+    // ignore: avoid_print
+    print('🔒 SecureStorage.getDeviceId: $deviceId');
+    return deviceId;
   }
 
   Future<void> saveUsername(String username) async {
