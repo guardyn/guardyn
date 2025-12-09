@@ -50,7 +50,8 @@ class AuthRepositoryImpl implements AuthRepository {
         deviceId: response.deviceId,
         createdAt: DateTime.fromMillisecondsSinceEpoch(
           response.createdAt.seconds.toInt() * 1000,
-        ),
+          isUtc: true,
+        ).toLocal(),
       );
     } catch (e) {
       logger.e('Registration failed: $e');

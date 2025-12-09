@@ -109,9 +109,11 @@ class MessageModel extends Message {
 
   static DateTime _timestampFromProto(common_proto.Timestamp? timestamp) {
     if (timestamp == null) return DateTime.now();
+    // Server sends UTC timestamps, convert to local time for display
     return DateTime.fromMillisecondsSinceEpoch(
       timestamp.seconds.toInt() * 1000 + (timestamp.nanos ~/ 1000000),
-    );
+      isUtc: true,
+    ).toLocal();
   }
 
   static common_proto.Timestamp _timestampToProto(DateTime dateTime) {

@@ -176,11 +176,13 @@ class _ConversationListPageState extends State<ConversationListPage> {
               itemBuilder: (context, index) {
                 final conversation = _conversations[index];
                 final lastMessage = conversation.lastMessage;
+                // Server sends UTC timestamps, convert to local time for display
                 final timestamp = lastMessage.hasServerTimestamp()
                     ? DateTime.fromMillisecondsSinceEpoch(
                         lastMessage.serverTimestamp.seconds.toInt() * 1000 +
                             (lastMessage.serverTimestamp.nanos ~/ 1000000),
-                      )
+                        isUtc: true,
+                      ).toLocal()
                     : DateTime.now();
 
                 return ListTile(

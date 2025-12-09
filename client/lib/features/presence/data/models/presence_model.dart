@@ -21,7 +21,9 @@ class PresenceModel extends PresenceInfo {
       status: _statusFromProto(protoStatus.status),
       lastSeen: protoStatus.hasLastSeen()
           ? DateTime.fromMillisecondsSinceEpoch(
-              protoStatus.lastSeen.seconds.toInt() * 1000)
+              protoStatus.lastSeen.seconds.toInt() * 1000,
+              isUtc: true,
+            ).toLocal()
           : null,
       isTyping: protoStatus.isTyping,
       customStatusText: protoStatus.hasCustomStatusText()
@@ -37,7 +39,9 @@ class PresenceModel extends PresenceInfo {
       status: _statusFromProto(protoUpdate.status),
       lastSeen: protoUpdate.hasLastSeen()
           ? DateTime.fromMillisecondsSinceEpoch(
-              protoUpdate.lastSeen.seconds.toInt() * 1000)
+              protoUpdate.lastSeen.seconds.toInt() * 1000,
+              isUtc: true,
+            ).toLocal()
           : null,
       isTyping: protoUpdate.isTyping,
       typingInConversationId: protoUpdate.hasTypingInConversationWith()

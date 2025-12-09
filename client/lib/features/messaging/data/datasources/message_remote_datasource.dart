@@ -227,9 +227,11 @@ class MessageRemoteDatasource {
 
   DateTime _timestampFromProto(proto_common.Timestamp? timestamp) {
     if (timestamp == null) return DateTime.now();
+    // Server sends UTC timestamps, convert to local time for display
     return DateTime.fromMillisecondsSinceEpoch(
       timestamp.seconds.toInt() * 1000 + (timestamp.nanos ~/ 1000000),
-    );
+      isUtc: true,
+    ).toLocal();
   }
 
   DeliveryStatus _deliveryStatusFromProto(proto.DeliveryStatus status) {
