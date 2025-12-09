@@ -226,3 +226,17 @@ dev-web-release:
     @echo "[dev] Starting Flutter Web in release mode on :3000..."
     cd client && flutter run -d chrome --web-port=3000 --release
 
+# =============================================================================
+# Client Data Management
+# =============================================================================
+
+# Clear all client data (E2EE sessions, keys) - interactive mode
+clear-client-data:
+    @echo "[client] Clearing client data (E2EE sessions, keys)..."
+    bash client/scripts/clear-client-data.sh
+
+# Force clear all client data without confirmation
+clear-client-data-force:
+    @echo "[client] Force clearing all client data..."
+    bash client/scripts/clear-client-data.sh --force
+

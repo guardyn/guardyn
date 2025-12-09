@@ -447,7 +447,9 @@ class MessageRepositoryImpl implements MessageRepository {
       }
     } else {
       // ignore: avoid_print
-      print('🔐 Session already exists, no prekey needed');
+      print(
+        '🔐 Session already exists: hasSendingChainKey=${session.hasSendingChainKey}',
+      );
     }
 
     // Encrypt with Double Ratchet
@@ -568,10 +570,14 @@ class MessageRepositoryImpl implements MessageRepository {
           senderDeviceId: senderDeviceId,
           x3dhPrekey: x3dhPrekey,
         );
-        // Re-fetch session after creation
+        // Re-fetch session after creation (from memory cache, not storage)
         session = await cryptoService.getSession(
           remoteUserId: senderUserId,
           remoteDeviceId: senderDeviceId,
+        );
+        // ignore: avoid_print
+        print(
+          '🔐 Responder session created: hasSendingChainKey=${session?.hasSendingChainKey}, hasReceivingChainKey=${session?.hasReceivingChainKey}',
         );
         _logger.i('Responder session created successfully');
       } catch (e) {

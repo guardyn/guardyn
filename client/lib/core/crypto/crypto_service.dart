@@ -257,6 +257,12 @@ class CryptoService {
   }
 
   /// Create a new session as responder (Bob)
+  /// 
+  /// NOTE: Session is NOT saved to persistent storage here!
+  /// This is intentional: the responder session starts without a sending chain key.
+  /// The sending chain key is established during the first decrypt() call when
+  /// the DH ratchet is performed. Only after successful decrypt() the session
+  /// is saved with a valid sending chain key.
   Future<DoubleRatchet> createSessionAsResponder({
     required String senderUserId,
     required String senderDeviceId,
@@ -278,10 +284,15 @@ class CryptoService {
     // Initialize Double Ratchet as Bob
     final ratchet = await DoubleRatchet.initBob(sharedSecret);
 
-    // Store session
+    // Store session in memory ONLY (not in persistent storage)
+    // Session will be saved after successful decrypt() which performs DH ratchet
+    // and establishes the sending chain key
     final sessionId = _makeSessionId(senderUserId, senderDeviceId);
     _sessions[sessionId] = ratchet;
-    await _saveSession(sessionId, ratchet);
+    // ignore: avoid_print
+    print(
+      '🔐 createSessionAsResponder: session created in memory (NOT saved to storage yet)',
+    );
 
     return ratchet;
   }
@@ -296,17 +307,37 @@ class CryptoService {
     print('🔐 CryptoService.getSession: sessionId=$sessionId');
 
     if (_sessions.containsKey(sessionId)) {
+      final cachedSession = _sessions[sessionId]!;
+      // Check if session is valid for encryption
+      if (!cachedSession.isFullyEstablished) {
+        // ignore: avoid_print
+        print(
+          '🔐 CryptoService.getSession: cached session has no sending chain key, keeping for decrypt',
+        );
+      }
       // ignore: avoid_print
       print('🔐 CryptoService.getSession: found in memory cache');
-      return _sessions[sessionId];
+      return cachedSession;
     }
 
     // Try to load from storage
     final ratchet = await _loadSession(sessionId);
     if (ratchet != null) {
+      // Check if loaded session has sending chain key
+      // Sessions without sending chain key were saved incorrectly (bug fix)
+      // They should be discarded so a new X3DH exchange can happen
+      if (!ratchet.isFullyEstablished) {
+        // ignore: avoid_print
+        print(
+          '🔐 CryptoService.getSession: loaded session has no sending chain key - deleting corrupted session',
+        );
+        await _storage.delete(key: '$_sessionPrefix$sessionId');
+        return null;
+      }
       // ignore: avoid_print
       print('🔐 CryptoService.getSession: loaded from storage');
       _sessions[sessionId] = ratchet;
+      return ratchet;
     } else {
       // ignore: avoid_print
       print('🔐 CryptoService.getSession: not found');

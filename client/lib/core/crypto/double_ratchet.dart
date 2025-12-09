@@ -359,6 +359,15 @@ class DoubleRatchet {
   /// Get current DH public key
   Uint8List get publicKey => _dhSelf.publicKey;
 
+  /// Check if session has a sending chain key (can encrypt)
+  bool get hasSendingChainKey => _sendingChainKey != null;
+
+  /// Check if session has a receiving chain key (has received messages)
+  bool get hasReceivingChainKey => _receivingChainKey != null;
+
+  /// Check if session is fully established (can both send and receive)
+  bool get isFullyEstablished => hasSendingChainKey;
+
   /// Encrypt a message
   Future<EncryptedMessage> encrypt(
     Uint8List plaintext,
