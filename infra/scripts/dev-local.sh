@@ -315,7 +315,7 @@ run_service() {
     # Run inside nix develop to ensure cargo is available
     log_info "Using nix develop to ensure cargo toolchain..."
     log_info "Binary: ${bin_name}, Port: ${port}"
-    
+
     cd "${PROJECT_ROOT}"
     nix develop --command bash -c "cd backend && \
         export GUARDYN_HOST='0.0.0.0' && \
