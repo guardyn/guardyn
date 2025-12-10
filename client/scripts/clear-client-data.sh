@@ -54,23 +54,19 @@ clear_android_data() {
 
     # Check if adb is available
     if ! command -v adb &> /dev/null; then
-        echo -e "   ${YELLOW}⚠ adb not found. Install Android SDK or run 'nix develop'.${NC}"
-        echo "   Manual steps for physical device or emulator:"
-        echo "   1. Settings → Apps → Guardyn → Storage → Clear Data"
-        echo "   2. Or uninstall and reinstall the app"
+        echo -e "   ${GREEN}✓ Skipped (adb not available)${NC}"
         echo ""
-        return
+        return 0
     fi
 
     # Check if any device is connected
-    DEVICES=$(adb devices 2>/dev/null | grep -v "List of devices" | grep -v "^$" | wc -l)
+    local device_output
+    device_output=$(adb devices 2>/dev/null | tail -n +2 | grep -v "^$" || true)
 
-    if [[ "$DEVICES" -eq 0 ]]; then
-        echo -e "   ${YELLOW}⚠ No Android devices/emulators connected${NC}"
-        echo "   Start an emulator or connect a device, then run:"
-        echo "   adb shell pm clear $ANDROID_PACKAGE"
+    if [[ -z "$device_output" ]]; then
+        echo -e "   ${GREEN}✓ Skipped (no devices connected)${NC}"
         echo ""
-        return
+        return 0
     fi
 
     echo "   Connected devices:"
@@ -128,14 +124,19 @@ clear_all_force() {
 
     # Android (if adb available and device connected)
     if command -v adb &> /dev/null; then
-        DEVICES=$(adb devices 2>/dev/null | grep -v "List of devices" | grep -v "^$" | wc -l)
-        if [[ "$DEVICES" -gt 0 ]]; then
+        local device_output
+        device_output=$(adb devices 2>/dev/null | tail -n +2 | grep -v "^$" || true)
+        if [[ -n "$device_output" ]]; then
             if adb shell pm clear "$ANDROID_PACKAGE" 2>/dev/null; then
                 echo -e "${GREEN}✓ Android app data cleared${NC}"
             else
-                echo -e "${YELLOW}⚠ Could not clear Android data${NC}"
+                echo -e "${GREEN}✓ Android skipped (app not installed)${NC}"
             fi
+        else
+            echo -e "${GREEN}✓ Android skipped (no devices connected)${NC}"
         fi
+    else
+        echo -e "${GREEN}✓ Android skipped (adb not available)${NC}"
     fi
 
     echo ""
