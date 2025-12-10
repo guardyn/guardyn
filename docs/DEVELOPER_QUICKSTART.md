@@ -101,6 +101,10 @@ kubectl get pods -n data
 Run services locally with database connections to cluster:
 
 ```bash
+# IMPORTANT: Stop k8s services first to avoid conflicts
+kubectl scale deployment messaging-service -n apps --replicas=0
+kubectl scale deployment auth-service -n apps --replicas=0
+
 # Terminal 1: Start port-forwards
 just dev-ports
 
@@ -114,6 +118,10 @@ just dev-media       # Media service on :50054
 cargo install cargo-watch
 just dev-watch auth-service
 ```
+
+> ⚠️ **Important**: If both k8s and local services are running, NATS message
+> consumers will compete, causing real-time WebSocket delivery to fail.
+> Always scale k8s deployments to 0 before running locally.
 
 **Rebuild time: ~5-10 seconds** (vs ~60+ seconds with Docker)
 

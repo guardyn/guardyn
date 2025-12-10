@@ -305,17 +305,30 @@ tail -f /tmp/chrome_test.log
 **Solutions:**
 
 ```bash
-# 1. Check messaging-service logs
+# 1. Check if k8s messaging-service is competing with local service
+kubectl get deployment messaging-service -n apps
+# If replicas > 0 and you're running locally, scale down:
+kubectl scale deployment messaging-service -n apps --replicas=0
+
+# 2. Check messaging-service logs
 kubectl logs -n apps deployment/messaging-service --tail=50
 
-# 2. Check NATS connectivity
+# 3. Check NATS consumers (should show only one websocket-relay consumer)
+kubectl run nats-check --rm -it --image=natsio/nats-box \
+  --restart=Never -n messaging -- \
+  nats con ls MESSAGES -s nats://nats:4222
+
+# 4. Check NATS connectivity
 kubectl exec -it -n messaging deployment/nats-0 -- nats sub "messages.>"
 
-# 3. Verify both users registered
+# 5. Verify both users registered
 kubectl logs -n apps deployment/auth-service | grep -E "alice_android|bob_chrome"
 
-# 4. Check WebSocket connections
+# 6. Check WebSocket connections
 kubectl logs -n apps deployment/messaging-service | grep "WebSocket"
+
+# 7. Clear client E2EE data if messages are garbled
+just clear-client-data
 ```
 
 ### Tests Timeout

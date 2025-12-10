@@ -153,8 +153,18 @@ When running services locally, these environment variables are set automatically
 # Database connections
 GUARDYN_DATABASE__TIKV_PD_ENDPOINTS=127.0.0.1:2379
 GUARDYN_DATABASE__SCYLLADB_NODES=127.0.0.1:9042
+
+# NATS (multiple variables for compatibility)
 GUARDYN_MESSAGING__NATS_URL=nats://127.0.0.1:4222
+NATS_URL=nats://127.0.0.1:4222
+NATS_ENDPOINT=nats://127.0.0.1:4222  # Required for messaging-service
+
+# S3/MinIO
 S3_ENDPOINT=http://127.0.0.1:9000
+
+# ScyllaDB single-node settings
+SCYLLA_CONSISTENCY=one
+SCYLLA_REPLICATION_FACTOR=1
 
 # JWT (dev only)
 JWT_SECRET=dev-secret-key-for-local-development-only
@@ -162,6 +172,10 @@ JWT_SECRET=dev-secret-key-for-local-development-only
 # Logging
 RUST_LOG=info,guardyn=debug
 ```
+
+### Note on NATS Configuration
+
+`messaging-service` uses `NATS_ENDPOINT` while other services may use `NATS_URL`. The `dev-local.sh` script sets both to ensure compatibility.
 
 ## Troubleshooting
 
@@ -204,6 +218,50 @@ cargo clean
 cargo build --release --bin auth-service
 ```
 
+### WebSocket messages not arriving in real-time
+
+**Symptom**: Messages save to database but clients only see them after refresh.
+
+**Causes**:
+
+1. K8s messaging-service pod competing with local service for NATS messages
+2. NATS consumer not created (check `NATS_ENDPOINT` is set)
+3. WebSocket not connected
+
+**Fix**:
+
+```bash
+# 1. Stop k8s messaging-service
+kubectl scale deployment messaging-service -n apps --replicas=0
+
+# 2. Verify local service has NATS consumer
+kubectl run nats-check --rm -it --image=natsio/nats-box \
+  --restart=Never -n messaging -- \
+  nats con ls MESSAGES -s nats://nats:4222
+
+# Should show: websocket-relay-<UUID>
+
+# 3. Restart local messaging-service
+just dev-messaging
+
+# 4. Check client WebSocket connection in browser DevTools
+```
+
+### E2EE messages are garbled or unreadable
+
+**Symptom**: Messages appear but content is corrupted (random characters).
+
+**Cause**: Corrupted Double Ratchet session state.
+
+**Fix**:
+
+```bash
+# Clear all client data
+just clear-client-data
+
+# Restart both clients to generate fresh keys
+```
+
 ## Best Practices
 
 1. **Use local mode for development**: Much faster iteration cycle
@@ -211,3 +269,75 @@ cargo build --release --bin auth-service
 3. **Keep ScyllaDB at 1 node for dev**: Saves significant resources
 4. **Use cargo-watch**: Automatic recompilation on file changes
 5. **Monitor resources**: Use `just resources` to check usage
+6. **Stop k8s services when running locally**: Prevent message delivery conflicts
+
+## ⚠️ Important: K8s vs Local Service Conflicts
+
+When running services locally, you **MUST** stop the corresponding k8s deployments to avoid conflicts:
+
+### Problem: Duplicate Message Consumers
+
+If both k8s and local messaging-service are running:
+
+1. Both create NATS consumers for the MESSAGES stream
+2. Messages are delivered to the k8s pod (which has no WebSocket clients)
+3. Local WebSocket clients never receive real-time messages
+4. Messages only appear after manual refresh
+
+### Solution: Stop K8s Services
+
+```bash
+# Before running services locally:
+kubectl scale deployment messaging-service -n apps --replicas=0
+kubectl scale deployment auth-service -n apps --replicas=0
+kubectl scale deployment presence-service -n apps --replicas=0
+kubectl scale deployment media-service -n apps --replicas=0
+
+# Or use the development command:
+just scale-local
+
+# After local development, restore:
+just scale-dev  # 1 replica each
+just scale-prod # Full replicas
+```
+
+### Verify Only Local Services Are Running
+
+```bash
+# Check k8s deployments are scaled to 0:
+kubectl get deployment -n apps
+
+# Check local services are running:
+ps aux | grep guardyn
+
+# Check NATS consumers (should show only local consumer):
+kubectl run nats-check --rm -it --image=natsio/nats-box \
+  --restart=Never -n messaging -- \
+  nats con ls MESSAGES -s nats://nats:4222
+```
+
+## Client Data Cleanup
+
+When debugging E2EE issues or after protocol changes, clear client data:
+
+```bash
+# Interactive cleanup (with confirmation):
+just clear-client-data
+
+# Force cleanup (for CI/scripts):
+just clear-client-data-force
+```
+
+This clears:
+
+- E2EE session keys (Double Ratchet state)
+- X3DH key material
+- Cached user data
+
+### What Gets Cleared
+
+| Platform | Location | Data |
+|----------|----------|------|
+| Linux | `~/.local/share/guardyn_client/` | SQLite DB, key files |
+| Android | App data via `adb pm clear` | All app storage |
+| Web | Browser LocalStorage | Session data, keys |
