@@ -260,6 +260,7 @@ GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.loca
 GUARDYN_PORT=50052
 WEBSOCKET_PORT=8081
 ENABLE_WEBSOCKET=true
+NATS_ENDPOINT=nats://nats.messaging.svc.cluster.local:4222  # Required for NATS connection
 GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
 
 # Presence Service
@@ -278,6 +279,25 @@ GUARDYN_MESSAGING__NATS_URL=nats://nats.messaging.svc.cluster.local:4222
 
 ---
 
+## Local Development Port Mapping
+
+When running services locally with `just dev-*` commands, port-forwards map k8s services to localhost:
+
+| Local Port | K8s Service | Usage |
+|------------|-------------|-------|
+| 2379 | pd.data | TiKV PD |
+| 20160 | tikv-0.data | TiKV storage |
+| 9042 | scylla-client.data | ScyllaDB |
+| 4222 | nats.messaging | NATS JetStream |
+| 9000 | minio.data | MinIO S3 |
+| 50051 | auth-service.apps | Auth (if not running locally) |
+| 50052 | messaging-service.apps | Messaging (if not running locally) |
+| 8081 | localhost only | WebSocket (local messaging-service) |
+
+**Important**: WebSocket port 8081 is served by the local messaging-service, not port-forwarded from k8s.
+
+---
+
 ## Security Considerations
 
 1. **Internal ports only** (50051-50054, 8081): Not exposed outside cluster, accessed via Ingress
@@ -287,4 +307,4 @@ GUARDYN_MESSAGING__NATS_URL=nats://nats.messaging.svc.cluster.local:4222
 
 ---
 
-Last updated: November 30, 2025
+Last updated: December 10, 2025

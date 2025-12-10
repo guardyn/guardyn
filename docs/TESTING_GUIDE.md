@@ -484,6 +484,73 @@ kubectl get secret -n apps app-secrets -o yaml
 let expiry = Utc::now() + Duration::minutes(15);
 ```
 
+### E2EE / Encryption Errors
+
+**Symptom**: Messages appear garbled or unreadable, decryption fails
+
+**Causes**:
+
+- Corrupted Double Ratchet session state
+- Key bundle signature mismatch
+- Session saved before DH ratchet completed
+
+**Solutions**:
+
+1. Clear client data (removes corrupted E2EE sessions):
+
+```bash
+just clear-client-data       # Interactive
+just clear-client-data-force # Non-interactive
+```
+
+2. Verify key bundles in database:
+
+```bash
+# Check if user has valid key bundle
+kubectl exec -it -n data tikv-0 -- tikv-ctl --host 127.0.0.1:20160 \
+  scan --from '"/keys/user-"' --to '"/keys/user-~"' --limit 10
+```
+
+3. Check auth-service logs for key exchange:
+
+```bash
+kubectl logs -n apps -l app=auth-service | grep -i "key bundle\|x3dh"
+```
+
+### WebSocket Messages Not Arriving
+
+**Symptom**: Messages save but don't appear in real-time for recipients
+
+**Causes**:
+
+- K8s messaging-service competing with local service for NATS messages
+- NATS consumer not created
+- WebSocket not connected
+
+**Solutions**:
+
+1. Stop k8s messaging-service if running locally:
+
+```bash
+kubectl scale deployment messaging-service -n apps --replicas=0
+```
+
+2. Check NATS consumers (should show only one `websocket-relay-*`):
+
+```bash
+kubectl run nats-check --rm -it --image=natsio/nats-box \
+  --restart=Never -n messaging -- \
+  nats con ls MESSAGES -s nats://nats:4222
+```
+
+3. Restart local messaging-service:
+
+```bash
+just dev-messaging
+```
+
+4. Check WebSocket connection in browser DevTools → Network → WS
+
 ## 📊 CI/CD Integration
 
 ### GitHub Actions Workflow
