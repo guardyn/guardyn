@@ -73,6 +73,7 @@ export SCYLLA_REPLICATION_FACTOR="1"
 # NATS configuration
 export GUARDYN_MESSAGING__NATS_URL="nats://127.0.0.1:${NATS_PORT}"
 export NATS_URL="nats://127.0.0.1:${NATS_PORT}"
+export NATS_ENDPOINT="nats://127.0.0.1:${NATS_PORT}"
 
 # MinIO/S3 configuration
 export S3_ENDPOINT="http://127.0.0.1:${MINIO_PORT}"
