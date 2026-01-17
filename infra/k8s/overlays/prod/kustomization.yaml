@@ -1,12 +1,67 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+# Guardyn Production Overlay
+# Phase 5: Launch Preparation - Production K8s Deployment
+
+namespace: apps
+
+labels:
+  - pairs:
+      guardyn.io/stage: production
+      guardyn.io/environment: prod
+
 bases:
   - ../../base/namespaces
   - ../../base/cert-manager
   - ../../base/cilium
   - ../../base/tikv
   - ../../base/scylladb
+  - ../../base/apps
+
 resources:
   - ../../base/monitoring
+  - ../../base/envoy
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - network-policies.yaml
+  - service-monitors.yaml
+  - slo-rules.yaml
+
 patchesStrategicMerge:
   - patches/production-overrides.yaml
+
+# Image configuration - replace with your registry
+images:
+  - name: guardyn-auth-service
+    newName: ghcr.io/guardyn/auth-service
+    newTag: latest
+  - name: guardyn-messaging-service
+    newName: ghcr.io/guardyn/messaging-service
+    newTag: latest
+  - name: guardyn-presence-service
+    newName: ghcr.io/guardyn/presence-service
+    newTag: latest
+  - name: guardyn-media-service
+    newName: ghcr.io/guardyn/media-service
+    newTag: latest
+  - name: guardyn-notification-service
+    newName: ghcr.io/guardyn/notification-service
+    newTag: latest
+
+# Configuration replacements
+replacements:
+  - source:
+      kind: ConfigMap
+      name: guardyn-config
+      fieldPath: data.DOMAIN
+    targets:
+      - select:
+          kind: Ingress
+        fieldPaths:
+          - spec.rules.0.host
+          - spec.tls.0.hosts.0
+        options:
+          delimiter: "."
+          index: 1

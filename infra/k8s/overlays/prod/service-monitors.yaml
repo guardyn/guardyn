@@ -1,0 +1,147 @@
+# Guardyn Service Monitors
+# Phase 5: Launch Preparation - Monitoring + Alerting
+# 
+# ServiceMonitor resources for Prometheus Operator
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: auth-service-monitor
+  namespace: observability
+  labels:
+    app: auth-service
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  namespaceSelector:
+    matchNames:
+      - apps
+  selector:
+    matchLabels:
+      app: auth-service
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: messaging-service-monitor
+  namespace: observability
+  labels:
+    app: messaging-service
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  namespaceSelector:
+    matchNames:
+      - apps
+  selector:
+    matchLabels:
+      app: messaging-service
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: presence-service-monitor
+  namespace: observability
+  labels:
+    app: presence-service
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  namespaceSelector:
+    matchNames:
+      - apps
+  selector:
+    matchLabels:
+      app: presence-service
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: media-service-monitor
+  namespace: observability
+  labels:
+    app: media-service
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  namespaceSelector:
+    matchNames:
+      - apps
+  selector:
+    matchLabels:
+      app: media-service
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: notification-service-monitor
+  namespace: observability
+  labels:
+    app: notification-service
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  namespaceSelector:
+    matchNames:
+      - apps
+  selector:
+    matchLabels:
+      app: notification-service
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: envoy-monitor
+  namespace: observability
+  labels:
+    app: envoy
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  namespaceSelector:
+    matchNames:
+      - platform
+  selector:
+    matchLabels:
+      app: envoy
+  endpoints:
+    - port: admin
+      interval: 15s
+      path: /stats/prometheus
+      scheme: http
+      scrapeTimeout: 10s

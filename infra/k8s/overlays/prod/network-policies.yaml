@@ -1,0 +1,207 @@
+# Guardyn Network Policies
+# Phase 5: Launch Preparation - Production K8s Deployment
+# 
+# Network isolation policies for security
+---
+# Default deny all ingress in apps namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow ingress from Envoy to backend services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-envoy-ingress
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector:
+    matchLabels:
+      guardyn.io/stage: production
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: platform
+          podSelector:
+            matchLabels:
+              app: envoy
+      ports:
+        - protocol: TCP
+          port: 50051
+---
+# Allow inter-service communication within apps namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apps-internal
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 50051
+---
+# Allow apps to connect to data services (TiKV, ScyllaDB)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-data-egress
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # TiKV PD
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: data
+      ports:
+        - protocol: TCP
+          port: 2379
+    # TiKV
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: data
+      ports:
+        - protocol: TCP
+          port: 20160
+    # ScyllaDB
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: data
+      ports:
+        - protocol: TCP
+          port: 9042
+    # MinIO
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: data
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+# Allow apps to connect to messaging (NATS/Redpanda)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-messaging-egress
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # NATS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: messaging
+      ports:
+        - protocol: TCP
+          port: 4222
+    # Redpanda Kafka API
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: messaging
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+# Allow apps to send metrics to observability
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-observability-egress
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # OTLP (Tempo)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+      ports:
+        - protocol: TCP
+          port: 4317
+---
+# Allow DNS resolution
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Allow Prometheus scraping
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: apps
+  labels:
+    guardyn.io/stage: production
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090

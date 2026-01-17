@@ -1,0 +1,224 @@
+# Guardyn SLO Rules
+# Phase 5: Launch Preparation - Monitoring + Alerting
+# 
+# Service Level Objectives (SLOs) for Guardyn services
+# Target: 99.9% availability
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: guardyn-slo-rules
+  namespace: observability
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+    guardyn.io/stage: production
+spec:
+  groups:
+    # ===================================================================
+    # SLO Recording Rules
+    # ===================================================================
+    - name: guardyn.slo.recording
+      interval: 30s
+      rules:
+        # Auth Service - Availability SLI
+        - record: guardyn:sli:auth_service_availability
+          expr: |
+            sum(rate(grpc_server_handled_total{grpc_service=~"guardyn.auth.*", grpc_code!="Unavailable"}[5m])) 
+            / 
+            sum(rate(grpc_server_handled_total{grpc_service=~"guardyn.auth.*"}[5m]))
+
+        # Auth Service - Latency SLI (P99 < 200ms)
+        - record: guardyn:sli:auth_service_latency
+          expr: |
+            histogram_quantile(0.99, 
+              sum(rate(grpc_server_handling_seconds_bucket{grpc_service=~"guardyn.auth.*"}[5m])) by (le)
+            )
+
+        # Messaging Service - Availability SLI
+        - record: guardyn:sli:messaging_service_availability
+          expr: |
+            sum(rate(grpc_server_handled_total{grpc_service=~"guardyn.messaging.*", grpc_code!="Unavailable"}[5m])) 
+            / 
+            sum(rate(grpc_server_handled_total{grpc_service=~"guardyn.messaging.*"}[5m]))
+
+        # Messaging Service - Latency SLI (P99 < 100ms)
+        - record: guardyn:sli:messaging_service_latency
+          expr: |
+            histogram_quantile(0.99, 
+              sum(rate(grpc_server_handling_seconds_bucket{grpc_service=~"guardyn.messaging.*"}[5m])) by (le)
+            )
+
+        # Message Delivery - Success Rate SLI
+        - record: guardyn:sli:message_delivery_success
+          expr: |
+            sum(rate(guardyn_messages_delivered_total[5m])) 
+            / 
+            sum(rate(guardyn_messages_sent_total[5m]))
+
+        # Overall Platform Availability
+        - record: guardyn:sli:platform_availability
+          expr: |
+            (
+              guardyn:sli:auth_service_availability * 0.3 +
+              guardyn:sli:messaging_service_availability * 0.5 +
+              guardyn:sli:message_delivery_success * 0.2
+            )
+
+        # Error Budget Remaining (30-day window, 99.9% SLO)
+        - record: guardyn:slo:error_budget_remaining
+          expr: |
+            1 - (
+              (1 - avg_over_time(guardyn:sli:platform_availability[30d])) 
+              / 
+              0.001
+            )
+
+    # ===================================================================
+    # SLO Alerting Rules
+    # ===================================================================
+    - name: guardyn.slo.alerts
+      interval: 1m
+      rules:
+        # Burn Rate Alert - Fast Burn (2% budget in 1 hour)
+        - alert: SLOBurnRateFast
+          expr: |
+            (
+              1 - guardyn:sli:platform_availability > 0.02
+            ) 
+            and
+            (
+              1 - avg_over_time(guardyn:sli:platform_availability[1h]) > 0.02
+            )
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+            slo: availability
+          annotations:
+            summary: "High error rate consuming SLO budget quickly"
+            description: "Platform availability is burning through error budget at an unsustainable rate. Current availability: {{ $value | humanizePercentage }}"
+            runbook_url: "https://guardyn.io/runbooks/slo-burn-rate"
+
+        # Burn Rate Alert - Slow Burn (5% budget in 6 hours)
+        - alert: SLOBurnRateSlow
+          expr: |
+            (
+              1 - avg_over_time(guardyn:sli:platform_availability[6h]) > 0.005
+            )
+          for: 30m
+          labels:
+            severity: warning
+            team: platform
+            slo: availability
+          annotations:
+            summary: "Elevated error rate consuming SLO budget"
+            description: "Platform is experiencing elevated error rates over the past 6 hours."
+
+        # Error Budget Exhaustion Warning
+        - alert: SLOErrorBudgetLow
+          expr: guardyn:slo:error_budget_remaining < 0.25
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+            slo: availability
+          annotations:
+            summary: "SLO error budget is running low"
+            description: "Only {{ $value | humanizePercentage }} of monthly error budget remaining."
+
+        # Error Budget Exhausted
+        - alert: SLOErrorBudgetExhausted
+          expr: guardyn:slo:error_budget_remaining < 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+            slo: availability
+          annotations:
+            summary: "SLO error budget exhausted"
+            description: "Monthly error budget has been exceeded. Consider feature freeze until budget recovers."
+
+        # Auth Service Latency SLO Breach
+        - alert: AuthServiceLatencySLOBreach
+          expr: guardyn:sli:auth_service_latency > 0.2
+          for: 10m
+          labels:
+            severity: warning
+            team: backend
+            service: auth-service
+            slo: latency
+          annotations:
+            summary: "Auth Service P99 latency exceeds SLO"
+            description: "Auth Service P99 latency is {{ $value | humanizeDuration }}, exceeding 200ms SLO."
+
+        # Messaging Service Latency SLO Breach
+        - alert: MessagingServiceLatencySLOBreach
+          expr: guardyn:sli:messaging_service_latency > 0.1
+          for: 10m
+          labels:
+            severity: warning
+            team: backend
+            service: messaging-service
+            slo: latency
+          annotations:
+            summary: "Messaging Service P99 latency exceeds SLO"
+            description: "Messaging Service P99 latency is {{ $value | humanizeDuration }}, exceeding 100ms SLO."
+
+        # Message Delivery Failure
+        - alert: MessageDeliveryDegraded
+          expr: guardyn:sli:message_delivery_success < 0.99
+          for: 5m
+          labels:
+            severity: critical
+            team: backend
+            service: messaging-service
+            slo: delivery
+          annotations:
+            summary: "Message delivery success rate degraded"
+            description: "Only {{ $value | humanizePercentage }} of messages are being delivered successfully."
+
+    # ===================================================================
+    # Infrastructure SLOs
+    # ===================================================================
+    - name: guardyn.slo.infrastructure
+      interval: 1m
+      rules:
+        # TiKV Availability
+        - alert: TiKVAvailabilityDegraded
+          expr: |
+            sum(tikv_store_size_bytes) / count(tikv_store_size_bytes) < 1
+          for: 5m
+          labels:
+            severity: critical
+            team: infrastructure
+            component: tikv
+          annotations:
+            summary: "TiKV cluster availability degraded"
+            description: "TiKV cluster has fewer healthy stores than expected."
+
+        # ScyllaDB Availability
+        - alert: ScyllaDBAvailabilityDegraded
+          expr: |
+            scylla_manager_cluster_status != 1
+          for: 5m
+          labels:
+            severity: critical
+            team: infrastructure
+            component: scylladb
+          annotations:
+            summary: "ScyllaDB cluster status unhealthy"
+            description: "ScyllaDB cluster is reporting unhealthy status."
+
+        # Redpanda/Kafka Lag
+        - alert: KafkaConsumerLagHigh
+          expr: |
+            sum(kafka_consumer_group_lag) by (consumergroup) > 10000
+          for: 10m
+          labels:
+            severity: warning
+            team: backend
+            component: redpanda
+          annotations:
+            summary: "Kafka consumer lag is high"
+            description: "Consumer group {{ $labels.consumergroup }} has a lag of {{ $value }} messages."

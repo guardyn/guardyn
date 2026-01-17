@@ -1,0 +1,74 @@
+# Guardyn Pod Disruption Budgets
+# Phase 5: Launch Preparation - Production K8s Deployment
+# 
+# PDB configurations to ensure high availability during maintenance
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: apps
+  labels:
+    app: auth-service
+    guardyn.io/stage: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: auth-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: messaging-service-pdb
+  namespace: apps
+  labels:
+    app: messaging-service
+    guardyn.io/stage: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: messaging-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: presence-service-pdb
+  namespace: apps
+  labels:
+    app: presence-service
+    guardyn.io/stage: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: presence-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: media-service-pdb
+  namespace: apps
+  labels:
+    app: media-service
+    guardyn.io/stage: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: media-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service-pdb
+  namespace: apps
+  labels:
+    app: notification-service
+    guardyn.io/stage: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: notification-service
