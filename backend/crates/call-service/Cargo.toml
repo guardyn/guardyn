@@ -1,5 +1,5 @@
 [package]
-name = "guardyn-notification-service"
+name = "guardyn-call-service"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -7,8 +7,10 @@ license.workspace = true
 
 [dependencies]
 guardyn-common = { path = "../common" }
+guardyn-crypto = { path = "../crypto" }
 
 tokio.workspace = true
+tokio-stream = "0.1"
 tonic.workspace = true
 prost.workspace = true
 serde.workspace = true
@@ -18,10 +20,12 @@ thiserror.workspace = true
 tracing.workspace = true
 config.workspace = true
 scylla.workspace = true
+async-nats.workspace = true
 uuid = { version = "1.11", features = ["v4", "serde"] }
 chrono = "0.4"
 jsonwebtoken = "9.3"
-reqwest = { version = "0.12", features = ["json"] }
+dashmap = "6.0"
+parking_lot = "0.12"
 
 [build-dependencies]
 tonic-build.workspace = true

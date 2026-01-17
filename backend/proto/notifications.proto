@@ -1,0 +1,264 @@
+syntax = "proto3";
+
+package guardyn.notifications;
+
+import "common.proto";
+
+// ============================================================================
+// Notification Service - Push Notifications (FCM/APNs)
+// Phase 2: Complete implementation for mobile push notifications
+// ============================================================================
+
+service NotificationService {
+  // Register a device for push notifications
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+
+  // Unregister a device (on logout or token refresh)
+  rpc UnregisterDevice(UnregisterDeviceRequest) returns (UnregisterDeviceResponse);
+
+  // Update push token (when FCM/APNs token refreshes)
+  rpc UpdatePushToken(UpdatePushTokenRequest) returns (UpdatePushTokenResponse);
+
+  // Get user's notification preferences
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse);
+
+  // Update notification preferences
+  rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse);
+
+  // Mute/unmute a conversation
+  rpc MuteConversation(MuteConversationRequest) returns (MuteConversationResponse);
+
+  // Send a test notification (for debugging)
+  rpc SendTestNotification(SendTestNotificationRequest) returns (SendTestNotificationResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (common.HealthStatus);
+}
+
+// ============================================================================
+// Device Registration
+// ============================================================================
+
+enum PushPlatform {
+  UNKNOWN_PLATFORM = 0;
+  FCM = 1;          // Firebase Cloud Messaging (Android)
+  APNS = 2;         // Apple Push Notification Service (iOS)
+  APNS_SANDBOX = 3; // APNs Sandbox (iOS development)
+  WEB_PUSH = 4;     // Web Push (future)
+}
+
+message RegisterDeviceRequest {
+  string access_token = 1;
+  string device_id = 2;           // Unique device identifier
+  string push_token = 3;          // FCM/APNs token
+  PushPlatform platform = 4;
+  string device_name = 5;         // Human-readable device name (e.g., "iPhone 15 Pro")
+  string app_version = 6;         // App version for compatibility
+  string os_version = 7;          // OS version
+}
+
+message RegisterDeviceResponse {
+  oneof result {
+    RegisterDeviceSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RegisterDeviceSuccess {
+  string registration_id = 1;     // Server-generated registration ID
+  common.Timestamp registered_at = 2;
+}
+
+message UnregisterDeviceRequest {
+  string access_token = 1;
+  string device_id = 2;
+}
+
+message UnregisterDeviceResponse {
+  oneof result {
+    UnregisterDeviceSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UnregisterDeviceSuccess {
+  bool unregistered = 1;
+}
+
+message UpdatePushTokenRequest {
+  string access_token = 1;
+  string device_id = 2;
+  string new_push_token = 3;
+}
+
+message UpdatePushTokenResponse {
+  oneof result {
+    UpdatePushTokenSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdatePushTokenSuccess {
+  bool updated = 1;
+}
+
+// ============================================================================
+// Notification Settings
+// ============================================================================
+
+message NotificationSettings {
+  // Global settings
+  bool notifications_enabled = 1;
+  bool sound_enabled = 2;
+  bool vibration_enabled = 3;
+  bool show_preview = 4;          // Show message content in notification
+  bool show_sender = 5;           // Show sender name in notification
+
+  // Quiet hours
+  bool quiet_hours_enabled = 6;
+  int32 quiet_hours_start = 7;    // Start hour (0-23)
+  int32 quiet_hours_end = 8;      // End hour (0-23)
+  string quiet_hours_timezone = 9; // IANA timezone (e.g., "America/New_York")
+
+  // Category settings
+  bool notify_messages = 10;
+  bool notify_reactions = 11;
+  bool notify_mentions = 12;
+  bool notify_calls = 13;
+  bool notify_group_messages = 14;
+}
+
+message GetNotificationSettingsRequest {
+  string access_token = 1;
+}
+
+message GetNotificationSettingsResponse {
+  oneof result {
+    GetNotificationSettingsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetNotificationSettingsSuccess {
+  NotificationSettings settings = 1;
+}
+
+message UpdateNotificationSettingsRequest {
+  string access_token = 1;
+  NotificationSettings settings = 2;
+}
+
+message UpdateNotificationSettingsResponse {
+  oneof result {
+    UpdateNotificationSettingsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateNotificationSettingsSuccess {
+  bool updated = 1;
+}
+
+// ============================================================================
+// Conversation Mute
+// ============================================================================
+
+message MuteConversationRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+  bool is_group = 3;
+  MuteDuration duration = 4;
+}
+
+enum MuteDuration {
+  UNMUTE = 0;           // Unmute
+  ONE_HOUR = 1;         // Mute for 1 hour
+  EIGHT_HOURS = 2;      // Mute for 8 hours
+  ONE_DAY = 3;          // Mute for 24 hours
+  SEVEN_DAYS = 4;       // Mute for 7 days
+  FOREVER = 5;          // Mute indefinitely
+}
+
+message MuteConversationResponse {
+  oneof result {
+    MuteConversationSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message MuteConversationSuccess {
+  bool muted = 1;
+  common.Timestamp muted_until = 2; // null if forever or unmuted
+}
+
+// ============================================================================
+// Test Notification
+// ============================================================================
+
+message SendTestNotificationRequest {
+  string access_token = 1;
+  string device_id = 2;           // Specific device, or empty for all
+}
+
+message SendTestNotificationResponse {
+  oneof result {
+    SendTestNotificationSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SendTestNotificationSuccess {
+  int32 devices_notified = 1;
+}
+
+// ============================================================================
+// Internal: Push Notification Payload (for backend use)
+// ============================================================================
+
+message PushNotificationPayload {
+  string notification_id = 1;
+  string recipient_user_id = 2;
+
+  NotificationType type = 3;
+
+  // Content (encrypted on client, plaintext here for push)
+  string title = 4;
+  string body = 5;
+  string image_url = 6;           // Optional notification image
+
+  // Deep link data
+  string conversation_id = 7;
+  bool is_group = 8;
+  string message_id = 9;
+
+  // Metadata
+  map<string, string> data = 10;  // Custom data for app handling
+
+  // Priority
+  NotificationPriority priority = 11;
+
+  // TTL (time-to-live for push delivery)
+  int32 ttl_seconds = 12;
+}
+
+enum NotificationType {
+  UNKNOWN_TYPE = 0;
+  NEW_MESSAGE = 1;
+  NEW_REACTION = 2;
+  MENTION = 3;
+  INCOMING_CALL = 4;
+  MISSED_CALL = 5;
+  GROUP_INVITE = 6;
+  GROUP_UPDATE = 7;
+}
+
+enum NotificationPriority {
+  NORMAL = 0;
+  HIGH = 1;   // For calls, urgent messages
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+message HealthRequest {}

@@ -6,6 +6,7 @@ members = [
     "crates/presence-service",
     "crates/media-service",
     "crates/notification-service",
+    "crates/call-service",
     "crates/common",
     "crates/crypto",
     "crates/e2e-tests",

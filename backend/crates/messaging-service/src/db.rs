@@ -173,7 +173,106 @@ impl DatabaseClient {
             .await
             .context("Failed to create conversations table")?;
 
-        tracing::info!("ScyllaDB schema initialized (messages + group_messages + conversations)");
+        // ========================================================================
+        // Phase 2: New tables for reactions, read receipts, disappearing messages
+        // ========================================================================
+
+        // Create reactions table
+        session
+            .query_unpaged(
+                "CREATE TABLE IF NOT EXISTS guardyn.reactions (
+                    message_id UUID,
+                    user_id TEXT,
+                    emoji TEXT,
+                    reaction_id UUID,
+                    conversation_id UUID,
+                    created_at BIGINT,
+                    is_group BOOLEAN,
+                    PRIMARY KEY (message_id, user_id, emoji)
+                )",
+                &[],
+            )
+            .await
+            .context("Failed to create reactions table")?;
+
+        // Create read_receipts table
+        session
+            .query_unpaged(
+                "CREATE TABLE IF NOT EXISTS guardyn.read_receipts (
+                    conversation_id UUID,
+                    user_id TEXT,
+                    last_read_message_id UUID,
+                    timestamp BIGINT,
+                    is_group BOOLEAN,
+                    PRIMARY KEY (conversation_id, user_id)
+                )",
+                &[],
+            )
+            .await
+            .context("Failed to create read_receipts table")?;
+
+        // Create disappearing_config table
+        session
+            .query_unpaged(
+                "CREATE TABLE IF NOT EXISTS guardyn.disappearing_config (
+                    conversation_id UUID PRIMARY KEY,
+                    ttl_seconds INT,
+                    set_by_user_id TEXT,
+                    updated_at BIGINT,
+                    is_group BOOLEAN
+                )",
+                &[],
+            )
+            .await
+            .context("Failed to create disappearing_config table")?;
+
+        // Add Phase 2 columns to existing messages table (migration)
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.messages ADD edit_version INT",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.messages ADD last_edited_at BIGINT",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.messages ADD forward_info TEXT",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.messages ADD thread_reference TEXT",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.messages ADD voice_metadata TEXT",
+                &[],
+            )
+            .await;
+
+        // Add Phase 2 columns to group_messages table
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.group_messages ADD edit_version INT",
+                &[],
+            )
+            .await;
+        let _ = session
+            .query_unpaged(
+                "ALTER TABLE guardyn.group_messages ADD last_edited_at BIGINT",
+                &[],
+            )
+            .await;
+
+        tracing::info!("ScyllaDB schema initialized (messages + group_messages + conversations + Phase 2 tables)");
         Ok(())
     }
 
@@ -1542,6 +1641,668 @@ impl DatabaseClient {
         tracing::debug!(message_id = %message_id, reader = %reader_user_id, "Message marked as read");
         Ok(())
     }
+
+    // ========================================================================
+    // Phase 2: Reactions
+    // ========================================================================
+
+    /// Add a reaction to a message
+    pub async fn add_reaction(
+        &self,
+        message_id: &str,
+        conversation_id: &str,
+        user_id: &str,
+        emoji: &str,
+        reaction_id: &str,
+        is_group: bool,
+    ) -> Result<()> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+        let reaction_uuid = uuid::Uuid::parse_str(reaction_id)
+            .context("Invalid reaction_id UUID")?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        // First, check if user already reacted with this emoji (upsert behavior)
+        self.scylla_query(
+            "INSERT INTO guardyn.reactions (
+                message_id, conversation_id, user_id, emoji, reaction_id, created_at, is_group
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (message_uuid, conversation_uuid, user_id.to_string(), emoji.to_string(), 
+             reaction_uuid, now, is_group),
+        ).await.context("Failed to insert reaction")?;
+
+        tracing::debug!(
+            message_id = %message_id,
+            user_id = %user_id,
+            emoji = %emoji,
+            "Reaction added"
+        );
+        Ok(())
+    }
+
+    /// Remove a reaction from a message
+    pub async fn remove_reaction(
+        &self,
+        message_id: &str,
+        conversation_id: &str,
+        user_id: &str,
+        emoji: &str,
+        _is_group: bool,
+    ) -> Result<bool> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+
+        // Delete reaction by message_id + user_id + emoji
+        let result = self.scylla_query(
+            "DELETE FROM guardyn.reactions 
+             WHERE message_id = ? AND user_id = ? AND emoji = ?",
+            (message_uuid, user_id.to_string(), emoji.to_string()),
+        ).await;
+
+        match result {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                tracing::warn!("Failed to remove reaction: {}", e);
+                Ok(false)
+            }
+        }
+    }
+
+    /// Get all reactions for a message
+    pub async fn get_reactions(
+        &self,
+        message_id: &str,
+        _conversation_id: &str,
+        _is_group: bool,
+    ) -> Result<Vec<proto::messaging::Reaction>> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+
+        let rows = self.scylla_query(
+            "SELECT reaction_id, message_id, user_id, emoji, created_at 
+             FROM guardyn.reactions WHERE message_id = ?",
+            (message_uuid,),
+        ).await?;
+
+        let mut reactions = Vec::new();
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                let reaction_id: uuid::Uuid = row.columns[0].as_ref()
+                    .and_then(|v| v.as_uuid())
+                    .unwrap_or_default();
+                let user_id: String = row.columns[2].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let emoji: String = row.columns[3].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let created_at: i64 = row.columns[4].as_ref()
+                    .and_then(|v| v.as_bigint())
+                    .unwrap_or(0);
+
+                reactions.push(proto::messaging::Reaction {
+                    reaction_id: reaction_id.to_string(),
+                    message_id: message_id.to_string(),
+                    user_id,
+                    emoji,
+                    created_at: Some(proto::common::Timestamp {
+                        seconds: created_at / 1000,
+                        nanos: ((created_at % 1000) * 1_000_000) as i32,
+                    }),
+                });
+            }
+        }
+
+        Ok(reactions)
+    }
+
+    // ========================================================================
+    // Phase 2: Read Receipts
+    // ========================================================================
+
+    /// Save a read receipt
+    pub async fn save_read_receipt(
+        &self,
+        conversation_id: &str,
+        user_id: &str,
+        last_read_message_id: &str,
+        is_group: bool,
+    ) -> Result<()> {
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(last_read_message_id)
+            .context("Invalid message_id UUID")?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        self.scylla_query(
+            "INSERT INTO guardyn.read_receipts (
+                conversation_id, user_id, last_read_message_id, timestamp, is_group
+            ) VALUES (?, ?, ?, ?, ?)",
+            (conversation_uuid, user_id.to_string(), message_uuid, now, is_group),
+        ).await.context("Failed to save read receipt")?;
+
+        // Also update unread count in conversations table
+        self.scylla_query(
+            "UPDATE guardyn.conversations SET unread_count = 0 
+             WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
+            (user_id.to_string(), conversation_uuid),
+        ).await.ok(); // Ignore errors for unread count update
+
+        Ok(())
+    }
+
+    /// Get read receipts for a conversation
+    pub async fn get_read_receipts(
+        &self,
+        conversation_id: &str,
+        _is_group: bool,
+    ) -> Result<Vec<proto::messaging::ReadReceipt>> {
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+
+        let rows = self.scylla_query(
+            "SELECT conversation_id, user_id, last_read_message_id, timestamp 
+             FROM guardyn.read_receipts WHERE conversation_id = ?",
+            (conversation_uuid,),
+        ).await?;
+
+        let mut receipts = Vec::new();
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                let user_id: String = row.columns[1].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let last_read_message_id: uuid::Uuid = row.columns[2].as_ref()
+                    .and_then(|v| v.as_uuid())
+                    .unwrap_or_default();
+                let timestamp: i64 = row.columns[3].as_ref()
+                    .and_then(|v| v.as_bigint())
+                    .unwrap_or(0);
+
+                receipts.push(proto::messaging::ReadReceipt {
+                    conversation_id: conversation_id.to_string(),
+                    user_id,
+                    last_read_message_id: last_read_message_id.to_string(),
+                    timestamp: Some(proto::common::Timestamp {
+                        seconds: timestamp / 1000,
+                        nanos: ((timestamp % 1000) * 1_000_000) as i32,
+                    }),
+                });
+            }
+        }
+
+        Ok(receipts)
+    }
+
+    // ========================================================================
+    // Phase 2: Message Editing
+    // ========================================================================
+
+    /// Get message owner (sender) for verification
+    pub async fn get_message_owner(
+        &self,
+        message_id: &str,
+        conversation_id: &str,
+        is_group: bool,
+    ) -> Result<Option<String>> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+
+        let table = if is_group { "group_messages" } else { "messages" };
+        let id_column = if is_group { "group_id" } else { "conversation_id" };
+
+        let query = format!(
+            "SELECT sender_user_id FROM guardyn.{} WHERE {} = ? AND message_id = ?",
+            table, id_column
+        );
+
+        let rows = self.scylla_query(&query, (conversation_uuid, message_uuid)).await?;
+
+        if let Some(rows) = rows.rows {
+            if let Some(row) = rows.into_iter().next() {
+                let sender: String = row.columns[0].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                return Ok(Some(sender));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Edit a message content
+    pub async fn edit_message(
+        &self,
+        message_id: &str,
+        conversation_id: &str,
+        _user_id: &str,
+        encrypted_content: &[u8],
+        is_group: bool,
+    ) -> Result<i32> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        let table = if is_group { "group_messages" } else { "messages" };
+        let id_column = if is_group { "group_id" } else { "conversation_id" };
+
+        // Get current edit version
+        let version_query = format!(
+            "SELECT edit_version FROM guardyn.{} WHERE {} = ? AND message_id = ?",
+            table, id_column
+        );
+        let rows = self.scylla_query(&version_query, (conversation_uuid, message_uuid)).await?;
+        
+        let current_version: i32 = rows.rows
+            .and_then(|r| r.into_iter().next())
+            .and_then(|row| row.columns[0].as_ref())
+            .and_then(|v| v.as_int())
+            .unwrap_or(0);
+
+        let new_version = current_version + 1;
+
+        // Update message with new content and version
+        let update_query = format!(
+            "UPDATE guardyn.{} SET encrypted_content = ?, edit_version = ?, last_edited_at = ? 
+             WHERE {} = ? AND message_id = ?",
+            table, id_column
+        );
+
+        self.scylla_query(
+            &update_query,
+            (encrypted_content.to_vec(), new_version, now, conversation_uuid, message_uuid),
+        ).await.context("Failed to edit message")?;
+
+        Ok(new_version)
+    }
+
+    // ========================================================================
+    // Phase 2: Forward Messages
+    // ========================================================================
+
+    /// Get message metadata for forwarding
+    pub async fn get_message_metadata(
+        &self,
+        message_id: &str,
+        conversation_id: &str,
+        is_group: bool,
+    ) -> Result<Option<MessageMetadata>> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)
+            .context("Invalid message_id UUID")?;
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+
+        let table = if is_group { "group_messages" } else { "messages" };
+        let id_column = if is_group { "group_id" } else { "conversation_id" };
+
+        let query = format!(
+            "SELECT sender_user_id, message_type, server_timestamp FROM guardyn.{} 
+             WHERE {} = ? AND message_id = ?",
+            table, id_column
+        );
+
+        let rows = self.scylla_query(&query, (conversation_uuid, message_uuid)).await?;
+
+        if let Some(rows) = rows.rows {
+            if let Some(row) = rows.into_iter().next() {
+                let sender_user_id: String = row.columns[0].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let message_type: i32 = row.columns[1].as_ref()
+                    .and_then(|v| v.as_int())
+                    .unwrap_or(0);
+                let server_timestamp: i64 = row.columns[2].as_ref()
+                    .and_then(|v| v.as_bigint())
+                    .unwrap_or(0);
+
+                return Ok(Some(MessageMetadata {
+                    sender_user_id,
+                    sender_username: String::new(), // Would need additional lookup
+                    message_type,
+                    server_timestamp: Some(proto::common::Timestamp {
+                        seconds: server_timestamp / 1000,
+                        nanos: ((server_timestamp % 1000) * 1_000_000) as i32,
+                    }),
+                    forward_count: 0, // Would need to track this
+                }));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Store a forwarded message (1-on-1)
+    pub async fn store_forwarded_message(
+        &self,
+        message_id: &str,
+        conversation_id: &str,
+        sender_user_id: &str,
+        sender_device_id: &str,
+        recipient_user_id: &str,
+        encrypted_content: &[u8],
+        message_type: i32,
+        client_message_id: &str,
+        forward_info: &proto::messaging::ForwardInfo,
+    ) -> Result<()> {
+        let message_uuid = uuid::Uuid::parse_str(message_id)?;
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        // Serialize forward_info to JSON for storage
+        let forward_json = serde_json::json!({
+            "original_message_id": forward_info.original_message_id,
+            "original_sender_id": forward_info.original_sender_id,
+            "original_sender_name": forward_info.original_sender_name,
+            "forward_count": forward_info.forward_count,
+        }).to_string();
+
+        self.scylla_query(
+            "INSERT INTO guardyn.messages (
+                conversation_id, message_id, sender_user_id, sender_device_id,
+                recipient_user_id, encrypted_content, message_type, 
+                server_timestamp, delivery_status, is_deleted, forward_info
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                conversation_uuid, message_uuid, sender_user_id.to_string(),
+                sender_device_id.to_string(), recipient_user_id.to_string(),
+                encrypted_content.to_vec(), message_type, now, 0i32, false, forward_json,
+            ),
+        ).await?;
+
+        Ok(())
+    }
+
+    /// Store a forwarded group message
+    pub async fn store_forwarded_group_message(
+        &self,
+        message_id: &str,
+        group_id: &str,
+        sender_user_id: &str,
+        sender_device_id: &str,
+        encrypted_content: &[u8],
+        message_type: i32,
+        _client_message_id: &str,
+        forward_info: &proto::messaging::ForwardInfo,
+    ) -> Result<()> {
+        let group_uuid = uuid::Uuid::parse_str(group_id)?;
+        let now = chrono::Utc::now();
+
+        // Serialize forward_info
+        let forward_json = serde_json::json!({
+            "original_message_id": forward_info.original_message_id,
+            "original_sender_id": forward_info.original_sender_id,
+            "original_sender_name": forward_info.original_sender_name,
+            "forward_count": forward_info.forward_count,
+        }).to_string();
+
+        self.scylla_query(
+            "INSERT INTO guardyn.group_messages (
+                group_id, message_id, sender_user_id, sender_device_id,
+                encrypted_content, sent_at, metadata
+            ) VALUES (?, now(), ?, ?, ?, ?, ?)",
+            (
+                group_uuid, sender_user_id.to_string(), sender_device_id.to_string(),
+                encrypted_content.to_vec(), now.timestamp_millis(),
+                std::collections::HashMap::from([
+                    ("message_type".to_string(), message_type.to_string()),
+                    ("forward_info".to_string(), forward_json),
+                ]),
+            ),
+        ).await?;
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Phase 2: Search
+    // ========================================================================
+
+    /// Fetch messages for client-side search
+    pub async fn fetch_messages_for_search(
+        &self,
+        params: &crate::handlers::SearchParams,
+    ) -> Result<(Vec<proto::messaging::SearchResult>, Option<String>, usize)> {
+        // Build query based on parameters
+        let mut results = Vec::new();
+        let mut total_count = 0usize;
+
+        // If conversation_id is specified, search only that conversation
+        if let Some(ref conv_id) = params.conversation_id {
+            let conv_uuid = uuid::Uuid::parse_str(conv_id)?;
+            let table = if params.is_group { "group_messages" } else { "messages" };
+            let id_col = if params.is_group { "group_id" } else { "conversation_id" };
+
+            let query = format!(
+                "SELECT message_id, sender_user_id, encrypted_content, server_timestamp, message_type 
+                 FROM guardyn.{} WHERE {} = ? LIMIT ?",
+                table, id_col
+            );
+
+            let rows = self.scylla_query(&query, (conv_uuid, params.limit)).await?;
+
+            if let Some(rows) = rows.rows {
+                total_count = rows.len();
+                for row in rows {
+                    let message_id: uuid::Uuid = row.columns[0].as_ref()
+                        .and_then(|v| v.as_uuid())
+                        .unwrap_or_default();
+                    let sender: String = row.columns[1].as_ref()
+                        .and_then(|v| v.as_text())
+                        .map(|s| s.to_string())
+                        .unwrap_or_default();
+                    let content: Vec<u8> = row.columns[2].as_ref()
+                        .and_then(|v| v.as_blob())
+                        .map(|b| b.to_vec())
+                        .unwrap_or_default();
+                    let timestamp: i64 = row.columns[3].as_ref()
+                        .and_then(|v| v.as_bigint())
+                        .unwrap_or(0);
+                    let msg_type: i32 = row.columns[4].as_ref()
+                        .and_then(|v| v.as_int())
+                        .unwrap_or(0);
+
+                    results.push(proto::messaging::SearchResult {
+                        message_id: message_id.to_string(),
+                        conversation_id: conv_id.clone(),
+                        is_group: params.is_group,
+                        sender_user_id: sender,
+                        encrypted_content: content,
+                        server_timestamp: Some(proto::common::Timestamp {
+                            seconds: timestamp / 1000,
+                            nanos: ((timestamp % 1000) * 1_000_000) as i32,
+                        }),
+                        message_type: msg_type,
+                        conversation_name: String::new(),
+                    });
+                }
+            }
+        } else {
+            // Search all conversations for user - get from conversations table first
+            let conv_query = "SELECT conversation_id FROM guardyn.conversations 
+                             WHERE user_id = ? LIMIT 50";
+            let conv_rows = self.scylla_query(conv_query, (params.user_id.clone(),)).await?;
+
+            if let Some(rows) = conv_rows.rows {
+                for row in rows {
+                    if let Some(conv_uuid) = row.columns[0].as_ref().and_then(|v| v.as_uuid()) {
+                        // Fetch messages from each conversation
+                        let msg_query = "SELECT message_id, sender_user_id, encrypted_content, 
+                                        server_timestamp, message_type 
+                                        FROM guardyn.messages WHERE conversation_id = ? LIMIT ?";
+                        if let Ok(msg_rows) = self.scylla_query(msg_query, (conv_uuid, 10i32)).await {
+                            if let Some(msgs) = msg_rows.rows {
+                                total_count += msgs.len();
+                                for msg_row in msgs {
+                                    if results.len() >= params.limit as usize {
+                                        break;
+                                    }
+                                    let message_id: uuid::Uuid = msg_row.columns[0].as_ref()
+                                        .and_then(|v| v.as_uuid())
+                                        .unwrap_or_default();
+                                    let sender: String = msg_row.columns[1].as_ref()
+                                        .and_then(|v| v.as_text())
+                                        .map(|s| s.to_string())
+                                        .unwrap_or_default();
+                                    let content: Vec<u8> = msg_row.columns[2].as_ref()
+                                        .and_then(|v| v.as_blob())
+                                        .map(|b| b.to_vec())
+                                        .unwrap_or_default();
+                                    let timestamp: i64 = msg_row.columns[3].as_ref()
+                                        .and_then(|v| v.as_bigint())
+                                        .unwrap_or(0);
+                                    let msg_type: i32 = msg_row.columns[4].as_ref()
+                                        .and_then(|v| v.as_int())
+                                        .unwrap_or(0);
+
+                                    results.push(proto::messaging::SearchResult {
+                                        message_id: message_id.to_string(),
+                                        conversation_id: conv_uuid.to_string(),
+                                        is_group: false,
+                                        sender_user_id: sender,
+                                        encrypted_content: content,
+                                        server_timestamp: Some(proto::common::Timestamp {
+                                            seconds: timestamp / 1000,
+                                            nanos: ((timestamp % 1000) * 1_000_000) as i32,
+                                        }),
+                                        message_type: msg_type,
+                                        conversation_name: String::new(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Simple pagination - no cursor for now
+        let next_cursor = if results.len() >= params.limit as usize {
+            Some("has_more".to_string())
+        } else {
+            None
+        };
+
+        Ok((results, next_cursor, total_count))
+    }
+
+    // ========================================================================
+    // Phase 2: Disappearing Messages
+    // ========================================================================
+
+    /// Check if user is a member of a conversation
+    pub async fn is_conversation_member(
+        &self,
+        conversation_id: &str,
+        user_id: &str,
+        is_group: bool,
+    ) -> Result<bool> {
+        let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
+
+        if is_group {
+            // Check group membership
+            let rows = self.scylla_query(
+                "SELECT user_id FROM guardyn.group_members 
+                 WHERE group_id = ? AND user_id = ? ALLOW FILTERING",
+                (conv_uuid, user_id.to_string()),
+            ).await?;
+            Ok(rows.rows.map(|r| !r.is_empty()).unwrap_or(false))
+        } else {
+            // For 1-on-1, check conversations table
+            let rows = self.scylla_query(
+                "SELECT conversation_id FROM guardyn.conversations 
+                 WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
+                (user_id.to_string(), conv_uuid),
+            ).await?;
+            Ok(rows.rows.map(|r| !r.is_empty()).unwrap_or(false))
+        }
+    }
+
+    /// Set disappearing messages config
+    pub async fn set_disappearing_config(
+        &self,
+        conversation_id: &str,
+        user_id: &str,
+        ttl_seconds: i32,
+        is_group: bool,
+    ) -> Result<()> {
+        let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
+        let now = chrono::Utc::now().timestamp_millis();
+
+        self.scylla_query(
+            "INSERT INTO guardyn.disappearing_config (
+                conversation_id, ttl_seconds, set_by_user_id, updated_at, is_group
+            ) VALUES (?, ?, ?, ?, ?)",
+            (conv_uuid, ttl_seconds, user_id.to_string(), now, is_group),
+        ).await?;
+
+        Ok(())
+    }
+
+    /// Get disappearing messages config
+    pub async fn get_disappearing_config(
+        &self,
+        conversation_id: &str,
+        _is_group: bool,
+    ) -> Result<proto::messaging::DisappearingConfig> {
+        let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
+
+        let rows = self.scylla_query(
+            "SELECT ttl_seconds, set_by_user_id, updated_at 
+             FROM guardyn.disappearing_config WHERE conversation_id = ?",
+            (conv_uuid,),
+        ).await?;
+
+        if let Some(rows) = rows.rows {
+            if let Some(row) = rows.into_iter().next() {
+                let ttl: i32 = row.columns[0].as_ref()
+                    .and_then(|v| v.as_int())
+                    .unwrap_or(0);
+                let set_by: String = row.columns[1].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let updated_at: i64 = row.columns[2].as_ref()
+                    .and_then(|v| v.as_bigint())
+                    .unwrap_or(0);
+
+                return Ok(proto::messaging::DisappearingConfig {
+                    conversation_id: conversation_id.to_string(),
+                    ttl_seconds: ttl,
+                    set_by_user_id: set_by,
+                    updated_at: Some(proto::common::Timestamp {
+                        seconds: updated_at / 1000,
+                        nanos: ((updated_at % 1000) * 1_000_000) as i32,
+                    }),
+                });
+            }
+        }
+
+        // Return default config (disabled)
+        Ok(proto::messaging::DisappearingConfig {
+            conversation_id: conversation_id.to_string(),
+            ttl_seconds: 0,
+            set_by_user_id: String::new(),
+            updated_at: None,
+        })
+    }
 }
 
-
+/// Message metadata for forwarding
+pub struct MessageMetadata {
+    pub sender_user_id: String,
+    pub sender_username: String,
+    pub message_type: i32,
+    pub server_timestamp: Option<proto::common::Timestamp>,
+    pub forward_count: i32,
+}

@@ -1903,6 +1903,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "guardyn-call-service"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "chrono",
+ "config",
+ "dashmap 6.1.0",
+ "guardyn-common",
+ "guardyn-crypto",
+ "jsonwebtoken",
+ "parking_lot",
+ "prost 0.13.5",
+ "scylla",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic 0.12.3",
+ "tonic-build",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "guardyn-common"
 version = "0.1.0"
 dependencies = [
@@ -2040,8 +2066,22 @@ dependencies = [
 name = "guardyn-notification-service"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "chrono",
+ "config",
  "guardyn-common",
+ "jsonwebtoken",
+ "prost 0.13.5",
+ "reqwest",
+ "scylla",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
  "tokio",
+ "tonic 0.12.3",
+ "tonic-build",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

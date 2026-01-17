@@ -1,0 +1,587 @@
+syntax = "proto3";
+
+package guardyn.calls;
+
+import "common.proto";
+
+// ============================================================================
+// Call Service - Voice/Video Calls with WebRTC + SFrame E2EE
+// Phase 2: Real-time voice and video communication
+// ============================================================================
+
+service CallService {
+  // Initiate a call (1-on-1 or group)
+  rpc InitiateCall(InitiateCallRequest) returns (InitiateCallResponse);
+
+  // Accept an incoming call
+  rpc AcceptCall(AcceptCallRequest) returns (AcceptCallResponse);
+
+  // Reject an incoming call
+  rpc RejectCall(RejectCallRequest) returns (RejectCallResponse);
+
+  // End an active call
+  rpc EndCall(EndCallRequest) returns (EndCallResponse);
+
+  // Join an ongoing group call
+  rpc JoinCall(JoinCallRequest) returns (JoinCallResponse);
+
+  // Leave a group call (without ending it)
+  rpc LeaveCall(LeaveCallRequest) returns (LeaveCallResponse);
+
+  // Mute/unmute audio
+  rpc SetMute(SetMuteRequest) returns (SetMuteResponse);
+
+  // Enable/disable video
+  rpc SetVideo(SetVideoRequest) returns (SetVideoResponse);
+
+  // Screen sharing
+  rpc SetScreenShare(SetScreenShareRequest) returns (SetScreenShareResponse);
+
+  // Exchange ICE candidates (WebRTC signaling)
+  rpc ExchangeIceCandidate(ExchangeIceCandidateRequest) returns (ExchangeIceCandidateResponse);
+
+  // Exchange SDP offer/answer (WebRTC signaling)
+  rpc ExchangeSdp(ExchangeSdpRequest) returns (ExchangeSdpResponse);
+
+  // Get current call state
+  rpc GetCallState(GetCallStateRequest) returns (GetCallStateResponse);
+
+  // Get call history
+  rpc GetCallHistory(GetCallHistoryRequest) returns (GetCallHistoryResponse);
+
+  // Stream call events (participant joined/left, state changes)
+  rpc StreamCallEvents(StreamCallEventsRequest) returns (stream CallEvent);
+
+  // Exchange SFrame encryption keys
+  rpc ExchangeSFrameKey(ExchangeSFrameKeyRequest) returns (ExchangeSFrameKeyResponse);
+
+  // Rotate SFrame encryption key
+  rpc RotateSFrameKey(RotateSFrameKeyRequest) returns (RotateSFrameKeyResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (common.HealthStatus);
+}
+
+// ============================================================================
+// Call Types and States
+// ============================================================================
+
+enum CallType {
+  UNKNOWN_CALL_TYPE = 0;
+  VOICE = 1;           // Voice-only call
+  VIDEO = 2;           // Video call
+}
+
+enum CallState {
+  UNKNOWN_STATE = 0;
+  INITIATING = 1;      // Call is being set up
+  RINGING = 2;         // Remote party is being notified
+  CONNECTING = 3;      // Call accepted, establishing connection
+  CONNECTED = 4;       // Call is active
+  ON_HOLD = 5;         // Call is on hold
+  ENDED = 6;           // Call has ended
+  FAILED = 7;          // Call failed to connect
+}
+
+enum CallEndReason {
+  UNKNOWN_REASON = 0;
+  COMPLETED = 1;       // Normal call completion
+  DECLINED = 2;        // Callee declined
+  MISSED = 3;          // No answer
+  BUSY = 4;            // Callee busy
+  FAILED_CONNECTION = 5; // Network/connection failure
+  CANCELLED = 6;       // Caller cancelled
+}
+
+// ============================================================================
+// Call Initiation
+// ============================================================================
+
+message InitiateCallRequest {
+  string access_token = 1;
+
+  oneof target {
+    string user_id = 2;       // 1-on-1 call
+    string group_id = 3;      // Group call
+  }
+
+  CallType call_type = 4;
+
+  // Client capabilities
+  ClientCapabilities capabilities = 5;
+}
+
+message ClientCapabilities {
+  bool supports_video = 1;
+  bool supports_screen_share = 2;
+  bool supports_sframe = 3;
+  repeated string supported_codecs = 4; // e.g., ["VP8", "VP9", "H264", "opus"]
+  int32 max_video_width = 5;
+  int32 max_video_height = 6;
+  int32 max_video_fps = 7;
+}
+
+message InitiateCallResponse {
+  oneof result {
+    InitiateCallSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message InitiateCallSuccess {
+  string call_id = 1;
+  CallState state = 2;
+  common.Timestamp created_at = 3;
+
+  // TURN/STUN server configuration
+  repeated IceServer ice_servers = 4;
+
+  // SFrame key material for E2EE
+  bytes sframe_key_material = 5;
+  uint32 sframe_key_id = 6;
+}
+
+message IceServer {
+  repeated string urls = 1;
+  string username = 2;         // TURN username
+  string credential = 3;       // TURN credential
+}
+
+// ============================================================================
+// Call Accept/Reject
+// ============================================================================
+
+message AcceptCallRequest {
+  string access_token = 1;
+  string call_id = 2;
+  ClientCapabilities capabilities = 3;
+}
+
+message AcceptCallResponse {
+  oneof result {
+    AcceptCallSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message AcceptCallSuccess {
+  string call_id = 1;
+  CallState state = 2;
+  repeated IceServer ice_servers = 3;
+  bytes sframe_key_material = 4;
+  uint32 sframe_key_id = 5;
+}
+
+message RejectCallRequest {
+  string access_token = 1;
+  string call_id = 2;
+  string reason = 3;            // Optional rejection reason
+}
+
+message RejectCallResponse {
+  oneof result {
+    RejectCallSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RejectCallSuccess {
+  bool rejected = 1;
+}
+
+// ============================================================================
+// Call End/Leave
+// ============================================================================
+
+message EndCallRequest {
+  string access_token = 1;
+  string call_id = 2;
+  CallEndReason reason = 3;
+}
+
+message EndCallResponse {
+  oneof result {
+    EndCallSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message EndCallSuccess {
+  bool ended = 1;
+  int32 duration_seconds = 2;
+}
+
+message LeaveCallRequest {
+  string access_token = 1;
+  string call_id = 2;
+}
+
+message LeaveCallResponse {
+  oneof result {
+    LeaveCallSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message LeaveCallSuccess {
+  bool left = 1;
+}
+
+// ============================================================================
+// Join Group Call
+// ============================================================================
+
+message JoinCallRequest {
+  string access_token = 1;
+  string call_id = 2;
+  ClientCapabilities capabilities = 3;
+}
+
+message JoinCallResponse {
+  oneof result {
+    JoinCallSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message JoinCallSuccess {
+  string call_id = 1;
+  CallState state = 2;
+  repeated CallParticipant participants = 3;
+  repeated IceServer ice_servers = 4;
+  bytes sframe_key_material = 5;
+  uint32 sframe_key_id = 6;
+}
+
+message CallParticipant {
+  string user_id = 1;
+  string display_name = 2;
+  bool is_muted = 3;
+  bool has_video = 4;
+  bool is_screen_sharing = 5;
+  bool is_speaking = 6;
+  common.Timestamp joined_at = 7;
+}
+
+// ============================================================================
+// Media Controls
+// ============================================================================
+
+message SetMuteRequest {
+  string access_token = 1;
+  string call_id = 2;
+  bool muted = 3;
+}
+
+message SetMuteResponse {
+  oneof result {
+    SetMuteSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SetMuteSuccess {
+  bool muted = 1;
+}
+
+message SetVideoRequest {
+  string access_token = 1;
+  string call_id = 2;
+  bool video_enabled = 3;
+}
+
+message SetVideoResponse {
+  oneof result {
+    SetVideoSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SetVideoSuccess {
+  bool video_enabled = 1;
+}
+
+message SetScreenShareRequest {
+  string access_token = 1;
+  string call_id = 2;
+  bool screen_share_enabled = 3;
+}
+
+message SetScreenShareResponse {
+  oneof result {
+    SetScreenShareSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SetScreenShareSuccess {
+  bool screen_share_enabled = 1;
+}
+
+// ============================================================================
+// WebRTC Signaling
+// ============================================================================
+
+message ExchangeIceCandidateRequest {
+  string access_token = 1;
+  string call_id = 2;
+  string target_user_id = 3;   // Which participant to send to
+  IceCandidate candidate = 4;
+}
+
+message IceCandidate {
+  string candidate = 1;        // ICE candidate string
+  string sdp_mid = 2;          // Media stream identification tag
+  int32 sdp_mline_index = 3;   // Media line index
+  string username_fragment = 4;
+}
+
+message ExchangeIceCandidateResponse {
+  oneof result {
+    ExchangeIceCandidateSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ExchangeIceCandidateSuccess {
+  bool sent = 1;
+}
+
+message ExchangeSdpRequest {
+  string access_token = 1;
+  string call_id = 2;
+  string target_user_id = 3;   // For 1-on-1, empty for group
+  SdpMessage sdp = 4;
+}
+
+message SdpMessage {
+  SdpType type = 1;
+  string sdp = 2;              // SDP string
+}
+
+enum SdpType {
+  UNKNOWN_SDP_TYPE = 0;
+  OFFER = 1;
+  ANSWER = 2;
+  PRANSWER = 3;
+  ROLLBACK = 4;
+}
+
+message ExchangeSdpResponse {
+  oneof result {
+    ExchangeSdpSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ExchangeSdpSuccess {
+  bool sent = 1;
+}
+
+// ============================================================================
+// Call State
+// ============================================================================
+
+message GetCallStateRequest {
+  string access_token = 1;
+  string call_id = 2;
+}
+
+message GetCallStateResponse {
+  oneof result {
+    GetCallStateSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetCallStateSuccess {
+  string call_id = 1;
+  CallType call_type = 2;
+  CallState state = 3;
+  bool is_group_call = 4;
+  string initiator_id = 5;
+  repeated CallParticipant participants = 6;
+  common.Timestamp started_at = 7;
+  int32 duration_seconds = 8;
+}
+
+// ============================================================================
+// Call History
+// ============================================================================
+
+message GetCallHistoryRequest {
+  string access_token = 1;
+  int32 limit = 2;
+  string cursor = 3;           // Pagination cursor
+}
+
+message GetCallHistoryResponse {
+  oneof result {
+    GetCallHistorySuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetCallHistorySuccess {
+  repeated CallHistoryEntry calls = 1;
+  string next_cursor = 2;
+}
+
+message CallHistoryEntry {
+  string call_id = 1;
+  CallType call_type = 2;
+  bool is_group_call = 3;
+  string group_id = 4;         // Empty for 1-on-1
+  string other_user_id = 5;    // For 1-on-1 calls
+  string other_user_name = 6;
+  bool is_outgoing = 7;
+  CallEndReason end_reason = 8;
+  common.Timestamp started_at = 9;
+  int32 duration_seconds = 10;
+}
+
+// ============================================================================
+// Call Events Stream
+// ============================================================================
+
+message StreamCallEventsRequest {
+  string access_token = 1;
+  string call_id = 2;
+}
+
+message CallEvent {
+  string call_id = 1;
+  common.Timestamp timestamp = 2;
+
+  oneof event {
+    CallStateChanged state_changed = 3;
+    ParticipantJoined participant_joined = 4;
+    ParticipantLeft participant_left = 5;
+    ParticipantMuted participant_muted = 6;
+    ParticipantVideoChanged participant_video_changed = 7;
+    ParticipantScreenShareChanged participant_screen_share_changed = 8;
+    ParticipantSpeaking participant_speaking = 9;
+    IceCandidateReceived ice_candidate_received = 10;
+    SdpReceived sdp_received = 11;
+    SFrameKeyRotated sframe_key_rotated = 12;
+    CallQualityChanged quality_changed = 13;
+  }
+}
+
+message CallStateChanged {
+  CallState old_state = 1;
+  CallState new_state = 2;
+  CallEndReason end_reason = 3;  // Only set when ending
+}
+
+message ParticipantJoined {
+  CallParticipant participant = 1;
+}
+
+message ParticipantLeft {
+  string user_id = 1;
+  string reason = 2;
+}
+
+message ParticipantMuted {
+  string user_id = 1;
+  bool is_muted = 2;
+}
+
+message ParticipantVideoChanged {
+  string user_id = 1;
+  bool has_video = 2;
+}
+
+message ParticipantScreenShareChanged {
+  string user_id = 1;
+  bool is_screen_sharing = 2;
+}
+
+message ParticipantSpeaking {
+  string user_id = 1;
+  bool is_speaking = 2;
+  float audio_level = 3;       // 0.0 - 1.0
+}
+
+message IceCandidateReceived {
+  string from_user_id = 1;
+  IceCandidate candidate = 2;
+}
+
+message SdpReceived {
+  string from_user_id = 1;
+  SdpMessage sdp = 2;
+}
+
+message SFrameKeyRotated {
+  string from_user_id = 1;
+  uint32 new_key_id = 2;
+  bytes encrypted_key_material = 3;
+}
+
+message CallQualityChanged {
+  CallQuality quality = 1;
+}
+
+enum CallQuality {
+  UNKNOWN_QUALITY = 0;
+  EXCELLENT = 1;
+  GOOD = 2;
+  FAIR = 3;
+  POOR = 4;
+}
+
+// ============================================================================
+// SFrame E2EE Key Exchange
+// ============================================================================
+
+message ExchangeSFrameKeyRequest {
+  string access_token = 1;
+  string call_id = 2;
+
+  // Key material encrypted for each participant
+  repeated ParticipantKeyPackage key_packages = 3;
+}
+
+message ParticipantKeyPackage {
+  string user_id = 1;
+  bytes encrypted_key_material = 2;  // Encrypted with recipient's public key
+  uint32 key_id = 3;
+}
+
+message ExchangeSFrameKeyResponse {
+  oneof result {
+    ExchangeSFrameKeySuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ExchangeSFrameKeySuccess {
+  bool distributed = 1;
+  int32 participants_count = 2;
+}
+
+message RotateSFrameKeyRequest {
+  string access_token = 1;
+  string call_id = 2;
+  repeated ParticipantKeyPackage key_packages = 3;
+}
+
+message RotateSFrameKeyResponse {
+  oneof result {
+    RotateSFrameKeySuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RotateSFrameKeySuccess {
+  uint32 new_key_id = 1;
+  bool distributed = 2;
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+message HealthRequest {}

@@ -19,6 +19,14 @@ pub mod get_groups;
 pub mod get_group_by_id;
 pub mod leave_group;
 
+// Phase 2: New feature handlers
+pub mod reactions;
+pub mod read_receipts;
+pub mod forward_message;
+pub mod edit_message;
+pub mod search_messages;
+pub mod disappearing_messages;
+
 pub use send_message::send_message;
 pub use send_message_e2ee::send_message_e2ee;
 pub use get_messages::get_messages;
@@ -38,3 +46,12 @@ pub use get_group_messages::get_group_messages;
 pub use get_groups::get_groups;
 pub use get_group_by_id::get_group_by_id;
 pub use leave_group::leave_group;
+
+// Phase 2: Re-exports
+pub use reactions::{add_reaction, remove_reaction, get_reactions};
+pub use read_receipts::{send_read_receipt, get_read_receipts};
+pub use forward_message::forward_message;
+pub use edit_message::edit_message;
+pub use search_messages::{search_messages, SearchParams};
+pub use disappearing_messages::{set_disappearing_messages, get_disappearing_config};
+
