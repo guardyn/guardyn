@@ -3,6 +3,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { Component, createContext, createSignal, JSX, onMount, Show, useContext } from 'solid-js';
 
 // Components
+import { ToastContainer } from './components/ErrorHandling';
+import { openShortcutsModal, ShortcutsModal } from './components/KeyboardShortcuts';
+import { OfflineBanner } from './components/NetworkStatus';
 import Sidebar from './components/Sidebar';
 
 // Hooks
@@ -59,6 +62,18 @@ const App: Component<{ children?: JSX.Element }> = (props) => {
   // Initialize global keyboard shortcuts
   useAppShortcuts();
 
+  // Register shortcut help modal (Ctrl/Cmd + ?)
+  onMount(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '?') {
+        e.preventDefault();
+        openShortcutsModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
+
   const handleLogout = async () => {
     try {
       await invoke('logout');
@@ -71,6 +86,11 @@ const App: Component<{ children?: JSX.Element }> = (props) => {
 
   return (
     <div class="h-screen bg-gray-900 text-white">
+      {/* Global overlays */}
+      <OfflineBanner />
+      <ShortcutsModal />
+      <ToastContainer />
+
       <Show when={!loading()} fallback={
         <div class="flex h-screen items-center justify-center bg-gray-900">
           <div class="text-white text-xl">Loading...</div>
