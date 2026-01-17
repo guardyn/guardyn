@@ -8,6 +8,7 @@ description = "Guardyn Desktop Client - Secure E2EE Messenger"
 
 [build-dependencies]
 tauri-build = { workspace = true, features = [] }
+tonic-build = { workspace = true }
 
 [dependencies]
 # Tauri core
@@ -32,6 +33,15 @@ serde_json = { workspace = true }
 # gRPC
 tonic = { workspace = true }
 prost = { workspace = true }
+prost-types = { workspace = true }
+
+# WebRTC
+webrtc = { workspace = true }
+webrtc-ice = { workspace = true }
+webrtc-media = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
@@ -50,6 +60,18 @@ keyring = { workspace = true }
 
 # UUID
 uuid = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# Futures
+futures = { workspace = true }
+async-stream = { workspace = true }
+
+# Base64/Bytes/Hex
+base64 = { workspace = true }
+bytes = { workspace = true }
+hex = { workspace = true }
 
 [features]
 default = ["custom-protocol"]

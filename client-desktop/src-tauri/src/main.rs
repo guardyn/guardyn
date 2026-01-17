@@ -7,8 +7,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod grpc;
+mod proto;
+mod services;
 mod state;
 mod tray;
+mod webrtc;
 
 use tauri::Manager;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -57,6 +61,16 @@ fn main() {
             commands::messaging::get_conversations,
             commands::messaging::get_messages,
             commands::messaging::mark_as_read,
+            // Call commands
+            commands::calls::initiate_call,
+            commands::calls::accept_call,
+            commands::calls::reject_call,
+            commands::calls::end_call,
+            commands::calls::toggle_mute,
+            commands::calls::toggle_video,
+            commands::calls::toggle_screen_share,
+            commands::calls::get_call_history,
+            commands::calls::get_call_state,
             // Crypto commands
             commands::crypto::generate_key_bundle,
             commands::crypto::encrypt_message,
