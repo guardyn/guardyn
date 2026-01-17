@@ -184,67 +184,86 @@ Modern messaging platforms face a fundamental tension:
 
 #### vs. Signal (Our Foundation)
 
-| Feature             | Signal                              | Guardyn                                  | Notes                          |
-| ------------------- | ----------------------------------- | ---------------------------------------- | ------------------------------ |
-| 1-on-1 E2EE         | ✅ Double Ratchet                   | ✅ Double Ratchet (same protocol)        | Both use battle-tested Signal  |
-| Group E2EE          | ✅ Sender Keys (proven, 2020)       | ✅ OpenMLS (IETF standard, 2024)         | Different approaches, both E2E |
-| Post-Quantum        | 🚧 PQXDH in development             | 🚧 Kyber hybrid (code ready, not active) | Both working on PQ             |
-| Server Open Source  | ⚠️ Most components open             | ✅ 100% open (Apache-2.0)                | Minor difference               |
-| Reproducible Builds | ⚠️ Android only                     | ✅ Nix flakes (all platforms)            | Infrastructure choice          |
-| Self-Hosting        | ❌ Not supported                    | ✅ Full Kubernetes deployment            | Core difference                |
-| Enterprise Features | ❌ Consumer-focused                 | 🚧 LDAP, SAML (planned)                  | Different target market        |
-| Track Record        | ✅ **10+ years, billions of users** | ⚠️ **New project (2025)**                | Signal has proven reliability  |
-| Security Audits     | ✅ **Multiple completed**           | 📋 **Planning Cure53 (Q2 2026)**          | Signal is audit-proven         |
+| Feature             | Signal                              | Guardyn v1.0 (2026)                              | Notes                          |
+| ------------------- | ----------------------------------- | ------------------------------------------------ | ------------------------------ |
+| 1-on-1 E2EE         | ✅ Double Ratchet                   | ✅ Double Ratchet (same protocol)                | Both use battle-tested Signal  |
+| Group E2EE          | ✅ Sender Keys (proven, 2020)       | ✅ OpenMLS (IETF RFC 9420)                       | Different approaches, both E2E |
+| Voice/Video E2EE    | ✅ SRTP + DTLS                      | ✅ WebRTC + SFrame                               | Both provide call encryption   |
+| Post-Quantum        | 🚧 PQXDH in development             | ✅ PQXDH (X3DH + ML-KEM hybrid)                  | Guardyn has PQ implemented     |
+| Sealed Sender       | ✅ Metadata protection              | ✅ Sealed Sender (Signal-compatible)             | Both protect sender metadata   |
+| Server Open Source  | ⚠️ Most components open             | ✅ 100% open (Apache-2.0)                        | Full transparency              |
+| Reproducible Builds | ⚠️ Android only                     | ✅ Nix flakes (all platforms)                    | Deterministic builds           |
+| Self-Hosting        | ❌ Not supported                    | ✅ Full Kubernetes + Docker Compose              | Core difference                |
+| Hardware Keys       | ⚠️ iOS Secure Enclave only          | ✅ TPM 2.0, Secure Enclave, KeyStore             | Multi-platform HW support      |
+| Event Streaming     | ❌ Proprietary infrastructure       | ✅ Redpanda (Kafka-compatible)                   | Open source streaming          |
+| Local Development   | ❌ Server not developer-friendly    | ✅ 30-second Docker Compose startup              | Developer experience           |
+| Observability       | ⚠️ Internal only                    | ✅ Prometheus + Loki + Tempo + Grafana           | Production monitoring          |
+| Enterprise Features | ❌ Consumer-focused                 | 🚧 LDAP, SAML (planned v1.2)                     | Different target market        |
+| Track Record        | ✅ **10+ years, billions of users** | ⚠️ **v1.0 release (Jan 2026)**                   | Signal has proven reliability  |
+| Security Audits     | ✅ **Multiple completed**           | 📋 **Planning Cure53 (Q2 2026)**                 | Signal is audit-proven         |
+| Client Platforms    | ✅ iOS, Android, Desktop, Web       | ✅ iOS/Android (Flutter), Desktop (Tauri)        | Platform-optimized clients     |
+| Unified Crypto      | ⚠️ Separate implementations         | ✅ Single guardyn-crypto Rust library (FFI/Tauri)| Single audit surface           |
 
-**Verdict:** Signal has 10 years of battle-testing and billions of users. Guardyn is a new project (2025) adding self-hosting and enterprise features to proven cryptography. If you need maximum trust, use Signal. If you need self-hosting, consider Guardyn once audited.
+**Verdict:** Signal has 10+ years of battle-testing and billions of users. Guardyn v1.0 (2026) adds self-hosting, unified cryptography, and developer-friendly infrastructure to proven protocols. If you need maximum trust, use Signal. If you need self-hosting or want to contribute to open source infrastructure, consider Guardyn once audited.
 
 ---
 
 #### vs. WhatsApp (Signal Protocol + Meta)
 
-| Feature          | WhatsApp                        | Guardyn                                    | Notes                                 |
-| ---------------- | ------------------------------- | ------------------------------------------ | ------------------------------------- |
-| E2EE Protocol    | ✅ Signal Protocol              | ✅ Signal + OpenMLS for groups             | Both use Signal for 1-on-1            |
-| Metadata Privacy | ❌ Collected by Meta            | ✅ Minimal collection                      | Major difference                      |
-| Cloud Backups    | ⚠️ Unencrypted on iCloud/Google | ✅ Local only, encrypted                   | WhatsApp has unencrypted backup issue |
-| Open Source      | ❌ Closed source                | ✅ Full stack open (Apache-2.0)            | Auditability difference               |
-| Business Model   | Meta advertising empire         | Open source (cloud SaaS planned)           | Fundamental difference                |
-| Self-Hosting     | ❌ Not possible                 | ✅ Kubernetes deployment                   | Data sovereignty option               |
-| User Base        | ✅ **2+ billion users**         | ⚠️ **In development (beta planned Q2 26)** | WhatsApp is proven at scale           |
+| Feature          | WhatsApp                        | Guardyn v1.0 (2026)                          | Notes                                 |
+| ---------------- | ------------------------------- | -------------------------------------------- | ------------------------------------- |
+| E2EE Protocol    | ✅ Signal Protocol              | ✅ Signal + OpenMLS for groups               | Both use Signal for 1-on-1            |
+| Voice/Video      | ✅ WebRTC E2EE                  | ✅ WebRTC + SFrame (1-on-1 implemented)      | Both provide call encryption          |
+| Metadata Privacy | ❌ Collected by Meta            | ✅ Sealed Sender + minimal collection        | Major difference                      |
+| Cloud Backups    | ⚠️ Unencrypted on iCloud/Google | ✅ Local only, encrypted (E2EE)              | WhatsApp has unencrypted backup issue |
+| Open Source      | ❌ Closed source                | ✅ Full stack open (Apache-2.0)              | Auditability difference               |
+| Client Strategy  | ⚠️ Single codebase (Electron)   | ✅ Flutter (mobile) + Tauri (desktop)        | Platform-optimized UX                 |
+| Cryptography     | ⚠️ Multiple implementations     | ✅ Single guardyn-crypto library             | Unified audit surface                 |
+| Business Model   | Meta advertising empire         | Open source (cloud SaaS planned)             | Fundamental difference                |
+| Self-Hosting     | ❌ Not possible                 | ✅ Kubernetes + Docker Compose               | Data sovereignty option               |
+| Infrastructure   | ❌ Proprietary Meta stack       | ✅ Open: Redpanda, TiKV, ScyllaDB            | Transparent infrastructure            |
+| User Base        | ✅ **2+ billion users**         | ⚠️ **v1.0 release (Jan 2026)**               | WhatsApp is proven at scale           |
 
-**Verdict:** WhatsApp uses Signal's E2EE but collects metadata for Meta's advertising. Guardyn focuses on both content and metadata privacy, with self-hosting option. WhatsApp has massive scale advantage.
+**Verdict:** WhatsApp uses Signal's E2EE but collects metadata for Meta's advertising. Guardyn focuses on both content and metadata privacy, with self-hosting and unified open source infrastructure. WhatsApp has massive scale advantage.
 
 ---
 
 #### vs. Telegram (Convenience vs. Security)
 
-| Feature            | Telegram                                   | Guardyn                                  | Notes                                 |
-| ------------------ | ------------------------------------------ | ---------------------------------------- | ------------------------------------- |
-| E2EE by Default    | ❌ Only "Secret Chats"                     | ✅ Always E2EE                           | **Critical security difference**      |
-| Group E2EE         | ❌ Server can read messages                | ✅ OpenMLS (cryptographically protected) | **Telegram groups are not E2EE**      |
-| Voice/Video E2EE   | ❌ Not encrypted                           | 🚧 SFrame (planned)                      | Telegram prioritizes convenience      |
-| Server Open Source | ❌ Closed                                  | ✅ Apache-2.0                            | Transparency difference               |
-| Crypto Review      | ⚠️ MTProto (custom, criticized by experts) | ✅ Standard protocols (Signal, OpenMLS)  | Telegram's crypto is non-standard     |
-| Cloud Sync         | ✅ Convenient (server stores plaintext)    | ❌ Local only (privacy over convenience) | Different priorities                  |
-| User Base          | ✅ **900+ million users**                  | ⚠️ **In development**                    | Telegram has massive user base        |
-| Independent Audits | ⚠️ Limited, MTProto not widely reviewed    | 📋 Planning (Cure53 Q2 2026)             | Both need more independent validation |
+| Feature            | Telegram                                   | Guardyn v1.0 (2026)                        | Notes                                 |
+| ------------------ | ------------------------------------------ | ------------------------------------------ | ------------------------------------- |
+| E2EE by Default    | ❌ Only "Secret Chats"                     | ✅ Always E2EE                             | **Critical security difference**      |
+| Group E2EE         | ❌ Server can read messages                | ✅ OpenMLS (cryptographically protected)   | **Telegram groups are not E2EE**      |
+| Voice/Video E2EE   | ❌ Not encrypted                           | ✅ WebRTC + SFrame (1-on-1 implemented)    | Guardyn prioritizes security          |
+| Sealed Sender      | ❌ Server sees all metadata                | ✅ Metadata protection implemented         | Privacy difference                    |
+| Server Open Source | ❌ Closed                                  | ✅ Apache-2.0 (100% transparent)           | Full transparency                     |
+| Crypto Review      | ⚠️ MTProto (custom, criticized by experts) | ✅ Standard protocols (Signal, OpenMLS)    | Telegram's crypto is non-standard     |
+| Unified Crypto     | ⚠️ Multiple implementations                | ✅ Single guardyn-crypto Rust library      | Single audit surface                  |
+| Cloud Sync         | ✅ Convenient (server stores plaintext)    | ❌ Local only (privacy over convenience)   | Different priorities                  |
+| Infrastructure     | ❌ Proprietary stack                       | ✅ Open: Redpanda, TiKV, ScyllaDB          | Transparent infrastructure            |
+| Self-Hosting       | ❌ Not supported                           | ✅ Kubernetes + Docker Compose             | Data sovereignty                      |
+| User Base          | ✅ **900+ million users**                  | ⚠️ **v1.0 release (Jan 2026)**             | Telegram has massive user base        |
+| Independent Audits | ⚠️ Limited, MTProto not widely reviewed    | 📋 Planning (Cure53 Q2 2026)               | Both need more independent validation |
 
-**Verdict:** Telegram prioritizes convenience and cloud sync over E2EE. Most Telegram conversations are readable by servers. Guardyn enforces E2EE always, sacrificing some convenience for security.
+**Verdict:** Telegram prioritizes convenience and cloud sync over E2EE. Most Telegram conversations are readable by servers. Guardyn enforces E2EE always (Signal Protocol + OpenMLS), sacrificing some convenience for security and providing self-hosting option.
 
 ---
 
 #### vs. Viber (Consumer Messaging)
 
-| Feature         | Viber                      | Guardyn                             | Notes                              |
-| --------------- | -------------------------- | ----------------------------------- | ---------------------------------- |
-| E2EE            | ⚠️ Optional, not default   | ✅ Mandatory, always on             | **Default security differs**       |
-| Crypto Standard | ⚠️ Proprietary protocol    | ✅ Industry standards (Signal, MLS) | Guardyn uses peer-reviewed crypto  |
-| Security Audit  | ❌ None publicly available | 📋 Planning (Cure53 Q2 2026)        | Both need independent verification |
-| Open Source     | ❌ Closed                  | ✅ Apache-2.0                       | Transparency difference            |
-| Business Model  | Ads, stickers, games       | Open source (cloud SaaS planned)    | Revenue model differs              |
-| Target Market   | Consumer messaging         | Privacy-focused users, enterprises  | Different audiences                |
+| Feature         | Viber                      | Guardyn v1.0 (2026)                    | Notes                              |
+| --------------- | -------------------------- | -------------------------------------- | ---------------------------------- |
+| E2EE            | ⚠️ Optional, not default   | ✅ Mandatory, always on                | **Default security differs**       |
+| Crypto Standard | ⚠️ Proprietary protocol    | ✅ Industry standards (Signal, MLS)    | Guardyn uses peer-reviewed crypto  |
+| Voice/Video     | ⚠️ Optional encryption     | ✅ WebRTC + SFrame (mandatory E2EE)    | Guardyn enforces call encryption   |
+| Security Audit  | ❌ None publicly available | 📋 Planning (Cure53 Q2 2026)           | Both need independent verification |
+| Open Source     | ❌ Closed                  | ✅ Apache-2.0 (100% transparent)       | Transparency difference            |
+| Self-Hosting    | ❌ Not supported           | ✅ Kubernetes + Docker Compose         | Data sovereignty option            |
+| Unified Crypto  | ⚠️ Multiple implementations| ✅ Single guardyn-crypto library       | Single audit surface               |
+| Business Model  | Ads, stickers, games       | Open source (cloud SaaS planned)       | Revenue model differs              |
+| Target Market   | Consumer messaging         | Privacy-focused users, enterprises     | Different audiences                |
 
-**Verdict:** Viber is a consumer messaging app with optional encryption. Guardyn is focused on mandatory E2EE and open source transparency.
+**Verdict:** Viber is a consumer messaging app with optional encryption. Guardyn is focused on mandatory E2EE (Signal Protocol + OpenMLS), open source transparency, and self-hosting capability for organizations requiring data sovereignty.
 
 ---
 
