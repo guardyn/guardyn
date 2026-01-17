@@ -2,18 +2,19 @@
 
 Thank you for your interest in contributing to Guardyn! This document provides guidelines and best practices for contributing to the project.
 
-## 🎯 Current Project Status (November 15, 2025)
+## 🎯 Current Project Status (January 2026)
 
-**Guardyn is in active MVP development:**
+**Guardyn is production-ready:**
 
-- ✅ **Backend Services**: Auth and Messaging services production-ready and deployed
-- ✅ **Cryptography**: X3DH, Double Ratchet, and OpenMLS fully implemented
-- ✅ **Infrastructure**: Kubernetes cluster operational with TiKV, ScyllaDB, NATS
-- ✅ **Testing**: 8/8 E2E integration tests passing
-- 🚧 **Mobile Client**: Authentication complete, messaging UI in progress
-- ⏳ **Presence & Media Services**: Planned for next milestone
+- ✅ **Backend Services**: Auth, Messaging, Presence, Media, Call, Notification services deployed
+- ✅ **Cryptography**: PQXDH (ML-KEM hybrid), Double Ratchet, OpenMLS, SFrame, Sealed Sender
+- ✅ **Infrastructure**: Kubernetes production deployment with TiKV, ScyllaDB, Redpanda
+- ✅ **Mobile Clients**: Flutter (iOS, Android) with full feature set
+- ✅ **Desktop Clients**: Tauri (Windows, macOS, Linux) with native UX
+- ✅ **Voice/Video**: 1-on-1 calls with SFrame E2EE
+- 🚧 **External Audit**: Cure53 security audit scheduled for Q1 2026
 
-We welcome contributions in all areas, especially mobile UI development, security audits, and documentation!
+We welcome contributions in all areas, especially security audits, documentation, and new features!
 
 ## Getting Started
 
@@ -46,30 +47,43 @@ We have several issue templates to help you report different types of issues:
 
 ### Standard Directory Layout
 
-```
+```text
 guardyn/
 ├── backend/              # Backend services (Rust)
 │   ├── crates/          # Rust workspace crates
 │   │   ├── auth-service/
 │   │   ├── messaging-service/
-│   │   ├── e2e-tests/
-│   │   │   ├── scripts/      # Test runner scripts
-│   │   │   ├── performance/  # k6 performance tests
-│   │   │   └── tests/        # E2E test code
-│   │   └── common/
+│   │   ├── presence-service/
+│   │   ├── media-service/
+│   │   ├── call-service/
+│   │   ├── notification-service/
+│   │   ├── crypto/           # guardyn-crypto library
+│   │   ├── common/
+│   │   └── e2e-tests/
+│   │       ├── scripts/      # Test runner scripts
+│   │       ├── performance/  # k6 performance tests
+│   │       └── tests/        # E2E test code
 │   └── proto/           # Protocol Buffers definitions
-├── client/              # Client applications (Flutter)
+├── client/              # Mobile client (Flutter - iOS/Android)
+├── client-desktop/      # Desktop client (Tauri - Win/Mac/Linux)
 ├── docs/                # All project documentation
 │   ├── *.md            # Technical documentation
-│   └── guides/         # User guides and tutorials
+│   ├── security/       # Security documentation
+│   └── images/         # Documentation images
 ├── infra/               # Infrastructure as Code
 │   ├── k8s/            # Kubernetes manifests
-│   ├── scripts/        # Infrastructure scripts (deployment, maintenance)
-│   └── secrets/        # Encrypted secrets (SOPS)
+│   │   ├── base/       # Base Kustomize manifests
+│   │   └── overlays/   # Environment-specific (local, prod)
+│   ├── envoy/          # Envoy proxy configuration
+│   ├── scripts/        # Infrastructure scripts
+│   └── secrets/        # SOPS-encrypted secrets
 ├── cicd/                # CI/CD configurations
 │   ├── github/         # GitHub Actions workflows
 │   └── docker/         # CI-specific Dockerfiles
+├── security/            # Security testing tools
+│   └── pentest/        # Penetration testing scripts
 ├── landing/             # Landing page
+├── docker-compose.dev.yml  # Local development (recommended)
 └── _local/              # Local development artifacts (gitignored)
 ```
 
@@ -213,6 +227,34 @@ test(e2e): add group chat message delivery tests
 3. **Fork the repository**: Work in your own fork
 4. **Create a feature branch**: `git checkout -b feat/your-feature-name`
 
+### Development Environment Setup
+
+**Quick Start with Docker Compose (Recommended):**
+
+```bash
+# Clone and enter repo
+git clone https://github.com/guardyn/guardyn.git
+cd guardyn
+
+# Enter Nix shell (provides all tools)
+nix develop
+
+# Start all services (~30 seconds)
+docker compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f
+
+# Stop when done
+docker compose -f docker-compose.dev.yml down
+```
+
+**Alternative: Kubernetes (for production testing):**
+
+```bash
+just kube-create && just kube-bootstrap && just k8s-deploy all
+```
+
 ### Making Changes
 
 1. **Follow the file placement guidelines** above
@@ -237,6 +279,9 @@ backend/crates/e2e-tests/scripts/k6-test.sh
 # Check code formatting
 cargo fmt --check
 cargo clippy -- -D warnings
+
+# Security audit
+cargo deny check
 ```
 
 ### Submitting Changes

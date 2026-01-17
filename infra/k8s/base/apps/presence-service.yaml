@@ -31,8 +31,8 @@ spec:
           value: "info"
         - name: GRPC_PORT
           value: "50053"
-        - name: NATS_URL
-          value: "nats://nats.messaging.svc.cluster.local:4222"
+        - name: REDPANDA_BROKERS
+          value: "redpanda.messaging.svc.cluster.local:9092"
         - name: TIKV_PD_ENDPOINTS
           value: "pd-0.pd.data.svc.cluster.local:2379"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT

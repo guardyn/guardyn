@@ -48,8 +48,8 @@ spec:
           value: "one"
         - name: SCYLLA_REPLICATION_FACTOR
           value: "1"
-        - name: GUARDYN_MESSAGING__NATS_URL
-          value: "nats://nats.messaging.svc.cluster.local:4222"
+        - name: GUARDYN_MESSAGING__REDPANDA_BROKERS
+          value: "redpanda.messaging.svc.cluster.local:9092"
         - name: GUARDYN_OBSERVABILITY__OTLP_ENDPOINT
           value: "http://tempo.observability.svc.cluster.local:4317"
         - name: GUARDYN_OBSERVABILITY__LOG_LEVEL

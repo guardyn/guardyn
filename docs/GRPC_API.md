@@ -31,24 +31,27 @@ Chrome/Firefox → Envoy (Port 8080) → Native gRPC Backend
 
 **Platform Requirements**:
 
-| Platform | Protocol | Port | Envoy Required? |
-|----------|----------|------|----------------|
-| Web (Chrome/Firefox/Safari) | gRPC-Web | 8080 | ✅ Yes |
-| Android/iOS native | Native gRPC | 50051/50052 | ❌ No |
-| Linux/macOS/Windows desktop | Native gRPC | 50051/50052 | ❌ No |
+| Platform                           | Protocol    | Port        | Envoy Required? |
+| ---------------------------------- | ----------- | ----------- | --------------- |
+| Web (Chrome/Firefox/Safari)        | gRPC-Web    | 8080        | ✅ Yes          |
+| Flutter Mobile (Android/iOS)       | Native gRPC | 50051-50055 | ❌ No           |
+| Tauri Desktop (Win/Mac/Linux)      | Native gRPC | 50051-50055 | ❌ No           |
 
-**Envoy Configuration**: See `infra/k8s/base/envoy/` for Kubernetes deployment.
+**Envoy Configuration**: See `infra/envoy/` for proxy configuration.
 
 ---
 
 ## Protocol Files
 
-| File                    | Service            | Description                                                    |
-| ----------------------- | ------------------ | -------------------------------------------------------------- |
-| `proto/common.proto`    | -                  | Shared types (Timestamp, UserId, KeyBundle, Error, Pagination) |
-| `proto/auth.proto`      | `AuthService`      | User registration, login, JWT tokens, key bundles              |
-| `proto/messaging.proto` | `MessagingService` | 1-on-1 & group E2EE messaging, history, read receipts          |
-| `proto/presence.proto`  | `PresenceService`  | Online status, last seen, typing indicators                    |
+| File                         | Service               | Description                                                    |
+| ---------------------------- | --------------------- | -------------------------------------------------------------- |
+| `proto/common.proto`         | -                     | Shared types (Timestamp, UserId, KeyBundle, Error, Pagination) |
+| `proto/auth.proto`           | `AuthService`         | User registration, login, JWT tokens, key bundles              |
+| `proto/messaging.proto`      | `MessagingService`    | 1-on-1 & group E2EE messaging, history, read receipts          |
+| `proto/presence.proto`       | `PresenceService`     | Online status, last seen, typing indicators                    |
+| `proto/calls.proto`          | `CallService`         | Voice/video calls with WebRTC signaling + SFrame E2EE          |
+| `proto/notifications.proto`  | `NotificationService` | Push notifications (FCM/APNs), device registration             |
+| `proto/media.proto`          | `MediaService`        | Encrypted media upload, download, thumbnails                   |
 
 ---
 
@@ -71,12 +74,22 @@ message DeviceId {
   string device_id = 2;
 }
 
+// PQXDH Key Bundle for Post-Quantum Secure Key Exchange
+// Hybrid: X25519 (classical) + ML-KEM-768 (post-quantum)
 message KeyBundle {
-  bytes identity_key = 1;        // Ed25519 (32 bytes)
-  bytes signed_pre_key = 2;      // X25519 (32 bytes)
-  bytes signed_pre_key_signature = 3; // Ed25519 sig (64 bytes)
-  repeated bytes one_time_pre_keys = 4; // X25519 keys
-  Timestamp created_at = 5;
+  // Identity keys
+  bytes identity_key = 1;        // Ed25519 public key (32 bytes)
+
+  // Classical X25519 pre-keys
+  bytes signed_pre_key = 2;      // X25519 public key (32 bytes)
+  bytes signed_pre_key_signature = 3; // Ed25519 signature (64 bytes)
+  repeated bytes one_time_pre_keys = 4; // X25519 public keys
+
+  // Post-Quantum ML-KEM-768 pre-keys (PQXDH extension)
+  bytes pq_pre_key = 5;          // ML-KEM-768 public key (1184 bytes)
+  bytes pq_pre_key_signature = 6; // Ed25519 signature over pq_pre_key (64 bytes)
+
+  Timestamp created_at = 7;
 }
 ```
 
@@ -249,7 +262,7 @@ message LoginSuccess {
 
 - TiKV (delivery state, session tracking)
 - ScyllaDB (message history, media metadata)
-- NATS JetStream (real-time message routing)
+- Redpanda (real-time message routing, Kafka-compatible)
 
 ### RPCs
 
@@ -394,6 +407,150 @@ message PresenceUpdate {
 
 ---
 
+## Call Service (`calls.proto`)
+
+### Service Overview
+
+**Package**: `guardyn.calls`  
+**Port**: 50054 (gRPC)  
+**Features**: Voice/video calls with WebRTC + SFrame E2EE
+
+### RPC Methods
+
+| RPC                   | Type             | Description                              |
+| --------------------- | ---------------- | ---------------------------------------- |
+| `InitiateCall`        | Unary            | Start a 1-on-1 or group call             |
+| `AcceptCall`          | Unary            | Accept an incoming call                  |
+| `RejectCall`          | Unary            | Decline a call                           |
+| `EndCall`             | Unary            | End an active call                       |
+| `JoinCall`            | Unary            | Join an ongoing group call               |
+| `LeaveCall`           | Unary            | Leave group call without ending          |
+| `SetMute`             | Unary            | Mute/unmute audio                        |
+| `SetVideo`            | Unary            | Enable/disable video                     |
+| `SetScreenShare`      | Unary            | Start/stop screen sharing                |
+| `ExchangeIceCandidate`| Unary            | WebRTC ICE candidate exchange            |
+| `ExchangeSdp`         | Unary            | WebRTC SDP offer/answer exchange         |
+| `GetCallState`        | Unary            | Get current call state                   |
+| `GetCallHistory`      | Unary            | Fetch call history                       |
+| `StreamCallEvents`    | Server Streaming | Real-time call events (join/leave/state) |
+| `ExchangeSFrameKey`   | Unary            | Exchange SFrame encryption keys          |
+| `RotateSFrameKey`     | Unary            | Rotate SFrame key mid-call               |
+| `Health`              | Unary            | Health check                             |
+
+### Call Types and States
+
+```protobuf
+enum CallType {
+  UNKNOWN_CALL_TYPE = 0;
+  VOICE = 1;           // Voice-only call
+  VIDEO = 2;           // Video call
+}
+
+enum CallState {
+  UNKNOWN_STATE = 0;
+  INITIATING = 1;      // Call is being set up
+  RINGING = 2;         // Remote party is being notified
+  CONNECTING = 3;      // Call accepted, establishing connection
+  CONNECTED = 4;       // Call is active
+  ON_HOLD = 5;         // Call is on hold
+  ENDED = 6;           // Call has ended
+  FAILED = 7;          // Call failed to connect
+}
+```
+
+### SFrame E2EE
+
+All media streams are encrypted using SFrame (RFC 9605):
+
+```protobuf
+message InitiateCallSuccess {
+  string call_id = 1;
+  CallState state = 2;
+  Timestamp created_at = 3;
+  repeated IceServer ice_servers = 4;  // TURN/STUN servers
+  bytes sframe_key_material = 5;       // SFrame encryption key
+  uint32 sframe_key_id = 6;            // Key identifier for rotation
+}
+
+message IceServer {
+  repeated string urls = 1;    // STUN/TURN server URLs
+  string username = 2;         // TURN username
+  string credential = 3;       // TURN credential
+}
+```
+
+---
+
+## Notification Service (`notifications.proto`)
+
+### Service Overview
+
+**Package**: `guardyn.notifications`  
+**Port**: 50055 (gRPC)  
+**Platforms**: FCM (Android), APNs (iOS), Web Push (future)
+
+### RPC Methods
+
+| RPC                        | Type  | Description                        |
+| -------------------------- | ----- | ---------------------------------- |
+| `RegisterDevice`           | Unary | Register device for push           |
+| `UnregisterDevice`         | Unary | Remove device registration         |
+| `UpdatePushToken`          | Unary | Update FCM/APNs token              |
+| `GetNotificationSettings`  | Unary | Get user's notification prefs      |
+| `UpdateNotificationSettings`| Unary | Update notification preferences   |
+| `MuteConversation`         | Unary | Mute/unmute a conversation         |
+| `SendTestNotification`     | Unary | Send test push (debugging)         |
+| `Health`                   | Unary | Health check                       |
+
+### Device Registration
+
+```protobuf
+enum PushPlatform {
+  UNKNOWN_PLATFORM = 0;
+  FCM = 1;          // Firebase Cloud Messaging (Android)
+  APNS = 2;         // Apple Push Notification Service (iOS)
+  APNS_SANDBOX = 3; // APNs Sandbox (iOS development)
+  WEB_PUSH = 4;     // Web Push (future)
+}
+
+message RegisterDeviceRequest {
+  string access_token = 1;
+  string device_id = 2;           // Unique device identifier
+  string push_token = 3;          // FCM/APNs token
+  PushPlatform platform = 4;
+  string device_name = 5;         // "iPhone 15 Pro"
+  string app_version = 6;
+  string os_version = 7;
+}
+```
+
+### Notification Settings
+
+```protobuf
+message NotificationSettings {
+  bool notifications_enabled = 1;
+  bool sound_enabled = 2;
+  bool vibration_enabled = 3;
+  bool show_preview = 4;          // Show message content
+  bool show_sender = 5;           // Show sender name
+
+  // Quiet hours
+  bool quiet_hours_enabled = 6;
+  int32 quiet_hours_start = 7;    // Start hour (0-23)
+  int32 quiet_hours_end = 8;      // End hour (0-23)
+  string quiet_hours_timezone = 9; // IANA timezone
+
+  // Category toggles
+  bool notify_messages = 10;
+  bool notify_reactions = 11;
+  bool notify_mentions = 12;
+  bool notify_calls = 13;
+  bool notify_group_messages = 14;
+}
+```
+
+---
+
 ## Code Generation
 
 ### Build Configuration
@@ -423,7 +580,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Generated Code Location
 
-```
+```text
 backend/crates/auth-service/src/generated/
   ├── guardyn.common.rs
   └── guardyn.auth.rs
@@ -435,6 +592,14 @@ backend/crates/messaging-service/src/generated/
 backend/crates/presence-service/src/generated/
   ├── guardyn.common.rs
   └── guardyn.presence.rs
+
+backend/crates/call-service/src/generated/
+  ├── guardyn.common.rs
+  └── guardyn.calls.rs
+
+backend/crates/notification-service/src/generated/
+  ├── guardyn.common.rs
+  └── guardyn.notifications.rs
 ```
 
 ### Usage Example
@@ -477,10 +642,12 @@ impl AuthService for MyAuthService {
 
 ### Encryption
 
-- **Message Content**: Double Ratchet (1-on-1), MLS (groups)
-- **Key Bundles**: X3DH protocol for initial key agreement
+- **Message Content**: Double Ratchet (1-on-1), OpenMLS (groups), SFrame (calls)
+- **Key Exchange**: PQXDH protocol (X25519 + ML-KEM-768 hybrid) for post-quantum security
+- **Metadata Protection**: Sealed Sender for anonymous message delivery
 - **Transport**: TLS 1.3 for all gRPC connections
 - **At Rest**: ScyllaDB transparent encryption, TiKV encrypted backups
+- **Traffic Analysis**: PADMÉ padding to constant message sizes
 
 ### Rate Limiting
 

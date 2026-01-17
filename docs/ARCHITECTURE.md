@@ -7,9 +7,8 @@ This document provides a comprehensive overview of the Guardyn platform architec
 ```mermaid
 graph TB
     subgraph "Client Layer"
-        WebApp[Web Application<br/>Flutter Web]
         MobileApp[Mobile Apps<br/>Flutter iOS/Android]
-        DesktopApp[Desktop Apps<br/>Flutter Desktop]
+        DesktopApp[Desktop Apps<br/>Tauri Win/Mac/Linux]
     end
 
     subgraph "Edge Layer"
@@ -24,6 +23,7 @@ graph TB
             Media[Media Service<br/>:50053<br/>Encrypted Media]
             Presence[Presence Service<br/>:50054<br/>User Status]
             Notification[Notification Service<br/>:50055<br/>Push Notifications]
+            Call[Call Service<br/>:50056<br/>WebRTC Signaling & SFU]
         end
     end
 
@@ -34,9 +34,9 @@ graph TB
         end
     end
 
-    subgraph "Messaging Infrastructure"
+    subgraph "Event Streaming"
         subgraph "messaging namespace"
-            NATS[NATS JetStream<br/>Event Streaming<br/>Real-time Communication]
+            Redpanda[Redpanda<br/>Kafka-Compatible<br/>Event Streaming]
         end
     end
 
@@ -57,30 +57,30 @@ graph TB
     end
 
     %% Client Connections
-    WebApp -->|gRPC-Web/HTTP| Envoy
     MobileApp -->|Native gRPC| LB
     DesktopApp -->|Native gRPC| LB
 
     %% Edge Routing
-    Envoy -->|gRPC| Auth
-    Envoy -->|gRPC| Messaging
     LB --> Auth
     LB --> Messaging
     LB --> Media
     LB --> Presence
     LB --> Notification
+    LB --> Call
 
     %% Service Dependencies
     Auth --> TiKV
-    Auth --> NATS
+    Auth --> Redpanda
     Messaging --> TiKV
     Messaging --> ScyllaDB
-    Messaging --> NATS
+    Messaging --> Redpanda
     Media --> TiKV
     Media --> ScyllaDB
     Presence --> TiKV
-    Presence --> NATS
-    Notification --> NATS
+    Presence --> Redpanda
+    Notification --> Redpanda
+    Call --> Redpanda
+    Call --> TiKV
 
     %% Observability
     Auth -.->|metrics| Prometheus
@@ -88,16 +88,19 @@ graph TB
     Media -.->|metrics| Prometheus
     Presence -.->|metrics| Prometheus
     Notification -.->|metrics| Prometheus
+    Call -.->|metrics| Prometheus
 
     Auth -.->|logs| Loki
     Messaging -.->|logs| Loki
     Media -.->|logs| Loki
     Presence -.->|logs| Loki
     Notification -.->|logs| Loki
+    Call -.->|logs| Loki
 
     Auth -.->|traces| Tempo
     Messaging -.->|traces| Tempo
     Media -.->|traces| Tempo
+    Call -.->|traces| Tempo
 
     Prometheus --> Grafana
     Loki --> Grafana
@@ -110,8 +113,8 @@ graph TB
     Cilium -.->|network policy| Media
     Cilium -.->|network policy| Presence
     Cilium -.->|network policy| Notification
+    Cilium -.->|network policy| Call
 
-    style WebApp fill:#4A90E2
     style MobileApp fill:#4A90E2
     style DesktopApp fill:#4A90E2
     style Auth fill:#50C878
@@ -119,9 +122,10 @@ graph TB
     style Media fill:#50C878
     style Presence fill:#50C878
     style Notification fill:#50C878
+    style Call fill:#50C878
     style TiKV fill:#FF6B6B
     style ScyllaDB fill:#FF6B6B
-    style NATS fill:#FFD93D
+    style Redpanda fill:#FFD93D
     style Envoy fill:#9B59B6
 ```
 
@@ -129,50 +133,57 @@ graph TB
 
 ```mermaid
 graph LR
-    subgraph "Client-Side Cryptography"
+    subgraph "Client-Side Cryptography (guardyn-crypto)"
         Client[Client Device]
-        X3DH[X3DH Key Exchange<br/>Kyber + ECDH P-256]
+        PQXDH[PQXDH Key Exchange<br/>ML-KEM-768 + X25519]
         DR[Double Ratchet<br/>1:1 Encryption]
         MLS[OpenMLS<br/>Group Encryption]
         SFrame[SFrame<br/>Media Encryption]
+        SS[Sealed Sender<br/>Metadata Protection]
     end
 
     subgraph "Key Management"
         Auth[Auth Service]
         KeyStore[(TiKV<br/>Key Bundles<br/>Pre-keys<br/>MLS Packages)]
+        HW[Hardware Key Storage<br/>Secure Enclave/KeyStore]
     end
 
     subgraph "Secure Communication"
-        E2EEMsg[Encrypted Messages]
+        E2EEMsg[Encrypted Messages<br/>PADMÉ Padding]
         E2EEMedia[Encrypted Media]
         E2EECall[Encrypted Calls]
     end
 
-    Client --> X3DH
-    X3DH --> DR
-    X3DH --> MLS
+    Client --> PQXDH
+    PQXDH --> DR
+    PQXDH --> MLS
     Client --> SFrame
+    Client --> SS
 
     DR --> E2EEMsg
     MLS --> E2EEMsg
     SFrame --> E2EECall
     SFrame --> E2EEMedia
+    SS --> E2EEMsg
 
+    Client <-->|Identity Keys| HW
     Client -->|Upload Keys| Auth
     Auth --> KeyStore
     Client -->|Fetch Keys| Auth
 
     E2EEMsg -->|Encrypted Payload| Messaging[Messaging Service]
     E2EEMedia -->|Encrypted Payload| Media[Media Service]
-    E2EECall -->|Encrypted Streams| Media
+    E2EECall -->|Encrypted Streams| Call[Call Service]
 
-    style X3DH fill:#FFD93D
+    style PQXDH fill:#FFD93D
     style DR fill:#FFD93D
     style MLS fill:#FFD93D
     style SFrame fill:#FFD93D
+    style SS fill:#FFD93D
     style E2EEMsg fill:#50C878
     style E2EEMedia fill:#50C878
     style E2EECall fill:#50C878
+    style HW fill:#9B59B6
 ```
 
 ## Data Flow Architecture
@@ -183,7 +194,7 @@ sequenceDiagram
     participant Envoy
     participant Auth
     participant Messaging
-    participant NATS
+    participant Redpanda
     participant TiKV
     participant ScyllaDB
     participant Recipient
@@ -191,29 +202,31 @@ sequenceDiagram
     Note over Client,ScyllaDB: User Registration & Key Upload
     Client->>+Auth: Register(username, identity_key)
     Auth->>TiKV: Store user identity
-    Auth->>TiKV: Store key bundle
+    Auth->>TiKV: Store key bundle (PQXDH keys)
     Auth-->>-Client: JWT token
 
     Note over Client,ScyllaDB: Secure Messaging Flow
     Client->>+Auth: GetKeyBundle(recipient_id)
     Auth->>TiKV: Fetch recipient keys
-    Auth-->>-Client: Key bundle
+    Auth-->>-Client: Key bundle (ML-KEM + X25519)
 
-    Client->>Client: X3DH key exchange<br/>Generate shared secret
-    Client->>Client: Encrypt message<br/>(Double Ratchet)
+    Client->>Client: PQXDH key exchange<br/>Generate shared secret
+    Client->>Client: Encrypt message<br/>(Double Ratchet + PADMÉ)
+    Client->>Client: Apply Sealed Sender
 
-    Client->>+Envoy: SendMessage(encrypted_payload)
+    Client->>+Envoy: SendMessage(sealed_payload)
     Envoy->>+Messaging: gRPC SendMessage
     Messaging->>TiKV: Store message metadata
     Messaging->>ScyllaDB: Store encrypted message
-    Messaging->>NATS: Publish message event
+    Messaging->>Redpanda: Publish message event
     Messaging-->>-Envoy: Message ID
     Envoy-->>-Client: Success
 
-    NATS-->>Recipient: Real-time message notification
+    Redpanda-->>Recipient: Real-time message notification
     Recipient->>+Messaging: ReceiveMessages(stream)
     Messaging->>ScyllaDB: Fetch encrypted messages
-    Messaging-->>-Recipient: Encrypted messages
+    Messaging-->>-Recipient: Sealed messages
+    Recipient->>Recipient: Unseal Sender
     Recipient->>Recipient: Decrypt with Double Ratchet
 ```
 
@@ -237,7 +250,7 @@ graph TB
             direction TB
             Platform[platform<br/>cert-manager, Cilium]
             Data[data<br/>TiKV, ScyllaDB]
-            Messaging[messaging<br/>NATS JetStream]
+            Messaging[messaging<br/>Redpanda]
             Apps[apps<br/>Backend Services]
             Observability[observability<br/>Prometheus, Loki, Tempo, Grafana]
         end
@@ -353,22 +366,25 @@ graph LR
 mindmap
   root((Guardyn<br/>Technology<br/>Stack))
     Frontend
-      Flutter
-        Web
+      Flutter Mobile
         iOS
         Android
-        Desktop
-      gRPC-Web
+      Tauri Desktop
+        Windows
+        macOS
+        Linux
+      gRPC Native
     Backend Services
       Rust
         Tokio async runtime
         tonic gRPC
         prost Protocol Buffers
-      Security
-        X3DH key exchange
+      guardyn-crypto
+        PQXDH ML-KEM-768 + X25519
         Double Ratchet encryption
         OpenMLS group encryption
         SFrame media encryption
+        Sealed Sender metadata protection
     Infrastructure
       Kubernetes
         k3d local clusters
@@ -384,10 +400,11 @@ mindmap
       ScyllaDB
         Wide column store
         High throughput
-    Messaging
-      NATS JetStream
-        Event streaming
-        Real-time communication
+    Event Streaming
+      Redpanda
+        Kafka-compatible API
+        2-3M msg/sec throughput
+        Tiered storage
     Observability
       Prometheus metrics
       Loki logs
@@ -415,19 +432,18 @@ graph TB
     subgraph "Client Communication Patterns"
         direction TB
 
-        subgraph "Web Browser"
-            Browser[Browser Client]
-            GRPCWeb[gRPC-Web Protocol<br/>HTTP/1.1 or HTTP/2]
+        subgraph "Mobile Apps"
+            Mobile[Flutter iOS/Android]
+            MobileGRPC[Native gRPC<br/>HTTP/2 + gRPC Framing]
         end
 
-        subgraph "Native Apps"
-            Mobile[Mobile/Desktop Client]
-            NativeGRPC[Native gRPC<br/>HTTP/2 + gRPC Framing]
+        subgraph "Desktop Apps"
+            Desktop[Tauri Win/Mac/Linux]
+            DesktopGRPC[Native gRPC<br/>HTTP/2 + gRPC Framing]
         end
     end
 
     subgraph "Gateway Layer"
-        Envoy[Envoy Proxy<br/>:8080<br/>gRPC-Web → gRPC]
         Ingress[k8s Ingress<br/>:443<br/>TLS Termination]
     end
 
@@ -438,38 +454,38 @@ graph TB
     end
 
     subgraph "Event-Driven"
-        NATS[NATS JetStream<br/>Pub/Sub<br/>Real-time Events]
+        Redpanda[Redpanda<br/>Kafka Protocol<br/>Real-time Events]
     end
 
-    Browser --> GRPCWeb
-    GRPCWeb -->|HTTP| Envoy
+    Mobile --> MobileGRPC
+    MobileGRPC -->|gRPC/TLS| Ingress
 
-    Mobile --> NativeGRPC
-    NativeGRPC -->|gRPC/TLS| Ingress
+    Desktop --> DesktopGRPC
+    DesktopGRPC -->|gRPC/TLS| Ingress
 
-    Envoy -->|gRPC| Services
     Ingress -->|gRPC| Services
 
     Services <-->|gRPC| Internal
-    Services -->|Publish| NATS
-    Services <-->|Subscribe| NATS
+    Services -->|Publish| Redpanda
+    Services <-->|Subscribe| Redpanda
 
-    style Browser fill:#4A90E2
     style Mobile fill:#4A90E2
-    style Envoy fill:#9B59B6
+    style Desktop fill:#4A90E2
     style Services fill:#50C878
-    style NATS fill:#FFD93D
+    style Redpanda fill:#FFD93D
 ```
 
 ## Key Design Principles
 
-1. **Privacy-First**: End-to-end encryption for all user communications using X3DH, Double Ratchet, and OpenMLS
-2. **Reproducible Builds**: Nix flakes ensure deterministic builds and audit-ready artifacts
-3. **Kubernetes-Native**: All infrastructure managed with Kustomize and Helm operators
-4. **Domain-Agnostic**: Single `DOMAIN` variable configures all services for any deployment
-5. **Observability**: Comprehensive metrics, logs, and traces via Prometheus, Loki, and Tempo
-6. **Security by Design**: SOPS encryption for secrets, Cosign signing for artifacts, regular security audits
-7. **Local Development Parity**: k3d clusters mirror production topology for consistent testing
-8. **Microservices Architecture**: Independently deployable services with clear boundaries
-9. **Event-Driven Communication**: NATS JetStream for real-time messaging and loose coupling
-10. **Multi-Platform Support**: Flutter clients for web, mobile, and desktop with unified codebase
+1. **Privacy-First**: End-to-end encryption for all communications using PQXDH (ML-KEM-768), Double Ratchet, OpenMLS, and Sealed Sender
+2. **Post-Quantum Ready**: ML-KEM-768 hybrid key exchange provides resistance against quantum computer attacks
+3. **Reproducible Builds**: Nix flakes ensure deterministic builds and audit-ready artifacts
+4. **Kubernetes-Native**: All infrastructure managed with Kustomize and Helm operators
+5. **Domain-Agnostic**: Single `DOMAIN` variable configures all services for any deployment
+6. **Observability**: Comprehensive metrics, logs, and traces via Prometheus, Loki, and Tempo
+7. **Security by Design**: SOPS encryption for secrets, Cosign signing for artifacts, regular security audits
+8. **Local Development Parity**: Docker Compose for fast local dev (~30s startup), k3d mirrors production topology
+9. **Microservices Architecture**: Independently deployable services with clear boundaries
+10. **Event-Driven Communication**: Redpanda (Kafka-compatible) for high-throughput real-time messaging
+11. **Multi-Platform Support**: Flutter for mobile (iOS/Android), Tauri for desktop (Windows/macOS/Linux)
+12. **Unified Cryptography**: guardyn-crypto Rust library shared across all platforms via FFI

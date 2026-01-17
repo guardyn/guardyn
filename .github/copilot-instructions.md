@@ -2,9 +2,11 @@
 
 ## Project Overview
 
-Guardyn is a privacy-focused secure communication platform (MVP/PoC phase) built with:
-- **Security-first**: E2EE messaging (X3DH/Double Ratchet/OpenMLS), audio/video calls, group chat with cryptographic verification
-- **Infrastructure**: Kubernetes-native (k3d for local dev), TiKV + ScyllaDB for data, NATS JetStream for messaging
+Guardyn is a privacy-focused secure communication platform (production-ready) built with:
+- **Security-first**: E2EE messaging (PQXDH/Double Ratchet/OpenMLS/SFrame), audio/video calls, Sealed Sender
+- **Infrastructure**: Kubernetes-native (Docker Compose for local dev, k8s for prod), TiKV + ScyllaDB for data, Redpanda for event streaming
+- **Clients**: Flutter (iOS/Android) for mobile, Tauri (Windows/macOS/Linux) for desktop
+- **Cryptography**: guardyn-crypto Rust library (ML-KEM hybrid, AES-256-GCM, hardware key storage)
 - **Reproducibility**: Nix flakes for deterministic builds, SOPS + Age for secrets, cosign for artifact signing
 
 ## 🌍 Language Policy - CRITICAL
@@ -335,7 +337,7 @@ Access the application at https://yourdomain.com (replace with your configured d
 
 ### Directory Structure Standards
 
-```
+```text
 guardyn/
 ├── backend/              # Backend services (Rust)
 │   ├── crates/          # Rust workspace crates (snake_case names)
@@ -344,22 +346,28 @@ guardyn/
 │   │   ├── media-service/
 │   │   ├── presence-service/
 │   │   ├── notification-service/
+│   │   ├── call-service/
 │   │   ├── e2e-tests/
 │   │   │   ├── scripts/      # Test runner scripts
 │   │   │   ├── performance/  # k6 performance tests
 │   │   │   └── tests/        # E2E test code
 │   │   ├── common/          # Shared code
-│   │   └── crypto/          # Cryptography primitives
+│   │   └── crypto/          # guardyn-crypto library
 │   ├── proto/               # Protocol Buffers definitions
 │   └── build-local.sh       # Local build script
-├── client/                  # Client applications (Flutter)
+├── client/                  # Mobile client (Flutter - iOS/Android)
+├── client-desktop/          # Desktop client (Tauri - Win/Mac/Linux)
+│   ├── src-tauri/          # Rust backend
+│   └── src/                # SolidJS frontend
 ├── docs/                    # ALL project documentation
 │   ├── *.md                # Technical documentation
-│   └── guides/             # User guides (if needed)
+│   ├── security/           # Security documentation
+│   └── images/             # Documentation images
 ├── infra/                   # Infrastructure as Code
 │   ├── k8s/                # Kubernetes manifests
 │   │   ├── base/          # Base Kustomize manifests
 │   │   └── overlays/      # Environment-specific overlays
+│   ├── envoy/             # Envoy proxy configuration
 │   ├── scripts/            # Infrastructure scripts
 │   │   ├── bootstrap.sh
 │   │   ├── deploy.sh
@@ -367,12 +375,15 @@ guardyn/
 │   │   ├── build-and-deploy-services.sh
 │   │   └── redeploy-messaging.sh
 │   └── secrets/            # SOPS-encrypted secrets
+├── security/                # Security testing
+│   └── pentest/            # Penetration testing scripts
 ├── cicd/                    # CI/CD configurations
 │   ├── github/
 │   │   ├── actions/       # Custom GitHub Actions
 │   │   └── workflows/     # Workflow definitions
 │   └── docker/            # CI-specific Dockerfiles
 ├── landing/                 # Landing page
+├── docker-compose.dev.yml   # Local development (recommended)
 └── _local/                  # Local artifacts (MUST BE GITIGNORED)
 ```
 
@@ -541,16 +552,21 @@ When adding new files, verify:
 - `infra/`: Complete Kubernetes stack with kustomize overlays (`local`/`prod`)
   - Namespaces: `platform`, `data`, `messaging`, `observability`, `apps` (see `infra/k8s/base/namespaces/namespaces.yaml`)
   - Data layer: TiKV (distributed transactional KV), ScyllaDB (high-throughput storage)
-  - Messaging: NATS JetStream for event streaming
+  - Event streaming: Redpanda (Kafka-compatible)
   - Observability: Prometheus + Loki + Tempo + Grafana stack
 - `cicd/`: GitHub Actions workflows + reproducible-build action
 - `docs/`: `mvp_discovery.md` (product vision), `infra_poc.md` (infrastructure guide)
+- `client/`: Flutter mobile client (iOS/Android)
+- `client-desktop/`: Tauri desktop client (Windows/macOS/Linux)
+- `backend/crates/crypto/`: guardyn-crypto library (unified cryptography)
 
 ### Key Design Decisions
-- **Kustomize over Helm for base manifests**: Helm only for 3rd-party operators (NATS, TiKV, Scylla, Prometheus)
-- **k3d clusters mimic production**: 3 servers + 2 agents with Cilium CNI, registry at `guardyn-registry:5000`
+- **Docker Compose for local development**: Fast 30-second startup, Kubernetes for production
+- **Redpanda over NATS**: Kafka-compatible API, better performance, tiered storage
+- **Kustomize over Helm for base manifests**: Helm only for 3rd-party operators (TiKV, Scylla, Prometheus)
 - **All secrets encrypted with SOPS**: Age keys in `infra/secrets/age-key.txt` (gitignored), config in `.sops.yaml`
 - **Domain-agnostic by design**: `DOMAIN` variable is the single source of truth for all services
+- **Unified Rust crypto**: guardyn-crypto crate shared between backend, Flutter (FFI), and Tauri
 
 ## Developer Workflows
 
@@ -560,19 +576,37 @@ nix develop  # Enter reproducible shell with all tools (Rust, kubectl, helm, k3d
 ```
 Toolchain pinned in `flake.nix` (nixos-23.11, rust-overlay for stable Rust).
 
-### Kubernetes Cluster Management
+### Local Development (Docker Compose - Recommended)
 ```bash
-just kube-create       # Creates k3d cluster from infra/k3d-config.yaml (3 servers, 2 agents)
+# Start all services (~30 seconds)
+docker compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f auth-service
+
+# Rebuild single service
+docker compose -f docker-compose.dev.yml up -d --build auth-service
+
+# Stop everything
+docker compose -f docker-compose.dev.yml down
+
+# Clean volumes (reset data)
+docker compose -f docker-compose.dev.yml down -v
+```
+
+### Kubernetes Cluster Management (Production Testing)
+```bash
+just kube-create       # Creates k3d cluster from infra/k3d-config.yaml
 just kube-bootstrap    # Installs CRDs + namespaces + core operators
-just k8s-deploy <svc>  # Deploys service: nats | tikv | scylladb | monitoring
-just verify-kube       # Smoke tests (pod readiness, NATS pub/sub, TiKV/Scylla health)
+just k8s-deploy all    # Deploys all services
+just verify-kube       # Smoke tests (pod readiness, data stores health)
 just teardown          # Destroys cluster
 ```
 
-**Critical**: Always run `kube-bootstrap` before deploying services. Deployment order matters:
+**Deployment order for manual deployment:**
 1. Namespaces + cert-manager + Cilium
-2. Data stores (tikv, scylladb)
-3. Messaging (nats)
+2. Data stores (tikv, scylladb, redpanda)
+3. Backend services
 4. Monitoring last
 
 ### Secrets Management
@@ -594,18 +628,18 @@ All workflows use Nix for reproducible environments.
 ### Infrastructure
 - **Kustomize bases in `infra/k8s/base/`**: Each component has `kustomization.yaml` + manifests
 - **Overlays select environment**: `local` for dev, `prod` for production overrides (see `infra/k8s/overlays/`)
-- **Helm values in component dirs**: E.g., `infra/k8s/base/nats/values.yaml` configures 3-node JetStream cluster
+- **Helm values in component dirs**: E.g., `infra/k8s/base/redpanda/values.yaml` configures Redpanda cluster
 - **Scripts idempotent**: `bootstrap.sh`, `deploy.sh`, `verify.sh` safe to re-run
 
 ### Security
 - **All k8s manifests labeled**: `guardyn.io/stage: poc` for easy filtering
-- **Port mappings explicit in k3d-config.yaml**: HTTP/HTTPS (80/443), NATS (4222/4223) exposed on localhost
+- **Port mappings explicit in k3d-config.yaml**: HTTP/HTTPS (80/443), Redpanda (9092) exposed on localhost
 - **Image signatures required in prod**: Use `cosign verify` before deployment
 
 ### Testing
 - Smoke tests in `verify.sh` check:
   - Pod readiness across all namespaces
-  - NATS pub/sub with `natsio/nats-box` ephemeral pod
+  - Redpanda health via `rpk cluster health`
   - TiKV status via `pd-ctl -u http://localhost:2379 store`
   - ScyllaDB health via `nodetool status`
 
@@ -641,7 +675,7 @@ kubectl apply -f <(sops -d secrets.enc.yaml) # Decrypt and apply
 
 - **SOPS decryption fails**: Ensure `infra/secrets/age-key.txt` exists and matches public key in `.sops.yaml`
 - **Pods stuck in `Pending`**: Check `kubectl get pvc` for storage issues—local-path-provisioner may need initialization
-- **NATS connection refused**: Verify port-forward `kubectl port-forward -n messaging svc/nats 4222:4222`, then test with `nats-box`
+- **Redpanda connection refused**: Verify port-forward `kubectl port-forward -n messaging svc/redpanda 9092:9092`, then test with `rpk`
 - **TiKV not responding**: TiKV requires PD + TiKV pods running—check logs and connectivity to PD service
 
 ## Reference Files

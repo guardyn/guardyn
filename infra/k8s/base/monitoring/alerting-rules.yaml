@@ -243,48 +243,48 @@ spec:
             description: "99th percentile ScyllaDB write latency is {{ $value }}s"
 
     # ===================================================================
-    # NATS JetStream Alerts
+    # Redpanda (Kafka-compatible) Alerts
     # ===================================================================
-    - name: guardyn.nats.health
+    - name: guardyn.redpanda.health
       interval: 30s
       rules:
-        - alert: NATSDown
+        - alert: RedpandaDown
           expr: |
-            sum(up{job=~".*nats.*"}) == 0
-            or absent(up{job=~".*nats.*"})
+            sum(up{job=~".*redpanda.*"}) == 0
+            or absent(up{job=~".*redpanda.*"})
           for: 2m
           labels:
             severity: critical
-            service: nats
+            service: redpanda
             team: messaging
           annotations:
-            summary: "NATS JetStream is down"
-            description: "NATS JetStream has been unavailable for more than 2 minutes. Real-time messaging is impacted."
-            runbook_url: "https://guardyn.io/runbooks/nats-down"
+            summary: "Redpanda is down"
+            description: "Redpanda has been unavailable for more than 2 minutes. Real-time messaging is impacted."
+            runbook_url: "https://guardyn.io/runbooks/redpanda-down"
 
-        - alert: NATSHighPendingMessages
+        - alert: RedpandaHighConsumerLag
           expr: |
-            sum(nats_consumer_num_pending) by (stream_name) > 10000
+            sum(redpanda_kafka_consumer_group_lag) by (group, topic) > 10000
           for: 5m
           labels:
             severity: warning
-            service: nats
+            service: redpanda
             team: messaging
           annotations:
-            summary: "NATS stream has high pending messages"
-            description: "Stream {{ $labels.stream_name }} has {{ $value }} pending messages. Consider scaling consumers."
+            summary: "Redpanda consumer group has high lag"
+            description: "Consumer group {{ $labels.group }} on topic {{ $labels.topic }} has {{ $value }} lag. Consider scaling consumers."
 
-        - alert: NATSSlowConsumers
+        - alert: RedpandaUnderReplicatedPartitions
           expr: |
-            sum(nats_consumer_num_redelivered) by (stream_name, consumer_name) > 100
+            sum(redpanda_cluster_partitions_underreplicated) > 0
           for: 5m
           labels:
             severity: warning
-            service: nats
+            service: redpanda
             team: messaging
           annotations:
-            summary: "NATS consumer has high redelivery count"
-            description: "Consumer {{ $labels.consumer_name }} on stream {{ $labels.stream_name }} has {{ $value }} redelivered messages."
+            summary: "Redpanda has under-replicated partitions"
+            description: "{{ $value }} partitions are under-replicated. Data durability may be impacted."
 
     # ===================================================================
     # Resource Usage Alerts

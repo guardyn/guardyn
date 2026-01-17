@@ -67,7 +67,7 @@ export GUARDYN_HOST=0.0.0.0
 export GUARDYN_PORT=8080
 export GUARDYN_DATABASE__TIKV_PD_ENDPOINTS=pd.data.svc.cluster.local:2379
 export GUARDYN_DATABASE__SCYLLADB_NODES=scylla-0.data.svc.cluster.local:9042
-export GUARDYN_MESSAGING__NATS_URL=nats://nats.messaging.svc.cluster.local:4222
+export GUARDYN_MESSAGING__REDPANDA_BROKERS=redpanda.messaging.svc.cluster.local:9092
 export GUARDYN_OBSERVABILITY__OTLP_ENDPOINT=http://tempo.observability.svc.cluster.local:4317
 export GUARDYN_OBSERVABILITY__LOG_LEVEL=info
 ```
@@ -76,16 +76,21 @@ export GUARDYN_OBSERVABILITY__LOG_LEVEL=info
 
 ### 1-on-1 Messaging
 
-- **X3DH**: Initial key agreement
-- **Double Ratchet**: Forward-secret encryption (via libsignal-protocol)
+- **PQXDH**: Post-Quantum Extended Triple Diffie-Hellman (X25519 + ML-KEM-768)
+- **Double Ratchet**: Forward-secret encryption with AES-256-GCM
 
 ### Group Chat
 
-- **MLS**: Messaging Layer Security (via OpenMLS)
+- **OpenMLS**: Messaging Layer Security for group encryption
 
-### Post-Quantum
+### Calls (Voice/Video)
 
-- **Kyber**: Hybrid ECDH + Kyber key exchange (planned)
+- **SFrame**: Secure frame encryption for WebRTC media streams (RFC 9605)
+
+### Metadata Protection
+
+- **Sealed Sender**: Anonymous message delivery
+- **PADMÉ**: Constant-size message padding
 
 ## Database Schema
 

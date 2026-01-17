@@ -5,27 +5,36 @@ This document provides a comprehensive technical overview of the encryption mech
 ## Table of Contents
 
 1. [Encryption Overview](#encryption-overview)
-2. [X3DH Key Exchange Protocol](#x3dh-key-exchange-protocol)
+2. [PQXDH Key Exchange Protocol](#pqxdh-key-exchange-protocol)
 3. [Double Ratchet Algorithm](#double-ratchet-algorithm)
-4. [MLS Group Encryption](#mls-group-encryption)
-5. [End-to-End Encryption Flow](#end-to-end-encryption-flow)
-6. [Key Storage and Management](#key-storage-and-management)
-7. [Security Properties](#security-properties)
+4. [Sealed Sender](#sealed-sender)
+5. [MLS Group Encryption](#mls-group-encryption)
+6. [SFrame Media Encryption](#sframe-media-encryption)
+7. [End-to-End Encryption Flow](#end-to-end-encryption-flow)
+8. [Key Storage and Management](#key-storage-and-management)
+9. [Security Properties](#security-properties)
 
 ---
 
 ## Encryption Overview
 
-Guardyn implements a multi-layer encryption architecture based on the Signal Protocol and OpenMLS standards. The system provides:
+Guardyn implements a multi-layer encryption architecture based on the Signal Protocol with post-quantum extensions, OpenMLS standards, and SFrame for media. The system provides:
 
-- **1-on-1 Messaging**: X3DH + Double Ratchet (Signal Protocol)
+- **1-on-1 Messaging**: PQXDH + Double Ratchet (Signal Protocol with ML-KEM-768 hybrid)
 - **Group Messaging**: OpenMLS (IETF RFC 9420)
-- **Media Encryption**: SFrame for voice/video calls (planned)
+- **Media Encryption**: SFrame for voice/video calls
+- **Metadata Protection**: Sealed Sender protocol
+- **Traffic Analysis Resistance**: PADMÉ padding scheme
 
 ```mermaid
 graph TB
-    subgraph "Guardyn Encryption Stack"
+    subgraph "Guardyn Encryption Stack (guardyn-crypto)"
         direction TB
+
+        subgraph "Layer 4: Metadata Protection"
+            SS[Sealed Sender<br/>Sender Anonymity]
+            PADME[PADMÉ<br/>Traffic Analysis Resistance]
+        end
 
         subgraph "Layer 3: Application"
             App[Application Layer<br/>Messages, Media, Calls]
@@ -38,11 +47,12 @@ graph TB
         end
 
         subgraph "Layer 1: Key Exchange"
-            X3DH[X3DH Protocol<br/>Initial Key Agreement]
+            PQXDH[PQXDH Protocol<br/>Post-Quantum Key Agreement]
             MLSKE[MLS Key Exchange<br/>Group Key Agreement]
         end
 
         subgraph "Layer 0: Cryptographic Primitives"
+            MLKEM[ML-KEM-768<br/>Post-Quantum KEM]
             Ed25519[Ed25519<br/>Digital Signatures]
             X25519[X25519<br/>Diffie-Hellman]
             AES256[AES-256-GCM<br/>Symmetric Encryption]
@@ -50,17 +60,20 @@ graph TB
         end
     end
 
+    SS --> App
+    PADME --> App
     App --> DR
     App --> MLS
     App --> SF
 
-    DR --> X3DH
+    DR --> PQXDH
     MLS --> MLSKE
     SF --> MLSKE
 
-    X3DH --> Ed25519
-    X3DH --> X25519
-    X3DH --> HKDF
+    PQXDH --> MLKEM
+    PQXDH --> Ed25519
+    PQXDH --> X25519
+    PQXDH --> HKDF
 
     DR --> AES256
     DR --> HKDF
@@ -71,9 +84,11 @@ graph TB
     MLS --> AES256
     MLS --> HKDF
 
-    style X3DH fill:#FFD93D,stroke:#333,stroke-width:2px
+    style PQXDH fill:#FFD93D,stroke:#333,stroke-width:2px
     style DR fill:#FFD93D,stroke:#333,stroke-width:2px
     style MLS fill:#FFD93D,stroke:#333,stroke-width:2px
+    style SS fill:#9B59B6,stroke:#333,stroke-width:2px
+    style MLKEM fill:#FF6B6B,stroke:#333,stroke-width:2px
     style AES256 fill:#50C878,stroke:#333,stroke-width:2px
     style Ed25519 fill:#50C878,stroke:#333,stroke-width:2px
     style X25519 fill:#50C878,stroke:#333,stroke-width:2px
@@ -81,17 +96,18 @@ graph TB
 
 ---
 
-## X3DH Key Exchange Protocol
+## PQXDH Key Exchange Protocol
 
-X3DH (Extended Triple Diffie-Hellman) is used to establish initial shared secrets between two parties. It provides **asynchronous key agreement**, meaning Alice can initiate a secure session with Bob even if Bob is offline.
+PQXDH (Post-Quantum Extended Triple Diffie-Hellman) extends X3DH with ML-KEM-768 for post-quantum security. It provides **asynchronous key agreement** with resistance against quantum computer attacks.
 
-### Key Types in X3DH
+### Key Types in PQXDH
 
 ```mermaid
 graph LR
     subgraph "Alice's Keys"
         A_IK[Identity Key<br/>Ed25519<br/>Long-term]
         A_EK[Ephemeral Key<br/>X25519<br/>Per-session]
+        A_PQEK[PQ Ephemeral Key<br/>ML-KEM-768<br/>Per-session]
     end
 
     subgraph "Bob's Key Bundle (Published)"
@@ -99,41 +115,36 @@ graph LR
         B_SPK[Signed Pre-Key<br/>X25519<br/>Medium-term]
         B_SPK_Sig[SPK Signature<br/>Ed25519]
         B_OPK[One-Time Pre-Keys<br/>X25519<br/>Single-use]
+        B_PQPK[PQ Pre-Key<br/>ML-KEM-768<br/>Medium-term]
     end
 
-    %% Note: Ephemeral Key (A_EK) is NOT signed - it's generated per-session
-    %% Only Bob's Signed Pre-Key is signed by his Identity Key
     B_IK -->|signs| B_SPK
     B_SPK --> B_SPK_Sig
+    B_IK -->|signs| B_PQPK
 
     style A_IK fill:#4A90E2
     style B_IK fill:#4A90E2
     style A_EK fill:#9B59B6
+    style A_PQEK fill:#FF6B6B
     style B_SPK fill:#50C878
     style B_OPK fill:#FFD93D
+    style B_PQPK fill:#FF6B6B
 ```
 
-### X3DH Key Bundle Structure
+### PQXDH Key Bundle Structure
 
-| Key Type               | Algorithm | Lifetime    | Purpose                           |
-| ---------------------- | --------- | ----------- | --------------------------------- |
-| Identity Key (IK)      | Ed25519*  | Permanent   | Long-term identity verification   |
-| Signed Pre-Key (SPK)   | X25519    | 1-4 weeks   | Medium-term key agreement         |
-| SPK Signature          | Ed25519   | Same as SPK | Proves SPK authenticity           |
-| One-Time Pre-Key (OPK) | X25519    | Single use  | Forward secrecy for first message |
+| Key Type               | Algorithm   | Lifetime    | Purpose                              |
+| ---------------------- | ----------- | ----------- | ------------------------------------ |
+| Identity Key (IK)      | Ed25519*    | Permanent   | Long-term identity verification      |
+| Signed Pre-Key (SPK)   | X25519      | 1-4 weeks   | Medium-term key agreement            |
+| SPK Signature          | Ed25519     | Same as SPK | Proves SPK authenticity              |
+| One-Time Pre-Key (OPK) | X25519      | Single use  | Forward secrecy for first message    |
+| PQ Pre-Key (PQPK)      | ML-KEM-768  | 1-4 weeks   | Post-quantum forward secrecy         |
+| PQPK Signature         | Ed25519     | Same as PQPK| Proves PQPK authenticity             |
 
-> **\*Important Note on Identity Keys:** The Identity Key is stored as Ed25519 for digital signatures, but for Diffie-Hellman operations it is converted to X25519 using **Birational Equivalence mapping** between the twisted Edwards curve (Ed25519) and Montgomery curve (X25519). This is the same approach used by Signal Protocol.
->
-> **Conversion Details:**
-> - **Public key conversion:** Uses the formula `X_mont = (1 + Y_ed) / (1 - Y_ed) mod p` where `Y_ed` is the Ed25519 y-coordinate
-> - **Secret key conversion:** The Ed25519 seed is hashed with SHA-512, then the first 32 bytes are **clamped** (NOT reduced) for X25519 use
->   - Clamping operations (per RFC 7748): Clear bottom 3 bits of byte 0, clear top bit of byte 31, set second-to-top bit of byte 31
-> - **Rust implementation:** Uses `ed25519_dalek::VerifyingKey::to_montgomery()` for public key, and `curve25519_dalek::scalar::clamp_integer(signing_key.to_scalar_bytes())` for secret key
-> - **Dart implementation:** Uses `pinenacl` library's `TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk()` and `crypto_sign_ed25519_sk_to_x25519_sk()`
->
-> ⚠️ **WARNING**: Do NOT use `ed25519_dalek::SigningKey::to_scalar()` - it performs modular reduction which breaks compatibility with TweetNaCl!
+> **\*Important Note on Identity Keys:** The Identity Key is stored as Ed25519 for digital signatures, but for Diffie-Hellman operations it is converted to X25519 using **Birational Equivalence mapping** between the twisted Edwards curve (Ed25519) and Montgomery curve (X25519).
 
-### X3DH Protocol Flow
+### PQXDH Protocol Flow
 
 ```mermaid
 sequenceDiagram
@@ -142,29 +153,31 @@ sequenceDiagram
     participant Bob as Bob (Recipient)
 
     Note over Bob,Server: Bob publishes key bundle (offline)
-    Bob->>+Server: Upload Key Bundle<br/>(IK_B, SPK_B, Sig_B, OPK_B[])
+    Bob->>+Server: Upload Key Bundle<br/>(IK_B, SPK_B, Sig_B, OPK_B[], PQPK_B, PQSig_B)
     Server-->>-Bob: Bundle stored
 
     Note over Alice,Server: Alice initiates session (Bob may be offline)
     Alice->>+Server: Request Bob's Key Bundle
-    Server-->>-Alice: Bundle(IK_B, SPK_B, Sig_B, OPK_B[0])
+    Server-->>-Alice: Bundle(IK_B, SPK_B, Sig_B, OPK_B[0], PQPK_B, PQSig_B)
 
     Note over Alice: Alice validates bundle
-    Alice->>Alice: Verify Sig_B with IK_B
+    Alice->>Alice: Verify Sig_B and PQSig_B with IK_B
     Alice->>Alice: Generate ephemeral key EK_A
+    Alice->>Alice: Encapsulate to PQPK_B → CT, SS_PQ
 
-    Note over Alice: 4-DH Key Agreement
+    Note over Alice: 4-DH + PQ Key Agreement
     rect rgb(255, 249, 196)
         Alice->>Alice: DH1 = DH(IK_A, SPK_B)
         Alice->>Alice: DH2 = DH(EK_A, IK_B)
         Alice->>Alice: DH3 = DH(EK_A, SPK_B)
         Alice->>Alice: DH4 = DH(EK_A, OPK_B) [optional]
+        Alice->>Alice: SS_PQ = ML-KEM.Encaps(PQPK_B)
     end
 
-    Alice->>Alice: SK = HKDF(DH1 || DH2 || DH3 || DH4)
+    Alice->>Alice: SK = HKDF(DH1 || DH2 || DH3 || DH4 || SS_PQ)
 
     Note over Alice,Bob: Initial message with key material
-    Alice->>Server: Send Initial Message<br/>(IK_A, EK_A, OPK_id, encrypted_msg)
+    Alice->>Server: Send Initial Message<br/>(IK_A, EK_A, OPK_id, CT_PQ, encrypted_msg)
     Server->>Bob: Deliver message
 
     Note over Bob: Bob derives same shared secret
@@ -173,13 +186,14 @@ sequenceDiagram
         Bob->>Bob: DH2 = DH(IK_B, EK_A)
         Bob->>Bob: DH3 = DH(SPK_B, EK_A)
         Bob->>Bob: DH4 = DH(OPK_B, EK_A) [if used]
+        Bob->>Bob: SS_PQ = ML-KEM.Decaps(CT_PQ, PQSK_B)
     end
 
-    Bob->>Bob: SK = HKDF(DH1 || DH2 || DH3 || DH4)
+    Bob->>Bob: SK = HKDF(DH1 || DH2 || DH3 || DH4 || SS_PQ)
     Bob->>Bob: Decrypt message with SK
 ```
 
-### X3DH Shared Secret Derivation
+### PQXDH Shared Secret Derivation
 
 ```mermaid
 graph TD
@@ -190,9 +204,13 @@ graph TD
         DH4["DH4 = DH(EK_A, OPK_B) - Optional"]
     end
 
+    subgraph "PQ Key Encapsulation"
+        PQKEM["SS_PQ = ML-KEM-768.Encaps(PQPK_B)"]
+    end
+
     subgraph "Key Derivation"
-        Concat["Concatenate: DH1 || DH2 || DH3 || DH4"]
-        HKDF["HKDF-SHA256<br/>info = 'X3DH'"]
+        Concat["Concatenate: DH1 || DH2 || DH3 || DH4 || SS_PQ"]
+        HKDF["HKDF-SHA256<br/>info = 'PQXDH'"]
         SK["Shared Secret - 32 bytes"]
     end
 
@@ -200,19 +218,112 @@ graph TD
     DH2 --> Concat
     DH3 --> Concat
     DH4 -.->|if available| Concat
+    PQKEM --> Concat
     Concat --> HKDF
     HKDF --> SK
 
     style SK fill:#50C878,stroke:#333,stroke-width:2px
+    style PQKEM fill:#FF6B6B,stroke:#333,stroke-width:2px
 ```
 
-> **HKDF Parameters (X3DH Initial Key Agreement):**
+> **HKDF Parameters (PQXDH Initial Key Agreement):**
 >
 > - **Hash**: SHA-256
 > - **Salt**: None (empty)
-> - **IKM**: DH1 || DH2 || DH3 [|| DH4]
-> - **Info**: `"X3DH"` (ASCII bytes)
+> - **IKM**: DH1 || DH2 || DH3 [|| DH4] || SS_PQ
+> - **Info**: `"PQXDH"` (ASCII bytes)
 > - **Output Length**: 32 bytes
+
+---
+
+## Sealed Sender
+
+Sealed Sender hides the sender's identity from the server, providing metadata protection:
+
+```mermaid
+sequenceDiagram
+    participant Alice as Alice (Sender)
+    participant Server as Messaging Service
+    participant Bob as Bob (Recipient)
+
+    Note over Alice: Alice prepares sealed message
+    Alice->>Alice: Create UnidentifiedSenderMessage
+    Alice->>Alice: Include sender_certificate (encrypted)
+    Alice->>Alice: Encrypt with Bob's identity key
+
+    Alice->>Server: SendSealedMessage(recipient_id, sealed_envelope)
+    Note over Server: Server sees: recipient only<br/>Sender identity hidden
+
+    Server->>Bob: Deliver sealed_envelope
+
+    Note over Bob: Bob decrypts sender identity
+    Bob->>Bob: Decrypt envelope with own identity key
+    Bob->>Bob: Extract sender_certificate
+    Bob->>Bob: Verify sender signature
+    Bob->>Bob: Decrypt inner message
+```
+
+### Sealed Sender Envelope Structure
+
+```mermaid
+graph LR
+    subgraph "Sealed Sender Envelope"
+        V[Version<br/>1 byte]
+        EPK[Ephemeral Public Key<br/>32 bytes]
+        EC[Encrypted Content]
+
+        subgraph "Encrypted Content (AES-256-GCM)"
+            SC[Sender Certificate]
+            MSG[Encrypted Message]
+            SIG[Sender Signature]
+        end
+    end
+
+    V --> ENV[Envelope]
+    EPK --> ENV
+    EC --> ENV
+    SC --> EC
+    MSG --> EC
+    SIG --> EC
+
+    style ENV fill:#9B59B6,stroke:#333,stroke-width:2px
+    style EC fill:#50C878,stroke:#333,stroke-width:2px
+```
+
+---
+
+## PADMÉ Padding Scheme
+
+PADMÉ (Padding for Anonymized Data Messages Encrypted) provides traffic analysis resistance:
+
+```mermaid
+graph LR
+    subgraph "PADMÉ Padding"
+        MSG[Original Message<br/>Variable Length]
+        PAD[PADMÉ Padding<br/>To Power of 2]
+        FINAL[Padded Message<br/>Fixed Bucket Size]
+    end
+
+    MSG -->|"Pad to bucket"| PAD
+    PAD --> FINAL
+
+    subgraph "Bucket Sizes"
+        B1[64 bytes]
+        B2[128 bytes]
+        B3[256 bytes]
+        B4[512 bytes]
+        B5[1024 bytes]
+        Bn[...]
+    end
+
+    style FINAL fill:#50C878
+```
+
+### PADMÉ Benefits
+
+- **Traffic Analysis Resistance**: Message sizes reveal no information about content length
+- **Statistical Uniformity**: Messages in same bucket are indistinguishable
+- **Efficiency**: Only ~12% overhead on average (vs 50% for simple power-of-2)
 
 ---
 
@@ -270,7 +381,7 @@ sequenceDiagram
     participant Alice
     participant Bob
 
-    Note over Alice,Bob: Initial state after X3DH
+    Note over Alice,Bob: Initial state after PQXDH
 
     rect rgb(200, 230, 255)
         Note over Alice: Alice sends message 1
@@ -590,6 +701,107 @@ Guardyn uses `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`:
 
 ---
 
+## SFrame Media Encryption
+
+SFrame (Secure Frame) provides end-to-end encryption for media streams in voice and video calls:
+
+### SFrame Architecture
+
+```mermaid
+graph TB
+    subgraph "SFrame Encryption Pipeline"
+        direction LR
+
+        subgraph "Sender"
+            RAW[Raw Media Frame]
+            ENC[SFrame Encrypt]
+            SRTP[SRTP Transport]
+        end
+
+        subgraph "SFU (Selective Forwarding Unit)"
+            SFU[Media Router<br/>Cannot Decrypt]
+        end
+
+        subgraph "Receiver"
+            RSRTP[SRTP Receive]
+            DEC[SFrame Decrypt]
+            PLAY[Playback]
+        end
+    end
+
+    RAW --> ENC
+    ENC --> SRTP
+    SRTP --> SFU
+    SFU --> RSRTP
+    RSRTP --> DEC
+    DEC --> PLAY
+
+    style SFU fill:#FFD93D,stroke:#333,stroke-width:2px
+    style ENC fill:#50C878,stroke:#333,stroke-width:2px
+    style DEC fill:#50C878,stroke:#333,stroke-width:2px
+```
+
+### SFrame Frame Structure
+
+```mermaid
+graph LR
+    subgraph "SFrame Encrypted Frame"
+        HDR[SFrame Header<br/>Key ID + Counter]
+        CT[Encrypted Payload<br/>AES-256-GCM]
+        TAG[Auth Tag<br/>16 bytes]
+    end
+
+    HDR --> FRAME[SFrame Frame]
+    CT --> FRAME
+    TAG --> FRAME
+
+    style FRAME fill:#50C878,stroke:#333,stroke-width:2px
+```
+
+### SFrame Key Derivation
+
+| Parameter | Value | Description |
+| --------- | ----- | ----------- |
+| AEAD      | AES-256-GCM | Frame encryption |
+| Key Size  | 256 bits | Per-epoch key |
+| KDF       | HKDF-SHA256 | Key derivation from MLS epoch secret |
+| Counter   | 64-bit | Per-frame counter for nonce |
+
+### Call Security Flow
+
+```mermaid
+sequenceDiagram
+    participant Alice as Alice
+    participant CallSvc as Call Service
+    participant LiveKit as LiveKit SFU
+    participant Bob as Bob
+
+    Note over Alice,Bob: Call Setup
+    Alice->>CallSvc: InitiateCall(bob_id)
+    CallSvc->>Bob: IncomingCall notification
+
+    Bob->>CallSvc: AcceptCall(call_id)
+
+    Note over Alice,Bob: MLS Group for Call
+    Alice->>Alice: Create MLS Group for call
+    Alice->>Bob: MLS Welcome
+    Bob->>Bob: Join MLS Group
+
+    Note over Alice,Bob: SFrame Key Exchange
+    Alice->>Alice: Derive SFrame keys from MLS epoch
+    Bob->>Bob: Derive SFrame keys from MLS epoch
+
+    Note over Alice,Bob: Encrypted Media
+    rect rgb(200, 255, 200)
+        Alice->>Alice: SFrame.encrypt(audio_frame)
+        Alice->>LiveKit: Encrypted media
+        LiveKit->>Bob: Forward (cannot decrypt)
+        Bob->>Bob: SFrame.decrypt(audio_frame)
+    end
+```
+
+---
+
 ## End-to-End Encryption Flow
 
 ### Complete 1-on-1 Message Flow
@@ -605,12 +817,12 @@ sequenceDiagram
 
     Note over Alice,Bob: Phase 1: Key Bundle Publishing
     rect rgb(230, 240, 255)
-        Alice->>Alice: Generate X3DHKeyMaterial<br/>(IK, SPK, 100 OPKs)
+        Alice->>Alice: Generate PQXDHKeyMaterial<br/>(IK, SPK, 100 OPKs, PQPK)
         Alice->>+AuthSvc: Register(username, key_bundle)
         AuthSvc->>TiKV: Store user + key_bundle
         AuthSvc-->>-Alice: JWT token
 
-        Bob->>Bob: Generate X3DHKeyMaterial
+        Bob->>Bob: Generate PQXDHKeyMaterial
         Bob->>+AuthSvc: Register(username, key_bundle)
         AuthSvc->>TiKV: Store user + key_bundle
         AuthSvc-->>-Bob: JWT token
@@ -621,33 +833,37 @@ sequenceDiagram
         Alice->>+AuthSvc: GetKeyBundle(bob_id)
         AuthSvc->>TiKV: Fetch Bob's bundle
         TiKV-->>AuthSvc: key_bundle
-        AuthSvc-->>-Alice: KeyBundle(IK_B, SPK_B, OPK_B)
+        AuthSvc-->>-Alice: KeyBundle(IK_B, SPK_B, OPK_B, PQPK_B)
 
-        Alice->>Alice: X3DH Key Agreement<br/>→ Shared Secret (SK)
+        Alice->>Alice: PQXDH Key Agreement<br/>→ Shared Secret (SK)
         Alice->>Alice: Initialize Double Ratchet<br/>with SK as root key
     end
 
     Note over Alice,Bob: Phase 3: Message Encryption & Delivery
     rect rgb(200, 255, 200)
         Alice->>Alice: DR.encrypt("Hello Bob!")
-        Alice->>Alice: → Header + Ciphertext
+        Alice->>Alice: Apply PADMÉ padding
+        Alice->>Alice: Apply Sealed Sender
+        Alice->>Alice: → Sealed Envelope
 
-        Alice->>+MsgSvc: SendMessage(bob_id, encrypted_msg)
+        Alice->>+MsgSvc: SendSealedMessage(bob_id, envelope)
         MsgSvc->>TiKV: Store message metadata
-        MsgSvc->>ScyllaDB: Store encrypted content
+        MsgSvc->>ScyllaDB: Store sealed envelope
         MsgSvc-->>-Alice: message_id
     end
 
     Note over Alice,Bob: Phase 4: Message Decryption
     rect rgb(255, 220, 220)
-        MsgSvc->>Bob: Push notification (NATS)
-        Bob->>+MsgSvc: GetMessages(alice_id)
-        MsgSvc->>ScyllaDB: Fetch encrypted messages
-        MsgSvc-->>-Bob: encrypted_messages[]
+        MsgSvc->>Bob: Push notification (Redpanda)
+        Bob->>+MsgSvc: GetMessages()
+        MsgSvc->>ScyllaDB: Fetch sealed envelopes
+        MsgSvc-->>-Bob: sealed_envelopes[]
 
-        Bob->>Bob: Extract IK_A, EK_A from header
-        Bob->>Bob: X3DH Key Agreement<br/>→ Same Shared Secret (SK)
+        Bob->>Bob: Unseal Sender → extract sender
+        Bob->>Bob: Extract IK_A, EK_A, CT_PQ from header
+        Bob->>Bob: PQXDH Key Agreement<br/>→ Same Shared Secret (SK)
         Bob->>Bob: Initialize Double Ratchet
+        Bob->>Bob: Remove PADMÉ padding
         Bob->>Bob: DR.decrypt(ciphertext)<br/>→ "Hello Bob!"
     end
 ```
@@ -659,7 +875,7 @@ sequenceDiagram
     participant Alice as Alice
     participant MsgSvc as Messaging Service
     participant ScyllaDB as ScyllaDB
-    participant NATS as NATS JetStream
+    participant Redpanda as Redpanda
     participant Bob as Bob
     participant Carol as Carol
 
@@ -685,10 +901,10 @@ sequenceDiagram
         Alice->>Alice: mls_group.create_message("Hello group!")
         Alice->>MsgSvc: SendGroupMessage(group_id, mls_ciphertext)
         MsgSvc->>ScyllaDB: Store encrypted message
-        MsgSvc->>NATS: Publish to group channel
+        MsgSvc->>Redpanda: Publish to group channel
 
-        NATS->>Bob: Message notification
-        NATS->>Carol: Message notification
+        Redpanda->>Bob: Message notification
+        Redpanda->>Carol: Message notification
 
         Bob->>Bob: mls_group.process_message()<br/>→ "Hello group!"
         Carol->>Carol: mls_group.process_message()<br/>→ "Hello group!"
@@ -703,19 +919,32 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph "Client-Side (Secure Storage)"
+    subgraph "Client-Side (Hardware-Backed Secure Storage)"
         direction TB
-        SecureStorage[Secure Enclave / Keychain]
+
+        subgraph "Hardware Security"
+            iOS[iOS Secure Enclave<br/>SECP256R1 keys]
+            Android[Android KeyStore<br/>StrongBox/TEE]
+            Desktop[Desktop TPM<br/>or Encrypted Storage]
+        end
+
+        SecureStorage[guardyn-crypto Key Store]
 
         IK_Priv[Identity Private Key<br/>Ed25519]
         SPK_Priv[Signed Pre-Key Private<br/>X25519]
         OPK_Priv[One-Time Pre-Keys Private<br/>X25519 × 100]
+        PQSK_Priv[PQ Secret Key<br/>ML-KEM-768]
         DR_State[Double Ratchet States<br/>Per conversation]
         MLS_State[MLS Group States<br/>Per group]
+
+        iOS --> SecureStorage
+        Android --> SecureStorage
+        Desktop --> SecureStorage
 
         SecureStorage --> IK_Priv
         SecureStorage --> SPK_Priv
         SecureStorage --> OPK_Priv
+        SecureStorage --> PQSK_Priv
         SecureStorage --> DR_State
         SecureStorage --> MLS_State
     end
@@ -731,6 +960,7 @@ graph TB
             SPK_Pub[Signed Pre-Key Public]
             SPK_Sig[SPK Signature]
             OPK_Pub[One-Time Pre-Keys Public]
+            PQPK_Pub[PQ Public Key<br/>ML-KEM-768]
             KP[MLS Key Packages]
         end
 
@@ -738,18 +968,31 @@ graph TB
         KeyBundles --> SPK_Pub
         KeyBundles --> SPK_Sig
         KeyBundles --> OPK_Pub
+        KeyBundles --> PQPK_Pub
         MLSPackages --> KP
     end
 
     subgraph "Message Storage (ScyllaDB)"
-        Messages[(Encrypted Messages<br/>Ciphertext only)]
+        Messages[(Sealed Envelopes<br/>Ciphertext only)]
 
-        Note1[Server CANNOT decrypt:<br/>- No access to private keys<br/>- No access to shared secrets<br/>- Only stores opaque blobs]
+        Note1[Server CANNOT decrypt:<br/>- No access to private keys<br/>- No access to shared secrets<br/>- Only stores opaque blobs<br/>- Sender hidden by Sealed Sender]
     end
 
     style SecureStorage fill:#50C878,stroke:#333,stroke-width:2px
+    style iOS fill:#9B59B6,stroke:#333,stroke-width:2px
+    style Android fill:#9B59B6,stroke:#333,stroke-width:2px
     style Messages fill:#FF6B6B,stroke:#333,stroke-width:2px
 ```
+
+### Hardware Key Storage
+
+| Platform | Storage | Security Level |
+| -------- | ------- | -------------- |
+| iOS      | Secure Enclave | Hardware-isolated, biometric protection |
+| Android  | KeyStore (StrongBox/TEE) | Hardware-backed when available |
+| macOS    | Keychain + Secure Enclave | Hardware-isolated on Apple Silicon |
+| Windows  | TPM 2.0 + DPAPI | Hardware-backed when available |
+| Linux    | libsecret + TPM | Software with optional TPM |
 
 ### Key Lifecycle
 
@@ -778,8 +1021,15 @@ stateDiagram-v2
         Queued --> Replenished: Count < 50
     }
 
+    state "PQ Pre-Key" as PQPK {
+        Generated --> Published: Upload to server
+        Published --> Active: In use
+        Active --> Rotating: Age > 1-4 weeks
+        Rotating --> Published: New PQPK generated
+    }
+
     state "Double Ratchet Keys" as DR {
-        Initial --> Ratcheting: X3DH complete
+        Initial --> Ratcheting: PQXDH complete
         Ratcheting --> Ratcheting: Every message exchange
         Ratcheting --> Deleted: Message key used
     }
@@ -798,49 +1048,58 @@ graph TB
         PCS[Post-Compromise Security<br/>Session heals after<br/>temporary compromise]
         Deniability[Deniability<br/>Cannot prove who<br/>sent a message]
         Auth[Authentication<br/>Verified sender identity<br/>via signatures]
+        PQR[Post-Quantum Resistance<br/>ML-KEM-768 protects<br/>against quantum attacks]
+        MP[Metadata Protection<br/>Sealed Sender hides<br/>sender from server]
     end
 
     subgraph "Enabled By"
-        X3DH_P[X3DH Protocol]
+        PQXDH_P[PQXDH Protocol]
         DR_P[Double Ratchet]
         MLS_P[OpenMLS]
+        SS_P[Sealed Sender]
     end
 
-    X3DH_P --> FS
-    X3DH_P --> Auth
+    PQXDH_P --> FS
+    PQXDH_P --> Auth
+    PQXDH_P --> PQR
     DR_P --> FS
     DR_P --> PCS
     DR_P --> Deniability
     MLS_P --> FS
     MLS_P --> PCS
     MLS_P --> Auth
+    SS_P --> MP
 
     style FS fill:#50C878
     style PCS fill:#50C878
     style Deniability fill:#50C878
     style Auth fill:#50C878
+    style PQR fill:#FF6B6B
+    style MP fill:#9B59B6
 ```
 
 ### What the Server CAN and CANNOT See
 
 ```mermaid
 graph LR
-    subgraph "Server CAN See"
-        Metadata[Metadata]
-        M1[Who messages whom]
+    subgraph "Server CAN See (Minimal with Sealed Sender)"
+        Metadata[Minimal Metadata]
+        M1[Recipient only<br/>Sender hidden]
         M2[Message timestamps]
-        M3[Message sizes]
-        M4[Group membership]
+        M3[Padded message sizes<br/>PADMÉ buckets]
+        M4[Group IDs]
         M5[Online/offline status]
     end
 
     subgraph "Server CANNOT See"
-        Content[Content]
+        Content[Protected Content]
         C1[Message text]
         C2[Attachments]
         C3[Call content]
         C4[Private keys]
         C5[Session secrets]
+        C6[Sender identity<br/>Hidden by Sealed Sender]
+        C7[Exact message length<br/>Hidden by PADMÉ]
     end
 
     Metadata --> M1
@@ -854,6 +1113,8 @@ graph LR
     Content --> C3
     Content --> C4
     Content --> C5
+    Content --> C6
+    Content --> C7
 
     style Metadata fill:#FFD93D
     style Content fill:#50C878
@@ -865,32 +1126,40 @@ graph LR
 | ------------------ | ----------- | -------- | ------------------------ |
 | Identity Signing   | Ed25519     | 256-bit  | Long-term identity       |
 | Key Agreement      | X25519      | 256-bit  | Diffie-Hellman           |
+| PQ Key Encapsulation | ML-KEM-768 | 768-bit | Post-quantum security    |
 | Message Encryption | AES-256-GCM | 256-bit  | Symmetric encryption     |
 | Key Derivation     | HKDF-SHA256 | 256-bit  | Derive keys from secrets |
 | MLS AEAD           | AES-128-GCM | 128-bit  | Group message encryption |
 | MLS Signatures     | Ed25519     | 256-bit  | Group operations         |
+| SFrame AEAD        | AES-256-GCM | 256-bit  | Media frame encryption   |
 
 ---
 
 ## Implementation References
 
-### Backend (Rust)
+### guardyn-crypto (Rust - Shared Library)
 
 | File                                          | Description                      |
 | --------------------------------------------- | -------------------------------- |
-| `backend/crates/crypto/src/x3dh.rs`           | X3DH key exchange implementation |
+| `backend/crates/crypto/src/pqxdh.rs`          | PQXDH key exchange (ML-KEM + X25519) |
 | `backend/crates/crypto/src/double_ratchet.rs` | Double Ratchet algorithm         |
 | `backend/crates/crypto/src/mls.rs`            | OpenMLS group encryption         |
-| `backend/crates/crypto/src/key_storage.rs`    | Key storage interface            |
+| `backend/crates/crypto/src/sframe.rs`         | SFrame media encryption          |
+| `backend/crates/crypto/src/sealed_sender.rs`  | Sealed Sender protocol           |
+| `backend/crates/crypto/src/padme.rs`          | PADMÉ padding scheme             |
+| `backend/crates/crypto/src/key_storage.rs`    | Hardware key storage interface   |
 
-### Flutter Client (Dart)
+### Flutter Client (Mobile)
 
 | File                                           | Description                              |
 | ---------------------------------------------- | ---------------------------------------- |
-| `client/lib/core/crypto/double_ratchet.dart`   | Double Ratchet + X25519KeyPair           |
-| `client/lib/core/crypto/x3dh.dart`             | X3DH key exchange + IdentityKeyPair      |
-| `client/lib/core/crypto/crypto_service.dart`   | High-level encryption service            |
-| `client/lib/core/crypto/crypto_exceptions.dart`| Crypto-specific exception types          |
+| `client/lib/core/crypto/native_crypto_bridge.dart` | FFI bridge to guardyn-crypto        |
+
+### Tauri Client (Desktop)
+
+| File                                           | Description                              |
+| ---------------------------------------------- | ---------------------------------------- |
+| `client-desktop/src-tauri/src/crypto.rs`       | Direct Rust integration with guardyn-crypto |
 
 ### Protocol Definitions
 
@@ -898,13 +1167,16 @@ graph LR
 | ------------------------------- | ------------------------------- |
 | `backend/proto/auth.proto`      | Key bundle upload/download RPCs |
 | `backend/proto/messaging.proto` | Encrypted message handling RPCs |
+| `backend/proto/call.proto`      | Call signaling and SFrame RPCs  |
 
 ---
 
 ## Further Reading
 
 - [Signal Protocol Specification](https://signal.org/docs/)
+- [PQXDH Specification](https://signal.org/docs/specifications/pqxdh/)
 - [OpenMLS RFC 9420](https://datatracker.ietf.org/doc/rfc9420/)
-- [X3DH Key Agreement Protocol](https://signal.org/docs/specifications/x3dh/)
+- [SFrame RFC 9605](https://datatracker.ietf.org/doc/rfc9605/)
 - [Double Ratchet Algorithm](https://signal.org/docs/specifications/doubleratchet/)
+- [PADMÉ Padding Scheme](https://eprint.iacr.org/2024/017)
 - [Guardyn Implementation Plan](./IMPLEMENTATION_PLAN.md)

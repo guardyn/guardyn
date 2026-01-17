@@ -24,18 +24,15 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: guardyn-nats-tls
+  name: guardyn-redpanda-tls
   namespace: messaging
   labels:
     guardyn.io/stage: poc
 spec:
-  secretName: guardyn-nats-tls
+  secretName: guardyn-redpanda-tls
   issuerRef:
     name: guardyn-selfsigned-issuer
     kind: ClusterIssuer
   dnsNames:
-  - nats.messaging.svc.cluster.local
-  - nats
-  - localhost
-  ipAddresses:
-  - 127.0.0.1
+  - redpanda.messaging.svc.cluster.local
+  - redpanda

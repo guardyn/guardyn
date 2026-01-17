@@ -19,7 +19,7 @@ Guardyn uses a dual-database architecture for optimal performance:
 
 #### Users Subspace
 
-```
+```text
 /users/<user_id>/profile -> UserProfile {
   user_id: String,
   username: String,
@@ -38,7 +38,7 @@ Guardyn uses a dual-database architecture for optimal performance:
 
 #### Devices Subspace
 
-```
+```text
 /devices/<user_id>/<device_id> -> Device {
   device_id: String,
   device_name: String,
@@ -48,6 +48,7 @@ Guardyn uses a dual-database architecture for optimal performance:
   last_seen: Timestamp,
 }
 
+// Classical X25519 pre-keys
 /devices/<user_id>/<device_id>/pre_keys/<key_id> -> PreKey {
   key_id: u32,
   public_key: Bytes,
@@ -58,11 +59,19 @@ Guardyn uses a dual-database architecture for optimal performance:
   key_id: u32,
   public_key: Bytes,
 }
+
+// Post-Quantum ML-KEM-768 pre-keys (PQXDH)
+/devices/<user_id>/<device_id>/pq_pre_keys/<key_id> -> PQPreKey {
+  key_id: u32,
+  public_key: Bytes,    // ML-KEM-768 public key (1184 bytes)
+  signature: Bytes,     // Ed25519 signature
+  created_at: Timestamp,
+}
 ```
 
 #### Sessions Subspace
 
-```
+```text
 /sessions/<session_token> -> Session {
   user_id: String,
   device_id: String,
@@ -76,7 +85,7 @@ Guardyn uses a dual-database architecture for optimal performance:
 
 #### Message Delivery State
 
-```
+```text
 /delivery/<recipient_user_id>/<message_id> -> DeliveryState {
   message_id: String,
   sender_user_id: String,
@@ -198,8 +207,91 @@ CREATE TABLE guardyn.call_history (
   started_at TIMESTAMP,
   ended_at TIMESTAMP,
   duration INT,
+  end_reason TEXT,
   PRIMARY KEY (user_id, call_id)
 ) WITH CLUSTERING ORDER BY (call_id DESC);
+```
+
+#### Message Reactions Table
+
+```cql
+CREATE TABLE guardyn.message_reactions (
+  conversation_id UUID,
+  message_id TIMEUUID,
+  user_id TEXT,
+  emoji TEXT,
+  reacted_at TIMESTAMP,
+  PRIMARY KEY ((conversation_id, message_id), user_id)
+);
+
+-- Index for user's reactions
+CREATE INDEX ON guardyn.message_reactions (user_id);
+```
+
+#### Read Receipts Table
+
+```cql
+CREATE TABLE guardyn.read_receipts (
+  conversation_id UUID,
+  user_id TEXT,
+  last_read_message_id TIMEUUID,
+  read_at TIMESTAMP,
+  PRIMARY KEY (conversation_id, user_id)
+);
+```
+
+#### Push Tokens Table (Notification Service)
+
+```cql
+CREATE TABLE guardyn.push_tokens (
+  user_id TEXT,
+  device_id TEXT,
+  push_token TEXT,
+  platform TEXT,          -- fcm, apns, apns_sandbox, web_push
+  app_version TEXT,
+  os_version TEXT,
+  registered_at TIMESTAMP,
+  updated_at TIMESTAMP,
+  PRIMARY KEY (user_id, device_id)
+);
+
+-- Index for token lookup
+CREATE INDEX ON guardyn.push_tokens (push_token);
+```
+
+#### Notification Settings Table
+
+```cql
+CREATE TABLE guardyn.notification_settings (
+  user_id TEXT PRIMARY KEY,
+  notifications_enabled BOOLEAN,
+  sound_enabled BOOLEAN,
+  vibration_enabled BOOLEAN,
+  show_preview BOOLEAN,
+  show_sender BOOLEAN,
+  quiet_hours_enabled BOOLEAN,
+  quiet_hours_start INT,
+  quiet_hours_end INT,
+  quiet_hours_timezone TEXT,
+  notify_messages BOOLEAN,
+  notify_reactions BOOLEAN,
+  notify_mentions BOOLEAN,
+  notify_calls BOOLEAN,
+  notify_group_messages BOOLEAN,
+  updated_at TIMESTAMP
+);
+```
+
+#### Muted Conversations Table
+
+```cql
+CREATE TABLE guardyn.muted_conversations (
+  user_id TEXT,
+  conversation_id UUID,
+  is_group BOOLEAN,
+  muted_until TIMESTAMP,    -- NULL for forever
+  PRIMARY KEY (user_id, conversation_id)
+);
 ```
 
 #### Group Metadata Table

@@ -19,9 +19,9 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Status-MVP--Backend--Complete-green.svg" alt="Status"/>
+  <img src="https://img.shields.io/badge/Status-Production--Ready-green.svg" alt="Status"/>
   <img src="https://img.shields.io/badge/Encryption-E2EE-green.svg" alt="E2EE"/>
-  <img src="https://img.shields.io/badge/Post--Quantum-In--Progress-purple.svg" alt="PQ-Ready"/>
+  <img src="https://img.shields.io/badge/Post--Quantum-ML--KEM%20Hybrid-purple.svg" alt="PQ-Ready"/>
   <img src="https://img.shields.io/badge/Build-Reproducible-yellow.svg" alt="Reproducible"/>
 </p>
 
@@ -29,31 +29,70 @@
 
 ## 🚀 Current Status
 
-**Phase:** MVP Complete — All Backend Services Operational (January 2025)
+**Phase:** Production-Ready — v1.0 Launch (January 2026)
 
-**What's Working:**
+**What's Deployed:**
 
-- ✅ **Backend Services**: Auth, Messaging, Presence, Media services deployed (Kubernetes)
-- ✅ **Cryptography**: X3DH, Double Ratchet, OpenMLS fully implemented and tested
-- ✅ **Infrastructure**: Production-ready stack (TiKV, ScyllaDB, NATS, Envoy)
-- ✅ **Observability**: Prometheus alerting, Loki log aggregation, Tempo tracing, Grafana dashboards
-- ✅ **Testing**: E2E integration tests passing, performance baseline established
-- ✅ **WebSocket**: Real-time messaging infrastructure with connection management
-- ✅ **Reproducible Builds**: Nix flakes for deterministic builds
+- ✅ **Backend Services**: Auth, Messaging, Presence, Media, Call, Notification services (Kubernetes)
+- ✅ **Cryptography**: PQXDH (ML-KEM hybrid), Double Ratchet, OpenMLS, SFrame, Sealed Sender
+- ✅ **Infrastructure**: Production-ready stack (TiKV, ScyllaDB, Redpanda, Envoy)
+- ✅ **Observability**: Prometheus SLOs, Loki log aggregation, Tempo tracing, Grafana dashboards
+- ✅ **Mobile Client**: Flutter (iOS/Android) with full feature set
+- ✅ **Desktop Client**: Tauri (Linux, macOS, Windows) with native UX
+- ✅ **Voice/Video Calls**: WebRTC + SFrame E2EE (1-on-1)
+- ✅ **Security**: Rate limiting, Sealed Sender, hardware key storage
+- ✅ **Testing**: E2E integration tests, performance benchmarks, penetration testing
 
-**In Active Development:**
+**Architecture:**
 
-- 🚧 **Flutter Client**: E2EE messaging working, Presence/Media UI in progress
-- 🚧 **Security Audits**: Planning Cure53 audit for Q2 2026
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           GUARDYN ARCHITECTURE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────┐     ┌──────────────┐                                      │
+│  │   Flutter    │     │    Tauri     │                                      │
+│  │ (iOS/Android)│     │(Win/Mac/Linux)│                                     │
+│  └──────┬───────┘     └──────┬───────┘                                      │
+│         │                    │                                              │
+│         └────────┬───────────┘                                              │
+│                  ▼                                                          │
+│  ┌───────────────────────────────────┐                                      │
+│  │      guardyn-crypto (Rust)        │ ◄── Single source of truth          │
+│  │  ├── PQXDH (X3DH + ML-KEM)        │     for all cryptography             │
+│  │  ├── Double Ratchet               │                                      │
+│  │  ├── MLS (AES-256-GCM)            │                                      │
+│  │  ├── SFrame (voice/video)         │                                      │
+│  │  └── Sealed Sender                │                                      │
+│  └───────────────────────────────────┘                                      │
+│                  │                                                          │
+│         gRPC-Web │ gRPC (native)                                            │
+│                  ▼                                                          │
+│  ┌──────────────┐     ┌──────────────────────────────────────┐             │
+│  │    Envoy     │────►│  Backend Services (Rust)              │             │
+│  │   Proxy      │     │  ├── Auth Service (+ Sealed Sender)   │             │
+│  └──────────────┘     │  ├── Messaging Service                │             │
+│                       │  ├── Presence Service                 │             │
+│                       │  ├── Media Service                    │             │
+│                       │  ├── Notification Service (FCM/APNs)  │             │
+│                       │  └── Call Service (WebRTC SFU)        │             │
+│                       └──────────────┬───────────────────────┘             │
+│                                      │                                      │
+│         ┌────────────────────────────┼────────────────────────┐            │
+│         ▼                            ▼                        ▼            │
+│  ┌──────────────┐          ┌──────────────┐          ┌──────────────┐      │
+│  │    TiKV      │          │  ScyllaDB    │          │   Redpanda   │      │
+│  │              │          │              │          │(Kafka-compat)│      │
+│  └──────────────┘          └──────────────┘          └──────────────┘      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-**Planned Features:**
+**Pending:**
 
-- 📋 Voice/video calls (WebRTC + SFrame E2EE)
-- 📋 Desktop applications (Windows, macOS, Linux)
-- 📋 Post-quantum key exchange (Kyber hybrid - code ready, not enforced)
-- 📋 Web client
-
-**Public Beta Target:** Q2 2026
+- 📋 External security audit (Cure53)
+- 📋 Group calls (LiveKit SFU)
+- 📋 App Store and Play Store final submission
 
 [Full technical roadmap →](docs/IMPLEMENTATION_PLAN.md)
 
@@ -226,27 +265,28 @@ Modern messaging platforms face a fundamental tension:
 
 **1-on-1 Messaging (Implemented):**
 
-- X3DH key exchange (Perfect Forward Secrecy)
+- PQXDH key exchange (X3DH + ML-KEM hybrid for post-quantum resistance)
 - Double Ratchet (Signal Protocol - same as WhatsApp, Signal)
 - AES-256-GCM encryption (NIST standard)
+- PADMÉ padding (traffic analysis protection)
 
 **Group Messaging (Implemented):**
 
 - OpenMLS (IETF RFC 9420 - 2024 standard)
+- AES-256-GCM cipher suite (unified with Double Ratchet)
 - Tree-based group management (scalable to 10k+ members)
 - Post-compromise security (automatic healing)
 
-**Post-Quantum (Code Ready, Not Enforced):**
-
-- Kyber + ECDH hybrid key exchange
-- NIST PQC finalist integration
-- Gradual rollout planned (Q3 2026)
-
-**Media Encryption (Planned):**
+**Voice/Video Calls (Implemented):**
 
 - SFrame encryption for voice/video
-- Insertable Streams API for WebRTC
-- Hardware-backed key storage
+- WebRTC with insertable streams
+- P2P for 1-on-1 calls
+
+**Metadata Protection (Implemented):**
+
+- Sealed Sender protocol (hides sender identity from server)
+- Hardware-backed key storage (iOS Secure Enclave, Android KeyStore)
 
 ### Infrastructure Stack
 
@@ -257,7 +297,7 @@ Modern messaging platforms face a fundamental tension:
 - Envoy proxy (gRPC-Web translation for browsers)
 - TiKV distributed KV store (ACID transactions)
 - ScyllaDB for message storage (high throughput)
-- NATS JetStream (event streaming)
+- Redpanda (Kafka-compatible event streaming)
 
 **Client Communication:**
 
@@ -267,15 +307,15 @@ Modern messaging platforms face a fundamental tension:
 
 **Deployment (Production-Ready):**
 
-- Kubernetes-native (k3d for local, k8s for prod)
-- Horizontal scaling (3 servers + 2 agents)
-- Cilium CNI (network policies, observability)
+- Kubernetes-native (Docker Compose for local dev, k8s for prod)
+- Horizontal Pod Autoscaling with SLO-based alerting
+- Pod Disruption Budgets for zero-downtime deployments
 - cert-manager for TLS automation
 
 **Observability (Production-Ready):**
 
-- Prometheus metrics collection
-- Grafana dashboards
+- Prometheus metrics collection with SLO rules
+- Grafana dashboards with SLO monitoring
 - Loki log aggregation
 - Distributed tracing (OpenTelemetry)
 
@@ -312,29 +352,28 @@ Modern messaging platforms face a fundamental tension:
 
 **Production-Ready Backend:**
 
-- **Authentication Service**: User registration, login, JWT auth, device management (2/2 replicas running)
-- **Messaging Service**: 1-on-1 and group chat, CRUD operations, member management (3/3 replicas running)
-- **Envoy Proxy**: gRPC-Web translation for browser clients (1/1 replica running)
-- **Cryptography**: X3DH key exchange, Double Ratchet encryption, OpenMLS group encryption (fully implemented)
-- **Infrastructure**: Kubernetes (k3d), TiKV, ScyllaDB, NATS JetStream (operational)
-- **Testing**: 8/8 E2E integration tests passing, k6 performance baseline established
-- **Observability**: Prometheus, Loki, Grafana monitoring stack (deployed)
-
-**In Active Development:**
-
-- **Mobile Client**: Authentication flow complete, messaging UI in progress
+- **Authentication Service**: User registration, login, JWT auth, device management, Sealed Sender
+- **Messaging Service**: 1-on-1 and group chat, reactions, replies, edit/delete, voice messages
 - **Presence Service**: Online/offline status, typing indicators
 - **Media Service**: File uploads, encryption, thumbnails
-- **Post-Quantum Crypto**: Kyber hybrid key exchange integration (code ready, not enforced)
+- **Call Service**: WebRTC signaling, SFrame encryption for 1-on-1 voice/video
+- **Notification Service**: FCM (Android) and APNs (iOS) push notifications
+- **Envoy Proxy**: gRPC-Web translation for browser clients
+- **Cryptography**: PQXDH, Double Ratchet, OpenMLS, SFrame, Sealed Sender (fully implemented)
+- **Infrastructure**: Kubernetes, TiKV, ScyllaDB, Redpanda (operational)
+- **Testing**: E2E integration tests, k6 performance benchmarks, penetration testing
+- **Observability**: Prometheus SLOs, Loki, Grafana dashboards (deployed)
+
+**Available Clients:**
+
+- **Flutter Mobile**: iOS and Android with full feature set
+- **Tauri Desktop**: Windows, macOS, Linux with native UX
 
 **Planned Features:**
 
-- Voice/video calls (WebRTC + SFrame E2EE)
-- Desktop applications (Windows, macOS, Linux)
-- Web client
-- Enterprise features (LDAP, SAML, admin tools)
-
-**Public Beta Target:** Q2 2026
+- External security audit (Cure53)
+- Group calls (LiveKit SFU)
+- App Store and Play Store final submission
 
 For detailed implementation status, see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
@@ -342,23 +381,24 @@ For detailed implementation status, see [`docs/IMPLEMENTATION_PLAN.md`](docs/IMP
 
 ### Self-Hosting (For Developers)
 
-**Status:** Infrastructure operational, services ready for testing
+**Status:** Production-ready, available for deployment
 
 **📚 [Developer Quick Start Guide →](docs/DEVELOPER_QUICKSTART.md)**
 
 For complete onboarding, see our dedicated developer guide covering:
-- Environment setup (10 minutes)
-- Development workflows (local vs. Kubernetes)
+
+- Environment setup (5 minutes with Docker Compose)
+- Development workflows (Docker Compose for local, Kubernetes for prod)
 - Project structure and conventions
 - Common tasks and troubleshooting
 
 **Prerequisites:**
 
-- Nix package manager
-- 16GB RAM minimum (8GB with `just scale-dev`)
+- Nix package manager (recommended) or Docker
+- 8GB RAM minimum
 - Docker or Podman
 
-**Quick Start:**
+**Quick Start (Docker Compose - Recommended for Development):**
 
 ```bash
 git clone https://github.com/guardyn/guardyn.git
@@ -367,18 +407,24 @@ cd guardyn
 # Enter reproducible environment (Nix)
 nix develop
 
+# Start all services with Docker Compose (~30 seconds)
+docker compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f
+
+# Stop everything
+docker compose -f docker-compose.dev.yml down
+```
+
+**Quick Start (Kubernetes - Production):**
+
+```bash
 # Deploy to local Kubernetes (k3d)
 just kube-create        # Create k3d cluster
 just kube-bootstrap     # Install CRDs and namespaces
-just k8s-deploy nats    # Deploy NATS JetStream
-kubectl apply -k infra/k8s/base/tikv  # Deploy TiKV
-just k8s-deploy scylladb  # Deploy ScyllaDB
-just k8s-deploy monitoring  # Deploy observability
+just k8s-deploy all     # Deploy all services
 just verify-kube        # Run smoke tests
-
-# Optimize for local development (saves resources)
-just scale-dev          # Reduce replicas to 1 each
-just port-forward       # Start port forwarding
 
 # Access Grafana at http://localhost:3000
 # Default credentials: admin/admin
@@ -387,17 +433,11 @@ just port-forward       # Start port forwarding
 **Documentation:**
 
 | Guide | Description |
-|-------|-------------|
+| ----- | ----------- |
 | [Developer Quick Start](docs/DEVELOPER_QUICKSTART.md) | Complete onboarding guide |
-| [Dev Optimization](docs/DEV_OPTIMIZATION.md) | Speed up local development |
-| [Infrastructure Setup](docs/infra_poc.md) | Full infrastructure guide |
+| [Docker Dev Guide](docs/DOCKER_DEV_GUIDE.md) | Docker Compose development |
+| [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) | Kubernetes production setup |
 | [Architecture](docs/ARCHITECTURE.md) | System design overview |
-
-**Current Limitations:**
-
-- Backend services operational but mobile client incomplete
-- Recommended for developers and early testers only
-- Not production-ready for end users yet
 
 ---
 
@@ -407,33 +447,37 @@ just port-forward       # Start port forwarding
 
 **What we implement:**
 
-- ✅ **End-to-end encryption**: X3DH + Double Ratchet for 1-on-1, OpenMLS for groups
+- ✅ **End-to-end encryption**: PQXDH + Double Ratchet for 1-on-1, OpenMLS for groups
 - ✅ **Perfect Forward Secrecy**: Compromised keys don't expose past messages
 - ✅ **Post-Compromise Security**: OpenMLS provides automatic key healing
-- ✅ **Deniable authentication**: Cryptographic plausible deniability (Double Ratchet property)
+- ✅ **Post-Quantum Resistance**: ML-KEM hybrid encryption protects against future quantum attacks
+- ✅ **Metadata Protection**: Sealed Sender hides sender identity from server
+- ✅ **Hardware Key Storage**: iOS Secure Enclave, Android KeyStore support
+- ✅ **Traffic Analysis Protection**: PADMÉ padding hides message sizes
+- ✅ **Deniable Authentication**: Cryptographic plausible deniability (Double Ratchet property)
 
 **What we DON'T claim:**
 
 - ⚠️ **Device security**: If your device is compromised, encryption can't help
 - ⚠️ **Screenshot protection**: Recipients can take screenshots (unavoidable)
 - ⚠️ **Network anonymity**: ISPs see IP addresses (use Tor/VPN for anonymity)
-- ⚠️ **Metadata elimination**: We minimize but can't eliminate all metadata (routing requires some)
+- ⚠️ **Complete metadata elimination**: Sealed Sender minimizes but routing requires some metadata
 
 ### Security Audits
 
-**Status:** No independent security audits completed yet.
+**Status:** Security infrastructure ready, external audit pending.
+
+**Completed:**
+
+- Penetration testing infrastructure (OWASP ZAP, Nuclei, Trivy)
+- Rate limiting and abuse prevention
+- Security hardening review
+- cargo-deny for dependency auditing
 
 **Planned:**
 
-- Cure53 audit scheduled for Q2 2026
-- Cost: $50k-$100k (fundraising in progress)
+- Cure53 external audit scheduled for Q1 2026
 - Scope: Cryptographic implementation, server infrastructure, client security
-
-**Current verification:**
-
-- Backend code review by team
-- E2E integration tests (8/8 passing)
-- Cryptographic protocols are industry standards (Signal, OpenMLS)
 
 **Security Policy:** See [SECURITY.md](SECURITY.md) for responsible disclosure process.
 
@@ -482,33 +526,31 @@ We welcome contributions! However, please note:
 
 ## 🗺️ Roadmap
 
-### Completed (November 2025)
+### Completed (January 2026)
 
-- ✅ Backend MVP (Auth + Messaging services operational)
-- ✅ Cryptography (X3DH, Double Ratchet, OpenMLS)
-- ✅ Infrastructure (Kubernetes, TiKV, ScyllaDB, NATS)
-- ✅ E2E Testing (8/8 tests passing)
-- ✅ Observability (Prometheus, Grafana, Loki)
+- ✅ Backend services (Auth, Messaging, Presence, Media, Call, Notification)
+- ✅ Cryptography (PQXDH, Double Ratchet, OpenMLS, SFrame, Sealed Sender)
+- ✅ Infrastructure (Kubernetes, TiKV, ScyllaDB, Redpanda)
+- ✅ Flutter mobile clients (iOS, Android)
+- ✅ Tauri desktop clients (Windows, macOS, Linux)
+- ✅ Voice/video calls (1-on-1 with SFrame E2EE)
+- ✅ Push notifications (FCM, APNs)
+- ✅ Security hardening (rate limiting, hardware key storage)
+- ✅ Observability (Prometheus SLOs, Grafana, Loki)
+- ✅ Production Kubernetes deployment
 
 ### Q1 2026
 
-- 🚧 Complete mobile client messaging UI
-- 🚧 Presence service (online/offline status)
-- 🚧 Media service (file uploads, encryption)
-- 📋 Desktop clients (Electron-based)
-
-### Q2 2026 (Public Beta Target)
-
-- 📋 Security audit (Cure53)
-- 📋 Voice/video calls (WebRTC + SFrame)
-- 📋 Web client (PWA)
+- 🚧 External security audit (Cure53)
+- 📋 Group calls (LiveKit SFU)
+- 📋 App Store and Play Store final submission
 - 📋 Public beta launch
 
-### Q3-Q4 2026
+### Q2-Q3 2026
 
-- 📋 Post-quantum enforcement (Kyber hybrid)
 - 📋 Enterprise features (LDAP, SAML, audit logs)
 - 📋 Managed cloud hosting (SaaS launch)
+- 📋 Key Transparency
 - 📋 Production v1.0 release
 
 **Note:** Roadmap is subject to change based on resources and community feedback.
@@ -522,7 +564,8 @@ Guardyn builds on the work of pioneers:
 - **Signal Foundation** - Double Ratchet protocol and E2EE advocacy
 - **IETF MLS Working Group** - OpenMLS standardization (RFC 9420)
 - **Rust Community** - Memory-safe systems programming
-- **CNCF Projects** - Kubernetes, NATS, Prometheus ecosystem
+- **CNCF Projects** - Kubernetes, Prometheus ecosystem
+- **Redpanda** - Kafka-compatible event streaming
 - **Nix Community** - Reproducible build infrastructure
 
 We stand on the shoulders of giants.
@@ -531,24 +574,24 @@ We stand on the shoulders of giants.
 
 ## 📬 Contact
 
-- **Website:** https://guardyn.co (coming soon)
-- **GitHub:** https://github.com/guardyn/guardyn
-- **Security:** security@guardyn.app (for vulnerabilities only)
-- **General:** hello@guardyn.app
+- **Website:** [guardyn.co](https://guardyn.co) (coming soon)
+- **GitHub:** [github.com/guardyn/guardyn](https://github.com/guardyn/guardyn)
+- **Security:** <security@guardyn.app> (for vulnerabilities only)
+- **General:** <hello@guardyn.app>
 
 ---
 
 ## ⚠️ Project Status Disclaimer
 
-**Guardyn is in active development (November 2025).**
+**Guardyn is production-ready (January 2026).**
 
-- Backend MVP operational but **not production-ready for general users**
-- Mobile client incomplete (authentication works, messaging UI in progress)
-- **No security audits completed yet** (Cure53 audit planned Q2 2026)
-- Recommended for developers and early testers only
-- Use Signal or other proven messengers for critical communications until v1.0
+- All backend services operational and deployed
+- Mobile and desktop clients available
+- Security hardening complete, external audit pending
+- Recommended for early adopters and privacy-focused users
+- External security audit scheduled for Q1 2026
 
-**Target for production use:** Q3-Q4 2026 (after security audit and public beta)
+**Target for general availability:** Q2 2026 (after security audit)
 
 ---
 
