@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Guardyn - Privacy-focused secure communication platform with E2EE messaging, voice/video calls, and live broadcasting. Built with X3DH, Double Ratchet, and OpenMLS. Military-grade cryptography for high-security communications.">
-    <meta name="keywords" content="secure messaging, end-to-end encryption, Signal Protocol, OpenMLS, privacy, self-hosted, encrypted messenger, WebRTC, quantum-resistant, military-grade cryptography">
+    <meta name="description" content="Guardyn - Privacy-focused secure communication platform with E2EE messaging, voice/video calls, and live broadcasting. Built with X3DH + ML-KEM (Post-Quantum), Double Ratchet, and OpenMLS. Military-grade cryptography for high-security communications.">
+    <meta name="keywords" content="secure messaging, end-to-end encryption, Signal Protocol, OpenMLS, privacy, self-hosted, encrypted messenger, WebRTC, post-quantum, ML-KEM, Kyber, military-grade cryptography, Tauri, Flutter">
     <meta property="og:title" content="Guardyn - The Privacy Rebellion Starts Now">
-    <meta property="og:description" content="Cryptographically-verified, audit-ready, quantum-resistant secure communication platform. Built with Rust, Kubernetes, TiKV, ScyllaDB, NATS JetStream. Military-grade cryptography designed for high-security communications.">
+    <meta property="og:description" content="Cryptographically-verified, audit-ready, post-quantum secure communication platform. Built with Rust, Kubernetes, TiKV, ScyllaDB, Redpanda. Native apps for iOS, Android, Windows, macOS, Linux.">
     <meta property="og:image" content="https://guardyn.co/media/logo.svg">
     <meta property="og:url" content="https://guardyn.co">
     <meta name="twitter:card" content="summary_large_image">
@@ -917,10 +917,11 @@
             <p class="description">
                 <strong>"Your conversations are not a product. Your metadata is not for sale. Your privacy is not negotiable."</strong>
                 <br><br>
-                Cryptographically-verified, audit-ready, quantum-resistant secure communication platform.
-                Built with <span class="gradient-text">X3DH, Double Ratchet, and OpenMLS</span> protocols.
+                Post-quantum secure communication platform with <span class="gradient-text">ML-KEM (Kyber) + X3DH hybrid encryption</span>.
+                Built with Double Ratchet and OpenMLS (AES-256-GCM) protocols.
                 <br><br>
-                Designed for high-security communications with military-grade cryptography and audit-ready architecture.
+                Native apps: <strong>Flutter</strong> for iOS/Android, <strong>Tauri</strong> for Windows/macOS/Linux.
+                Unified Rust crypto core — single source of truth across all platforms.
             </p>
 
             <div class="cta">
@@ -935,24 +936,24 @@
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-value">E2EE</div>
-                    <div class="stat-label">Signal + OpenMLS</div>
+                    <div class="stat-value">ML-KEM</div>
+                    <div class="stat-label">Post-Quantum Crypto</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">PQ</div>
-                    <div class="stat-label">Quantum-Resistant</div>
+                    <div class="stat-value">AES-256</div>
+                    <div class="stat-label">Military-Grade E2EE</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">100%</div>
-                    <div class="stat-label">Open Source</div>
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Native Platforms</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">K8s</div>
-                    <div class="stat-label">Cloud-Native</div>
+                    <div class="stat-value">Rust</div>
+                    <div class="stat-label">Unified Crypto Core</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value">&lt;150ms</div>
-                    <div class="stat-label">Call Latency</div>
+                    <div class="stat-value">&lt;100ms</div>
+                    <div class="stat-label">Message Latency</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">Zero</div>
@@ -979,9 +980,10 @@
     <section class="app-screenshot-section">
         <div class="container">
             <div class="app-screenshot-container">
-                <h2 class="app-screenshot-title">One App. <span class="gradient-text">Every Device.</span></h2>
+                <h2 class="app-screenshot-title">Native Apps. <span class="gradient-text">Every Platform.</span></h2>
                 <p class="app-screenshot-subtitle">
-                    Guardyn works seamlessly across Android, iOS, Linux, macOS, and Web — with the same military-grade encryption everywhere.
+                    <strong>Flutter</strong> for iOS & Android. <strong>Tauri</strong> for Windows, macOS & Linux.<br>
+                    Same unified Rust crypto core — AES-256-GCM + ML-KEM post-quantum encryption everywhere.
                 </p>
                 <div class="app-screenshot-wrapper">
                     <img src="/docs/images/flutter_apps.png" 
@@ -1026,10 +1028,10 @@
             <div class="features">
                 <div class="feature">
                     <div class="feature-icon">🔐</div>
-                    <h3 class="feature-title">Unbreakable Cryptography</h3>
+                    <h3 class="feature-title">Post-Quantum Cryptography</h3>
                     <p class="feature-text">
-                        X3DH key exchange, Double Ratchet (Signal Protocol), OpenMLS for groups,
-                        and Kyber+ECDH hybrid for quantum resistance. Perfect Forward Secrecy guaranteed.
+                        <strong>ML-KEM (Kyber) + X25519 hybrid</strong> key exchange. Double Ratchet with AES-256-GCM.
+                        OpenMLS for groups. PADMÉ padding for traffic analysis protection. Future-proof against quantum computers.
                     </p>
                 </div>
 
@@ -1047,7 +1049,7 @@
                     <h3 class="feature-title">Enterprise Infrastructure</h3>
                     <p class="feature-text">
                         Rust backend, TiKV for distributed transactions, ScyllaDB for high-throughput storage,
-                        NATS JetStream for messaging, Kubernetes-native with triple redundancy.
+                        <strong>Redpanda</strong> (Kafka-compatible) for event streaming. Docker Compose dev, Kubernetes prod.
                     </p>
                 </div>
 
@@ -1062,10 +1064,11 @@
 
                 <div class="feature">
                     <div class="feature-icon">📱</div>
-                    <h3 class="feature-title">True Cross-Platform</h3>
+                    <h3 class="feature-title">Platform-Optimized Clients</h3>
                     <p class="feature-text">
-                        Flutter-powered clients for iOS, Android, Windows, macOS, Linux, and Web.
-                        One codebase, native performance everywhere.
+                        <strong>Flutter</strong> for iOS & Android — touch-first, native feel.
+                        <strong>Tauri + SolidJS</strong> for desktop — native menus, system tray, screen sharing.
+                        Unified <code>guardyn-crypto</code> Rust core via FFI.
                     </p>
                 </div>
 
@@ -1091,8 +1094,17 @@
                     <div class="feature-icon">🔒</div>
                     <h3 class="feature-title">Hardware-Backed Keys</h3>
                     <p class="feature-text">
-                        Secure Enclave (iOS), StrongBox (Android), TPM (desktop) integration.
-                        Private keys never leave secure hardware.
+                        Secure Enclave (iOS/macOS), AndroidKeyStore (Android), TPM 2.0 (Windows/Linux).
+                        Identity keys protected by secure hardware — never extractable.
+                    </p>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🧩</div>
+                    <h3 class="feature-title">Unified Crypto Core</h3>
+                    <p class="feature-text">
+                        Single <code>guardyn-crypto</code> Rust library for all platforms.
+                        One security audit, zero implementation drift between iOS/Android/Desktop.
                     </p>
                 </div>
 
@@ -1101,7 +1113,7 @@
                     <h3 class="feature-title">Self-Hosted Option</h3>
                     <p class="feature-text">
                         Full data sovereignty with Community Edition (Apache-2.0).
-                        Deploy on your infrastructure with complete control.
+                        Docker Compose for quick start, Kubernetes for production scale.
                     </p>
                 </div>
             </div>
@@ -1135,7 +1147,7 @@
                 <div class="tech-badges">
                     <span class="tech-badge" data-tech="tikv">TiKV (Distributed Transactions)</span>
                     <span class="tech-badge" data-tech="scylladb">ScyllaDB (High-Throughput)</span>
-                    <span class="tech-badge" data-tech="nats">NATS JetStream (Messaging)</span>
+                    <span class="tech-badge" data-tech="redpanda">Redpanda (Kafka-Compatible)</span>
                     <span class="tech-badge" data-tech="redis">Redis (Caching)</span>
                     <span class="tech-badge" data-tech="minio">MinIO (Object Storage)</span>
                 </div>
@@ -1144,13 +1156,13 @@
             <div class="tech-category">
                 <h3 class="tech-category-title">🔐 Cryptography</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge" data-tech="signal-protocol">Signal Protocol (libsignal)</span>
-                    <span class="tech-badge" data-tech="openmls">OpenMLS (Groups)</span>
-                    <span class="tech-badge" data-tech="x3dh">X3DH Key Exchange</span>
-                    <span class="tech-badge" data-tech="double-ratchet">Double Ratchet</span>
-                    <span class="tech-badge" data-tech="kyber">Kyber (Post-Quantum)</span>
+                    <span class="tech-badge" data-tech="guardyn-crypto">guardyn-crypto (Unified Core)</span>
+                    <span class="tech-badge" data-tech="pqxdh">PQXDH (X3DH + ML-KEM Hybrid)</span>
+                    <span class="tech-badge" data-tech="mlkem">ML-KEM-768 (Post-Quantum)</span>
+                    <span class="tech-badge" data-tech="double-ratchet">Double Ratchet (AES-256)</span>
+                    <span class="tech-badge" data-tech="openmls">OpenMLS (AES-256-GCM)</span>
                     <span class="tech-badge" data-tech="x25519">X25519 / Ed25519</span>
-                    <span class="tech-badge" data-tech="aes">AES-256-GCM</span>
+                    <span class="tech-badge" data-tech="padme">PADMÉ Padding</span>
                     <span class="tech-badge" data-tech="sframe">SFrame (Media E2EE)</span>
                 </div>
             </div>
@@ -1158,23 +1170,23 @@
             <div class="tech-category">
                 <h3 class="tech-category-title">📱 Client Applications</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge" data-tech="flutter">Flutter 3.x</span>
-                    <span class="tech-badge" data-tech="dart">Dart</span>
+                    <span class="tech-badge" data-tech="flutter">Flutter 3.x (iOS/Android)</span>
+                    <span class="tech-badge" data-tech="tauri">Tauri 2.x (Desktop)</span>
+                    <span class="tech-badge" data-tech="solidjs">SolidJS (Desktop UI)</span>
+                    <span class="tech-badge" data-tech="flutter-rust-bridge">flutter_rust_bridge</span>
+                    <span class="tech-badge" data-tech="webrtc">WebRTC + LiveKit</span>
                     <span class="tech-badge" data-tech="bloc">BLoC Pattern</span>
-                    <span class="tech-badge" data-tech="webrtc">WebRTC</span>
-                    <span class="tech-badge" data-tech="tauri">Tauri (Desktop)</span>
-                    <span class="tech-badge" data-tech="webassembly">WebAssembly</span>
                 </div>
             </div>
 
             <div class="tech-category">
                 <h3 class="tech-category-title">☸️ Infrastructure</h3>
                 <div class="tech-badges">
-                    <span class="tech-badge" data-tech="kubernetes">Kubernetes (k3d/k3s)</span>
+                    <span class="tech-badge" data-tech="docker-compose">Docker Compose (Dev)</span>
+                    <span class="tech-badge" data-tech="kubernetes">Kubernetes (Prod)</span>
                     <span class="tech-badge" data-tech="kustomize">Kustomize</span>
                     <span class="tech-badge" data-tech="helm">Helm Charts</span>
                     <span class="tech-badge" data-tech="cilium">Cilium CNI</span>
-                    <span class="tech-badge" data-tech="cert-manager">cert-manager</span>
                     <span class="tech-badge" data-tech="sops">SOPS + Age (Secrets)</span>
                 </div>
             </div>
@@ -1237,10 +1249,10 @@
 
                 <div class="feature">
                     <div class="feature-icon">🔄</div>
-                    <h3 class="feature-title">Event-Driven Messaging</h3>
+                    <h3 class="feature-title">Kafka-Compatible Streaming</h3>
                     <p class="feature-text">
-                        NATS JetStream streams (MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
-                        with at-least-once delivery and configurable retention.
+                        Redpanda topics (MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
+                        with Schema Registry, tiered storage, and Kafka Connect ecosystem.
                     </p>
                 </div>
 
@@ -1551,15 +1563,15 @@
                 },
                 tags: ['High Performance', 'Scalable', 'Low Latency']
             },
-            'nats': {
+            'redpanda': {
                 category: 'Data Layer',
-                title: 'NATS JetStream',
-                description: 'A messaging system that ensures every message gets delivered exactly once, in the right order, even during network problems.',
+                title: 'Redpanda (Kafka-Compatible)',
+                description: 'A blazing-fast Kafka-compatible streaming platform written in C++. Delivers 2-3M messages/second with sub-10ms latency, and includes built-in Schema Registry.',
                 example: {
                     title: '🚀 Real-world analogy',
-                    text: 'Like a conveyor belt system in a factory that never loses packages, always delivers them in order, and can handle millions of items per second.'
+                    text: 'Like a Formula 1 data highway that handles millions of messages per second, ensures every message arrives in order, and supports the entire Kafka ecosystem without the complexity.'
                 },
-                tags: ['Message Queue', 'Reliable Delivery', 'At-Least-Once']
+                tags: ['Kafka-Compatible', 'High Performance', 'Schema Registry']
             },
             'redis': {
                 category: 'Data Layer',
@@ -1583,15 +1595,35 @@
             },
 
             // Cryptography
-            'signal-protocol': {
+            'guardyn-crypto': {
                 category: 'Cryptography',
-                title: 'Signal Protocol',
-                description: 'The gold standard for encrypted messaging, used by Signal, WhatsApp, and now Guardyn. Provides perfect forward secrecy and post-compromise security for 1-on-1 chats.',
+                title: 'guardyn-crypto (Unified Core)',
+                description: 'A single Rust crate that provides all cryptographic operations for every platform. One codebase, one security audit, zero implementation drift between iOS, Android, and Desktop.',
                 example: {
-                    title: '🔐 Real-world analogy',
-                    text: 'Like having a lock that automatically changes every message, so even if someone steals your key today, they can\'t read yesterday\'s messages or tomorrow\'s messages.'
+                    title: '🧱 Real-world analogy',
+                    text: 'Like having one master locksmith who creates all locks for your entire building network - same high security everywhere, easier to audit, impossible for different floors to have weaker locks.'
                 },
-                tags: ['Battle-Tested', 'Forward Secrecy', 'Industry Standard']
+                tags: ['Single Source of Truth', 'Rust-Native', 'Cross-Platform']
+            },
+            'pqxdh': {
+                category: 'Cryptography',
+                title: 'PQXDH (Post-Quantum X3DH)',
+                description: 'Signal\'s upgraded key exchange that combines X3DH with ML-KEM. Provides quantum resistance today for messages that need to stay secret for decades.',
+                example: {
+                    title: '🛡️ Real-world analogy',
+                    text: 'Like building a vault door with two locks - one modern, one designed to resist future super-tools. Even if one is eventually broken, your secrets remain protected.'
+                },
+                tags: ['Quantum-Resistant', 'Hybrid Security', 'Future-Proof']
+            },
+            'mlkem': {
+                category: 'Cryptography',
+                title: 'ML-KEM-768 (Kyber)',
+                description: 'The NIST-standardized post-quantum key encapsulation mechanism. Protects against quantum computer attacks that could break today\'s encryption.',
+                example: {
+                    title: '🔮 Real-world analogy',
+                    text: 'Governments and corporations are "harvesting" encrypted data now to decrypt later when quantum computers arrive. ML-KEM ensures your data stays unreadable even then.'
+                },
+                tags: ['NIST Standard', 'Post-Quantum', 'FIPS 203']
             },
             'openmls': {
                 category: 'Cryptography',
@@ -1623,15 +1655,15 @@
                 },
                 tags: ['Key Rotation', 'Self-Healing', 'Out-of-Order Messages']
             },
-            'kyber': {
+            'padme': {
                 category: 'Cryptography',
-                title: 'Kyber (Post-Quantum)',
-                description: 'Quantum-resistant encryption that protects against future quantum computers. NIST-standardized algorithm that ensures your messages stay secret even in 2050.',
+                title: 'PADMÉ Padding',
+                description: 'Pads all encrypted messages to fixed size buckets, preventing attackers from guessing content based on message length. Essential for defeating traffic analysis attacks.',
                 example: {
-                    title: '🔮 Real-world analogy',
-                    text: 'Like building a vault that\'s strong enough to resist lock-picking tools that haven\'t even been invented yet. Quantum computers will break today\'s encryption - Kyber is ready for that future.'
+                    title: '📦 Real-world analogy',
+                    text: 'Like putting every letter in a standardized envelope before mailing - observers can\'t tell if you\'re sending a short "hi" or a long love letter.'
                 },
-                tags: ['Quantum-Safe', 'NIST Standard', 'Future-Proof']
+                tags: ['Traffic Analysis Resistance', 'Metadata Protection', 'Privacy']
             },
             'x25519': {
                 category: 'Cryptography',
@@ -1667,13 +1699,13 @@
             // Client Applications
             'flutter': {
                 category: 'Client Applications',
-                title: 'Flutter 3.x',
-                description: 'Google\'s UI framework that lets us build beautiful, native apps for iOS, Android, Web, and Desktop from a single codebase. Means faster updates and consistent experience across all your devices.',
+                title: 'Flutter 3.x (iOS/Android)',
+                description: 'Google\'s UI framework for building beautiful, native mobile apps. Guardyn uses Flutter exclusively for iOS and Android, with flutter_rust_bridge connecting to guardyn-crypto.',
                 example: {
                     title: '🎨 Real-world analogy',
-                    text: 'Like having one master blueprint that can build houses, apartments, and offices with the same quality - instead of hiring different architects for each.'
+                    text: 'Like having one architect who designs identical beautiful homes for two neighborhoods (iOS and Android), with a secure underground vault (Rust crypto) shared between them.'
                 },
-                tags: ['Cross-Platform', 'Native Performance', 'Beautiful UI']
+                tags: ['Mobile Native', 'Rust Bridge', 'Single Codebase']
             },
             'dart': {
                 category: 'Client Applications',
@@ -1697,23 +1729,43 @@
             },
             'webrtc': {
                 category: 'Client Applications',
-                title: 'WebRTC',
-                description: 'The technology that makes voice and video calls work directly between devices without going through a server. Enables low-latency, high-quality calls.',
+                title: 'WebRTC + LiveKit',
+                description: 'WebRTC for peer-to-peer calls, LiveKit SFU for efficient group calls. Combined with SFrame encryption, even the media servers cannot see or hear your conversations.',
                 example: {
                     title: '📞 Real-world analogy',
-                    text: 'Like calling someone on a walkie-talkie directly instead of going through a phone company switchboard. Faster, more private, and works peer-to-peer.'
+                    text: 'For 1-on-1 calls, like a direct walkie-talkie connection. For group calls, like a smart switchboard that routes audio/video without understanding the content.'
                 },
-                tags: ['P2P', 'Real-Time', 'Browser-Native']
+                tags: ['P2P + SFU', 'Low Latency', 'E2EE Media']
             },
             'tauri': {
                 category: 'Client Applications',
-                title: 'Tauri (Desktop)',
-                description: 'A modern framework for building desktop apps that are small, fast, and secure. Uses your operating system\'s web view instead of bundling Chrome.',
+                title: 'Tauri 2.x (Desktop)',
+                description: 'Modern desktop framework for Windows, macOS, and Linux. Uses native webviews for UI with SolidJS, while guardyn-crypto runs natively in Rust for maximum security and performance.',
                 example: {
                     title: '💻 Real-world analogy',
-                    text: 'Like building a house with the materials already on-site instead of shipping everything from overseas. Results in apps that are 10x smaller and faster.'
+                    text: 'Like having a lightweight, secure desktop app that\'s 10x smaller than Electron apps, with native system tray, menus, and screen sharing - all powered by the same crypto engine as mobile.'
                 },
-                tags: ['Lightweight', 'Rust-Powered', 'Native Integration']
+                tags: ['Native Desktop', 'Lightweight', 'System Integration']
+            },
+            'solidjs': {
+                category: 'Client Applications',
+                title: 'SolidJS',
+                description: 'A reactive JavaScript framework for Tauri desktop UI. Provides React-like developer experience with better performance and smaller bundle size.',
+                example: {
+                    title: '⚡ Real-world analogy',
+                    text: 'Like having a sports car dashboard that updates instantly without any lag - every button, notification, and message appears the moment it happens.'
+                },
+                tags: ['Reactive', 'Fast', 'Modern']
+            },
+            'flutter-rust-bridge': {
+                category: 'Client Applications',
+                title: 'flutter_rust_bridge',
+                description: 'Generates high-performance Flutter-to-Rust bindings automatically. Allows mobile apps to use the same guardyn-crypto Rust library with zero-copy data transfer.',
+                example: {
+                    title: '🌉 Real-world analogy',
+                    text: 'Like a high-speed bridge between two cities that speaks both languages fluently - Dart apps can call Rust crypto functions as if they were native.'
+                },
+                tags: ['FFI Bridge', 'Zero-Copy', 'Type-Safe']
             },
             'webassembly': {
                 category: 'Client Applications',
@@ -1727,15 +1779,25 @@
             },
 
             // Infrastructure
+            'docker-compose': {
+                category: 'Infrastructure',
+                title: 'Docker Compose (Development)',
+                description: 'Starts the entire Guardyn stack locally in ~30 seconds with hot reload. No Kubernetes complexity for development - just `docker compose up` and start coding.',
+                example: {
+                    title: '🚀 Real-world analogy',
+                    text: 'Like having a "demo mode" button that instantly sets up a complete replica of the system on your laptop, with live updates as you change code.'
+                },
+                tags: ['Fast Setup', 'Hot Reload', 'Developer-Friendly']
+            },
             'kubernetes': {
                 category: 'Infrastructure',
-                title: 'Kubernetes',
-                description: 'Container orchestration platform that automatically manages our servers. If something crashes, Kubernetes instantly replaces it. Ensures 99.9% uptime.',
+                title: 'Kubernetes (Production)',
+                description: 'Container orchestration for production deployments. Automatically manages servers, replaces crashed services, and scales to millions of users. Used for staging (k3d) and production.',
                 example: {
                     title: '🎭 Real-world analogy',
                     text: 'Like having an orchestra conductor who instantly replaces any musician that gets sick, ensures everyone plays in harmony, and scales up the orchestra when needed.'
                 },
-                tags: ['Auto-Scaling', 'Self-Healing', 'Industry Standard']
+                tags: ['Auto-Scaling', 'Self-Healing', 'Production-Ready']
             },
             'kustomize': {
                 category: 'Infrastructure',
