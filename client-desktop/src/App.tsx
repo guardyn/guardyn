@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
-import { Component, createSignal, onMount, Show, createContext, useContext, JSX } from 'solid-js';
+import { Component, createContext, createSignal, JSX, onMount, Show, useContext } from 'solid-js';
 
 // Components
 import Sidebar from './components/Sidebar';
