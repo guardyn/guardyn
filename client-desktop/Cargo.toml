@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Guardyn Team"]
+license = "MIT"
+
+[workspace.dependencies]
+# Guardyn crypto (shared with backend)
+guardyn-crypto = { path = "../backend/crates/crypto", features = ["ffi"] }
+
+# Tauri
+tauri = { version = "2.2", features = ["protocol-asset"] }
+tauri-build = "2.0"
+tauri-plugin-shell = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-os = "2"
+tauri-plugin-process = "2"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# gRPC client
+tonic = "0.12"
+prost = "0.13"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# State management
+parking_lot = "0.12"
+dashmap = "6"
+
+# Keyring for secure credential storage
+keyring = "3"
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
