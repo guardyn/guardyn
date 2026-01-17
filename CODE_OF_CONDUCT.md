@@ -124,4 +124,4 @@ For answers to common questions about this code of conduct, see the FAQ at [http
 
 ## Last Updated
 
-November 18, 2025
+January 17, 2026

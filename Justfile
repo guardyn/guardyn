@@ -210,7 +210,7 @@ dev-envoy-local:
     @docker rm -f envoy-local 2>/dev/null || true
     docker run -d --name envoy-local \
         --network host \
-        -v $(pwd)/client/envoy-local.yaml:/etc/envoy/envoy.yaml:ro \
+        -v $(pwd)/client-mobile/envoy-local.yaml:/etc/envoy/envoy.yaml:ro \
         envoyproxy/envoy:v1.28-latest
     @sleep 2 && nc -z localhost 18080 && echo "[dev] ✅ Envoy running on port 18080" || echo "[dev] ❌ Envoy failed to start"
 
@@ -233,10 +233,10 @@ dev-web-release:
 # Clear all client data (E2EE sessions, keys) - interactive mode
 clear-client-data:
     @echo "[client] Clearing client data (E2EE sessions, keys)..."
-    bash client/scripts/clear-client-data.sh
+    bash client-mobile/scripts/clear-client-data.sh
 
 # Force clear all client data without confirmation
 clear-client-data-force:
     @echo "[client] Force clearing all client data..."
-    bash client/scripts/clear-client-data.sh --force
+    bash client-mobile/scripts/clear-client-data.sh --force
 

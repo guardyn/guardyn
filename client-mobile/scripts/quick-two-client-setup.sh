@@ -59,7 +59,7 @@ sleep 3
 
 log_success "Port-forwarding started:"
 log_success "  Auth (50051): PID $AUTH_PID"
-log_success "  Messaging (50052): PID $MESSAGING_PID"  
+log_success "  Messaging (50052): PID $MESSAGING_PID"
 log_success "  Envoy (18080->8080): PID $ENVOY_PID"# Check emulator
 log_header "Device Setup"
 
@@ -84,7 +84,7 @@ log_header "Manual Testing Steps"
 
 echo -e "${YELLOW}DEVICE 1 (Alice - Android):${NC}"
 echo "  1. Open Terminal 1"
-echo "  2. cd client/"
+echo "  2. cd client-mobile/"
 echo "  3. flutter run -d emulator-5554"
 echo "  4. Register as: alice_test"
 echo "  5. Go to Messages"
@@ -92,7 +92,7 @@ echo ""
 
 echo -e "${YELLOW}DEVICE 2 (Bob - Chrome):${NC}"
 echo "  1. Open Terminal 2"
-echo "  2. cd client/"
+echo "  2. cd client-mobile/"
 echo "  3. flutter run -d chrome --web-port 8081"
 echo "  4. Register as: bob_test"
 echo "  5. Go to Messages"

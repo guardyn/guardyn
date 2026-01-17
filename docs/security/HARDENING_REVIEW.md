@@ -14,10 +14,10 @@ This document summarizes the security hardening tasks performed during Phase 4 (
 
 **Files:**
 
-- `client/lib/core/storage/hardware_key_storage.dart`
-- `client/lib/core/storage/secure_enclave_storage.dart`
-- `client/lib/core/storage/android_keystore_storage.dart`
-- `client/lib/core/storage/hardware_key_factory.dart`
+- `client-mobile/lib/core/storage/hardware_key_storage.dart`
+- `client-mobile/lib/core/storage/secure_enclave_storage.dart`
+- `client-mobile/lib/core/storage/android_keystore_storage.dart`
+- `client-mobile/lib/core/storage/hardware_key_factory.dart`
 
 ### Week 16: Rate Limiting & Sealed Sender
 
@@ -33,7 +33,7 @@ This document summarizes the security hardening tasks performed during Phase 4 (
 - `backend/crates/common/src/rate_limit.rs`
 - `backend/crates/common/src/rate_limit_middleware.rs`
 - `backend/crates/crypto/src/sealed_sender.rs`
-- `client/lib/core/crypto/sealed_sender.dart`
+- `client-mobile/lib/core/crypto/sealed_sender.dart`
 
 ### Week 17: Security Documentation & Penetration Testing
 

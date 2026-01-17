@@ -1,7 +1,7 @@
 # Envoy configuration for local development
 # Routes gRPC-Web requests from Flutter Web to local backend services
 #
-# Usage: docker run --rm --network host -v $(pwd)/client/envoy-local.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.28-latest
+# Usage: docker run --rm --network host -v $(pwd)/client-mobile/envoy-local.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.28-latest
 # Or:    just dev-envoy-local
 #
 # NOTE: Uses port 18080 to avoid conflict with k3d (which uses 8080)

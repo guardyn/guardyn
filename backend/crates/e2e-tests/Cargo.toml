@@ -38,3 +38,13 @@ harness = true
 name = "e2e_media"
 path = "tests/e2e_media.rs"
 harness = true
+
+[[test]]
+name = "e2e_phase2_features"
+path = "tests/e2e_phase2_features.rs"
+harness = true
+
+[[test]]
+name = "e2e_groups"
+path = "tests/e2e_groups.rs"
+harness = true

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -15,6 +16,7 @@ import '../bloc/message_event.dart';
 import '../bloc/message_state.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
+import 'chat_settings_page.dart';
 
 class ChatPage extends StatefulWidget {
   final String conversationUserId;
@@ -174,6 +176,18 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  void _navigateToSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ChatSettingsPage(
+          userId: widget.conversationUserId,
+          username: widget.conversationUserName,
+          conversationId: _conversationId,
+        ),
+      ),
+    );
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -206,10 +220,10 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void _handleMessageLongPress(String messageId) {
+  void _handleMessageLongPress(String messageId, String messageText) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -217,16 +231,22 @@ class _ChatPageState extends State<ChatPage> {
               leading: const Icon(Icons.copy),
               title: const Text('Copy'),
               onTap: () {
-                // TODO: Implement copy to clipboard
-                Navigator.pop(context);
+                Clipboard.setData(ClipboardData(text: messageText));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Message copied to clipboard'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete),
-              title: const Text('Delete'),
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
               onTap: () {
                 context.read<MessageBloc>().add(MessageDelete(messageId));
-                Navigator.pop(context);
+                Navigator.pop(ctx);
               },
             ),
           ],
@@ -313,9 +333,21 @@ class _ChatPageState extends State<ChatPage> {
             onSelected: (value) {
               if (value == 'clear_chat') {
                 _showClearChatDialog();
+              } else if (value == 'settings') {
+                _navigateToSettings();
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings),
+                    SizedBox(width: 8),
+                    Text('Chat Settings'),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'clear_chat',
                 child: Row(
@@ -407,8 +439,10 @@ class _ChatPageState extends State<ChatPage> {
                       final message = messages[index];
                       return MessageBubble(
                         message: message,
-                        onLongPress: () =>
-                            _handleMessageLongPress(message.messageId),
+                        onLongPress: () => _handleMessageLongPress(
+                          message.messageId,
+                          message.textContent,
+                        ),
                       );
                     },
                   );

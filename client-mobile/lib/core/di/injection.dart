@@ -26,6 +26,7 @@ import 'package:guardyn_client/features/messaging/data/repositories/message_repo
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
@@ -132,6 +133,10 @@ void _registerMessagingDependencies() {
     () => ClearChat(getIt<MessageRepository>()),
   );
 
+  getIt.registerLazySingleton<DeleteMessage>(
+    () => DeleteMessage(getIt<MessageRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<MessageBloc>(
     () => MessageBloc(
@@ -141,6 +146,7 @@ void _registerMessagingDependencies() {
       markAsRead: getIt<MarkAsRead>(),
       decryptMessage: getIt<DecryptMessage>(),
       clearChat: getIt<ClearChat>(),
+      deleteMessage: getIt<DeleteMessage>(),
     ),
   );
 }

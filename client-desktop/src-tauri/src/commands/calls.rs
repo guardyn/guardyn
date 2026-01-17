@@ -6,6 +6,8 @@ use crate::state::AppState;
 use crate::webrtc::{WebRtcConfig, WebRtcManager, SFrameEncryptor};
 use serde::{Deserialize, Serialize};
 use tauri::State;
+use std::sync::Arc;
+use parking_lot::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CallInfo {
@@ -47,51 +49,33 @@ pub async fn initiate_call(
         request.callee_user_id
     );
 
-    // Map call type to proto enum
-    let call_type = match request.call_type.as_str() {
-        "video" => 2, // CALL_TYPE_VIDEO
-        _ => 1,       // CALL_TYPE_VOICE
-    };
+    // TODO: Implement actual call initiation
+    // 1. Create WebRTC peer connection
+    // 2. Generate SFrame key for E2EE
+    // 3. Create SDP offer
+    // 4. Send to backend via gRPC
 
-    // Initiate call via gRPC
-    let call_result = state.calls().initiate_call(
-        request.callee_user_id.clone(),
-        call_type,
-    ).await
-        .map_err(|e| format!("Failed to initiate call: {}", e))?;
+    // Generate SFrame encryption key
+    let sframe_key = SFrameEncryptor::generate_key();
 
-    // Generate SFrame encryption key for E2EE
-    let _sframe_key = SFrameEncryptor::generate_key();
-
-    // Create WebRTC config with ICE servers from backend
+    // Create WebRTC config
     let webrtc_config = WebRtcConfig {
-        ice_servers: call_result.ice_servers.iter().map(|s| {
-            crate::webrtc::IceServerConfig {
-                urls: s.urls.clone(),
-                username: s.username.clone(),
-                credential: s.credential.clone(),
-            }
-        }).collect(),
         audio_enabled: true,
         video_enabled: request.call_type == "video",
-        data_channel_enabled: true,
+        ..Default::default()
     };
 
     // Create WebRTC manager
     let webrtc_manager = WebRtcManager::new(webrtc_config);
 
     // Create SDP offer
-    let _sdp_offer = webrtc_manager.create_offer().await
+    let sdp_offer = webrtc_manager.create_offer().await
         .map_err(|e| e.to_string())?;
 
-    // TODO: Store webrtc_manager in state for later use
-    // TODO: Exchange SDP with backend
-
-    tracing::info!("Call initiated successfully: {}", call_result.call_id);
-
+    // For now, return mock response
     Ok(CallResponse {
         success: true,
-        call_id: Some(call_result.call_id),
+        call_id: Some(uuid::Uuid::new_v4().to_string()),
         error: None,
     })
 }
@@ -108,29 +92,12 @@ pub async fn accept_call(
 
     tracing::info!("Accepting call: {}", call_id);
 
-    // Accept call via gRPC
-    let call_result = state.calls().accept_call(call_id.clone()).await
-        .map_err(|e| format!("Failed to accept call: {}", e))?;
-
-    // Create WebRTC config with ICE servers from backend
-    let webrtc_config = WebRtcConfig {
-        ice_servers: call_result.ice_servers.iter().map(|s| {
-            crate::webrtc::IceServerConfig {
-                urls: s.urls.clone(),
-                username: s.username.clone(),
-                credential: s.credential.clone(),
-            }
-        }).collect(),
-        audio_enabled: true,
-        video_enabled: true,
-        data_channel_enabled: true,
-    };
-
-    // Create WebRTC manager
-    let _webrtc_manager = WebRtcManager::new(webrtc_config);
-
-    // TODO: Create SDP answer and exchange with backend
-    // TODO: Store webrtc_manager in state
+    // TODO: Implement actual call acceptance
+    // 1. Get SDP offer from incoming call
+    // 2. Create WebRTC peer connection
+    // 3. Generate SFrame key
+    // 4. Create SDP answer
+    // 5. Send to backend via gRPC
 
     Ok(CallResponse {
         success: true,
@@ -152,13 +119,7 @@ pub async fn reject_call(
 
     tracing::info!("Rejecting call: {} (reason: {:?})", call_id, reason);
 
-    // Reject call via gRPC
-    state.calls().reject_call(
-        call_id,
-        Some(reason.unwrap_or_else(|| "User declined".to_string())),
-    ).await
-        .map_err(|e| format!("Failed to reject call: {}", e))?;
-
+    // TODO: Send rejection to backend
     Ok(())
 }
 
@@ -174,11 +135,7 @@ pub async fn end_call(
 
     tracing::info!("Ending call: {}", call_id);
 
-    // End call via gRPC (reason 0 = NORMAL)
-    state.calls().end_call(call_id, 0).await
-        .map_err(|e| format!("Failed to end call: {}", e))?;
-
-    // TODO: Close WebRTC connection
+    // TODO: Close WebRTC connection and notify backend
     Ok(())
 }
 
@@ -195,10 +152,7 @@ pub async fn toggle_mute(
 
     tracing::debug!("Setting mute state: {} for call: {}", muted, call_id);
 
-    // Update mute state via gRPC
-    state.calls().set_mute(call_id, muted).await
-        .map_err(|e| format!("Failed to set mute: {}", e))?;
-
+    // TODO: Toggle audio track in WebRTC connection
     Ok(())
 }
 
@@ -215,10 +169,7 @@ pub async fn toggle_video(
 
     tracing::debug!("Setting video state: {} for call: {}", enabled, call_id);
 
-    // Update video state via gRPC
-    state.calls().set_video(call_id, enabled).await
-        .map_err(|e| format!("Failed to set video: {}", e))?;
-
+    // TODO: Toggle video track in WebRTC connection
     Ok(())
 }
 
@@ -236,111 +187,6 @@ pub async fn toggle_screen_share(
     tracing::debug!("Setting screen share: {} for call: {}", enabled, call_id);
 
     // TODO: Start/stop screen capture and replace video track
-    // For now, just log - actual implementation requires platform-specific capture
-    Ok(())
-}
-
-/// Screen source information for screen sharing picker
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ScreenSource {
-    pub id: String,
-    pub name: String,
-    pub thumbnail: String, // Base64 encoded PNG
-    pub source_type: String, // "screen" or "window"
-}
-
-/// Screen share options
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ScreenShareOptions {
-    pub audio: bool,
-    pub cursor: bool,
-}
-
-/// Get available screen sources for sharing
-#[tauri::command]
-pub async fn get_screen_sources(
-    state: State<'_, AppState>,
-) -> Result<Vec<ScreenSource>, String> {
-    if !state.is_authenticated() {
-        return Err("Not authenticated".to_string());
-    }
-
-    tracing::debug!("Getting available screen sources");
-
-    // Platform-specific screen enumeration
-    // For now, return a mock list - actual implementation uses platform APIs
-    let sources = vec![
-        ScreenSource {
-            id: "screen:0".to_string(),
-            name: "Primary Display".to_string(),
-            thumbnail: String::new(), // Would be base64 PNG
-            source_type: "screen".to_string(),
-        },
-    ];
-
-    // TODO: Use platform-specific APIs:
-    // - Linux: XCB/Wayland portal (org.freedesktop.portal.ScreenCast)
-    // - macOS: CGDisplayStream, CGWindowListCopyWindowInfo
-    // - Windows: DXGI Desktop Duplication, PrintWindow
-
-    Ok(sources)
-}
-
-/// Start screen sharing with a specific source
-#[tauri::command]
-pub async fn start_screen_share(
-    call_id: String,
-    source_id: String,
-    options: Option<ScreenShareOptions>,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    if !state.is_authenticated() {
-        return Err("Not authenticated".to_string());
-    }
-
-    let opts = options.unwrap_or(ScreenShareOptions {
-        audio: false,
-        cursor: true,
-    });
-
-    tracing::info!(
-        "Starting screen share for call {} with source {} (audio: {}, cursor: {})",
-        call_id, source_id, opts.audio, opts.cursor
-    );
-
-    // TODO: Implement screen capture
-    // 1. Initialize platform-specific capture
-    // 2. Create video track from capture
-    // 3. Replace existing video track in WebRTC
-    // 4. Notify backend about screen share state
-
-    // Notify backend
-    state.calls().toggle_screen_share(call_id, true).await
-        .map_err(|e| format!("Failed to start screen share: {}", e))?;
-
-    Ok(())
-}
-
-/// Stop screen sharing
-#[tauri::command]
-pub async fn stop_screen_share(
-    call_id: String,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    if !state.is_authenticated() {
-        return Err("Not authenticated".to_string());
-    }
-
-    tracing::info!("Stopping screen share for call {}", call_id);
-
-    // TODO: Stop screen capture and restore camera
-    // 1. Stop capture
-    // 2. Restore camera video track if video was enabled
-
-    // Notify backend
-    state.calls().toggle_screen_share(call_id, false).await
-        .map_err(|e| format!("Failed to stop screen share: {}", e))?;
-
     Ok(())
 }
 
@@ -357,27 +203,8 @@ pub async fn get_call_history(
     let limit = limit.unwrap_or(50);
     tracing::debug!("Fetching call history (limit: {})", limit);
 
-    // Fetch from backend via gRPC
-    let history = state.calls().get_call_history(limit as i32).await
-        .map_err(|e| format!("Failed to get call history: {}", e))?;
-
-    // Convert to CallInfo
-    let calls = history.into_iter().map(|entry| {
-        CallInfo {
-            call_id: entry.call_id,
-            call_type: match entry.call_type {
-                2 => "video".to_string(),
-                _ => "voice".to_string(),
-            },
-            caller_id: entry.other_user_id,
-            caller_name: entry.other_user_name,
-            state: "ended".to_string(),
-            started_at: Some(entry.started_at),
-            duration_seconds: entry.duration_seconds as u32,
-        }
-    }).collect();
-
-    Ok(calls)
+    // TODO: Fetch from backend via gRPC
+    Ok(vec![])
 }
 
 /// Get current call state
@@ -392,41 +219,6 @@ pub async fn get_call_state(
 
     tracing::debug!("Getting state for call: {}", call_id);
 
-    // Get from backend via gRPC
-    match state.calls().get_call_state(call_id.clone()).await {
-        Ok(call_state) => {
-            let state_str = match call_state.state {
-                0 => "unknown",
-                1 => "ringing",
-                2 => "connecting",
-                3 => "connected",
-                4 => "on_hold",
-                5 => "ended",
-                _ => "unknown",
-            };
-
-            let call_info = CallInfo {
-                call_id,
-                call_type: match call_state.call_type {
-                    2 => "video".to_string(),
-                    _ => "voice".to_string(),
-                },
-                caller_id: call_state.participants.first()
-                    .map(|p| p.user_id.clone())
-                    .unwrap_or_default(),
-                caller_name: call_state.participants.first()
-                    .map(|p| p.display_name.clone())
-                    .unwrap_or_default(),
-                state: state_str.to_string(),
-                started_at: Some(call_state.started_at),
-                duration_seconds: 0,
-            };
-
-            Ok(Some(call_info))
-        }
-        Err(e) => {
-            tracing::warn!("Failed to get call state: {}", e);
-            Ok(None)
-        }
-    }
+    // TODO: Get from backend via gRPC
+    Ok(None)
 }

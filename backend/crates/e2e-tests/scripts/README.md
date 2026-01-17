@@ -102,11 +102,52 @@ All test scripts require:
 | Auth performance only | `backend/crates/e2e-tests/scripts/k6-test.sh auth` |
 | Messaging performance only | `backend/crates/e2e-tests/scripts/k6-test.sh messaging` |
 
+## Test Suites
+
+### MVP Tests (`e2e_mvp_simplified.rs`)
+
+Core messaging functionality tests:
+
+| Test | Description |
+|------|-------------|
+| `test_01_user_registration` | User registration and login |
+| `test_02_send_message` | Direct message sending |
+| `test_03_group_creation` | Group creation and joining |
+| `test_04_group_messaging` | Group message sending |
+| `test_05_presence` | Online status updates |
+| `test_06_push_notifications` | Push token registration |
+| `test_07_message_history` | Message history retrieval |
+| `test_08_full_flow` | Complete user flow |
+
+### Phase 2 Tests (`e2e_phase2_features.rs`)
+
+Enhanced messenger features tests:
+
+| Test | Description |
+|------|-------------|
+| `test_phase2_01_add_and_remove_reaction` | Emoji reactions on messages |
+| `test_phase2_02_read_receipts` | Read receipt tracking |
+| `test_phase2_03_forward_message` | Message forwarding with attribution |
+| `test_phase2_04_edit_message` | Message editing with version history |
+| `test_phase2_05_disappearing_messages` | Auto-delete message configuration |
+| `test_phase2_06_multiple_reactions` | Multi-user reactions in groups |
+
+**Running Phase 2 tests:**
+
+```bash
+# Run all Phase 2 tests
+cargo test -p guardyn-e2e-tests --test e2e_phase2_features -- --nocapture --test-threads=1
+
+# Run specific test
+cargo test -p guardyn-e2e-tests --test e2e_phase2_features test_phase2_01 -- --nocapture
+```
+
 ## Documentation
 
 For detailed testing documentation, see:
 
 - [`docs/TESTING_GUIDE.md`](../../../docs/TESTING_GUIDE.md) - Complete testing guide
 - [`docs/QUICKSTART_TESTING.md`](../../../docs/QUICKSTART_TESTING.md) - Quick reference
+- [`tests/test_scenarios.md`](../tests/test_scenarios.md) - Test scenarios documentation
 - [`performance/README.md`](../performance/README.md) - Performance testing details
 

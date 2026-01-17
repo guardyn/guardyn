@@ -349,8 +349,8 @@ start_chromedriver() {
   # Check common locations
   if command -v chromedriver &> /dev/null; then
     CHROMEDRIVER_BIN="chromedriver"
-  elif [ -x "$ROOT_DIR/client/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver" ]; then
-    CHROMEDRIVER_BIN="$ROOT_DIR/client/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver"
+  elif [ -x "$ROOT_DIR/client-mobile/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver" ]; then
+    CHROMEDRIVER_BIN="$ROOT_DIR/client-mobile/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver"
   elif [ -x "/usr/bin/chromedriver" ]; then
     CHROMEDRIVER_BIN="/usr/bin/chromedriver"
   elif [ -x "/usr/local/bin/chromedriver" ]; then

@@ -196,8 +196,8 @@ pgrep -f chromedriver
 **Start ChromeDriver:**
 
 ```bash
-# If you have ChromeDriver in client/chromedriver/
-cd client
+# If you have ChromeDriver in client-mobile/chromedriver/
+cd client-mobile
 chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
 
 # Or if ChromeDriver is in your PATH
@@ -1429,8 +1429,8 @@ If you encounter issues, please provide:
 
 ## Additional Resources
 
-- **Integration Tests**: `client/integration_test/README.md`
-- **Client README**: `client/README.md`
+- **Integration Tests**: `client-mobile/integration_test/README.md`
+- **Client README**: `client-mobile/README.md`
 - **Backend API Documentation**: `docs/GRPC_API.md`
 - **Architecture Overview**: `docs/mvp_discovery.md`
 

@@ -131,7 +131,7 @@ flutter devices | grep chrome
 Run both clients in parallel with orchestration:
 
 ```bash
-cd client/
+cd client-mobile/
 ./scripts/run-two-client-test.sh
 ```
 
@@ -193,7 +193,7 @@ If you need to run tests manually:
 **Terminal 1 - Android (Alice):**
 
 ```bash
-cd client/
+cd client-mobile/
 flutter drive \
   --driver=test_driver/integration_test.dart \
   --target=integration_test/two_client_messaging_test.dart \
@@ -204,7 +204,7 @@ flutter drive \
 **Terminal 2 - Chrome (Bob):**
 
 ```bash
-cd client/
+cd client-mobile/
 flutter drive \
   --driver=test_driver/integration_test.dart \
   --target=integration_test/two_client_messaging_test.dart \

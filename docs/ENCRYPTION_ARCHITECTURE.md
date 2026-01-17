@@ -1151,9 +1151,9 @@ graph LR
 
 ### Flutter Client (Mobile)
 
-| File                                           | Description                              |
-| ---------------------------------------------- | ---------------------------------------- |
-| `client/lib/core/crypto/native_crypto_bridge.dart` | FFI bridge to guardyn-crypto        |
+| File                                                  | Description                              |
+| ----------------------------------------------------- | ---------------------------------------- |
+| `client-mobile/lib/core/crypto/native_crypto_bridge.dart` | FFI bridge to guardyn-crypto        |
 
 ### Tauri Client (Desktop)
 

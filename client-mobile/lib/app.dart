@@ -35,6 +35,7 @@ import 'package:guardyn_client/features/messaging/data/datasources/message_remot
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
@@ -79,6 +80,7 @@ class GuardynApp extends StatelessWidget {
     final markAsRead = MarkAsRead(messageRepository);
     final decryptMessage = DecryptMessage(messageRepository);
     final clearChat = ClearChat(messageRepository);
+    final deleteMessageUseCase = DeleteMessage(messageRepository);
 
     // Groups dependencies
     final groupRemoteDatasource = GroupRemoteDatasource(grpcClients);
@@ -115,6 +117,7 @@ class GuardynApp extends StatelessWidget {
             markAsRead: markAsRead,
             decryptMessage: decryptMessage,
             clearChat: clearChat,
+            deleteMessage: deleteMessageUseCase,
           ),
         ),
         BlocProvider(

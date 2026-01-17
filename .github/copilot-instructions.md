@@ -49,7 +49,7 @@ Guardyn is a privacy-focused secure communication platform (production-ready) bu
 ### Exceptions (ONLY)
 
 Translation files for localization purposes ONLY:
-- `client/lib/l10n/` - Flutter localization files
+- `client-mobile/lib/l10n/` - Flutter localization files
 - `landing/i18n/` - Landing page translations
 - Explicitly marked translation files with `.{locale}.md` naming
 
@@ -355,7 +355,7 @@ guardyn/
 │   │   └── crypto/          # guardyn-crypto library
 │   ├── proto/               # Protocol Buffers definitions
 │   └── build-local.sh       # Local build script
-├── client/                  # Mobile client (Flutter - iOS/Android)
+├── client-mobile/           # Mobile client (Flutter - iOS/Android)
 ├── client-desktop/          # Desktop client (Tauri - Win/Mac/Linux)
 │   ├── src-tauri/          # Rust backend
 │   └── src/                # SolidJS frontend
@@ -400,7 +400,7 @@ guardyn/
 - ✅ `docs/OBSERVABILITY_GUIDE.md` - Monitoring and logging
 - ✅ `docs/IMPLEMENTATION_PLAN.md` - Implementation roadmap
 - ✅ `docs/mvp_discovery.md` - Product vision
-- ✅ `docs/infra_poc.md` - Infrastructure guide
+- ✅ `docs/PRODUCTION_DEPLOYMENT.md` - Production deployment guide
 
 **Exceptions (files allowed in project root):**
 - `README.md` - Main project README
@@ -555,8 +555,8 @@ When adding new files, verify:
   - Event streaming: Redpanda (Kafka-compatible)
   - Observability: Prometheus + Loki + Tempo + Grafana stack
 - `cicd/`: GitHub Actions workflows + reproducible-build action
-- `docs/`: `mvp_discovery.md` (product vision), `infra_poc.md` (infrastructure guide)
-- `client/`: Flutter mobile client (iOS/Android)
+- `docs/`: `mvp_discovery.md` (product vision), `PRODUCTION_DEPLOYMENT.md` (deployment guide)
+- `client-mobile/`: Flutter mobile client (iOS/Android)
 - `client-desktop/`: Tauri desktop client (Windows/macOS/Linux)
 - `backend/crates/crypto/`: guardyn-crypto library (unified cryptography)
 
@@ -680,5 +680,5 @@ kubectl apply -f <(sops -d secrets.enc.yaml) # Decrypt and apply
 
 ## Reference Files
 - Product vision: `docs/mvp_discovery.md` (personas, user stories, security requirements)
-- Infrastructure guide: `docs/infra_poc.md` (complete setup walkthrough)
+- Production deployment: `docs/PRODUCTION_DEPLOYMENT.md` (complete deployment walkthrough)
 - Justfile commands: Run `just --list` for all available tasks

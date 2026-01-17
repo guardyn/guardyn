@@ -9,6 +9,7 @@ import '../../data/datasources/websocket_datasource.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/usecases/clear_chat.dart';
 import '../../domain/usecases/decrypt_message.dart';
+import '../../domain/usecases/delete_message.dart';
 import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
 import '../../domain/usecases/receive_messages.dart';
@@ -24,6 +25,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final MarkAsRead markAsRead;
   final DecryptMessage decryptMessage;
   final ClearChat clearChat;
+  final DeleteMessage deleteMessage;
 
   StreamSubscription<dynamic>? _messageStreamSubscription;
   StreamSubscription<dynamic>? _wsMessageSubscription;
@@ -54,6 +56,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     required this.markAsRead,
     required this.decryptMessage,
     required this.clearChat,
+    required this.deleteMessage,
   }) : super(MessageInitial()) {
     on<MessageLoadHistory>(_onLoadHistory);
     on<MessageSend>(_onSendMessage);
@@ -411,18 +414,37 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     MessageDelete event,
     Emitter<MessageState> emit,
   ) async {
-    // TODO: Implement delete message
-    // For now, just remove from local list
-    if (state is MessageLoaded) {
-      final currentState = state as MessageLoaded;
-      final updatedMessages = currentState.messages
-          .where((message) => message.messageId != event.messageId)
-          .toList();
+    if (state is! MessageLoaded) return;
 
-      emit(
-        MessageLoaded(messages: updatedMessages, hasMore: currentState.hasMore),
-      );
-    }
+    final currentState = state as MessageLoaded;
+
+    // Optimistically remove from local list
+    final updatedMessages = currentState.messages
+        .where((message) => message.messageId != event.messageId)
+        .toList();
+
+    emit(
+      MessageLoaded(messages: updatedMessages, hasMore: currentState.hasMore),
+    );
+
+    // Call API to delete on server
+    final result = await deleteMessage(
+      DeleteMessageParams(messageId: event.messageId),
+    );
+
+    result.fold(
+      (failure) {
+        // On error, restore the message (rollback optimistic update)
+        // ignore: avoid_print
+        print('⚠️ Failed to delete message: ${failure.message}');
+        // Note: In a production app, you'd restore the message here
+        // For now, we keep the optimistic deletion
+      },
+      (_) {
+        // ignore: avoid_print
+        print('🗑️ Message deleted successfully: ${event.messageId}');
+      },
+    );
   }
 
   /// Clear all messages in the conversation

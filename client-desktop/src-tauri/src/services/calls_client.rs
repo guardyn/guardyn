@@ -313,33 +313,6 @@ impl CallsClient {
         Ok(())
     }
 
-    /// Toggle screen sharing state
-    pub async fn toggle_screen_share(&self, call_id: String, screen_share_enabled: bool) -> Result<(), GrpcError> {
-        debug!("Setting screen share: {} for call: {}", screen_share_enabled, call_id);
-
-        // Screen sharing uses the video track replacement approach
-        // The backend needs to know we're sharing screen so other participants can see the indicator
-        // For now, we update via the video endpoint with a special flag
-        // TODO: Add dedicated ScreenShare RPC when proto is updated
-
-        let request = SetVideoRequest {
-            access_token: self.grpc.get_auth_token().unwrap_or_default(),
-            call_id,
-            video_enabled: screen_share_enabled, // Screen share replaces video track
-        };
-
-        let mut client = self.client().await?;
-        let request = self.with_auth(Request::new(request))?;
-
-        client
-            .set_video(request)
-            .await
-            .map_err(|e| GrpcError::RequestFailed(e.to_string()))?;
-
-        info!("Screen share state changed: {}", screen_share_enabled);
-        Ok(())
-    }
-
     /// Exchange ICE candidate
     pub async fn exchange_ice_candidate(
         &self,

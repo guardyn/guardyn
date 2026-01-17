@@ -64,7 +64,7 @@ guardyn/
 │   │       ├── performance/  # k6 performance tests
 │   │       └── tests/        # E2E test code
 │   └── proto/           # Protocol Buffers definitions
-├── client/              # Mobile client (Flutter - iOS/Android)
+├── client-mobile/       # Mobile client (Flutter - iOS/Android)
 ├── client-desktop/      # Desktop client (Tauri - Win/Mac/Linux)
 ├── docs/                # All project documentation
 │   ├── *.md            # Technical documentation
@@ -94,7 +94,7 @@ guardyn/
 All project documentation goes in the `docs/` directory:
 
 - **Technical Documentation**: `docs/GRPC_API.md`, `docs/DATABASE_SCHEMA.md`
-- **Architecture Guides**: `docs/mvp_discovery.md`, `docs/infra_poc.md`
+- **Architecture Guides**: `docs/mvp_discovery.md`, `docs/ARCHITECTURE.md`
 - **Testing Documentation**: `docs/TESTING_GUIDE.md`, `docs/QUICKSTART_TESTING.md`
 - **Observability**: `docs/OBSERVABILITY_GUIDE.md`
 - **Implementation Plans**: `docs/IMPLEMENTATION_PLAN.md`
@@ -379,7 +379,7 @@ Reviewers should verify:
 - [Naming Conventions](.github/copilot-instructions.md#-naming-conventions---critical)
 - [Architecture Overview](.github/copilot-instructions.md#architecture)
 - [Testing Guide](docs/TESTING_GUIDE.md)
-- [Infrastructure Guide](docs/infra_poc.md)
+- [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md)
 
 ## 🙏 Thank You!
 

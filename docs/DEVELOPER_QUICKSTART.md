@@ -193,7 +193,7 @@ guardyn/
 │   │   └── e2e-tests/       # Integration tests
 │   └── proto/               # Protocol Buffers definitions
 │
-├── client/                  # Flutter multi-platform client
+├── client-mobile/           # Flutter multi-platform client
 │   ├── lib/
 │   │   ├── core/           # DI, routing, theme
 │   │   ├── features/       # Feature modules (auth, messaging, etc.)
@@ -338,7 +338,7 @@ bash infra/scripts/fix-cluster-after-restart.sh
 | ------------------------------------------ | ------------------------------- |
 | **[This Guide](DEVELOPER_QUICKSTART.md)**  | Quick start for new developers  |
 | [DEV_OPTIMIZATION.md](DEV_OPTIMIZATION.md) | Speed up local development      |
-| [infra_poc.md](infra_poc.md)               | Full infrastructure setup guide |
+| [DOCKER_DEV_GUIDE.md](DOCKER_DEV_GUIDE.md) | Docker Compose development guide|
 
 ### Architecture
 

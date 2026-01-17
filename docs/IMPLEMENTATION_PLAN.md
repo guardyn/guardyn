@@ -529,7 +529,7 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 **Previous Work (November 29, 2025)**:
 
 - ✅ Unit tests completed for messaging feature (GetMessages, MessageRepositoryImpl, MessageBloc)
-- ✅ Manual testing guide created (`client/MESSAGING_MANUAL_TESTING_GUIDE.md`)
+- ✅ Manual testing guide created (`client-mobile/MESSAGING_MANUAL_TESTING_GUIDE.md`)
 - ✅ All implementation plan tasks marked complete
 - ✅ MESSAGING_UI_IMPLEMENTATION_PLAN.md - 100% finished
 
@@ -721,8 +721,8 @@ WebSocket infrastructure is **fully implemented** in both backend and Flutter cl
 
 4. **Files to Modify**:
    - `backend/crates/messaging-service/` — Add WebSocket handler
-   - `client/lib/features/messaging/data/datasources/` — WebSocket client
-   - `client/lib/features/messaging/presentation/bloc/message_bloc.dart` — WebSocket integration
+   - `client-mobile/lib/features/messaging/data/datasources/` — WebSocket client
+   - `client-mobile/lib/features/messaging/presentation/bloc/message_bloc.dart` — WebSocket integration
    - `infra/k8s/` — WebSocket service deployment
 
 #### Why Not Fix gRPC-Web Streaming?
@@ -733,7 +733,7 @@ WebSocket infrastructure is **fully implemented** in both backend and Flutter cl
 
 #### Code References
 
-- **Polling implementation**: `client/lib/features/messaging/presentation/bloc/message_bloc.dart`
+- **Polling implementation**: `client-mobile/lib/features/messaging/presentation/bloc/message_bloc.dart`
 - **Timer interval**: `Duration(seconds: 2)` in `_onStartPolling()`
 - **Backend streaming**: `backend/crates/messaging-service/src/handlers/stream.rs` (works with native gRPC)
 
@@ -1346,13 +1346,13 @@ Flutter Client ←→ WebSocket (ws://host:8081) ←→ messaging-service (Axum)
 - [x] State management (BLoC pattern with flutter_bloc)
 - [x] Main app configuration (routing, navigation, error handling)
 - [x] Compilation verification (flutter analyze: zero errors)
-- [x] Documentation (client/README.md with setup guide)
+- [x] Documentation (client-mobile/README.md with setup guide)
 - [x] **Unit tests (41 tests, 100% passing)** ✅ **NEW**
   - [x] AuthBloc tests (18 tests)
   - [x] RegisterUser use case tests (11 tests)
   - [x] LoginUser use case tests (6 tests)
   - [x] LogoutUser use case tests (6 tests)
-- [x] **Manual testing guide created** (client/MANUAL_TESTING_GUIDE.md) ✅ **NEW**
+- [x] **Manual testing guide created** (client-mobile/MANUAL_TESTING_GUIDE.md) ✅ **NEW**
 
 **Test Coverage:**
 
@@ -1383,17 +1383,17 @@ Flutter Client ←→ WebSocket (ws://host:8081) ←→ messaging-service (Axum)
   - [x] Phase 4: Integration & Testing (DI, tests, manual testing) - Commit: 81fe787
   - **Completion Time**: 4 hours (20 files created, ~2,500 lines of code)
 - [x] **Flutter E2EE Crypto Implementation** ✅ **COMPLETED (Nov 30, 2025)**
-  - [x] Double Ratchet protocol (Signal Protocol compatible) - `client/lib/core/crypto/double_ratchet.dart`
-  - [x] X3DH key exchange protocol - `client/lib/core/crypto/x3dh.dart`
-  - [x] CryptoService for session management - `client/lib/core/crypto/crypto_service.dart`
+  - [x] Double Ratchet protocol (Signal Protocol compatible) - `client-mobile/lib/core/crypto/double_ratchet.dart`
+  - [x] X3DH key exchange protocol - `client-mobile/lib/core/crypto/x3dh.dart`
+  - [x] CryptoService for session management - `client-mobile/lib/core/crypto/crypto_service.dart`
   - [x] Message encryption/decryption integration in MessageRepositoryImpl
   - [x] Unit tests for crypto module (26 tests passing)
   - **Algorithms**: Ed25519 (identity), X25519 (DH), AES-256-GCM (encryption), HKDF-SHA256 (key derivation)
   - **Dependencies**: cryptography: ^2.7.0, pointycastle: ^3.7.3
 - [ ] **Two-device manual testing** ✅ **INFRASTRUCTURE READY (Dec 24, 2025)**
-  - [x] Integration test: `client/integration_test/two_client_messaging_test.dart`
-  - [x] Test runner script: `client/scripts/run-two-client-test.sh`
-  - [x] Quick setup script: `client/scripts/quick-two-client-setup.sh`
+  - [x] Integration test: `client-mobile/integration_test/two_client_messaging_test.dart`
+  - [x] Test runner script: `client-mobile/scripts/run-two-client-test.sh`
+  - [x] Quick setup script: `client-mobile/scripts/quick-two-client-setup.sh`
   - [x] Documentation: `docs/TWO_CLIENT_TESTING.md`
   - [x] All prerequisites verified (backend services, port-forwarding, ChromeDriver)
   - **Status**: Ready for execution when Android emulator + Chrome available

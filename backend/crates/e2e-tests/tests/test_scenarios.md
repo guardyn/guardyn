@@ -442,27 +442,148 @@ kubectl get pod -n data guardyn-scylla-dc1-rack1-0 -o jsonpath='{.status.contain
 
 ---
 
+## Phase 2 Test Scenarios
+
+### Test P2-01: Add and Remove Reaction
+
+**Purpose**: Verify message reaction lifecycle (add, get, remove).
+
+**Steps**:
+1. Register User 1 (sender) and User 2 (recipient)
+2. User 1 sends a message to User 2
+3. User 2 adds a 👍 reaction to the message
+4. Verify reaction is stored (GetReactions)
+5. User 2 removes the reaction
+6. Verify reaction is removed
+
+**Expected Results**:
+- ✅ AddReaction returns reaction with emoji, message_id, user_id
+- ✅ GetReactions returns list of reactions
+- ✅ RemoveReaction successfully removes the reaction
+- ✅ Subsequent GetReactions shows reaction removed
+
+---
+
+### Test P2-02: Enhanced Read Receipts
+
+**Purpose**: Verify read receipt sending and retrieval.
+
+**Steps**:
+1. Register User 1 and User 2
+2. User 1 sends 3 messages to User 2
+3. User 2 sends read receipt for last message
+4. User 1 retrieves read receipts for conversation
+5. Verify User 2's last_read_message_id matches
+
+**Expected Results**:
+- ✅ SendReadReceipt returns success with timestamp
+- ✅ GetReadReceipts returns receipt with correct user_id and last_read_message_id
+- ✅ Read receipt reflects last read message
+
+---
+
+### Test P2-03: Forward Message
+
+**Purpose**: Verify message forwarding between conversations.
+
+**Steps**:
+1. Register User 1, User 2, User 3
+2. User 1 sends message to User 2
+3. User 2 forwards message to User 3
+4. User 3 retrieves messages
+5. Verify forwarded message has forward_info
+
+**Expected Results**:
+- ✅ ForwardMessage returns new message_id
+- ✅ Forwarded message contains original content
+- ✅ forward_info includes original_message_id, original_sender_id
+
+---
+
+### Test P2-04: Edit Message
+
+**Purpose**: Verify message editing and version tracking.
+
+**Steps**:
+1. Register User 1 and User 2
+2. User 1 sends message with "original content"
+3. User 1 edits message with "edited content"
+4. User 2 retrieves messages
+5. Verify content is updated and edit_version >= 1
+
+**Expected Results**:
+- ✅ EditMessage returns edit_version >= 1
+- ✅ Retrieved message has new content
+- ✅ last_edited_at timestamp is set
+- ✅ edit_version is incremented
+
+---
+
+### Test P2-05: Disappearing Messages
+
+**Purpose**: Verify disappearing messages configuration.
+
+**Steps**:
+1. Register User 1 and User 2
+2. User 1 enables disappearing messages (TTL = 1 day)
+3. User 2 retrieves config
+4. Verify TTL and set_by_user_id
+5. User 1 disables disappearing messages (TTL = 0)
+6. Verify config is disabled
+
+**Expected Results**:
+- ✅ SetDisappearingMessages returns config with correct TTL
+- ✅ GetDisappearingConfig returns same TTL for other user
+- ✅ set_by_user_id matches who configured it
+- ✅ TTL = 0 disables disappearing messages
+
+---
+
+### Test P2-06: Multiple Reactions from Multiple Users
+
+**Purpose**: Verify reaction aggregation in group chat.
+
+**Steps**:
+1. Register 3 users
+2. Create group with all users
+3. User 1 sends group message
+4. User 1 reacts with 👍
+5. User 2 reacts with ❤️ and 👍
+6. User 3 reacts with 😂
+7. Get all reactions
+8. Verify reaction counts: 👍=2, ❤️=1, 😂=1
+
+**Expected Results**:
+- ✅ All reactions are stored
+- ✅ GetReactions returns all reactions
+- ✅ Same emoji from different users are separate reactions
+- ✅ Reaction counts match expected
+
+---
+
 ## Future Test Scenarios
-
-### Phase 2 (Post-MVP)
-
-- [ ] Concurrent message sending (load testing)
-- [ ] Message pagination (large conversation history)
-- [ ] Group member addition/removal
-- [ ] Message search functionality
-- [ ] Media attachment upload/download
-- [ ] Typing indicators
-- [ ] Read receipts verification
-- [ ] Push notification delivery
 
 ### Phase 3 (Cryptography Integration)
 
-- [ ] X3DH key exchange
-- [ ] Double Ratchet encryption/decryption
-- [ ] MLS group key management
+- [x] X3DH key exchange (see `e2e_mls_integration.rs`)
+- [x] Double Ratchet encryption/decryption (see crypto tests)
+- [x] MLS group key management (see `e2e_mls_integration.rs`)
 - [ ] Safety number verification
-- [ ] Forward secrecy validation
-- [ ] Post-quantum cryptography (Kyber)
+- [x] Forward secrecy validation (see MLS tests)
+- [x] Post-quantum cryptography (ML-KEM hybrid in `guardyn-crypto`)
+
+### Phase 4 (Security Hardening)
+
+- [ ] Rate limiting verification
+- [ ] Sealed Sender integration test
+- [ ] Hardware key storage mocking
+
+### Performance Tests
+
+- [ ] Concurrent message sending (load testing)
+- [ ] Message pagination (large conversation history)
+- [ ] Media attachment upload/download
+- [ ] Call service latency
 
 ---
 

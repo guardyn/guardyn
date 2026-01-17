@@ -149,7 +149,7 @@ log_info "Checking ChromeDriver..."
 
 if ! lsof -i :4444 > /dev/null 2>&1; then
   log_info "ChromeDriver not running, attempting to start..."
-  
+
   # Try to find chromedriver
   CHROMEDRIVER_PATH=""
   if [ -f "$CLIENT_DIR/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver" ]; then
@@ -157,21 +157,21 @@ if ! lsof -i :4444 > /dev/null 2>&1; then
   elif command -v chromedriver &> /dev/null; then
     CHROMEDRIVER_PATH=$(command -v chromedriver)
   fi
-  
+
   if [ -z "$CHROMEDRIVER_PATH" ]; then
     log_error "ChromeDriver not found"
-    log_info "Please install ChromeDriver or place it in client/chromedriver/"
+    log_info "Please install ChromeDriver or place it in client-mobile/chromedriver/"
     log_info "Download from: https://googlechromelabs.github.io/chrome-for-testing/"
     exit 1
   fi
-  
+
   # Start ChromeDriver in background
   "$CHROMEDRIVER_PATH" --port=4444 > /tmp/chromedriver.log 2>&1 &
   CHROMEDRIVER_PID=$!
-  
+
   # Wait for ChromeDriver to be ready
   sleep 2
-  
+
   if curl -s http://localhost:4444/status | jq -r '.value.ready' 2>/dev/null | grep -q "true"; then
     log_success "ChromeDriver started (PID: $CHROMEDRIVER_PID, port: 4444)"
   else

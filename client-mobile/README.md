@@ -499,7 +499,7 @@ sudo apt-get install libsecret-1-dev
 ## Project Structure
 
 ```
-client/
+client-mobile/
 ├── lib/
 │   ├── main.dart                  # App entry point
 │   ├── app.dart                   # MaterialApp configuration
