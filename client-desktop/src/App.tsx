@@ -5,6 +5,9 @@ import { Component, createContext, createSignal, JSX, onMount, Show, useContext 
 // Components
 import Sidebar from './components/Sidebar';
 
+// Hooks
+import { useAppShortcuts } from './hooks';
+
 // Types
 import type { UserInfo } from './types';
 
@@ -52,6 +55,9 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 const App: Component<{ children?: JSX.Element }> = (props) => {
   const { user, setUser, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Initialize global keyboard shortcuts
+  useAppShortcuts();
 
   const handleLogout = async () => {
     try {

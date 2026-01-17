@@ -5,6 +5,7 @@
 /// - PQXDH hybrid key agreement (post-quantum + classical)
 /// - Double Ratchet for 1-on-1 messaging
 /// - MLS (Messaging Layer Security) for group chat
+/// - Sealed Sender for metadata protection
 /// - PADMÉ padding for traffic analysis protection
 /// - Key derivation and storage
 
@@ -13,6 +14,7 @@ pub mod x3dh;
 pub mod double_ratchet;
 pub mod mls;
 pub mod key_storage;
+pub mod sealed_sender;
 
 // Post-quantum and privacy enhancements
 pub mod pqxdh;
@@ -34,6 +36,7 @@ pub use double_ratchet::DoubleRatchet;
 pub use mls::{MlsGroupManager, create_test_credential};
 pub use pqxdh::{HybridKeyBundle, HybridSharedSecret, generate_hybrid_key_bundle};
 pub use padding::{pad_message, unpad_message, next_padme_length};
+pub use sealed_sender::{SealedSender, SealedSenderEnvelope, SenderCertificate};
 
 use thiserror::Error;
 

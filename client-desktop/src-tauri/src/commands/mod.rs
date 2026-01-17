@@ -7,3 +7,6 @@ pub mod calls;
 pub mod crypto;
 pub mod messaging;
 pub mod settings;
+
+#[cfg(test)]
+mod tests;

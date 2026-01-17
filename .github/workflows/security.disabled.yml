@@ -1,0 +1,266 @@
+name: Security Scans
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # Rust Dependency Audit
+  # ═══════════════════════════════════════════════════════════════════════════════
+  rust-audit:
+    name: Rust Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        working-directory: ./backend
+        run: |
+          cargo audit --json > audit-results.json || true
+          cargo audit
+        continue-on-error: true
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-audit-results
+          path: backend/audit-results.json
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # Cargo Deny (Licenses + Vulnerabilities)
+  # ═══════════════════════════════════════════════════════════════════════════════
+  cargo-deny:
+    name: Cargo Deny Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run cargo deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          manifest-path: ./backend/Cargo.toml
+          log-level: warn
+          command: check
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # Container Image Scanning
+  # ═══════════════════════════════════════════════════════════════════════════════
+  container-scan:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        service:
+          - auth-service
+          - messaging-service
+          - media-service
+          - presence-service
+          - notification-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        working-directory: ./backend
+        run: |
+          docker build \
+            --build-arg SERVICE=${{ matrix.service }} \
+            -t guardyn/${{ matrix.service }}:${{ github.sha }} \
+            -f Dockerfile .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'guardyn/${{ matrix.service }}:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
+          category: 'container-${{ matrix.service }}'
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # Kubernetes Manifest Scanning
+  # ═══════════════════════════════════════════════════════════════════════════════
+  k8s-scan:
+    name: Kubernetes Config Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy on K8s manifests
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: './infra/k8s'
+          format: 'sarif'
+          output: 'trivy-k8s-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload K8s scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-k8s-results.sarif'
+          category: 'kubernetes-config'
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # CodeQL Analysis
+  # ═══════════════════════════════════════════════════════════════════════════════
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['rust']
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # Secret Scanning
+  # ═══════════════════════════════════════════════════════════════════════════════
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # SBOM Generation
+  # ═══════════════════════════════════════════════════════════════════════════════
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install cargo-sbom
+        run: cargo install cargo-sbom
+
+      - name: Generate Rust SBOM
+        working-directory: ./backend
+        run: |
+          cargo sbom --output-format spdx-json > ../sbom-backend.spdx.json
+
+      - name: Generate container SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: guardyn/auth-service:latest
+          format: spdx-json
+          output-file: sbom-container.spdx.json
+        continue-on-error: true
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom-backend.spdx.json
+            sbom-container.spdx.json
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # Security Report
+  # ═══════════════════════════════════════════════════════════════════════════════
+  security-report:
+    name: Security Report
+    runs-on: ubuntu-latest
+    needs: [rust-audit, cargo-deny, k8s-scan, secret-scan]
+    if: always()
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+
+      - name: Generate summary
+        run: |
+          echo "# Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.rust-audit.result }}" == "success" ]; then
+            echo "| Rust Audit | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Rust Audit | ❌ Fail |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.cargo-deny.result }}" == "success" ]; then
+            echo "| Cargo Deny | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Cargo Deny | ❌ Fail |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.k8s-scan.result }}" == "success" ]; then
+            echo "| K8s Config | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| K8s Config | ❌ Fail |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.secret-scan.result }}" == "success" ]; then
+            echo "| Secret Scan | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Secret Scan | ❌ Fail |" >> $GITHUB_STEP_SUMMARY
+          fi
