@@ -84,14 +84,88 @@ export interface EncryptedMessage {
   header: string;
 }
 
+// Calls
+export interface CallInfo {
+  call_id: string;
+  call_type: 'voice' | 'video';
+  caller_id: string;
+  caller_name: string;
+  state: CallState;
+  started_at?: number;
+  duration_seconds: number;
+  participants: CallParticipant[];
+  is_screen_sharing: boolean;
+}
+
+export type CallState =
+  | 'initiating'
+  | 'ringing'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'ended'
+  | 'failed';
+
+export interface CallParticipant {
+  user_id: string;
+  display_name: string;
+  is_muted: boolean;
+  has_video: boolean;
+  is_screen_sharing: boolean;
+  is_speaking: boolean;
+}
+
+export interface CallHistoryEntry {
+  call_id: string;
+  call_type: 'voice' | 'video';
+  is_group_call: boolean;
+  group_id?: string;
+  other_user_id: string;
+  other_user_name: string;
+  is_outgoing: boolean;
+  end_reason: CallEndReason;
+  started_at: number;
+  duration_seconds: number;
+}
+
+export type CallEndReason =
+  | 'completed'
+  | 'missed'
+  | 'declined'
+  | 'busy'
+  | 'failed'
+  | 'cancelled';
+
+export interface IncomingCall {
+  call_id: string;
+  caller_id: string;
+  caller_name: string;
+  caller_avatar?: string;
+  call_type: 'voice' | 'video';
+}
+
 // Settings
-export interface UserSettings {
+export interface Settings {
   theme: Theme;
   notifications_enabled: boolean;
   sound_enabled: boolean;
   show_message_preview: boolean;
   language: string;
   disappearing_messages_default?: number;
+  // Call settings
+  auto_answer_calls: boolean;
+  default_camera?: string;
+  default_microphone?: string;
+  default_speaker?: string;
+  video_quality: VideoQuality;
+  // Privacy settings
+  read_receipts_enabled: boolean;
+  typing_indicators_enabled: boolean;
+  // Desktop settings
+  start_minimized: boolean;
+  minimize_to_tray: boolean;
+  launch_at_startup: boolean;
 }
 
 export type Theme = 'light' | 'dark' | 'system';
+export type VideoQuality = 'low' | 'medium' | 'high' | 'auto';

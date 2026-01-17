@@ -5,10 +5,15 @@ import App, { AuthProvider, useAuth } from './App';
 import './styles/index.css';
 
 // Pages
+import Call from './pages/Call';
+import CallHistory from './pages/CallHistory';
 import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
+
+// Components
+import IncomingCallDialog from './components/IncomingCall';
 
 // Wrapper components that pass auth context to pages
 const LoginPage = () => {
@@ -29,9 +34,16 @@ if (!root) {
 
 render(
   () => (
-    <Router root={(props) => <AuthProvider><App>{props.children}</App></AuthProvider>}>
+    <Router root={(props) => (
+      <AuthProvider>
+        <App>{props.children}</App>
+        <IncomingCallDialog />
+      </AuthProvider>
+    )}>
       <Route path="/" component={Chat} />
       <Route path="/chat/:conversationId?" component={Chat} />
+      <Route path="/call/:id" component={Call} />
+      <Route path="/calls" component={CallHistory} />
       <Route path="/settings" component={Settings} />
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />

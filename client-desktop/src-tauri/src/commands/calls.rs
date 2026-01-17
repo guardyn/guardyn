@@ -240,6 +240,110 @@ pub async fn toggle_screen_share(
     Ok(())
 }
 
+/// Screen source information for screen sharing picker
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenSource {
+    pub id: String,
+    pub name: String,
+    pub thumbnail: String, // Base64 encoded PNG
+    pub source_type: String, // "screen" or "window"
+}
+
+/// Screen share options
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenShareOptions {
+    pub audio: bool,
+    pub cursor: bool,
+}
+
+/// Get available screen sources for sharing
+#[tauri::command]
+pub async fn get_screen_sources(
+    state: State<'_, AppState>,
+) -> Result<Vec<ScreenSource>, String> {
+    if !state.is_authenticated() {
+        return Err("Not authenticated".to_string());
+    }
+
+    tracing::debug!("Getting available screen sources");
+
+    // Platform-specific screen enumeration
+    // For now, return a mock list - actual implementation uses platform APIs
+    let sources = vec![
+        ScreenSource {
+            id: "screen:0".to_string(),
+            name: "Primary Display".to_string(),
+            thumbnail: String::new(), // Would be base64 PNG
+            source_type: "screen".to_string(),
+        },
+    ];
+
+    // TODO: Use platform-specific APIs:
+    // - Linux: XCB/Wayland portal (org.freedesktop.portal.ScreenCast)
+    // - macOS: CGDisplayStream, CGWindowListCopyWindowInfo
+    // - Windows: DXGI Desktop Duplication, PrintWindow
+
+    Ok(sources)
+}
+
+/// Start screen sharing with a specific source
+#[tauri::command]
+pub async fn start_screen_share(
+    call_id: String,
+    source_id: String,
+    options: Option<ScreenShareOptions>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if !state.is_authenticated() {
+        return Err("Not authenticated".to_string());
+    }
+
+    let opts = options.unwrap_or(ScreenShareOptions {
+        audio: false,
+        cursor: true,
+    });
+
+    tracing::info!(
+        "Starting screen share for call {} with source {} (audio: {}, cursor: {})",
+        call_id, source_id, opts.audio, opts.cursor
+    );
+
+    // TODO: Implement screen capture
+    // 1. Initialize platform-specific capture
+    // 2. Create video track from capture
+    // 3. Replace existing video track in WebRTC
+    // 4. Notify backend about screen share state
+
+    // Notify backend
+    state.calls().toggle_screen_share(call_id, true).await
+        .map_err(|e| format!("Failed to start screen share: {}", e))?;
+
+    Ok(())
+}
+
+/// Stop screen sharing
+#[tauri::command]
+pub async fn stop_screen_share(
+    call_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if !state.is_authenticated() {
+        return Err("Not authenticated".to_string());
+    }
+
+    tracing::info!("Stopping screen share for call {}", call_id);
+
+    // TODO: Stop screen capture and restore camera
+    // 1. Stop capture
+    // 2. Restore camera video track if video was enabled
+
+    // Notify backend
+    state.calls().toggle_screen_share(call_id, false).await
+        .map_err(|e| format!("Failed to stop screen share: {}", e))?;
+
+    Ok(())
+}
+
 /// Get call history
 #[tauri::command]
 pub async fn get_call_history(
