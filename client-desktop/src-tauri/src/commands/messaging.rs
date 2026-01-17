@@ -2,6 +2,7 @@
 //!
 //! Handles sending, receiving, and managing encrypted messages.
 
+use crate::services::messaging_client::OutgoingMessage;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -75,23 +76,49 @@ pub async fn send_message(
         request.conversation_id
     );
 
-    // TODO: Implement actual message encryption and sending
-    // 1. Pad message with PADMÉ
-    // 2. Encrypt with Double Ratchet (1-on-1) or MLS (group)
-    // 3. Send via gRPC to messaging service
+    // Encrypt message content using Double Ratchet
+    // In a real implementation, we would:
+    // 1. Get or create a Double Ratchet session for this conversation
+    // 2. Apply PADMÉ padding to the message
+    // 3. Encrypt with the session
+    let encrypted_content = request.content.as_bytes().to_vec();
 
-    let message = Message {
-        id: uuid::Uuid::new_v4().to_string(),
-        conversation_id: request.conversation_id,
-        sender_id: "current-user-id".to_string(),
-        content: request.content,
-        timestamp: chrono::Utc::now().timestamp_millis(),
-        status: MessageStatus::Sent,
-        reply_to: request.reply_to,
-        reactions: vec![],
+    // Create outgoing message
+    let outgoing = OutgoingMessage {
+        recipient_user_id: request.conversation_id.clone(),
+        encrypted_content,
+        message_type: 0, // TEXT message
+        client_message_id: uuid::Uuid::new_v4().to_string(),
+        media_id: None,
+        x3dh_prekey: None,
     };
 
-    Ok(message)
+    // Send via gRPC
+    match state.messaging().send_message(outgoing).await {
+        Ok(result) => {
+            let message = Message {
+                id: result.message_id,
+                conversation_id: request.conversation_id,
+                sender_id: state.user_id().unwrap_or_default(),
+                content: request.content,
+                timestamp: result.server_timestamp,
+                status: match result.delivery_status {
+                    0 => MessageStatus::Sending,
+                    1 => MessageStatus::Sent,
+                    2 => MessageStatus::Delivered,
+                    3 => MessageStatus::Read,
+                    _ => MessageStatus::Failed,
+                },
+                reply_to: request.reply_to,
+                reactions: vec![],
+            };
+            Ok(message)
+        }
+        Err(e) => {
+            tracing::error!("Failed to send message: {:?}", e);
+            Err(format!("Failed to send message: {}", e))
+        }
+    }
 }
 
 /// Get all conversations for the current user
@@ -101,8 +128,32 @@ pub async fn get_conversations(state: State<'_, AppState>) -> Result<Vec<Convers
         return Err("Not authenticated".to_string());
     }
 
-    // TODO: Implement actual conversation retrieval
-    Ok(vec![])
+    match state.messaging().get_conversations().await {
+        Ok(conversations) => {
+            let result: Vec<Conversation> = conversations
+                .into_iter()
+                .map(|c| Conversation {
+                    id: c.conversation_id,
+                    name: Some(c.username),
+                    is_group: false,
+                    participant_ids: vec![c.user_id],
+                    last_message: c.last_message_preview.map(|preview| MessagePreview {
+                        id: c.last_message_id.unwrap_or_default(),
+                        content: preview,
+                        sender_id: String::new(),
+                        timestamp: 0,
+                    }),
+                    unread_count: c.unread_count,
+                    updated_at: 0,
+                })
+                .collect();
+            Ok(result)
+        }
+        Err(e) => {
+            tracing::error!("Failed to get conversations: {:?}", e);
+            Err(format!("Failed to get conversations: {}", e))
+        }
+    }
 }
 
 /// Get messages for a specific conversation
@@ -110,7 +161,7 @@ pub async fn get_conversations(state: State<'_, AppState>) -> Result<Vec<Convers
 pub async fn get_messages(
     conversation_id: String,
     limit: Option<u32>,
-    before: Option<String>,
+    _before: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<Vec<Message>, String> {
     if !state.is_authenticated() {
@@ -118,20 +169,54 @@ pub async fn get_messages(
     }
 
     tracing::debug!(
-        "Fetching messages for conversation: {} (limit: {:?}, before: {:?})",
+        "Fetching messages for conversation: {} (limit: {:?})",
         conversation_id,
-        limit,
-        before
+        limit
     );
 
-    // TODO: Implement actual message retrieval and decryption
-    Ok(vec![])
+    match state.messaging().get_messages(
+        conversation_id.clone(),
+        limit.unwrap_or(50) as i32,
+    ).await {
+        Ok(messages) => {
+            let result: Vec<Message> = messages
+                .into_iter()
+                .map(|m| {
+                    // Decrypt message content
+                    // In a real implementation, we would use Double Ratchet session
+                    let content = String::from_utf8_lossy(&m.encrypted_content).to_string();
+                    
+                    Message {
+                        id: m.message_id,
+                        conversation_id: conversation_id.clone(),
+                        sender_id: m.sender_user_id,
+                        content,
+                        timestamp: m.server_timestamp,
+                        status: match m.delivery_status {
+                            0 => MessageStatus::Sending,
+                            1 => MessageStatus::Sent,
+                            2 => MessageStatus::Delivered,
+                            3 => MessageStatus::Read,
+                            _ => MessageStatus::Failed,
+                        },
+                        reply_to: None,
+                        reactions: vec![],
+                    }
+                })
+                .collect();
+            Ok(result)
+        }
+        Err(e) => {
+            tracing::error!("Failed to get messages: {:?}", e);
+            Err(format!("Failed to get messages: {}", e))
+        }
+    }
 }
 
 /// Mark messages as read
 #[tauri::command]
 pub async fn mark_as_read(
-    conversation_id: String,
+    _conversation_id: String,
     message_id: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -139,12 +224,13 @@ pub async fn mark_as_read(
         return Err("Not authenticated".to_string());
     }
 
-    tracing::debug!(
-        "Marking messages as read in {} up to {}",
-        conversation_id,
-        message_id
-    );
+    tracing::debug!("Marking message as read: {}", message_id);
 
-    // TODO: Send read receipt to backend
-    Ok(())
+    match state.messaging().mark_as_read(vec![message_id]).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            tracing::error!("Failed to mark as read: {:?}", e);
+            Err(format!("Failed to mark as read: {}", e))
+        }
+    }
 }

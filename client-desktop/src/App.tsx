@@ -1,12 +1,6 @@
-import { Navigate, Route, Routes } from '@solidjs/router';
+import { useNavigate } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
-import { Component, createSignal, onMount } from 'solid-js';
-
-// Pages
-import Chat from './pages/Chat';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Settings from './pages/Settings';
+import { Component, createSignal, onMount, Show, createContext, useContext, JSX } from 'solid-js';
 
 // Components
 import Sidebar from './components/Sidebar';
@@ -14,7 +8,25 @@ import Sidebar from './components/Sidebar';
 // Types
 import type { UserInfo } from './types';
 
-const App: Component = () => {
+// Create auth context
+interface AuthContextType {
+  user: () => UserInfo | null;
+  setUser: (user: UserInfo | null) => void;
+  loading: () => boolean;
+}
+
+const AuthContext = createContext<AuthContextType>();
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
+// Auth provider component
+export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
   const [user, setUser] = createSignal<UserInfo | null>(null);
   const [loading, setLoading] = createSignal(true);
 
@@ -29,47 +41,44 @@ const App: Component = () => {
     }
   });
 
-  const handleLogin = (userInfo: UserInfo) => {
-    setUser(userInfo);
-  };
+  return (
+    <AuthContext.Provider value={{ user, setUser, loading }}>
+      {props.children}
+    </AuthContext.Provider>
+  );
+};
+
+// Main App layout component
+const App: Component<{ children?: JSX.Element }> = (props) => {
+  const { user, setUser, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await invoke('logout');
       setUser(null);
+      navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
   };
 
-  if (loading()) {
-    return (
-      <div class="flex h-screen items-center justify-center bg-gray-900">
-        <div class="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div class="h-screen bg-gray-900 text-white">
-      {user() ? (
-        <div class="flex h-full">
-          <Sidebar user={user()!} onLogout={handleLogout} />
-          <main class="flex-1">
-            <Routes>
-              <Route path="/" component={() => <Navigate href="/chat" />} />
-              <Route path="/chat/:conversationId?" component={Chat} />
-              <Route path="/settings" component={Settings} />
-            </Routes>
-          </main>
+      <Show when={!loading()} fallback={
+        <div class="flex h-screen items-center justify-center bg-gray-900">
+          <div class="text-white text-xl">Loading...</div>
         </div>
-      ) : (
-        <Routes>
-          <Route path="/" component={() => <Navigate href="/login" />} />
-          <Route path="/login" component={() => <Login onLogin={handleLogin} />} />
-          <Route path="/register" component={() => <Register onLogin={handleLogin} />} />
-        </Routes>
-      )}
+      }>
+        <Show when={user()} fallback={props.children}>
+          <div class="flex h-full">
+            <Sidebar user={user()!} onLogout={handleLogout} />
+            <main class="flex-1">
+              {props.children}
+            </main>
+          </div>
+        </Show>
+      </Show>
     </div>
   );
 };

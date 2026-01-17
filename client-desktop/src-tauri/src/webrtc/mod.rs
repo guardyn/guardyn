@@ -5,5 +5,5 @@
 pub mod peer_connection;
 pub mod sframe;
 
-pub use peer_connection::{WebRtcConfig, WebRtcManager, WebRtcEvent};
+pub use peer_connection::{IceServerConfig, WebRtcConfig, WebRtcManager, WebRtcEvent};
 pub use sframe::SFrameEncryptor;

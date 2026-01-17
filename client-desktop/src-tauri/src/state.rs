@@ -3,12 +3,18 @@
 //! Manages global application state using thread-safe primitives.
 
 use crate::commands::settings::UserSettings;
+use crate::grpc::{GrpcClient, GrpcConfig};
+use crate::services::{AuthClient, MessagingClient, CallsClient};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
 /// Global application state
 pub struct AppState {
     inner: Arc<RwLock<AppStateInner>>,
+    grpc: Arc<GrpcClient>,
+    auth_client: Arc<AuthClient>,
+    messaging_client: Arc<MessagingClient>,
+    calls_client: Arc<CallsClient>,
 }
 
 struct AppStateInner {
@@ -20,6 +26,9 @@ struct AppStateInner {
 
 impl AppState {
     pub fn new() -> Self {
+        let config = GrpcConfig::default();
+        let grpc = Arc::new(GrpcClient::new(config));
+        
         Self {
             inner: Arc::new(RwLock::new(AppStateInner {
                 authenticated: false,
@@ -27,7 +36,31 @@ impl AppState {
                 access_token: None,
                 settings: UserSettings::default(),
             })),
+            auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
+            messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
+            calls_client: Arc::new(CallsClient::new(Arc::clone(&grpc))),
+            grpc,
         }
+    }
+
+    /// Get the gRPC client
+    pub fn grpc(&self) -> &Arc<GrpcClient> {
+        &self.grpc
+    }
+
+    /// Get the auth client
+    pub fn auth(&self) -> &Arc<AuthClient> {
+        &self.auth_client
+    }
+
+    /// Get the messaging client
+    pub fn messaging(&self) -> &Arc<MessagingClient> {
+        &self.messaging_client
+    }
+
+    /// Get the calls client
+    pub fn calls(&self) -> &Arc<CallsClient> {
+        &self.calls_client
     }
 
     /// Check if user is authenticated
@@ -87,8 +120,15 @@ impl Default for AppState {
 
 impl Clone for AppState {
     fn clone(&self) -> Self {
+        let config = GrpcConfig::default();
+        let grpc = Arc::new(GrpcClient::new(config));
+        
         Self {
             inner: Arc::clone(&self.inner),
+            auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
+            messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
+            calls_client: Arc::new(CallsClient::new(Arc::clone(&grpc))),
+            grpc,
         }
     }
 }

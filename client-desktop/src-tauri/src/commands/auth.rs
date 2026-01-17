@@ -2,7 +2,9 @@
 //!
 //! Handles user authentication, registration, and session management.
 
+use crate::proto::common::{KeyBundle, Timestamp};
 use crate::state::AppState;
+use guardyn_crypto::x3dh::X3DHProtocol;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -35,6 +37,26 @@ pub struct AuthResponse {
     pub error: Option<String>,
 }
 
+/// Generate a key bundle for registration/login
+fn generate_key_bundle() -> Result<KeyBundle, String> {
+    let bundle = X3DHProtocol::generate_key_bundle()
+        .map_err(|e| format!("Failed to generate key bundle: {}", e))?;
+    
+    Ok(KeyBundle {
+        identity_key: bundle.identity_key,
+        signed_pre_key: bundle.signed_pre_key,
+        signed_pre_key_signature: bundle.signed_pre_key_signature,
+        one_time_pre_keys: bundle.one_time_pre_keys
+            .into_iter()
+            .map(|k| k.public_key)
+            .collect(),
+        created_at: Some(Timestamp {
+            seconds: chrono::Utc::now().timestamp(),
+            nanos: 0,
+        }),
+    })
+}
+
 /// Login with username and password
 #[tauri::command]
 pub async fn login(
@@ -43,23 +65,54 @@ pub async fn login(
 ) -> Result<AuthResponse, String> {
     tracing::info!("Login attempt for user: {}", request.username);
 
-    // TODO: Implement actual gRPC call to auth service
-    // For now, return a mock response
+    // Generate key bundle for device registration
+    let key_bundle = generate_key_bundle().ok();
 
-    // Store session in state
-    state.set_authenticated(true);
+    // Call the auth service
+    match state.auth().login(
+        request.username.clone(),
+        request.password,
+        None, // device_id - will be assigned by server
+        "Guardyn Desktop".to_string(),
+        "desktop".to_string(),
+        key_bundle,
+    ).await {
+        Ok(result) => {
+            // Store session in state
+            state.set_authenticated(true);
+            state.set_user_id(Some(result.user_id.clone()));
+            state.set_access_token(Some(result.access_token.clone()));
 
-    Ok(AuthResponse {
-        success: true,
-        user: Some(UserInfo {
-            user_id: uuid::Uuid::new_v4().to_string(),
-            username: request.username,
-            display_name: None,
-            avatar_url: None,
-        }),
-        token: Some("mock-jwt-token".to_string()),
-        error: None,
-    })
+            // Update gRPC client with auth token
+            state.grpc().set_auth_token(result.access_token.clone());
+
+            let user_info = UserInfo {
+                user_id: result.user_id,
+                username: result.profile.as_ref()
+                    .map(|p| p.username.clone())
+                    .unwrap_or(request.username),
+                display_name: result.profile.as_ref()
+                    .map(|p| p.username.clone()),
+                avatar_url: None,
+            };
+
+            Ok(AuthResponse {
+                success: true,
+                user: Some(user_info),
+                token: Some(result.access_token),
+                error: None,
+            })
+        }
+        Err(e) => {
+            tracing::warn!("Login failed: {:?}", e);
+            Ok(AuthResponse {
+                success: false,
+                user: None,
+                token: None,
+                error: Some(e.to_string()),
+            })
+        }
+    }
 }
 
 /// Register a new user
@@ -70,29 +123,52 @@ pub async fn register(
 ) -> Result<AuthResponse, String> {
     tracing::info!("Registration attempt for user: {}", request.username);
 
-    // TODO: Implement actual gRPC call to auth service
-    // This should also generate and upload key bundles
+    // Generate crypto key bundle for E2EE
+    let key_bundle = generate_key_bundle()
+        .map_err(|e| format!("Failed to generate key bundle: {}", e))?;
 
-    // Generate crypto key bundle
-    #[cfg(feature = "pq")]
-    {
-        // Generate hybrid key bundle for post-quantum security
-        // guardyn_crypto::pqxdh::generate_hybrid_key_bundle(true, true)
+    // Call the auth service
+    match state.auth().register(
+        request.username.clone(),
+        request.password,
+        None, // email
+        "Guardyn Desktop".to_string(),
+        "desktop".to_string(),
+        key_bundle,
+    ).await {
+        Ok(result) => {
+            // Store session in state
+            state.set_authenticated(true);
+            state.set_user_id(Some(result.user_id.clone()));
+            state.set_access_token(Some(result.access_token.clone()));
+
+            // Update gRPC client with auth token
+            state.grpc().set_auth_token(result.access_token.clone());
+
+            let user_info = UserInfo {
+                user_id: result.user_id,
+                username: request.username,
+                display_name: request.display_name,
+                avatar_url: None,
+            };
+
+            Ok(AuthResponse {
+                success: true,
+                user: Some(user_info),
+                token: Some(result.access_token),
+                error: None,
+            })
+        }
+        Err(e) => {
+            tracing::warn!("Registration failed: {:?}", e);
+            Ok(AuthResponse {
+                success: false,
+                user: None,
+                token: None,
+                error: Some(e.to_string()),
+            })
+        }
     }
-
-    state.set_authenticated(true);
-
-    Ok(AuthResponse {
-        success: true,
-        user: Some(UserInfo {
-            user_id: uuid::Uuid::new_v4().to_string(),
-            username: request.username,
-            display_name: request.display_name,
-            avatar_url: None,
-        }),
-        token: Some("mock-jwt-token".to_string()),
-        error: None,
-    })
 }
 
 /// Logout current user
@@ -100,8 +176,15 @@ pub async fn register(
 pub async fn logout(state: State<'_, AppState>) -> Result<(), String> {
     tracing::info!("User logging out");
 
+    // Call the auth service to invalidate session
+    if let Err(e) = state.auth().logout(false).await {
+        tracing::warn!("Logout request failed (continuing anyway): {:?}", e);
+    }
+
+    // Clear local state
     state.set_authenticated(false);
     state.clear_session();
+    state.grpc().clear_auth_token();
 
     Ok(())
 }
@@ -113,11 +196,15 @@ pub async fn get_current_user(state: State<'_, AppState>) -> Result<Option<UserI
         return Ok(None);
     }
 
-    // TODO: Implement actual user info retrieval
-    Ok(Some(UserInfo {
-        user_id: "current-user-id".to_string(),
-        username: "current-user".to_string(),
-        display_name: Some("Current User".to_string()),
-        avatar_url: None,
-    }))
+    // Return cached user info from state
+    if let Some(user_id) = state.user_id() {
+        Ok(Some(UserInfo {
+            user_id,
+            username: "".to_string(), // Will be fetched from profile
+            display_name: None,
+            avatar_url: None,
+        }))
+    } else {
+        Ok(None)
+    }
 }

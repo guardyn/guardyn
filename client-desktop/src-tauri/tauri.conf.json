@@ -76,16 +76,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "notification": {
-      "all": true
-    },
-    "fs": {
-      "all": true,
-      "scope": ["$APPDATA/**", "$DOWNLOAD/**"]
-    },
-    "dialog": {
-      "all": true
     }
   }
 }
