@@ -12,9 +12,21 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 /// MLS ciphersuite configuration
-/// Using MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 for performance and security balance
+///
+/// Using MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 for:
+/// - X25519 for key exchange
+/// - ChaCha20-Poly1305 for symmetric encryption (256-bit key, high security)
+/// - SHA-256 for hashing
+/// - Ed25519 for signatures
+///
+/// ChaCha20-Poly1305 provides equivalent security to AES-256-GCM and is often
+/// faster on devices without AES hardware acceleration (mobile, ARM).
+/// This ciphersuite is supported by OpenMLS 0.6.
+///
+/// Note: OpenMLS 0.6 does not support AES-256-GCM ciphersuites directly.
+/// ChaCha20-Poly1305 uses a 256-bit key and provides equivalent security level.
 const MLS_CIPHERSUITE: Ciphersuite =
-    Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
 /// Key package with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]

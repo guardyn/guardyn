@@ -6,13 +6,16 @@ authors.workspace = true
 license.workspace = true
 description = "Unified cryptography core for Guardyn - X3DH, Double Ratchet, MLS, PQXDH"
 
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
 [features]
 default = ["std"]
 std = []
 # Post-quantum hybrid encryption (ML-KEM + X25519)
 pq = ["ml-kem"]
 # FFI bindings for Flutter/Tauri
-ffi = ["uniffi"]
+ffi = ["chacha20poly1305"]
 # SFrame for voice/video E2EE
 sframe = []
 
@@ -38,19 +41,19 @@ rand = "0.8"
 sha2 = "0.10"
 hkdf = "0.12"
 aes-gcm = "0.10"
+chacha20poly1305 = { version = "0.10", optional = true }
 zeroize = { version = "1.8", features = ["derive"] }
 subtle = "2.5"  # Constant-time operations
 
 # Post-quantum cryptography (ML-KEM / Kyber)
 ml-kem = { version = "0.2", optional = true }
 
-# FFI bindings
-uniffi = { version = "0.28", optional = true }
-
 [dev-dependencies]
 criterion = "0.5"
 proptest = "1.4"
 hex = "0.4"
+serde_json = "1.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 [[bench]]
 name = "crypto_benchmarks"

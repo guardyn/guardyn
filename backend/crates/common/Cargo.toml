@@ -5,6 +5,13 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+default = ["nats"]
+# NATS messaging (legacy, being phased out)
+nats = ["async-nats"]
+# Kafka/Redpanda messaging (new)
+kafka = ["rdkafka", "futures"]
+
 [dependencies]
 tokio.workspace = true
 serde.workspace = true
@@ -19,3 +26,8 @@ opentelemetry-otlp.workspace = true
 opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
 tracing-opentelemetry = "0.28"
 opentelemetry-semantic-conventions = "0.27"
+
+# Messaging
+async-nats = { workspace = true, optional = true }
+rdkafka = { workspace = true, optional = true }
+futures = { version = "0.3", optional = true }

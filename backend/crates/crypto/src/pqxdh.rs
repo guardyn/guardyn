@@ -20,7 +20,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 #[cfg(feature = "pq")]
 use ml_kem::{
     kem::{Decapsulate, Encapsulate},
-    KemCore, MlKem768,
+    EncodedSizeUser, KemCore, MlKem768,
 };
 
 /// ML-KEM-768 public key size (1184 bytes)
@@ -35,6 +35,61 @@ pub const MLKEM_CIPHERTEXT_SIZE: usize = 1088;
 #[cfg(feature = "pq")]
 pub const MLKEM_SHARED_SECRET_SIZE: usize = 32;
 
+/// Signature bytes wrapper for serde support of [u8; 64]
+#[derive(Clone)]
+pub struct SignatureBytes(pub [u8; 64]);
+
+impl Serialize for SignatureBytes {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for SignatureBytes {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{Error, Visitor};
+        
+        struct BytesVisitor;
+        
+        impl<'de> Visitor<'de> for BytesVisitor {
+            type Value = SignatureBytes;
+            
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "64 bytes")
+            }
+            
+            fn visit_bytes<E: Error>(self, v: &[u8]) -> std::result::Result<Self::Value, E> {
+                if v.len() != 64 {
+                    return Err(E::custom(format!("expected 64 bytes, got {}", v.len())));
+                }
+                let mut arr = [0u8; 64];
+                arr.copy_from_slice(v);
+                Ok(SignatureBytes(arr))
+            }
+            
+            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut arr = [0u8; 64];
+                for (i, byte) in arr.iter_mut().enumerate() {
+                    *byte = seq.next_element()?
+                        .ok_or_else(|| Error::invalid_length(i, &self))?;
+                }
+                Ok(SignatureBytes(arr))
+            }
+        }
+        
+        deserializer.deserialize_bytes(BytesVisitor)
+    }
+}
+
 /// Hybrid key bundle combining classical and post-quantum keys
 #[derive(Clone, Serialize, Deserialize)]
 pub struct HybridKeyBundle {
@@ -45,7 +100,7 @@ pub struct HybridKeyBundle {
     pub signed_prekey: [u8; 32],
 
     /// Signature over the signed prekey
-    pub signed_prekey_signature: [u8; 64],
+    pub signed_prekey_signature: SignatureBytes,
 
     /// Optional one-time X25519 prekey
     pub one_time_prekey: Option<[u8; 32]>,
@@ -56,7 +111,7 @@ pub struct HybridKeyBundle {
 
     /// Signature over the PQ prekey
     #[cfg(feature = "pq")]
-    pub pq_prekey_signature: Option<[u8; 64]>,
+    pub pq_prekey_signature: Option<SignatureBytes>,
 }
 
 /// Private keys for the hybrid key bundle
@@ -75,6 +130,29 @@ pub struct HybridPrivateKeys {
     #[cfg(feature = "pq")]
     #[zeroize(skip)] // ML-KEM key handles its own zeroization
     pq_decapsulation_key: Option<Vec<u8>>,
+}
+
+impl HybridPrivateKeys {
+    /// Get identity key bytes
+    pub fn identity_key(&self) -> &[u8; 32] {
+        &self.identity_key
+    }
+
+    /// Get signed prekey bytes
+    pub fn signed_prekey(&self) -> &[u8; 32] {
+        &self.signed_prekey
+    }
+
+    /// Get one-time prekey bytes
+    pub fn one_time_prekey(&self) -> Option<&[u8; 32]> {
+        self.one_time_prekey.as_ref()
+    }
+
+    /// Get PQ decapsulation key bytes
+    #[cfg(feature = "pq")]
+    pub fn pq_decapsulation_key(&self) -> Option<Vec<u8>> {
+        self.pq_decapsulation_key.clone()
+    }
 }
 
 /// Shared secret derived from hybrid key exchange
@@ -124,7 +202,7 @@ pub fn generate_hybrid_key_bundle(
     let mut bundle = HybridKeyBundle {
         identity_key: identity_verifying_key.to_bytes(),
         signed_prekey: *signed_prekey_public.as_bytes(),
-        signed_prekey_signature: signature.to_bytes(),
+        signed_prekey_signature: SignatureBytes(signature.to_bytes()),
         one_time_prekey: one_time_public,
         #[cfg(feature = "pq")]
         pq_prekey: None,
@@ -152,7 +230,7 @@ pub fn generate_hybrid_key_bundle(
         let pq_signature = identity_signing_key.sign(&ek_bytes);
 
         bundle.pq_prekey = Some(ek_bytes);
-        bundle.pq_prekey_signature = Some(pq_signature.to_bytes());
+        bundle.pq_prekey_signature = Some(SignatureBytes(pq_signature.to_bytes()));
         private_keys.pq_decapsulation_key = Some(dk.as_bytes().to_vec());
     }
 
@@ -168,7 +246,7 @@ pub fn verify_hybrid_bundle(bundle: &HybridKeyBundle) -> Result<()> {
         .map_err(|e| CryptoError::InvalidKey(format!("Invalid identity key: {}", e)))?;
 
     // Verify signed prekey signature
-    let spk_signature = Signature::from_bytes(&bundle.signed_prekey_signature);
+    let spk_signature = Signature::from_bytes(&bundle.signed_prekey_signature.0);
     identity_key
         .verify(&bundle.signed_prekey, &spk_signature)
         .map_err(|e| CryptoError::InvalidSignature(format!("Invalid SPK signature: {}", e)))?;
@@ -178,7 +256,7 @@ pub fn verify_hybrid_bundle(bundle: &HybridKeyBundle) -> Result<()> {
     if let (Some(pq_prekey), Some(pq_sig_bytes)) =
         (&bundle.pq_prekey, &bundle.pq_prekey_signature)
     {
-        let pq_signature = Signature::from_bytes(pq_sig_bytes);
+        let pq_signature = Signature::from_bytes(&pq_sig_bytes.0);
         identity_key
             .verify(pq_prekey, &pq_signature)
             .map_err(|e| CryptoError::InvalidSignature(format!("Invalid PQ signature: {}", e)))?;
@@ -239,11 +317,13 @@ pub fn derive_sender_shared_secret(
     #[cfg(feature = "pq")]
     let pq_shared = if let Some(ref pq_prekey) = recipient_bundle.pq_prekey {
         use ml_kem::EncodedSizeUser;
-        let ek = ml_kem::kem::EncapsulationKey::<MlKem768>::from_bytes(
-            pq_prekey
-                .as_slice()
-                .try_into()
-                .map_err(|_| CryptoError::InvalidKey("Invalid PQ prekey size".to_string()))?,
+        use ml_kem::array::Array;
+        let ek_bytes: &[u8; 1184] = pq_prekey
+            .as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid PQ prekey size".to_string()))?;
+        let ek = ml_kem::kem::EncapsulationKey::<ml_kem::MlKem768Params>::from_bytes(
+            Array::from_slice(ek_bytes),
         );
         let (ciphertext, shared_secret) = ek.encapsulate(&mut rand::thread_rng()).unwrap();
         additional_data.extend_from_slice(ciphertext.as_slice());
@@ -315,16 +395,19 @@ pub fn derive_recipient_shared_secret(
         (&recipient_private_keys.pq_decapsulation_key, pq_ciphertext)
     {
         use ml_kem::EncodedSizeUser;
-        let dk = ml_kem::kem::DecapsulationKey::<MlKem768>::from_bytes(
-            dk_bytes
-                .as_slice()
-                .try_into()
-                .map_err(|_| CryptoError::InvalidKey("Invalid PQ decapsulation key".to_string()))?,
+        use ml_kem::array::Array;
+        let dk_arr: &[u8; 2400] = dk_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid PQ decapsulation key".to_string()))?;
+        let dk = ml_kem::kem::DecapsulationKey::<ml_kem::MlKem768Params>::from_bytes(
+            Array::from_slice(dk_arr),
         );
-        let ciphertext: ml_kem::Ciphertext<MlKem768> = ct
+        let ct_arr: &[u8; 1088] = ct
             .try_into()
             .map_err(|_| CryptoError::InvalidKey("Invalid PQ ciphertext".to_string()))?;
-        let shared_secret = dk.decapsulate(&ciphertext)
+        let ciphertext = Array::from_slice(ct_arr);
+        let shared_secret = dk.decapsulate(ciphertext)
             .map_err(|_| CryptoError::Decryption("ML-KEM decapsulation failed".to_string()))?;
         Some(shared_secret)
     } else {

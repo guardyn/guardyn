@@ -18,6 +18,10 @@ pub mod key_storage;
 pub mod pqxdh;
 pub mod padding;
 
+// FFI bindings for Flutter (feature-gated)
+#[cfg(feature = "ffi")]
+pub mod ffi;
+
 #[cfg(test)]
 mod mls_tests;
 

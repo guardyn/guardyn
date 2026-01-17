@@ -54,7 +54,8 @@ scylla = "0.14"
 async-nats = "0.37"
 
 # Kafka/Redpanda messaging (new)
-rdkafka = { version = "0.36", features = ["cmake-build", "ssl", "sasl"] }
+# Note: SASL disabled for local dev, enable for production with actual auth
+rdkafka = { version = "0.36", features = ["cmake-build", "ssl-vendored"] }
 
 # Observability
 tracing = "0.1"
