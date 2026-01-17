@@ -1,0 +1,58 @@
+# Guardyn Backend Development Dockerfile
+# Supports hot reload with cargo-watch
+
+FROM rust:1.83-bookworm
+
+# Install development dependencies
+RUN apt-get update && apt-get install -y \
+    protobuf-compiler \
+    libprotobuf-dev \
+    curl \
+    cmake \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-watch for hot reload
+RUN cargo install cargo-watch
+
+# Install sccache for faster rebuilds (optional but recommended)
+RUN cargo install sccache
+ENV RUSTC_WRAPPER=sccache
+
+# Set working directory
+WORKDIR /app
+
+# Pre-download dependencies (will be cached if Cargo.toml doesn't change)
+# Copy only Cargo files first for better layer caching
+COPY Cargo.toml Cargo.lock ./
+COPY crates/auth-service/Cargo.toml crates/auth-service/
+COPY crates/messaging-service/Cargo.toml crates/messaging-service/
+COPY crates/presence-service/Cargo.toml crates/presence-service/
+COPY crates/media-service/Cargo.toml crates/media-service/
+COPY crates/notification-service/Cargo.toml crates/notification-service/
+COPY crates/common/Cargo.toml crates/common/
+COPY crates/crypto/Cargo.toml crates/crypto/
+COPY crates/e2e-tests/Cargo.toml crates/e2e-tests/
+
+# Create dummy main files to satisfy cargo
+RUN mkdir -p crates/auth-service/src && echo 'fn main() {}' > crates/auth-service/src/main.rs && \
+    mkdir -p crates/messaging-service/src && echo 'fn main() {}' > crates/messaging-service/src/main.rs && \
+    mkdir -p crates/presence-service/src && echo 'fn main() {}' > crates/presence-service/src/main.rs && \
+    mkdir -p crates/media-service/src && echo 'fn main() {}' > crates/media-service/src/main.rs && \
+    mkdir -p crates/notification-service/src && echo 'fn main() {}' > crates/notification-service/src/main.rs && \
+    mkdir -p crates/common/src && echo '' > crates/common/src/lib.rs && \
+    mkdir -p crates/crypto/src && echo '' > crates/crypto/src/lib.rs && \
+    mkdir -p crates/e2e-tests/src && echo '' > crates/e2e-tests/src/lib.rs
+
+# Download dependencies (this layer will be cached)
+RUN cargo fetch
+
+# Remove dummy files (actual source will be mounted)
+RUN rm -rf crates/*/src
+
+# Expose common service ports
+EXPOSE 50051 50052 50053 50054 50055 8081
+
+# Default command (will be overridden by docker-compose)
+CMD ["cargo", "watch", "-x", "run"]

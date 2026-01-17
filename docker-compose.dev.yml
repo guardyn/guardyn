@@ -1,0 +1,342 @@
+# Guardyn Development Environment
+# Start: docker compose -f docker-compose.dev.yml up -d
+# Logs:  docker compose -f docker-compose.dev.yml logs -f <service>
+# Stop:  docker compose -f docker-compose.dev.yml down
+# Reset: docker compose -f docker-compose.dev.yml down -v
+
+version: "3.9"
+
+x-rust-service: &rust-service
+  build:
+    context: ./backend
+    dockerfile: Dockerfile.dev
+  volumes:
+    - ./backend:/app
+    - cargo_cache:/usr/local/cargo/registry
+    - cargo_git:/usr/local/cargo/git
+    - target_cache:/app/target
+  environment: &rust-env
+    RUST_LOG: debug
+    RUST_BACKTRACE: 1
+
+services:
+  # ═══════════════════════════════════════════════════════════════
+  # DATA LAYER
+  # ═══════════════════════════════════════════════════════════════
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.1
+    container_name: guardyn-redpanda
+    command:
+      - redpanda start
+      - --mode dev-container
+      - --smp 1
+      - --memory 512M
+      - --overprovisioned
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+    ports:
+      - "19092:19092"    # Kafka API (external)
+      - "18081:18081"    # Schema Registry (external)
+      - "8082:8082"      # REST Proxy
+      - "9644:9644"      # Admin API
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PD (Placement Driver) for TiKV
+  pd:
+    image: pingcap/pd:v7.5.0
+    container_name: guardyn-pd
+    command:
+      - --name=pd
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd:2379
+      - --advertise-peer-urls=http://pd:2380
+      - --data-dir=/data/pd
+    ports:
+      - "2379:2379"
+    volumes:
+      - pd_data:/data/pd
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2379/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tikv:
+    image: pingcap/tikv:v7.5.0
+    container_name: guardyn-tikv
+    command:
+      - --pd-endpoints=pd:2379
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv:20160
+      - --data-dir=/data/tikv
+    ports:
+      - "20160:20160"
+    volumes:
+      - tikv_data:/data/tikv
+    depends_on:
+      pd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:20180/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  scylladb:
+    image: scylladb/scylla:5.4
+    container_name: guardyn-scylladb
+    command: --smp 1 --memory 512M --developer-mode 1 --api-address 0.0.0.0
+    ports:
+      - "9042:9042"      # CQL
+      - "10000:10000"    # REST API
+    volumes:
+      - scylla_data:/var/lib/scylla
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "SELECT now() FROM system.local"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: guardyn-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: guardyn
+      MINIO_ROOT_PASSWORD: guardyn-dev-secret
+    ports:
+      - "9000:9000"      # S3 API
+      - "9001:9001"      # Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO initial bucket setup
+  minio-init:
+    image: minio/mc:latest
+    container_name: guardyn-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 guardyn guardyn-dev-secret;
+      mc mb myminio/guardyn-media --ignore-existing;
+      mc mb myminio/guardyn-avatars --ignore-existing;
+      mc anonymous set download myminio/guardyn-avatars;
+      echo 'MinIO buckets initialized';
+      exit 0;
+      "
+
+  # ═══════════════════════════════════════════════════════════════
+  # EDGE LAYER
+  # ═══════════════════════════════════════════════════════════════
+
+  envoy:
+    image: envoyproxy/envoy:v1.31-latest
+    container_name: guardyn-envoy
+    volumes:
+      - ./infra/envoy/envoy-dev.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "8080:8080"      # gRPC-Web
+      - "8443:8443"      # gRPC-Web TLS (if needed)
+      - "9901:9901"      # Admin
+    depends_on:
+      - auth-service
+      - messaging-service
+      - presence-service
+      - media-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9901/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════════
+  # BACKEND SERVICES (with hot reload via cargo-watch)
+  # ═══════════════════════════════════════════════════════════════
+
+  auth-service:
+    <<: *rust-service
+    container_name: guardyn-auth
+    command: cargo watch -x 'run --bin auth-service'
+    environment:
+      <<: *rust-env
+      SERVICE_NAME: auth-service
+      GRPC_PORT: "50051"
+      TIKV_PD_ENDPOINTS: pd:2379
+      REDPANDA_BROKERS: redpanda:9092
+    ports:
+      - "50051:50051"
+    depends_on:
+      pd:
+        condition: service_healthy
+      tikv:
+        condition: service_started
+      redpanda:
+        condition: service_healthy
+
+  messaging-service:
+    <<: *rust-service
+    container_name: guardyn-messaging
+    command: cargo watch -x 'run --bin messaging-service'
+    environment:
+      <<: *rust-env
+      SERVICE_NAME: messaging-service
+      GRPC_PORT: "50052"
+      WEBSOCKET_PORT: "8081"
+      TIKV_PD_ENDPOINTS: pd:2379
+      SCYLLA_HOSTS: scylladb:9042
+      REDPANDA_BROKERS: redpanda:9092
+    ports:
+      - "50052:50052"
+      - "8081:8081"      # WebSocket
+    depends_on:
+      pd:
+        condition: service_healthy
+      tikv:
+        condition: service_started
+      scylladb:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+
+  presence-service:
+    <<: *rust-service
+    container_name: guardyn-presence
+    command: cargo watch -x 'run --bin presence-service'
+    environment:
+      <<: *rust-env
+      SERVICE_NAME: presence-service
+      GRPC_PORT: "50053"
+      REDPANDA_BROKERS: redpanda:9092
+      TIKV_PD_ENDPOINTS: pd:2379
+    ports:
+      - "50053:50053"
+    depends_on:
+      pd:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+
+  media-service:
+    <<: *rust-service
+    container_name: guardyn-media
+    command: cargo watch -x 'run --bin media-service'
+    environment:
+      <<: *rust-env
+      SERVICE_NAME: media-service
+      GRPC_PORT: "50054"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: guardyn
+      MINIO_SECRET_KEY: guardyn-dev-secret
+      MINIO_BUCKET: guardyn-media
+      SCYLLA_HOSTS: scylladb:9042
+    ports:
+      - "50054:50054"
+    depends_on:
+      minio:
+        condition: service_healthy
+      scylladb:
+        condition: service_healthy
+
+  notification-service:
+    <<: *rust-service
+    container_name: guardyn-notification
+    command: cargo watch -x 'run --bin notification-service'
+    environment:
+      <<: *rust-env
+      SERVICE_NAME: notification-service
+      GRPC_PORT: "50055"
+      REDPANDA_BROKERS: redpanda:9092
+      TIKV_PD_ENDPOINTS: pd:2379
+    ports:
+      - "50055:50055"
+    depends_on:
+      pd:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+
+  # ═══════════════════════════════════════════════════════════════
+  # OBSERVABILITY (optional - uncomment if needed)
+  # ═══════════════════════════════════════════════════════════════
+
+  # prometheus:
+  #   image: prom/prometheus:v2.47.0
+  #   container_name: guardyn-prometheus
+  #   volumes:
+  #     - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #   ports:
+  #     - "9090:9090"
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+
+  # grafana:
+  #   image: grafana/grafana:10.1.0
+  #   container_name: guardyn-grafana
+  #   environment:
+  #     GF_SECURITY_ADMIN_PASSWORD: guardyn
+  #     GF_AUTH_ANONYMOUS_ENABLED: "true"
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+
+  # ═══════════════════════════════════════════════════════════════
+  # REDPANDA CONSOLE (optional - for debugging)
+  # ═══════════════════════════════════════════════════════════════
+
+  redpanda-console:
+    image: redpandadata/console:v2.7.0
+    container_name: guardyn-redpanda-console
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - "8088:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+volumes:
+  redpanda_data:
+  pd_data:
+  tikv_data:
+  scylla_data:
+  minio_data:
+  cargo_cache:
+  cargo_git:
+  target_cache:
+  # grafana_data:
+
+networks:
+  default:
+    name: guardyn-dev

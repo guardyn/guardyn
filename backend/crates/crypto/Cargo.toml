@@ -4,15 +4,23 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+description = "Unified cryptography core for Guardyn - X3DH, Double Ratchet, MLS, PQXDH"
+
+[features]
+default = ["std"]
+std = []
+# Post-quantum hybrid encryption (ML-KEM + X25519)
+pq = ["ml-kem"]
+# FFI bindings for Flutter/Tauri
+ffi = ["uniffi"]
+# SFrame for voice/video E2EE
+sframe = []
 
 [dependencies]
 # Workspace dependencies
 guardyn-common = { path = "../common" }
 thiserror.workspace = true
 serde.workspace = true
-
-# Cryptography - Signal Protocol for 1-on-1 E2EE
-# libsignal-rust.workspace = true  # Not needed - custom implementation
 
 # MLS for group chat E2EE
 openmls.workspace = true
@@ -25,11 +33,25 @@ x25519-dalek.workspace = true
 ed25519-dalek.workspace = true
 curve25519-dalek = "4"
 
-# Additional crypto primitives
+# Core crypto primitives
 rand = "0.8"
 sha2 = "0.10"
 hkdf = "0.12"
 aes-gcm = "0.10"
+zeroize = { version = "1.8", features = ["derive"] }
+subtle = "2.5"  # Constant-time operations
 
-# Post-quantum (placeholder for future Kyber integration)
-# pqc_kyber = "0.8"
+# Post-quantum cryptography (ML-KEM / Kyber)
+ml-kem = { version = "0.2", optional = true }
+
+# FFI bindings
+uniffi = { version = "0.28", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+hex = "0.4"
+
+[[bench]]
+name = "crypto_benchmarks"
+harness = false
