@@ -37,20 +37,20 @@ log_info "Build mode: $BUILD_MODE"
 # Check prerequisites
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
+
     # Check Flutter
     if ! command -v flutter &> /dev/null; then
         log_error "Flutter is not installed. Please install Flutter SDK."
         exit 1
     fi
-    
+
     FLUTTER_VERSION=$(flutter --version | head -n 1)
     log_info "Flutter: $FLUTTER_VERSION"
-    
+
     # Check Android SDK
     if [[ -z "${ANDROID_HOME:-}" ]] && [[ -z "${ANDROID_SDK_ROOT:-}" ]]; then
         log_warning "ANDROID_HOME/ANDROID_SDK_ROOT not set. Checking common paths..."
-        
+
         if [[ -d "$HOME/Android/Sdk" ]]; then
             export ANDROID_HOME="$HOME/Android/Sdk"
         elif [[ -d "$HOME/Library/Android/sdk" ]]; then
@@ -60,9 +60,9 @@ check_prerequisites() {
             exit 1
         fi
     fi
-    
+
     log_info "Android SDK: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-    
+
     # Check key.properties for release builds
     if [[ "$BUILD_MODE" == "release" ]]; then
         KEY_PROPERTIES="$CLIENT_DIR/android/key.properties"
@@ -79,49 +79,49 @@ check_prerequisites() {
         fi
         log_success "key.properties found"
     fi
-    
+
     log_success "Prerequisites check passed"
 }
 
 # Clean previous builds
 clean_build() {
     log_info "Cleaning previous builds..."
-    
+
     cd "$CLIENT_DIR"
     flutter clean
-    
+
     log_success "Clean completed"
 }
 
 # Install dependencies
 install_dependencies() {
     log_info "Installing dependencies..."
-    
+
     cd "$CLIENT_DIR"
     flutter pub get
-    
+
     log_success "Dependencies installed"
 }
 
 # Build Android app
 build_android() {
     log_info "Building Android app..."
-    
+
     cd "$CLIENT_DIR"
-    
+
     # Get version from pubspec.yaml
     VERSION=$(grep "^version:" pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
     BUILD_NUMBER=$(grep "^version:" pubspec.yaml | awk '{print $2}' | cut -d'+' -f2)
-    
+
     log_info "Version: $VERSION ($BUILD_NUMBER)"
-    
+
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
         if [[ "$BUILD_MODE" == "release" ]]; then
             flutter build appbundle --release
         else
             flutter build appbundle --debug
         fi
-        
+
         OUTPUT_PATH="$CLIENT_DIR/build/app/outputs/bundle/${BUILD_MODE}/app-${BUILD_MODE}.aab"
     else
         if [[ "$BUILD_MODE" == "release" ]]; then
@@ -129,10 +129,10 @@ build_android() {
         else
             flutter build apk --debug
         fi
-        
+
         OUTPUT_PATH="$CLIENT_DIR/build/app/outputs/flutter-apk/app-${BUILD_MODE}.apk"
     fi
-    
+
     log_success "Android build completed"
     log_info "Output: $OUTPUT_PATH"
 }
@@ -140,34 +140,34 @@ build_android() {
 # Validate build
 validate_build() {
     log_info "Validating build..."
-    
+
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
         OUTPUT_PATH="$CLIENT_DIR/build/app/outputs/bundle/${BUILD_MODE}/app-${BUILD_MODE}.aab"
     else
         OUTPUT_PATH="$CLIENT_DIR/build/app/outputs/flutter-apk/app-${BUILD_MODE}.apk"
     fi
-    
+
     if [[ ! -f "$OUTPUT_PATH" ]]; then
         log_error "Build output not found at $OUTPUT_PATH"
         exit 1
     fi
-    
+
     FILE_SIZE=$(du -h "$OUTPUT_PATH" | cut -f1)
     log_info "Build size: $FILE_SIZE"
-    
+
     log_success "Build validation passed"
 }
 
 # Copy to dist folder
 copy_to_dist() {
     log_info "Copying to dist folder..."
-    
+
     DIST_DIR="$PROJECT_ROOT/dist/android"
     mkdir -p "$DIST_DIR"
-    
+
     # Get version
     VERSION=$(grep "^version:" "$CLIENT_DIR/pubspec.yaml" | awk '{print $2}')
-    
+
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
         SOURCE="$CLIENT_DIR/build/app/outputs/bundle/${BUILD_MODE}/app-${BUILD_MODE}.aab"
         DEST="$DIST_DIR/guardyn-${VERSION}.aab"
@@ -175,16 +175,16 @@ copy_to_dist() {
         SOURCE="$CLIENT_DIR/build/app/outputs/flutter-apk/app-${BUILD_MODE}.apk"
         DEST="$DIST_DIR/guardyn-${VERSION}.apk"
     fi
-    
+
     cp "$SOURCE" "$DEST"
-    
+
     log_success "Copied to: $DEST"
 }
 
 # Print summary
 print_summary() {
     VERSION=$(grep "^version:" "$CLIENT_DIR/pubspec.yaml" | awk '{print $2}')
-    
+
     echo ""
     echo "=========================================="
     echo "           BUILD SUMMARY"
@@ -194,7 +194,7 @@ print_summary() {
     echo "Build Mode: $BUILD_MODE"
     echo "Version: $VERSION"
     echo ""
-    
+
     if [[ "$BUILD_TYPE" == "appbundle" ]]; then
         echo "Output: $PROJECT_ROOT/dist/android/guardyn-${VERSION}.aab"
         echo ""
@@ -209,24 +209,24 @@ print_summary() {
         echo "Note: APKs cannot be uploaded to Google Play."
         echo "Use 'appbundle' for Play Store submission."
     fi
-    
+
     echo "=========================================="
 }
 
 # Main execution
 main() {
     check_prerequisites
-    
+
     if [[ "${CLEAN:-false}" == "true" ]]; then
         clean_build
     fi
-    
+
     install_dependencies
     build_android
     validate_build
     copy_to_dist
     print_summary
-    
+
     log_success "Android build completed successfully!"
 }
 
