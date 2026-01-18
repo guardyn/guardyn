@@ -418,3 +418,12 @@ ffi-test-mobile:
 ffi-devices:
     @echo "[ffi] Available devices:"
     client-mobile/scripts/run-mobile-ffi-tests.sh list
+# Run Android + Linux FFI comparison test
+ffi-android-linux:
+    @echo "[ffi] Running Android + Linux FFI tests..."
+    client-mobile/scripts/run-android-linux-test.sh
+
+# Run two-client E2EE messaging test (Android + Linux)
+test-two-client-messaging:
+    @echo "[test] Running two-client E2EE messaging test..."
+    client-mobile/scripts/run-two-client-messaging.sh
