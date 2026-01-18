@@ -6,15 +6,16 @@
 /// Key conversion: Ed25519 identity keys are converted to X25519 for DH operations
 /// using the birational equivalence between twisted Edwards curve (Ed25519) and
 /// Montgomery curve (Curve25519/X25519). This is the same approach used by Signal Protocol.
+///
+/// NOTE: This implementation uses CryptoPrimitives which can use either
+/// pure Dart or native Rust FFI depending on platform availability.
 library;
 
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cryptography/cryptography.dart';
-import 'package:pinenacl/tweetnacl.dart' show TweetNaClExt;
-
 import 'crypto_exceptions.dart';
+import 'crypto_primitives.dart';
 import 'double_ratchet.dart';
 
 /// Ed25519 identity key pair
@@ -26,34 +27,26 @@ class IdentityKeyPair {
 
   /// Generate a new random Ed25519 identity key pair
   static Future<IdentityKeyPair> generate() async {
-    final algorithm = Ed25519();
-    final keyPair = await algorithm.newKeyPair();
-    final privateKeyData = await keyPair.extractPrivateKeyBytes();
-    final publicKeyData = (await keyPair.extractPublicKey()).bytes;
-
-    return IdentityKeyPair(
-      privateKey: Uint8List.fromList(privateKeyData),
-      publicKey: Uint8List.fromList(publicKeyData),
-    );
+    final (publicKey, privateKey) =
+        await CryptoPrimitives.generateEd25519KeyPair();
+    return IdentityKeyPair(privateKey: privateKey, publicKey: publicKey);
   }
 
   /// Create key pair from a 32-byte seed (deterministic).
   ///
   /// This is useful for testing with known test vectors to verify
   /// cross-platform compatibility between Rust and Dart implementations.
+  ///
+  /// Note: For deterministic key generation, we use the seed directly
+  /// as the private key. The public key is derived from it.
   static Future<IdentityKeyPair> fromSeed(Uint8List seed) async {
     if (seed.length != 32) {
       throw ArgumentError('Seed must be exactly 32 bytes');
     }
-    final algorithm = Ed25519();
-    final keyPair = await algorithm.newKeyPairFromSeed(seed);
-    final privateKeyData = await keyPair.extractPrivateKeyBytes();
-    final publicKeyData = (await keyPair.extractPublicKey()).bytes;
-
-    return IdentityKeyPair(
-      privateKey: Uint8List.fromList(privateKeyData),
-      publicKey: Uint8List.fromList(publicKeyData),
-    );
+    // Use deterministic key generation from seed
+    final (publicKey, privateKey) =
+        await CryptoPrimitives.generateEd25519KeyPairFromSeed(seed);
+    return IdentityKeyPair(privateKey: privateKey, publicKey: publicKey);
   }
 
   /// Create key pair from existing bytes
@@ -66,10 +59,7 @@ class IdentityKeyPair {
 
   /// Sign data with Ed25519
   Future<Uint8List> sign(Uint8List data) async {
-    final algorithm = Ed25519();
-    final keyPair = await algorithm.newKeyPairFromSeed(privateKey);
-    final signature = await algorithm.sign(data, keyPair: keyPair);
-    return Uint8List.fromList(signature.bytes);
+    return CryptoPrimitives.signEd25519(privateKey: privateKey, message: data);
   }
 
   /// Verify signature with Ed25519
@@ -78,26 +68,19 @@ class IdentityKeyPair {
     Uint8List signature,
     Uint8List publicKey,
   ) async {
-    final algorithm = Ed25519();
-    final pubKey = SimplePublicKey(publicKey, type: KeyPairType.ed25519);
-    final sig = Signature(signature, publicKey: pubKey);
-
-    try {
-      return await algorithm.verify(data, signature: sig);
-    } catch (e) {
-      return false;
-    }
+    return CryptoPrimitives.verifyEd25519(
+      publicKey: publicKey,
+      message: data,
+      signature: signature,
+    );
   }
 
   /// Convert Ed25519 public key to X25519 for Diffie-Hellman operations.
   ///
   /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
   /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
-  Uint8List toX25519PublicKey() {
-    final x25519Pk = Uint8List(32);
-    // Use TweetNaClExt's crypto_sign_ed25519_pk_to_x25519_pk
-    TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk(x25519Pk, publicKey);
-    return x25519Pk;
+  Future<Uint8List> toX25519PublicKey() async {
+    return CryptoPrimitives.ed25519PublicToX25519(publicKey);
   }
 
   /// Convert Ed25519 signing key to X25519 StaticSecret for Diffie-Hellman operations.
@@ -107,17 +90,8 @@ class IdentityKeyPair {
   ///
   /// Note: The Ed25519 seed (first 32 bytes) is hashed with SHA-512 to get the
   /// Ed25519 scalar. For X25519, we need to apply the same clamping as X25519.
-  Uint8List toX25519SecretKey() {
-    // Ed25519 uses: scalar = SHA512(seed)[0:32] with clamping
-    // For X25519 conversion, we need the full 64-byte Ed25519 secret key
-    // which is: seed (32 bytes) + public key (32 bytes)
-    final ed25519Sk = Uint8List(64);
-    ed25519Sk.setRange(0, 32, privateKey);
-    ed25519Sk.setRange(32, 64, publicKey);
-
-    final x25519Sk = Uint8List(32);
-    TweetNaClExt.crypto_sign_ed25519_sk_to_x25519_sk(x25519Sk, ed25519Sk);
-    return x25519Sk;
+  Future<Uint8List> toX25519SecretKey() async {
+    return CryptoPrimitives.ed25519SecretToX25519(privateKey);
   }
 }
 
@@ -242,10 +216,8 @@ class X3DHKeyBundle {
 /// This is a helper function for X3DH protocol that converts Ed25519 identity
 /// public keys (used for signatures) to X25519 public keys (used for DH).
 /// Uses the standard conversion from twisted Edwards to Montgomery curve.
-Uint8List _ed25519PublicToX25519(Uint8List ed25519PublicKey) {
-  final x25519Pk = Uint8List(32);
-  TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk(x25519Pk, ed25519PublicKey);
-  return x25519Pk;
+Future<Uint8List> _ed25519PublicToX25519(Uint8List ed25519PublicKey) async {
+  return CryptoPrimitives.ed25519PublicToX25519(ed25519PublicKey);
 }
 
 /// X3DH protocol implementation
@@ -338,83 +310,56 @@ class X3DHProtocol {
     // Generate ephemeral key pair for this session
     final ephemeralKeyPair = await X25519KeyPair.generate();
 
-    final algorithm = X25519();
-
     // Convert Ed25519 identity keys to X25519 for DH operations
     // This uses birational equivalence mapping between curves
-    final localX25519Secret = localIdentity.toX25519SecretKey();
-    final remoteX25519Identity = _ed25519PublicToX25519(
+    final localX25519Secret = await localIdentity.toX25519SecretKey();
+    final remoteX25519Identity = await _ed25519PublicToX25519(
       remoteBundle.identityKey,
     );
 
-    // Create X25519 key pairs
-    final localIdentityPair = await algorithm.newKeyPairFromSeed(
-      localX25519Secret,
-    );
-    final localEphemeralPair = await algorithm.newKeyPairFromSeed(
-      ephemeralKeyPair.privateKey,
-    );
-
-    // Remote public keys (signed prekey and one-time prekey are already X25519)
-    final remoteIdentityKey = SimplePublicKey(
-      remoteX25519Identity,
-      type: KeyPairType.x25519,
-    );
-    final remoteSignedPreKey = SimplePublicKey(
-      remoteBundle.signedPreKey,
-      type: KeyPairType.x25519,
-    );
-
     // DH1 = DH(IKa, SPKb) - Alice's identity with Bob's signed prekey
-    final dh1 = await algorithm.sharedSecretKey(
-      keyPair: localIdentityPair,
-      remotePublicKey: remoteSignedPreKey,
+    final dh1 = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: localX25519Secret,
+      remotePublicKey: remoteBundle.signedPreKey,
     );
 
     // DH2 = DH(EKa, IKb) - Alice's ephemeral with Bob's identity
-    final dh2 = await algorithm.sharedSecretKey(
-      keyPair: localEphemeralPair,
-      remotePublicKey: remoteIdentityKey,
+    final dh2 = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: ephemeralKeyPair.privateKey,
+      remotePublicKey: remoteX25519Identity,
     );
 
     // DH3 = DH(EKa, SPKb) - Alice's ephemeral with Bob's signed prekey
-    final dh3 = await algorithm.sharedSecretKey(
-      keyPair: localEphemeralPair,
-      remotePublicKey: remoteSignedPreKey,
+    final dh3 = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: ephemeralKeyPair.privateKey,
+      remotePublicKey: remoteBundle.signedPreKey,
     );
 
     // Combine DH outputs: DH1 || DH2 || DH3 [|| DH4]
     final dhOutputs = <int>[];
-    dhOutputs.addAll(await dh1.extractBytes());
-    dhOutputs.addAll(await dh2.extractBytes());
-    dhOutputs.addAll(await dh3.extractBytes());
+    dhOutputs.addAll(dh1);
+    dhOutputs.addAll(dh2);
+    dhOutputs.addAll(dh3);
 
     // DH4 = DH(EKa, OPKb) - Optional, if one-time prekey available
     if (remoteBundle.oneTimePreKey != null) {
-      final remoteOneTimeKey = SimplePublicKey(
-        remoteBundle.oneTimePreKey!,
-        type: KeyPairType.x25519,
+      final dh4 = await CryptoPrimitives.x25519DiffieHellman(
+        privateKey: ephemeralKeyPair.privateKey,
+        remotePublicKey: remoteBundle.oneTimePreKey!,
       );
-      final dh4 = await algorithm.sharedSecretKey(
-        keyPair: localEphemeralPair,
-        remotePublicKey: remoteOneTimeKey,
-      );
-      dhOutputs.addAll(await dh4.extractBytes());
+      dhOutputs.addAll(dh4);
     }
 
     // Derive shared secret using HKDF
     // IMPORTANT: info must be 'X3DH' to match Rust backend implementation
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-    final sharedSecret = await hkdf.deriveKey(
-      secretKey: SecretKey(dhOutputs),
+    final sharedSecret = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: Uint8List.fromList(dhOutputs),
       info: utf8.encode('X3DH'),
-      nonce: Uint8List(0),
+      salt: null,
+      outputLength: 32,
     );
 
-    return (
-      Uint8List.fromList(await sharedSecret.extractBytes()),
-      ephemeralKeyPair.publicKey,
-    );
+    return (sharedSecret, ephemeralKeyPair.publicKey);
   }
 
   /// Complete X3DH key agreement as responder (Bob)
@@ -434,53 +379,35 @@ class X3DHProtocol {
     required Uint8List remoteEphemeralKey,
     int? usedOneTimePreKeyId,
   }) async {
-    final algorithm = X25519();
-
     // Convert Ed25519 identity keys to X25519 for DH operations
-    final localX25519Secret = identityKey.toX25519SecretKey();
-    final remoteX25519Identity = _ed25519PublicToX25519(remoteIdentityKey);
-
-    // Create X25519 key pairs
-    final localIdentityPair = await algorithm.newKeyPairFromSeed(
-      localX25519Secret,
-    );
-    final localSignedPreKeyPair = await algorithm.newKeyPairFromSeed(
-      signedPreKey.privateKey,
-    );
-
-    // Remote public keys (ephemeral key is already X25519)
-    final remoteIdentity = SimplePublicKey(
-      remoteX25519Identity,
-      type: KeyPairType.x25519,
-    );
-    final remoteEphemeral = SimplePublicKey(
-      remoteEphemeralKey,
-      type: KeyPairType.x25519,
+    final localX25519Secret = await identityKey.toX25519SecretKey();
+    final remoteX25519Identity = await _ed25519PublicToX25519(
+      remoteIdentityKey,
     );
 
     // DH1 = DH(SPKb, IKa) - Bob's signed prekey with Alice's identity
-    final dh1 = await algorithm.sharedSecretKey(
-      keyPair: localSignedPreKeyPair,
-      remotePublicKey: remoteIdentity,
+    final dh1 = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: signedPreKey.privateKey,
+      remotePublicKey: remoteX25519Identity,
     );
 
     // DH2 = DH(IKb, EKa) - Bob's identity with Alice's ephemeral
-    final dh2 = await algorithm.sharedSecretKey(
-      keyPair: localIdentityPair,
-      remotePublicKey: remoteEphemeral,
+    final dh2 = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: localX25519Secret,
+      remotePublicKey: remoteEphemeralKey,
     );
 
     // DH3 = DH(SPKb, EKa) - Bob's signed prekey with Alice's ephemeral
-    final dh3 = await algorithm.sharedSecretKey(
-      keyPair: localSignedPreKeyPair,
-      remotePublicKey: remoteEphemeral,
+    final dh3 = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: signedPreKey.privateKey,
+      remotePublicKey: remoteEphemeralKey,
     );
 
     // Combine DH outputs: DH1 || DH2 || DH3 [|| DH4]
     final dhOutputs = <int>[];
-    dhOutputs.addAll(await dh1.extractBytes());
-    dhOutputs.addAll(await dh2.extractBytes());
-    dhOutputs.addAll(await dh3.extractBytes());
+    dhOutputs.addAll(dh1);
+    dhOutputs.addAll(dh2);
+    dhOutputs.addAll(dh3);
 
     // DH4 = DH(OPKb, EKa) - Optional, if one-time prekey was used
     if (usedOneTimePreKeyId != null) {
@@ -488,26 +415,23 @@ class X3DHProtocol {
         (k) => k.keyId == usedOneTimePreKeyId,
         orElse: () => throw ProtocolException('One-time prekey not found'),
       );
-      final localOneTimeKeyPair = await algorithm.newKeyPairFromSeed(
-        otpk.privateKey,
+      final dh4 = await CryptoPrimitives.x25519DiffieHellman(
+        privateKey: otpk.privateKey,
+        remotePublicKey: remoteEphemeralKey,
       );
-      final dh4 = await algorithm.sharedSecretKey(
-        keyPair: localOneTimeKeyPair,
-        remotePublicKey: remoteEphemeral,
-      );
-      dhOutputs.addAll(await dh4.extractBytes());
+      dhOutputs.addAll(dh4);
     }
 
     // Derive shared secret using HKDF
     // IMPORTANT: info must be 'X3DH' to match Rust backend implementation
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-    final sharedSecret = await hkdf.deriveKey(
-      secretKey: SecretKey(dhOutputs),
+    final sharedSecret = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: Uint8List.fromList(dhOutputs),
       info: utf8.encode('X3DH'),
-      nonce: Uint8List(0),
+      salt: null,
+      outputLength: 32,
     );
 
-    return Uint8List.fromList(await sharedSecret.extractBytes());
+    return sharedSecret;
   }
 
   /// Serialize protocol state for storage

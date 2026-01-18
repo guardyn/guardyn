@@ -2,15 +2,16 @@
 ///
 /// Based on Signal Protocol specification
 /// Compatible with Guardyn backend Rust implementation
+///
+/// NOTE: This implementation uses CryptoPrimitives which can use either
+/// pure Dart or native Rust FFI depending on platform availability.
 library;
 
 import 'dart:convert';
-import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:cryptography/cryptography.dart';
-
 import 'crypto_exceptions.dart';
+import 'crypto_primitives.dart';
 
 // Constants for key derivation (must match backend)
 const _chainKeyInfo = 'guardyn-chain-key';
@@ -27,15 +28,9 @@ class X25519KeyPair {
 
   /// Generate a new random X25519 key pair
   static Future<X25519KeyPair> generate() async {
-    final algorithm = X25519();
-    final keyPair = await algorithm.newKeyPair();
-    final privateKeyData = await keyPair.extractPrivateKeyBytes();
-    final publicKeyData = (await keyPair.extractPublicKey()).bytes;
-
-    return X25519KeyPair(
-      privateKey: Uint8List.fromList(privateKeyData),
-      publicKey: Uint8List.fromList(publicKeyData),
-    );
+    final (publicKey, privateKey) =
+        await CryptoPrimitives.generateX25519KeyPair();
+    return X25519KeyPair(privateKey: privateKey, publicKey: publicKey);
   }
 
   /// Create key pair from existing bytes
@@ -55,16 +50,10 @@ class X25519KeyPair {
       throw InvalidKeyException('Remote public key must be 32 bytes');
     }
 
-    final algorithm = X25519();
-    final keyPair = await algorithm.newKeyPairFromSeed(privateKey);
-    final remoteKey = SimplePublicKey(remotePublicKey, type: KeyPairType.x25519);
-
-    final sharedSecret = await algorithm.sharedSecretKey(
-      keyPair: keyPair,
-      remotePublicKey: remoteKey,
+    return CryptoPrimitives.x25519DiffieHellman(
+      privateKey: privateKey,
+      remotePublicKey: remotePublicKey,
     );
-
-    return Uint8List.fromList(await sharedSecret.extractBytes());
   }
 }
 
@@ -80,26 +69,24 @@ class _ChainKey {
 
   /// Derive next chain key using HKDF
   Future<_ChainKey> next() async {
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-    final secretKey = SecretKey(key);
-    final derived = await hkdf.deriveKey(
-      secretKey: secretKey,
+    final derived = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: key,
       info: utf8.encode(_chainKeyInfo),
-      nonce: Uint8List(0),
+      salt: null,
+      outputLength: 32,
     );
-    return _ChainKey(Uint8List.fromList(await derived.extractBytes()));
+    return _ChainKey(derived);
   }
 
   /// Derive message key from current chain key
   Future<_MessageKey> messageKey() async {
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-    final secretKey = SecretKey(key);
-    final derived = await hkdf.deriveKey(
-      secretKey: secretKey,
+    final derived = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: key,
       info: utf8.encode(_messageKeyInfo),
-      nonce: Uint8List(0),
+      salt: null,
+      outputLength: 32,
     );
-    return _MessageKey(Uint8List.fromList(await derived.extractBytes()));
+    return _MessageKey(derived);
   }
 }
 
@@ -115,58 +102,53 @@ class _MessageKey {
 
   /// Encrypt plaintext with AES-256-GCM
   Future<Uint8List> encrypt(Uint8List plaintext, Uint8List associatedData) async {
-    final algorithm = AesGcm.with256bits();
-    final secretKey = SecretKey(key);
-    
-    // Generate cryptographically secure random nonce (12 bytes)
-    final random = Random.secure();
-    final nonce = Uint8List.fromList(
-      List<int>.generate(12, (_) => random.nextInt(256)),
+    // Use CryptoPrimitives for AES-GCM encryption
+    final (ciphertext, nonce, tag) = await CryptoPrimitives.encryptAesGcm(
+      plaintext: plaintext,
+      key: key,
+      nonce: null, // Auto-generate nonce
+      associatedData: associatedData,
     );
 
-    final secretBox = await algorithm.encrypt(
-      plaintext,
-      secretKey: secretKey,
-      nonce: nonce,
-      aad: associatedData,
-    );
-
-    // Format: nonce (12 bytes) + ciphertext + mac (16 bytes)
-    final result = Uint8List(12 + secretBox.cipherText.length + secretBox.mac.bytes.length);
-    result.setRange(0, 12, nonce);
-    result.setRange(12, 12 + secretBox.cipherText.length, secretBox.cipherText);
-    result.setRange(12 + secretBox.cipherText.length, result.length, secretBox.mac.bytes);
+    // Format: nonce (12 bytes) + ciphertext + tag (16 bytes)
+    final result = Uint8List(nonce.length + ciphertext.length + tag.length);
+    result.setRange(0, nonce.length, nonce);
+    result.setRange(nonce.length, nonce.length + ciphertext.length, ciphertext);
+    result.setRange(nonce.length + ciphertext.length, result.length, tag);
 
     return result;
   }
 
   /// Decrypt ciphertext with AES-256-GCM
-  Future<Uint8List> decrypt(Uint8List ciphertext, Uint8List associatedData) async {
-    if (ciphertext.length < 28) {
+  Future<Uint8List> decrypt(
+    Uint8List ciphertextWithNonceAndTag,
+    Uint8List associatedData,
+  ) async {
+    if (ciphertextWithNonceAndTag.length < 28) {
       // 12 (nonce) + 16 (min auth tag)
       throw DecryptionException('Ciphertext too short');
     }
 
-    final algorithm = AesGcm.with256bits();
-    final secretKey = SecretKey(key);
-
-    final nonce = ciphertext.sublist(0, 12);
-    final encryptedData = ciphertext.sublist(12, ciphertext.length - 16);
-    final mac = Mac(ciphertext.sublist(ciphertext.length - 16));
-
-    final secretBox = SecretBox(
-      encryptedData,
-      nonce: nonce,
-      mac: mac,
+    // Parse: nonce (12 bytes) + ciphertext + tag (16 bytes)
+    final nonce = Uint8List.fromList(ciphertextWithNonceAndTag.sublist(0, 12));
+    final ciphertext = Uint8List.fromList(
+      ciphertextWithNonceAndTag.sublist(
+        12,
+        ciphertextWithNonceAndTag.length - 16,
+      ),
+    );
+    final tag = Uint8List.fromList(
+      ciphertextWithNonceAndTag.sublist(ciphertextWithNonceAndTag.length - 16),
     );
 
     try {
-      final decrypted = await algorithm.decrypt(
-        secretBox,
-        secretKey: secretKey,
-        aad: associatedData,
+      return await CryptoPrimitives.decryptAesGcm(
+        ciphertext: ciphertext,
+        nonce: nonce,
+        tag: tag,
+        key: key,
+        associatedData: associatedData,
       );
-      return Uint8List.fromList(decrypted);
     } catch (e) {
       throw DecryptionException('AES-GCM decryption failed: $e');
     }
@@ -184,20 +166,20 @@ class _RootKey {
   }
 
   /// Perform DH ratchet step: derive new root key and chain key
+  ///
+  /// Uses HKDF with the current root key as salt and DH output as input
   Future<(_RootKey, _ChainKey)> dhRatchet(Uint8List dhOutput) async {
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 64);
-    final secretKey = SecretKey(dhOutput);
-
-    final derived = await hkdf.deriveKey(
-      secretKey: secretKey,
+    // Derive 64 bytes: first 32 for new root key, last 32 for chain key
+    final derived = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: dhOutput,
       info: utf8.encode(_rootKeyInfo),
-      nonce: key,
+      salt: key, // Use current root key as salt
+      outputLength: 64,
     );
 
-    final output = await derived.extractBytes();
     return (
-      _RootKey(Uint8List.fromList(output.sublist(0, 32))),
-      _ChainKey(Uint8List.fromList(output.sublist(32, 64))),
+      _RootKey(Uint8List.fromList(derived.sublist(0, 32))),
+      _ChainKey(Uint8List.fromList(derived.sublist(32, 64))),
     );
   }
 }

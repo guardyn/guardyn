@@ -51,6 +51,20 @@ KeyPair cryptoGenerateX25519Keypair() =>
 KeyPair cryptoGenerateEd25519Keypair() =>
     GuardynCrypto.instance.api.crateApiCryptoGenerateEd25519Keypair();
 
+/// Generate an Ed25519 key pair from a 32-byte seed (deterministic)
+///
+/// This is useful for testing with known test vectors to verify
+/// cross-platform compatibility between Rust and Dart implementations.
+///
+/// Returns a key pair with:
+/// - `public_key`: 32 bytes (verifying key)
+/// - `private_key`: 32 bytes (signing key derived from seed)
+/// - `key_type`: "Ed25519"
+KeyPair cryptoGenerateEd25519KeypairFromSeed({required List<int> seed}) =>
+    GuardynCrypto.instance.api.crateApiCryptoGenerateEd25519KeypairFromSeed(
+      seed: seed,
+    );
+
 /// Generate a hybrid key bundle for PQXDH
 ///
 /// This combines X25519 (classical) with ML-KEM-768 (post-quantum)

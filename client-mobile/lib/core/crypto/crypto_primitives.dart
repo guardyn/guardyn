@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import 'native/rust_crypto_bridge.dart';
 import 'native_crypto_bridge.dart';
 
 /// Global crypto primitives instance
@@ -71,6 +72,23 @@ class CryptoPrimitives {
   generateEd25519KeyPair() async {
     _ensureInitialized();
     final kp = await _bridge!.generateIdentityKey();
+    return (kp.publicKey, kp.privateKey);
+  }
+
+  /// Generate Ed25519 key pair from 32-byte seed (deterministic)
+  ///
+  /// This is useful for testing with known test vectors to verify
+  /// cross-platform compatibility between Rust and Dart implementations.
+  static Future<(Uint8List publicKey, Uint8List privateKey)>
+  generateEd25519KeyPairFromSeed(Uint8List seed) async {
+    _ensureInitialized();
+    if (_bridge is! NativeRustCryptoBridge) {
+      throw UnsupportedError(
+        'Seed-based key generation requires native Rust implementation',
+      );
+    }
+    final nativeBridge = _bridge as NativeRustCryptoBridge;
+    final kp = await nativeBridge.generateEd25519KeyPairFromSeed(seed);
     return (kp.publicKey, kp.privateKey);
   }
 

@@ -3,9 +3,11 @@
 /// Provides X3DH key exchange and Double Ratchet encryption
 /// Compatible with Guardyn backend Rust implementation
 ///
-/// The module supports two backends:
-/// - Pure Dart (cryptography, pointycastle, pinenacl) - works on all platforms including Web
-/// - Native Rust FFI (via flutter_rust_bridge) - provides post-quantum crypto and hardware acceleration
+/// The module uses CryptoPrimitives which supports two backends:
+/// - Native Rust FFI (via flutter_rust_bridge) - full E2EE support with post-quantum crypto
+/// - Pure Dart fallback (limited functionality, Web only, requires cryptography package for sealed_sender)
+///
+/// NOTE: Full E2EE functionality requires native Rust FFI (mobile/desktop platforms).
 ///
 /// ## Architecture
 ///

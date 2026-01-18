@@ -76,7 +76,7 @@ class GuardynCrypto
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -694979162;
+  int get rustContentHash => -1044274036;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -127,6 +127,10 @@ abstract class GuardynCryptoApi extends BaseApi {
   });
 
   KeyPair crateApiCryptoGenerateEd25519Keypair();
+
+  KeyPair crateApiCryptoGenerateEd25519KeypairFromSeed({
+    required List<int> seed,
+  });
 
   HybridKeyBundle? crateApiCryptoGenerateHybridKeyBundle();
 
@@ -434,6 +438,36 @@ class GuardynCryptoApiImpl extends GuardynCryptoApiImplPlatform
       const TaskConstMeta(
         debugName: "crypto_generate_ed25519_keypair",
         argNames: [],
+      );
+
+  @override
+  KeyPair crateApiCryptoGenerateEd25519KeypairFromSeed({
+    required List<int> seed,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          var arg0 = cst_encode_list_prim_u_8_loose(seed);
+          return wire
+              .wire__crate__api__crypto_generate_ed25519_keypair_from_seed(
+                arg0,
+              );
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_key_pair,
+          decodeErrorData: dco_decode_String,
+        ),
+        constMeta: kCrateApiCryptoGenerateEd25519KeypairFromSeedConstMeta,
+        argValues: [seed],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCryptoGenerateEd25519KeypairFromSeedConstMeta =>
+      const TaskConstMeta(
+        debugName: "crypto_generate_ed25519_keypair_from_seed",
+        argNames: ["seed"],
       );
 
   @override

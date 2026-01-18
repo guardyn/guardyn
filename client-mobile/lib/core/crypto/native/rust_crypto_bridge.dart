@@ -127,6 +127,18 @@ class NativeRustCryptoBridge implements CryptoBridge {
     );
   }
 
+  /// Generate Ed25519 key pair from 32-byte seed (deterministic)
+  Future<KeyPair> generateEd25519KeyPairFromSeed(Uint8List seed) async {
+    _ensureNativeAvailable();
+
+    final kp = rust_api.cryptoGenerateEd25519KeypairFromSeed(seed: seed);
+    return KeyPair(
+      publicKey: Uint8List.fromList(kp.publicKey),
+      privateKey: Uint8List.fromList(kp.privateKey),
+      keyType: kp.keyType,
+    );
+  }
+
   @override
   Future<KeyPair> generateSignedPreKey() async {
     _ensureNativeAvailable();

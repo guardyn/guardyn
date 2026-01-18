@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -694979162;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1044274036;
 
 // Section: executor
 
@@ -235,6 +235,24 @@ fn wire__crate__api__crypto_generate_ed25519_keypair_impl(
         move || {
             transform_result_dco::<_, _, ()>((move || {
                 let output_ok = Result::<_, ()>::Ok(crate::api::crypto_generate_ed25519_keypair())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__crypto_generate_ed25519_keypair_from_seed_impl(
+    seed: impl CstDecode<Vec<u8>>,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::DcoCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "crypto_generate_ed25519_keypair_from_seed",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let api_seed = seed.cst_decode();
+            transform_result_dco::<_, _, String>((move || {
+                let output_ok = crate::api::crypto_generate_ed25519_keypair_from_seed(api_seed)?;
                 Ok(output_ok)
             })())
         },
@@ -1070,6 +1088,13 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_guardyn_client_wire__crate__api__crypto_generate_ed25519_keypair_from_seed(
+        seed: *mut wire_cst_list_prim_u_8_loose,
+    ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+        wire__crate__api__crypto_generate_ed25519_keypair_from_seed_impl(seed)
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_guardyn_client_wire__crate__api__crypto_generate_hybrid_key_bundle(
     ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
         wire__crate__api__crypto_generate_hybrid_key_bundle_impl()
@@ -1472,6 +1497,13 @@ mod web {
     pub fn wire__crate__api__crypto_generate_ed25519_keypair(
     ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
         wire__crate__api__crypto_generate_ed25519_keypair_impl()
+    }
+
+    #[wasm_bindgen]
+    pub fn wire__crate__api__crypto_generate_ed25519_keypair_from_seed(
+        seed: Box<[u8]>,
+    ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+        wire__crate__api__crypto_generate_ed25519_keypair_from_seed_impl(seed)
     }
 
     #[wasm_bindgen]

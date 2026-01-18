@@ -603,6 +603,31 @@ class GuardynCryptoWire implements BaseWire {
       _wire__crate__api__crypto_generate_ed25519_keypairPtr
           .asFunction<WireSyncRust2DartDco Function()>();
 
+  WireSyncRust2DartDco
+  wire__crate__api__crypto_generate_ed25519_keypair_from_seed(
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> seed,
+  ) {
+    return _wire__crate__api__crypto_generate_ed25519_keypair_from_seed(seed);
+  }
+
+  late final _wire__crate__api__crypto_generate_ed25519_keypair_from_seedPtr =
+      _lookup<
+        ffi.NativeFunction<
+          WireSyncRust2DartDco Function(
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >(
+        'frbgen_guardyn_client_wire__crate__api__crypto_generate_ed25519_keypair_from_seed',
+      );
+  late final _wire__crate__api__crypto_generate_ed25519_keypair_from_seed =
+      _wire__crate__api__crypto_generate_ed25519_keypair_from_seedPtr
+          .asFunction<
+            WireSyncRust2DartDco Function(
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            )
+          >();
+
   WireSyncRust2DartDco wire__crate__api__crypto_generate_hybrid_key_bundle() {
     return _wire__crate__api__crypto_generate_hybrid_key_bundle();
   }

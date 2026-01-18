@@ -19,9 +19,9 @@ use subtle::ConstantTimeEq;
 use guardyn_crypto::ffi::{
     decrypt_aes256_gcm, decrypt_chacha20_poly1305, ed25519_public_to_x25519,
     ed25519_secret_to_x25519, encrypt_aes256_gcm, encrypt_chacha20_poly1305, ffi_pad_message,
-    ffi_unpad_message, generate_ed25519_keypair, generate_x25519_keypair, hkdf_sha256, init_crypto,
-    is_pq_available, sign_ed25519, verify_ed25519, x25519_diffie_hellman, FfiEncryptedData,
-    FfiKeyPair,
+    ffi_unpad_message, generate_ed25519_keypair, generate_ed25519_keypair_from_seed,
+    generate_x25519_keypair, hkdf_sha256, init_crypto, is_pq_available, sign_ed25519,
+    verify_ed25519, x25519_diffie_hellman, FfiEncryptedData, FfiKeyPair,
 };
 
 #[cfg(feature = "pq")]
@@ -184,6 +184,20 @@ pub fn crypto_generate_x25519_keypair() -> KeyPair {
 #[frb(sync)]
 pub fn crypto_generate_ed25519_keypair() -> KeyPair {
     generate_ed25519_keypair().into()
+}
+
+/// Generate an Ed25519 key pair from a 32-byte seed (deterministic)
+///
+/// This is useful for testing with known test vectors to verify
+/// cross-platform compatibility between Rust and Dart implementations.
+///
+/// Returns a key pair with:
+/// - `public_key`: 32 bytes (verifying key)
+/// - `private_key`: 32 bytes (signing key derived from seed)
+/// - `key_type`: "Ed25519"
+#[frb(sync)]
+pub fn crypto_generate_ed25519_keypair_from_seed(seed: Vec<u8>) -> Result<KeyPair, String> {
+    generate_ed25519_keypair_from_seed(seed).map(|kp| kp.into())
 }
 
 /// Generate a hybrid key bundle for PQXDH

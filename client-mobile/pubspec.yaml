@@ -45,9 +45,10 @@ dependencies:
   uuid: ^4.0.0
 
   # E2EE Cryptography
-  cryptography: ^2.7.0
-  pointycastle: ^3.7.3
-  pinenacl: ^0.6.0  # For Ed25519 ↔ X25519 key conversion
+  # NOTE: cryptography is only used by sealed_sender.dart (to be migrated later)
+  # Primary crypto operations use Rust FFI via CryptoPrimitives
+  cryptography: ^2.7.0  # TODO: Remove after sealed_sender.dart migration
+  pointycastle: ^3.7.3  # Used for MLS and other crypto utilities
 
   # SVG Support
   flutter_svg: ^2.0.9

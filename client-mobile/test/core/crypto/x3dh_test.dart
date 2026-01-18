@@ -1,10 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
 import 'package:guardyn_client/core/crypto/x3dh.dart';
-import 'package:pinenacl/tweetnacl.dart' show TweetNaCl;
 
 void main() {
+  setUpAll(() async {
+    await CryptoPrimitives.initialize();
+  });
+
   group('IdentityKeyPair', () {
     test('generate creates valid Ed25519 key pair', () async {
       final keyPair = await IdentityKeyPair.generate();
@@ -216,7 +220,7 @@ void main() {
   /// `cargo test -p guardyn-crypto generate_dart_test_vectors -- --nocapture`
   ///
   /// The vectors verify that Ed25519 → X25519 key conversion produces identical
-  /// results in both Rust (ed25519-dalek + curve25519-dalek) and Dart (pinenacl/TweetNaCl).
+  /// results in both Rust (ed25519-dalek + curve25519-dalek) and Dart (via Rust FFI).
   group('Cross-platform Ed25519→X25519 Compatibility', () {
     test('all_zeros seed produces correct X25519 keys', () async {
       final seed = Uint8List.fromList(List.filled(32, 0x00));
@@ -292,8 +296,8 @@ void main() {
       ]);
 
       final keyPair = await IdentityKeyPair.fromSeed(seed);
-      final x25519Public = keyPair.toX25519PublicKey();
-      final x25519Secret = keyPair.toX25519SecretKey();
+      final x25519Public = await keyPair.toX25519PublicKey();
+      final x25519Secret = await keyPair.toX25519SecretKey();
 
       expect(
         x25519Public,
@@ -381,8 +385,8 @@ void main() {
       ]);
 
       final keyPair = await IdentityKeyPair.fromSeed(seed);
-      final x25519Public = keyPair.toX25519PublicKey();
-      final x25519Secret = keyPair.toX25519SecretKey();
+      final x25519Public = await keyPair.toX25519PublicKey();
+      final x25519Secret = await keyPair.toX25519SecretKey();
 
       expect(
         x25519Public,
@@ -503,8 +507,8 @@ void main() {
       ]);
 
       final keyPair = await IdentityKeyPair.fromSeed(seed);
-      final x25519Public = keyPair.toX25519PublicKey();
-      final x25519Secret = keyPair.toX25519SecretKey();
+      final x25519Public = await keyPair.toX25519PublicKey();
+      final x25519Secret = await keyPair.toX25519SecretKey();
 
       expect(
         x25519Public,
@@ -562,25 +566,20 @@ void main() {
         final alice = await IdentityKeyPair.fromSeed(aliceSeed);
         final bob = await IdentityKeyPair.fromSeed(bobSeed);
 
-        final aliceX25519Secret = alice.toX25519SecretKey();
-        final bobX25519Public = bob.toX25519PublicKey();
+        final aliceX25519Secret = await alice.toX25519SecretKey();
+        final bobX25519Public = await bob.toX25519PublicKey();
 
-        final bobX25519Secret = bob.toX25519SecretKey();
-        final aliceX25519Public = alice.toX25519PublicKey();
+        final bobX25519Secret = await bob.toX25519SecretKey();
+        final aliceX25519Public = await alice.toX25519PublicKey();
 
-        // Compute DH shared secrets using TweetNaCl scalarmult
-        final aliceShared = Uint8List(32);
-        final bobShared = Uint8List(32);
-
-        TweetNaCl.crypto_scalarmult(
-          aliceShared,
-          aliceX25519Secret,
-          bobX25519Public,
+        // Compute DH shared secrets using CryptoPrimitives
+        final aliceShared = await CryptoPrimitives.x25519DiffieHellman(
+          privateKey: aliceX25519Secret,
+          remotePublicKey: bobX25519Public,
         );
-        TweetNaCl.crypto_scalarmult(
-          bobShared,
-          bobX25519Secret,
-          aliceX25519Public,
+        final bobShared = await CryptoPrimitives.x25519DiffieHellman(
+          privateKey: bobX25519Secret,
+          remotePublicKey: aliceX25519Public,
         );
 
         expect(

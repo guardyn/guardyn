@@ -408,6 +408,30 @@ pub fn generate_ed25519_keypair() -> FfiKeyPair {
     }
 }
 
+/// Generate an Ed25519 key pair from a 32-byte seed (deterministic)
+///
+/// This is useful for testing with known test vectors to verify
+/// cross-platform compatibility between Rust and Dart implementations.
+pub fn generate_ed25519_keypair_from_seed(seed: Vec<u8>) -> Result<FfiKeyPair, String> {
+    use ed25519_dalek::SigningKey;
+
+    if seed.len() != 32 {
+        return Err("Seed must be exactly 32 bytes".to_string());
+    }
+
+    let seed_array: [u8; 32] = seed
+        .try_into()
+        .map_err(|_| "Failed to convert seed to array")?;
+    let signing_key = SigningKey::from_bytes(&seed_array);
+    let verifying_key = signing_key.verifying_key();
+
+    Ok(FfiKeyPair {
+        public_key: verifying_key.to_bytes().to_vec(),
+        private_key: signing_key.to_bytes().to_vec(),
+        key_type: "Ed25519".to_string(),
+    })
+}
+
 /// Perform X25519 Diffie-Hellman key agreement
 pub fn x25519_diffie_hellman(
     private_key: Vec<u8>,

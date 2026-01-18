@@ -3,9 +3,14 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/crypto_exceptions.dart';
+import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
 import 'package:guardyn_client/core/crypto/double_ratchet.dart';
 
 void main() {
+  setUpAll(() async {
+    await CryptoPrimitives.initialize();
+  });
+
   group('X25519KeyPair', () {
     test('generate creates valid key pair', () async {
       final keyPair = await X25519KeyPair.generate();

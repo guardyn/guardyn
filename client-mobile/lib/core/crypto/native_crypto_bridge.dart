@@ -2,18 +2,20 @@
 ///
 /// This module provides a unified interface for cryptographic operations that
 /// can be backed by either:
-/// - Pure Dart implementations (current, for Web)
-/// - Native Rust FFI (future, via flutter_rust_bridge)
+/// - Pure Dart implementations (fallback for Web, limited functionality)
+/// - Native Rust FFI via flutter_rust_bridge (full functionality)
 ///
 /// The Rust backend provides:
 /// - Post-quantum cryptography (ML-KEM / PQXDH)
 /// - MLS group encryption
 /// - Hardware-accelerated AES/ChaCha20
 /// - PADMÉ padding for traffic analysis protection
+///
+/// NOTE: On Web, most cryptographic operations are not available.
+/// Use native mobile/desktop platforms for full E2EE functionality.
 library;
 
 import 'package:flutter/foundation.dart';
-import 'package:pinenacl/tweetnacl.dart' show TweetNaClExt;
 
 // Conditional import for native bridge
 // Uses stub on Web, real implementation on mobile/desktop
@@ -257,7 +259,7 @@ class DartCryptoBridge implements CryptoBridge {
   @override
   Future<KeyPair> generateIdentityKey() async {
     // Delegate to existing Dart crypto implementation
-    // This is a placeholder - actual implementation uses pointycastle/pinenacl
+    // This is a placeholder - full implementation requires NativeRustCryptoBridge
     throw UnimplementedError(
       'Use existing X3DHProtocol.initialize() for key generation',
     );
@@ -380,22 +382,21 @@ class DartCryptoBridge implements CryptoBridge {
 
   @override
   Future<Uint8List> ed25519PublicToX25519(Uint8List ed25519Public) async {
-    // Uses pinenacl TweetNaClExt for Ed25519 → X25519 conversion
-    // This matches the implementation in x3dh.dart
-    final x25519Pk = Uint8List(32);
-    TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk(x25519Pk, ed25519Public);
-    return x25519Pk;
+    // Ed25519 → X25519 conversion requires native Rust implementation
+    // Not available on Web platform
+    throw UnimplementedError(
+      'Ed25519 to X25519 conversion requires NativeRustCryptoBridge. '
+      'DartCryptoBridge on Web does not support this operation.',
+    );
   }
 
   @override
   Future<Uint8List> ed25519SecretToX25519(Uint8List ed25519Seed) async {
-    // Ed25519 secret to X25519 conversion requires the full Ed25519 secret key
-    // which is seed (32 bytes) + public key (32 bytes) = 64 bytes
-    // The Rust implementation accepts just the 32-byte seed
-    // For Dart fallback, we need to derive the full key first
+    // Ed25519 secret to X25519 conversion requires the native Rust implementation
+    // Not available on Web platform
     throw UnimplementedError(
       'Ed25519 secret to X25519 conversion requires NativeRustCryptoBridge. '
-      'DartCryptoBridge does not support this operation directly.',
+      'DartCryptoBridge on Web does not support this operation.',
     );
   }
 }
