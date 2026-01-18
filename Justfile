@@ -393,3 +393,8 @@ ffi-check:
     @echo "[ffi] Checking crypto-ffi..."
     cd backend && cargo check -p guardyn-crypto-ffi --features full
 
+# Install crypto-ffi library for Linux Flutter development
+ffi-install-linux:
+    @echo "[ffi] Installing crypto-ffi for Linux..."
+    cd backend && cargo build -p guardyn-crypto-ffi --release
+    client-mobile/scripts/install-linux-lib.sh

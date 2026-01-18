@@ -47,8 +47,12 @@ import 'package:guardyn_client/features/messaging/data/repositories/message_repo
     as _i1009;
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart'
     as _i276;
+import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart'
+    as _i315;
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart'
     as _i778;
+import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart'
+    as _i273;
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart'
     as _i11;
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart'
@@ -152,6 +156,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i1073.SendMessage>(
       () => _i1073.SendMessage(gh<_i276.MessageRepository>()),
     );
+    gh.factory<_i315.ClearChat>(
+      () => _i315.ClearChat(gh<_i276.MessageRepository>()),
+    );
+    gh.factory<_i273.DeleteMessage>(
+      () => _i273.DeleteMessage(gh<_i276.MessageRepository>()),
+    );
     gh.factory<_i11.GetMessages>(
       () => _i11.GetMessages(gh<_i276.MessageRepository>()),
     );
@@ -161,15 +171,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i717.ReceiveMessages>(
       () => _i717.ReceiveMessages(gh<_i276.MessageRepository>()),
     );
-    gh.factory<_i248.MessageBloc>(
-      () => _i248.MessageBloc(
-        sendMessage: gh<_i1073.SendMessage>(),
-        getMessages: gh<_i11.GetMessages>(),
-        receiveMessages: gh<_i717.ReceiveMessages>(),
-        markAsRead: gh<_i892.MarkAsRead>(),
-        decryptMessage: gh<_i778.DecryptMessage>(),
-      ),
-    );
     gh.factory<_i2.PresenceBloc>(
       () => _i2.PresenceBloc(
         getUserPresence: gh<_i769.GetUserPresence>(),
@@ -178,6 +179,17 @@ extension GetItInjectableX on _i174.GetIt {
         sendTypingIndicator: gh<_i76.SendTypingIndicator>(),
         sendHeartbeat: gh<_i56.SendHeartbeat>(),
         presenceRepository: gh<_i5.PresenceRepository>(),
+      ),
+    );
+    gh.factory<_i248.MessageBloc>(
+      () => _i248.MessageBloc(
+        sendMessage: gh<_i1073.SendMessage>(),
+        getMessages: gh<_i11.GetMessages>(),
+        receiveMessages: gh<_i717.ReceiveMessages>(),
+        markAsRead: gh<_i892.MarkAsRead>(),
+        decryptMessage: gh<_i778.DecryptMessage>(),
+        clearChat: gh<_i315.ClearChat>(),
+        deleteMessage: gh<_i273.DeleteMessage>(),
       ),
     );
     return this;

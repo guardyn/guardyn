@@ -32,8 +32,9 @@ This document describes the Rust FFI integration for Guardyn, enabling Flutter t
 | guardyn-crypto-ffi crate   | ✅ Complete | FFI wrapper with flutter_rust_bridge |
 | FFI API (api.rs)           | ✅ Complete | 20+ functions exposed                |
 | Build scripts              | ✅ Complete | Android, iOS, Desktop support        |
-| Flutter integration        | ✅ Complete | Placeholder bindings ready           |
-| Dart bindings generation   | 🔜 Pending  | Run `just ffi-generate`              |
+| Flutter integration        | ✅ Complete | NativeRustCryptoBridge implemented   |
+| Dart bindings generation   | ✅ Complete | Generated in lib/generated/rust/     |
+| Linux library              | ✅ Complete | Run `just ffi-install-linux`         |
 | Legacy Dart crypto removal | ⏸️ Deferred | After FFI validation                 |
 
 ## Quick Start

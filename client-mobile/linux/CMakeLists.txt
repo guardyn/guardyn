@@ -126,3 +126,17 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# === Guardyn Crypto FFI Library ===
+# Copy the Rust native crypto library to the bundle
+set(GUARDYN_CRYPTO_LIB "${CMAKE_CURRENT_SOURCE_DIR}/libguardyn_crypto_ffi.so")
+if(EXISTS "${GUARDYN_CRYPTO_LIB}")
+  install(FILES "${GUARDYN_CRYPTO_LIB}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+  message(STATUS "Guardyn crypto FFI library found: ${GUARDYN_CRYPTO_LIB}")
+else()
+  message(WARNING "Guardyn crypto FFI library not found at ${GUARDYN_CRYPTO_LIB}. "
+    "Native crypto will not be available. "
+    "Build with: cargo build -p guardyn-crypto-ffi --release")
+endif()
