@@ -17,10 +17,11 @@ use subtle::ConstantTimeEq;
 
 // Re-export from guardyn-crypto FFI module
 use guardyn_crypto::ffi::{
-    decrypt_aes256_gcm, decrypt_chacha20_poly1305, encrypt_aes256_gcm, encrypt_chacha20_poly1305,
-    ffi_pad_message, ffi_unpad_message, generate_ed25519_keypair, generate_x25519_keypair,
-    hkdf_sha256, init_crypto, is_pq_available, sign_ed25519, verify_ed25519,
-    x25519_diffie_hellman, FfiEncryptedData, FfiKeyPair,
+    decrypt_aes256_gcm, decrypt_chacha20_poly1305, ed25519_public_to_x25519,
+    ed25519_secret_to_x25519, encrypt_aes256_gcm, encrypt_chacha20_poly1305, ffi_pad_message,
+    ffi_unpad_message, generate_ed25519_keypair, generate_x25519_keypair, hkdf_sha256, init_crypto,
+    is_pq_available, sign_ed25519, verify_ed25519, x25519_diffie_hellman, FfiEncryptedData,
+    FfiKeyPair,
 };
 
 #[cfg(feature = "pq")]
@@ -222,6 +223,39 @@ pub fn crypto_generate_hybrid_key_bundle() -> Result<Option<HybridKeyBundle>, St
 #[frb(sync)]
 pub fn crypto_x25519_dh(private_key: Vec<u8>, public_key: Vec<u8>) -> Result<Vec<u8>, String> {
     x25519_diffie_hellman(private_key, public_key)
+}
+
+// ============================================================================
+// Key Conversion Functions
+// ============================================================================
+
+/// Convert Ed25519 public key to X25519 public key
+///
+/// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+/// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+///
+/// # Arguments
+/// - `ed25519_public`: 32-byte Ed25519 public key
+///
+/// # Returns
+/// 32-byte X25519 public key
+#[frb(sync)]
+pub fn crypto_ed25519_public_to_x25519(ed25519_public: Vec<u8>) -> Result<Vec<u8>, String> {
+    ed25519_public_to_x25519(ed25519_public)
+}
+
+/// Convert Ed25519 secret key (seed) to X25519 secret key
+///
+/// The conversion process matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk.
+///
+/// # Arguments
+/// - `ed25519_seed`: 32-byte Ed25519 seed/private key
+///
+/// # Returns
+/// 32-byte X25519 secret key
+#[frb(sync)]
+pub fn crypto_ed25519_secret_to_x25519(ed25519_seed: Vec<u8>) -> Result<Vec<u8>, String> {
+    ed25519_secret_to_x25519(ed25519_seed)
 }
 
 // ============================================================================

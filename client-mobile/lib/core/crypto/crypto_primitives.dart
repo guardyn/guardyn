@@ -75,6 +75,29 @@ class CryptoPrimitives {
   }
 
   // =========================================================================
+  // Key Conversion (Ed25519 ↔ X25519)
+  // =========================================================================
+
+  /// Convert Ed25519 public key to X25519 public key
+  ///
+  /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+  /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+  static Future<Uint8List> ed25519PublicToX25519(
+    Uint8List ed25519Public,
+  ) async {
+    _ensureInitialized();
+    return _bridge!.ed25519PublicToX25519(ed25519Public);
+  }
+
+  /// Convert Ed25519 secret key (seed) to X25519 secret key
+  ///
+  /// The conversion matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk.
+  static Future<Uint8List> ed25519SecretToX25519(Uint8List ed25519Seed) async {
+    _ensureInitialized();
+    return _bridge!.ed25519SecretToX25519(ed25519Seed);
+  }
+
+  // =========================================================================
   // Key Exchange
   // =========================================================================
 

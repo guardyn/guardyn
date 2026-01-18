@@ -463,6 +463,54 @@ class GuardynCryptoWire implements BaseWire {
             )
           >();
 
+  WireSyncRust2DartDco wire__crate__api__crypto_ed25519_public_to_x25519(
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> ed25519_public,
+  ) {
+    return _wire__crate__api__crypto_ed25519_public_to_x25519(ed25519_public);
+  }
+
+  late final _wire__crate__api__crypto_ed25519_public_to_x25519Ptr =
+      _lookup<
+        ffi.NativeFunction<
+          WireSyncRust2DartDco Function(
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >(
+        'frbgen_guardyn_client_wire__crate__api__crypto_ed25519_public_to_x25519',
+      );
+  late final _wire__crate__api__crypto_ed25519_public_to_x25519 =
+      _wire__crate__api__crypto_ed25519_public_to_x25519Ptr
+          .asFunction<
+            WireSyncRust2DartDco Function(
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            )
+          >();
+
+  WireSyncRust2DartDco wire__crate__api__crypto_ed25519_secret_to_x25519(
+    ffi.Pointer<wire_cst_list_prim_u_8_loose> ed25519_seed,
+  ) {
+    return _wire__crate__api__crypto_ed25519_secret_to_x25519(ed25519_seed);
+  }
+
+  late final _wire__crate__api__crypto_ed25519_secret_to_x25519Ptr =
+      _lookup<
+        ffi.NativeFunction<
+          WireSyncRust2DartDco Function(
+            ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+          )
+        >
+      >(
+        'frbgen_guardyn_client_wire__crate__api__crypto_ed25519_secret_to_x25519',
+      );
+  late final _wire__crate__api__crypto_ed25519_secret_to_x25519 =
+      _wire__crate__api__crypto_ed25519_secret_to_x25519Ptr
+          .asFunction<
+            WireSyncRust2DartDco Function(
+              ffi.Pointer<wire_cst_list_prim_u_8_loose>,
+            )
+          >();
+
   void wire__crate__api__crypto_encrypt_aes_gcm(
     int port_,
     ffi.Pointer<wire_cst_list_prim_u_8_loose> plaintext,

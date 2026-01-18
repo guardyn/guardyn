@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueNom,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 499321114;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -694979162;
 
 // Section: executor
 
@@ -121,6 +121,42 @@ fn wire__crate__api__crypto_decrypt_chacha20_impl(
                     Ok(output_ok)
                 })())
             }
+        },
+    )
+}
+fn wire__crate__api__crypto_ed25519_public_to_x25519_impl(
+    ed25519_public: impl CstDecode<Vec<u8>>,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::DcoCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "crypto_ed25519_public_to_x25519",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let api_ed25519_public = ed25519_public.cst_decode();
+            transform_result_dco::<_, _, String>((move || {
+                let output_ok = crate::api::crypto_ed25519_public_to_x25519(api_ed25519_public)?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__crypto_ed25519_secret_to_x25519_impl(
+    ed25519_seed: impl CstDecode<Vec<u8>>,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::DcoCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "crypto_ed25519_secret_to_x25519",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let api_ed25519_seed = ed25519_seed.cst_decode();
+            transform_result_dco::<_, _, String>((move || {
+                let output_ok = crate::api::crypto_ed25519_secret_to_x25519(api_ed25519_seed)?;
+                Ok(output_ok)
+            })())
         },
     )
 }
@@ -986,6 +1022,20 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_guardyn_client_wire__crate__api__crypto_ed25519_public_to_x25519(
+        ed25519_public: *mut wire_cst_list_prim_u_8_loose,
+    ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+        wire__crate__api__crypto_ed25519_public_to_x25519_impl(ed25519_public)
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_guardyn_client_wire__crate__api__crypto_ed25519_secret_to_x25519(
+        ed25519_seed: *mut wire_cst_list_prim_u_8_loose,
+    ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+        wire__crate__api__crypto_ed25519_secret_to_x25519_impl(ed25519_seed)
+    }
+
+    #[unsafe(no_mangle)]
     pub extern "C" fn frbgen_guardyn_client_wire__crate__api__crypto_encrypt_aes_gcm(
         port_: i64,
         plaintext: *mut wire_cst_list_prim_u_8_loose,
@@ -1374,6 +1424,20 @@ mod web {
         associated_data: Option<Box<[u8]>>,
     ) {
         wire__crate__api__crypto_decrypt_chacha20_impl(port_, encrypted, key, associated_data)
+    }
+
+    #[wasm_bindgen]
+    pub fn wire__crate__api__crypto_ed25519_public_to_x25519(
+        ed25519_public: Box<[u8]>,
+    ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+        wire__crate__api__crypto_ed25519_public_to_x25519_impl(ed25519_public)
+    }
+
+    #[wasm_bindgen]
+    pub fn wire__crate__api__crypto_ed25519_secret_to_x25519(
+        ed25519_seed: Box<[u8]>,
+    ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartDco {
+        wire__crate__api__crypto_ed25519_secret_to_x25519_impl(ed25519_seed)
     }
 
     #[wasm_bindgen]

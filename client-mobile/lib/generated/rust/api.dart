@@ -78,6 +78,35 @@ Uint8List cryptoX25519Dh({
   publicKey: publicKey,
 );
 
+/// Convert Ed25519 public key to X25519 public key
+///
+/// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+/// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+///
+/// # Arguments
+/// - `ed25519_public`: 32-byte Ed25519 public key
+///
+/// # Returns
+/// 32-byte X25519 public key
+Uint8List cryptoEd25519PublicToX25519({required List<int> ed25519Public}) =>
+    GuardynCrypto.instance.api.crateApiCryptoEd25519PublicToX25519(
+      ed25519Public: ed25519Public,
+    );
+
+/// Convert Ed25519 secret key (seed) to X25519 secret key
+///
+/// The conversion process matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk.
+///
+/// # Arguments
+/// - `ed25519_seed`: 32-byte Ed25519 seed/private key
+///
+/// # Returns
+/// 32-byte X25519 secret key
+Uint8List cryptoEd25519SecretToX25519({required List<int> ed25519Seed}) =>
+    GuardynCrypto.instance.api.crateApiCryptoEd25519SecretToX25519(
+      ed25519Seed: ed25519Seed,
+    );
+
 /// Encrypt data using AES-256-GCM
 ///
 /// This is the primary encryption method for message content.

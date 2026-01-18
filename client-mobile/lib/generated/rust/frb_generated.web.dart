@@ -321,6 +321,18 @@ class GuardynCryptoWire implements BaseWire {
     associated_data,
   );
 
+  JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__crypto_ed25519_public_to_x25519(JSAny ed25519_public) =>
+      wasmModule.wire__crate__api__crypto_ed25519_public_to_x25519(
+        ed25519_public,
+      );
+
+  JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__crypto_ed25519_secret_to_x25519(JSAny ed25519_seed) =>
+      wasmModule.wire__crate__api__crypto_ed25519_secret_to_x25519(
+        ed25519_seed,
+      );
+
   void wire__crate__api__crypto_encrypt_aes_gcm(
     NativePortType port_,
     JSAny plaintext,
@@ -442,6 +454,12 @@ extension type GuardynCryptoWasmModule._(JSObject _) implements JSObject {
     JSAny key,
     JSAny? associated_data,
   );
+
+  external JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__crypto_ed25519_public_to_x25519(JSAny ed25519_public);
+
+  external JSAny? /* flutter_rust_bridge::for_generated::WireSyncRust2DartDco */
+  wire__crate__api__crypto_ed25519_secret_to_x25519(JSAny ed25519_seed);
 
   external void wire__crate__api__crypto_encrypt_aes_gcm(
     NativePortType port_,

@@ -295,6 +295,94 @@ void main() {
         reason: 'Factory should return native bridge on this platform',
       );
     });
+
+    testWidgets('Ed25519 public key to X25519 conversion', (tester) async {
+      // Generate Ed25519 keypair
+      final ed25519KeyPair = await bridge.generateIdentityKey();
+      expect(ed25519KeyPair.keyType, equals('Ed25519'));
+
+      // Convert Ed25519 public key to X25519
+      final x25519Public = await bridge.ed25519PublicToX25519(
+        ed25519KeyPair.publicKey,
+      );
+
+      expect(
+        x25519Public.length,
+        equals(32),
+        reason: 'X25519 public key should be 32 bytes',
+      );
+
+      // Conversion should be deterministic
+      final x25519Public2 = await bridge.ed25519PublicToX25519(
+        ed25519KeyPair.publicKey,
+      );
+      expect(
+        x25519Public,
+        equals(x25519Public2),
+        reason: 'Same Ed25519 key should produce same X25519 key',
+      );
+    });
+
+    testWidgets('Ed25519 secret key to X25519 conversion', (tester) async {
+      // Generate Ed25519 keypair
+      final ed25519KeyPair = await bridge.generateIdentityKey();
+
+      // Convert Ed25519 secret to X25519
+      final x25519Secret = await bridge.ed25519SecretToX25519(
+        ed25519KeyPair.privateKey,
+      );
+
+      expect(
+        x25519Secret.length,
+        equals(32),
+        reason: 'X25519 secret key should be 32 bytes',
+      );
+
+      // Conversion should be deterministic
+      final x25519Secret2 = await bridge.ed25519SecretToX25519(
+        ed25519KeyPair.privateKey,
+      );
+      expect(
+        x25519Secret,
+        equals(x25519Secret2),
+        reason: 'Same Ed25519 seed should produce same X25519 secret',
+      );
+    });
+
+    testWidgets('Ed25519 to X25519 conversion enables DH', (tester) async {
+      // Generate Ed25519 keypair for Alice
+      final aliceEd25519 = await bridge.generateIdentityKey();
+
+      // Convert Alice's Ed25519 to X25519
+      final aliceX25519Secret = await bridge.ed25519SecretToX25519(
+        aliceEd25519.privateKey,
+      );
+      final aliceX25519Public = await bridge.ed25519PublicToX25519(
+        aliceEd25519.publicKey,
+      );
+
+      // Generate pure X25519 keypair for Bob
+      final bobX25519 = await bridge.generateSignedPreKey();
+
+      // Both should be able to compute shared secret
+      final sharedFromAlice = await bridge.deriveHybridSharedSecret(
+        localPrivateKey: aliceX25519Secret,
+        remotePublicKey: bobX25519.publicKey,
+        remotePqPublicKey: null,
+      );
+
+      final sharedFromBob = await bridge.deriveHybridSharedSecret(
+        localPrivateKey: bobX25519.privateKey,
+        remotePublicKey: aliceX25519Public,
+        remotePqPublicKey: null,
+      );
+
+      expect(
+        sharedFromAlice,
+        equals(sharedFromBob),
+        reason: 'DH should work with converted Ed25519 keys',
+      );
+    });
   });
 
   group('Post-Quantum (PQXDH) Tests', () {

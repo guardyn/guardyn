@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:pinenacl/tweetnacl.dart' show TweetNaClExt;
 
 // Conditional import for native bridge
 // Uses stub on Web, real implementation on mobile/desktop
@@ -145,6 +146,19 @@ abstract class CryptoBridge {
     required Uint8List message,
     required Uint8List signature,
   });
+
+  // ===== Key Conversion (Ed25519 ↔ X25519) =====
+
+  /// Convert Ed25519 public key to X25519 public key
+  ///
+  /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+  /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+  Future<Uint8List> ed25519PublicToX25519(Uint8List ed25519Public);
+
+  /// Convert Ed25519 secret key (seed) to X25519 secret key
+  ///
+  /// The conversion matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk.
+  Future<Uint8List> ed25519SecretToX25519(Uint8List ed25519Seed);
 }
 
 /// Key pair representation
@@ -362,6 +376,27 @@ class DartCryptoBridge implements CryptoBridge {
     required Uint8List signature,
   }) async {
     throw UnimplementedError('Use existing Ed25519 verification');
+  }
+
+  @override
+  Future<Uint8List> ed25519PublicToX25519(Uint8List ed25519Public) async {
+    // Uses pinenacl TweetNaClExt for Ed25519 → X25519 conversion
+    // This matches the implementation in x3dh.dart
+    final x25519Pk = Uint8List(32);
+    TweetNaClExt.crypto_sign_ed25519_pk_to_x25519_pk(x25519Pk, ed25519Public);
+    return x25519Pk;
+  }
+
+  @override
+  Future<Uint8List> ed25519SecretToX25519(Uint8List ed25519Seed) async {
+    // Ed25519 secret to X25519 conversion requires the full Ed25519 secret key
+    // which is seed (32 bytes) + public key (32 bytes) = 64 bytes
+    // The Rust implementation accepts just the 32-byte seed
+    // For Dart fallback, we need to derive the full key first
+    throw UnimplementedError(
+      'Ed25519 secret to X25519 conversion requires NativeRustCryptoBridge. '
+      'DartCryptoBridge does not support this operation directly.',
+    );
   }
 }
 

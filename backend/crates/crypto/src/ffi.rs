@@ -433,6 +433,67 @@ pub fn x25519_diffie_hellman(
     Ok(shared_secret.as_bytes().to_vec())
 }
 
+/// Convert Ed25519 public key to X25519 public key
+///
+/// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
+/// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
+///
+/// # Arguments
+/// * `ed25519_public` - Ed25519 public key (32 bytes)
+///
+/// # Returns
+/// X25519 public key (32 bytes)
+pub fn ed25519_public_to_x25519(ed25519_public: Vec<u8>) -> Result<Vec<u8>, String> {
+    use ed25519_dalek::VerifyingKey;
+
+    if ed25519_public.len() != 32 {
+        return Err("Ed25519 public key must be 32 bytes".to_string());
+    }
+
+    let verifying_key = VerifyingKey::from_bytes(
+        <&[u8; 32]>::try_from(ed25519_public.as_slice())
+            .map_err(|_| "Invalid Ed25519 public key")?,
+    )
+    .map_err(|e| format!("Invalid Ed25519 public key: {}", e))?;
+
+    let montgomery = verifying_key.to_montgomery();
+    Ok(montgomery.to_bytes().to_vec())
+}
+
+/// Convert Ed25519 secret key (seed) to X25519 secret key
+///
+/// The conversion process (matching TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk):
+/// 1. Compute SHA512(seed)[0:32]
+/// 2. Apply X25519 clamping:
+///    - Clear bottom 3 bits of byte 0 (divisible by 8)
+///    - Clear top bit of byte 31 (< 2^255)
+///    - Set second-to-top bit of byte 31 (>= 2^254)
+///
+/// # Arguments
+/// * `ed25519_seed` - Ed25519 seed/private key (32 bytes)
+///
+/// # Returns
+/// X25519 secret key (32 bytes)
+pub fn ed25519_secret_to_x25519(ed25519_seed: Vec<u8>) -> Result<Vec<u8>, String> {
+    use curve25519_dalek::scalar::clamp_integer;
+    use ed25519_dalek::SigningKey;
+
+    if ed25519_seed.len() != 32 {
+        return Err("Ed25519 seed must be 32 bytes".to_string());
+    }
+
+    let signing_key = SigningKey::from_bytes(
+        <&[u8; 32]>::try_from(ed25519_seed.as_slice()).map_err(|_| "Invalid Ed25519 seed")?,
+    );
+
+    // Get raw SHA512(seed)[0:32] bytes
+    let raw_scalar_bytes = signing_key.to_scalar_bytes();
+    // Apply clamping (matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk)
+    let clamped_bytes = clamp_integer(raw_scalar_bytes);
+
+    Ok(clamped_bytes.to_vec())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -507,5 +568,48 @@ mod tests {
 
         let derived = hkdf_sha256(ikm, None, info, 32).unwrap();
         assert_eq!(derived.len(), 32);
+    }
+
+    #[test]
+    fn test_ed25519_to_x25519_public() {
+        let ed_keypair = generate_ed25519_keypair();
+        let x25519_public = ed25519_public_to_x25519(ed_keypair.public_key.clone()).unwrap();
+        assert_eq!(x25519_public.len(), 32);
+
+        // Conversion should be deterministic
+        let x25519_public2 = ed25519_public_to_x25519(ed_keypair.public_key).unwrap();
+        assert_eq!(x25519_public, x25519_public2);
+    }
+
+    #[test]
+    fn test_ed25519_to_x25519_secret() {
+        let ed_keypair = generate_ed25519_keypair();
+        let x25519_secret = ed25519_secret_to_x25519(ed_keypair.private_key.clone()).unwrap();
+        assert_eq!(x25519_secret.len(), 32);
+
+        // Conversion should be deterministic
+        let x25519_secret2 = ed25519_secret_to_x25519(ed_keypair.private_key).unwrap();
+        assert_eq!(x25519_secret, x25519_secret2);
+    }
+
+    #[test]
+    fn test_ed25519_to_x25519_dh_compatible() {
+        // Generate Ed25519 keypair
+        let alice_ed = generate_ed25519_keypair();
+
+        // Convert Ed25519 to X25519
+        let alice_x25519_secret = ed25519_secret_to_x25519(alice_ed.private_key).unwrap();
+        let alice_x25519_public = ed25519_public_to_x25519(alice_ed.public_key).unwrap();
+
+        // Generate pure X25519 keypair
+        let bob_x25519 = generate_x25519_keypair();
+
+        // Both should be able to compute DH
+        let shared_alice =
+            x25519_diffie_hellman(alice_x25519_secret, bob_x25519.public_key.clone()).unwrap();
+        let shared_bob =
+            x25519_diffie_hellman(bob_x25519.private_key, alice_x25519_public).unwrap();
+
+        assert_eq!(shared_alice, shared_bob);
     }
 }

@@ -1,6 +1,6 @@
 # Rust FFI Integration - Complete Status
 
-> **Last Updated**: Session completed with 62/62 tests passing
+> **Last Updated**: Session completed with 79/79 tests passing (62 unit + 17 integration)
 
 ## ✅ Completed Tasks
 
@@ -11,7 +11,18 @@
 - **Conditional Import**: Uses `native_bridge_stub.dart` on Web, `native_bridge_io.dart` on mobile/desktop
 - **Fallback**: Falls back to `DartCryptoBridge` if native library not available
 
-### 2. Test Files Created
+### 2. Ed25519 → X25519 Conversion Added
+
+- **Rust FFI**: Added `ed25519_public_to_x25519()` and `ed25519_secret_to_x25519()` functions
+- **Files Modified**:
+  - [ffi.rs](../backend/crates/crypto/src/ffi.rs) - Core conversion functions
+  - [api.rs](../backend/crates/crypto-ffi/src/api.rs) - FFI wrapper functions
+  - [native_crypto_bridge.dart](../client-mobile/lib/core/crypto/native_crypto_bridge.dart) - CryptoBridge interface
+  - [rust_crypto_bridge.dart](../client-mobile/lib/core/crypto/native/rust_crypto_bridge.dart) - Native implementation
+  - [crypto_primitives.dart](../client-mobile/lib/core/crypto/crypto_primitives.dart) - Static wrapper methods
+- **Purpose**: Enable X3DH protocol to use Ed25519 identity keys with X25519 DH operations
+
+### 3. Test Files Created
 
 #### Integration Test (Device Testing)
 
@@ -27,6 +38,9 @@
   - PADMÉ padding
   - Random bytes generation
   - Constant-time comparison
+  - **Ed25519 public to X25519 conversion**
+  - **Ed25519 secret to X25519 conversion**
+  - **Ed25519-to-X25519 enables DH**
   - Post-quantum tests (if available)
 
 #### Unit Test (Quick Verification)
@@ -39,7 +53,7 @@
   - Config defaults
   - Data structures (KeyPair, EncryptedData, HybridKeyBundle)
 
-### 3. Conditional Import Architecture
+### 4. Conditional Import Architecture
 
 ```text
 native_crypto_bridge.dart
@@ -49,13 +63,15 @@ native_crypto_bridge.dart
         └── createNativeCryptoBridge() → NativeRustCryptoBridge
 ```
 
-### 4. CryptoPrimitives Module Created
+### 5. CryptoPrimitives Module Created
 
 - **File**: [crypto_primitives.dart](../client-mobile/lib/core/crypto/crypto_primitives.dart)
 - **Purpose**: Unified low-level crypto interface using CryptoBridge
 - **Static Methods**:
   - `generateX25519KeyPair()` - X25519 key generation
   - `generateEd25519KeyPair()` - Ed25519 key generation
+  - `ed25519PublicToX25519()` - Ed25519 public key conversion
+  - `ed25519SecretToX25519()` - Ed25519 secret key conversion
   - `x25519DiffieHellman()` - ECDH key agreement
   - `encryptAesGcm()` / `decryptAesGcm()` - Symmetric encryption
   - `hkdf()` - Key derivation
@@ -65,15 +81,22 @@ native_crypto_bridge.dart
 
 ## 🧪 Test Results
 
-### All Crypto Tests: 62/62 Passed ✅
+### Unit Tests: 62/62 Passed ✅
 
-| Test Suite           | Tests | Status    |
-| -------------------- | ----- | --------- |
-| X3DH                 | 20    | ✅ Passed |
-| Double Ratchet       | 18    | ✅ Passed |
-| Sealed Sender        | 11    | ✅ Passed |
-| Crypto Bridge Factory| 5     | ✅ Passed |
-| CryptoPrimitives     | 8     | ✅ Passed |
+| Test Suite            | Tests | Status    |
+| --------------------- | ----- | --------- |
+| X3DH                  | 20    | ✅ Passed |
+| Double Ratchet        | 18    | ✅ Passed |
+| Sealed Sender         | 11    | ✅ Passed |
+| Crypto Bridge Factory | 5     | ✅ Passed |
+| CryptoPrimitives      | 8     | ✅ Passed |
+
+### Integration Tests: 17/17 Passed ✅
+
+| Test Suite                     | Tests | Status    |
+| ------------------------------ | ----- | --------- |
+| NativeRustCryptoBridge         | 15    | ✅ Passed |
+| Post-Quantum (PQXDH)           | 2     | ✅ Passed |
 
 ### Testing Commands
 
@@ -81,7 +104,7 @@ native_crypto_bridge.dart
 
 ```bash
 cd client-mobile
-flutter test test/core/crypto/crypto_bridge_factory_test.dart
+flutter test test/core/crypto/
 ```
 
 ### Device Testing (Integration Tests)

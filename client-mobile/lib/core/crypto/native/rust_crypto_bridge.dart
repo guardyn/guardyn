@@ -360,6 +360,26 @@ class NativeRustCryptoBridge implements CryptoBridge {
     );
   }
 
+  // ===== Key Conversion (Ed25519 ↔ X25519) =====
+
+  @override
+  Future<Uint8List> ed25519PublicToX25519(Uint8List ed25519Public) async {
+    _ensureNativeAvailable();
+
+    return rust_api.cryptoEd25519PublicToX25519(
+      ed25519Public: ed25519Public.toList(),
+    );
+  }
+
+  @override
+  Future<Uint8List> ed25519SecretToX25519(Uint8List ed25519Seed) async {
+    _ensureNativeAvailable();
+
+    return rust_api.cryptoEd25519SecretToX25519(
+      ed25519Seed: ed25519Seed.toList(),
+    );
+  }
+
   // ===== Utility Methods (non-interface, for direct usage) =====
 
   /// Generate cryptographically secure random bytes

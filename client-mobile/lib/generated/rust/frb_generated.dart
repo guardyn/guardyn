@@ -76,7 +76,7 @@ class GuardynCrypto
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 499321114;
+  int get rustContentHash => -694979162;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -102,6 +102,14 @@ abstract class GuardynCryptoApi extends BaseApi {
     required EncryptedData encrypted,
     required List<int> key,
     Uint8List? associatedData,
+  });
+
+  Uint8List crateApiCryptoEd25519PublicToX25519({
+    required List<int> ed25519Public,
+  });
+
+  Uint8List crateApiCryptoEd25519SecretToX25519({
+    required List<int> ed25519Seed,
   });
 
   Future<EncryptedData> crateApiCryptoEncryptAesGcm({
@@ -270,6 +278,60 @@ class GuardynCryptoApiImpl extends GuardynCryptoApiImplPlatform
       const TaskConstMeta(
         debugName: "crypto_decrypt_chacha20",
         argNames: ["encrypted", "key", "associatedData"],
+      );
+
+  @override
+  Uint8List crateApiCryptoEd25519PublicToX25519({
+    required List<int> ed25519Public,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          var arg0 = cst_encode_list_prim_u_8_loose(ed25519Public);
+          return wire.wire__crate__api__crypto_ed25519_public_to_x25519(arg0);
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_String,
+        ),
+        constMeta: kCrateApiCryptoEd25519PublicToX25519ConstMeta,
+        argValues: [ed25519Public],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCryptoEd25519PublicToX25519ConstMeta =>
+      const TaskConstMeta(
+        debugName: "crypto_ed25519_public_to_x25519",
+        argNames: ["ed25519Public"],
+      );
+
+  @override
+  Uint8List crateApiCryptoEd25519SecretToX25519({
+    required List<int> ed25519Seed,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          var arg0 = cst_encode_list_prim_u_8_loose(ed25519Seed);
+          return wire.wire__crate__api__crypto_ed25519_secret_to_x25519(arg0);
+        },
+        codec: DcoCodec(
+          decodeSuccessData: dco_decode_list_prim_u_8_strict,
+          decodeErrorData: dco_decode_String,
+        ),
+        constMeta: kCrateApiCryptoEd25519SecretToX25519ConstMeta,
+        argValues: [ed25519Seed],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCryptoEd25519SecretToX25519ConstMeta =>
+      const TaskConstMeta(
+        debugName: "crypto_ed25519_secret_to_x25519",
+        argNames: ["ed25519Seed"],
       );
 
   @override
