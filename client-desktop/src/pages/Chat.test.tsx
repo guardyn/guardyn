@@ -168,7 +168,9 @@ describe('Chat Page', () => {
     await fireEvent.click(aliceConv!);
 
     await waitFor(() => {
-      expect(screen.getByText('Hello there!')).toBeInTheDocument();
+      // Hello there! appears twice - in conversation preview and in message
+      const helloMessages = screen.getAllByText('Hello there!');
+      expect(helloMessages.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Hi! How are you?')).toBeInTheDocument();
     });
   });
@@ -202,7 +204,7 @@ describe('Chat Page', () => {
     });
 
     const messageInput = screen.getByPlaceholderText('Type a message...') as HTMLInputElement;
-    const sendButton = screen.getByRole('button', { name: /send/i });
+    const sendButton = screen.getByRole('button', { name: /send message/i });
 
     await fireEvent.input(messageInput, { target: { value: 'New message' } });
     await fireEvent.click(sendButton);
@@ -236,7 +238,7 @@ describe('Chat Page', () => {
     });
 
     const messageInput = screen.getByPlaceholderText('Type a message...') as HTMLInputElement;
-    const sendButton = screen.getByRole('button', { name: /send/i });
+    const sendButton = screen.getByRole('button', { name: /send message/i });
 
     await fireEvent.input(messageInput, { target: { value: 'Test message' } });
     await fireEvent.click(sendButton);
@@ -264,7 +266,7 @@ describe('Chat Page', () => {
       expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
     });
 
-    const sendButton = screen.getByRole('button', { name: /send/i });
+    const sendButton = screen.getByRole('button', { name: /send message/i });
     await fireEvent.click(sendButton);
 
     // send_message should not be called

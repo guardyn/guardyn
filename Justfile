@@ -240,3 +240,117 @@ clear-client-data-force:
     @echo "[client] Force clearing all client data..."
     bash client-mobile/scripts/clear-client-data.sh --force
 
+# =============================================================================
+# Docker Compose Local Development (Recommended for beginners)
+# =============================================================================
+# Fast local development with hot-reload. No k8s required!
+# Start: just dc-up   |  Stop: just dc-down   |  Logs: just dc-logs
+
+COMPOSE := "docker compose -f docker-compose.dev.yml"
+
+# Start all services (data layer + backend + envoy)
+dc-up:
+    @echo "[docker] Starting all services (~30 seconds)..."
+    {{COMPOSE}} up -d
+    @echo ""
+    @echo "✅ Services starting. Check status: just dc-ps"
+    @echo "📊 Redpanda Console: http://localhost:8088"
+    @echo "🪣 MinIO Console: http://localhost:9001 (guardyn/guardyn-dev-secret)"
+    @echo "🔌 Envoy (gRPC-Web): http://localhost:8080"
+
+# Start only data layer (TiKV, ScyllaDB, Redpanda, MinIO)
+dc-up-data:
+    @echo "[docker] Starting data layer only..."
+    {{COMPOSE}} up -d pd tikv scylladb redpanda minio minio-init
+    @echo "✅ Data layer started. Wait for health checks: just dc-ps"
+
+# Start specific service(s)
+dc-up-service +services:
+    @echo "[docker] Starting: {{services}}..."
+    {{COMPOSE}} up -d {{services}}
+
+# Stop all services (keep volumes)
+dc-down:
+    @echo "[docker] Stopping all services..."
+    {{COMPOSE}} down
+
+# Stop all services and DELETE volumes (reset all data)
+dc-reset:
+    @echo "[docker] ⚠️  Stopping and removing ALL data..."
+    {{COMPOSE}} down -v
+    @echo "✅ All containers and volumes removed"
+
+# Show running containers
+dc-ps:
+    {{COMPOSE}} ps
+
+# Show container status with health
+dc-status:
+    @echo "[docker] Container status:"
+    {{COMPOSE}} ps --format "table {{{{.Name}}}}\t{{{{.Status}}}}\t{{{{.Ports}}}}"
+
+# Follow logs for all services
+dc-logs:
+    {{COMPOSE}} logs -f
+
+# Follow logs for specific service
+dc-log service:
+    {{COMPOSE}} logs -f {{service}}
+
+# Rebuild and restart a specific service
+dc-rebuild service:
+    @echo "[docker] Rebuilding {{service}}..."
+    {{COMPOSE}} up -d --build {{service}}
+
+# Rebuild all backend services
+dc-rebuild-all:
+    @echo "[docker] Rebuilding all backend services..."
+    {{COMPOSE}} up -d --build auth-service messaging-service presence-service media-service notification-service
+
+# Restart a specific service
+dc-restart service:
+    {{COMPOSE}} restart {{service}}
+
+# Execute command in a running container
+dc-exec service +cmd:
+    {{COMPOSE}} exec {{service}} {{cmd}}
+
+# Open shell in a running container
+dc-shell service:
+    {{COMPOSE}} exec {{service}} /bin/sh
+
+# Check ScyllaDB status
+dc-scylla-status:
+    {{COMPOSE}} exec scylladb nodetool status
+
+# Open CQL shell to ScyllaDB
+dc-cqlsh:
+    {{COMPOSE}} exec scylladb cqlsh
+
+# Check TiKV cluster status
+dc-tikv-status:
+    {{COMPOSE}} exec pd /pd-ctl store
+
+# Check Redpanda cluster health
+dc-redpanda-health:
+    {{COMPOSE}} exec redpanda rpk cluster health
+
+# List Redpanda topics
+dc-redpanda-topics:
+    {{COMPOSE}} exec redpanda rpk topic list
+
+# Show resource usage
+dc-stats:
+    docker stats --no-stream $({{COMPOSE}} ps -q)
+
+# Clean up unused Docker resources
+dc-prune:
+    @echo "[docker] Cleaning unused resources..."
+    docker system prune -f
+    @echo "✅ Cleanup complete"
+
+# Pull latest images
+dc-pull:
+    @echo "[docker] Pulling latest images..."
+    {{COMPOSE}} pull
+

@@ -5,7 +5,7 @@
  * logs those errors, and displays a fallback UI.
  */
 
-import { Component, createSignal, JSX, Show, ErrorBoundary as SolidErrorBoundary } from 'solid-js';
+import { Component, createSignal, For, JSX, Show, ErrorBoundary as SolidErrorBoundary } from 'solid-js';
 
 interface ErrorDisplayProps {
   error: Error;
@@ -171,20 +171,22 @@ export const ToastContainer: Component = () => {
 
   return (
     <div class="fixed bottom-4 right-4 z-50 space-y-2">
-      {toasts().map((toast) => (
-        <div class={getToastStyles(toast.type)}>
-          {getIcon(toast.type)}
-          <span class="flex-1">{toast.message}</span>
-          <button
-            onClick={() => dismissToast(toast.id)}
-            class="ml-3 opacity-70 hover:opacity-100"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      ))}
+      <For each={toasts()}>
+        {(toast) => (
+          <div class={getToastStyles(toast.type)}>
+            {getIcon(toast.type)}
+            <span class="flex-1">{toast.message}</span>
+            <button
+              onClick={() => dismissToast(toast.id)}
+              class="ml-3 opacity-70 hover:opacity-100"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </For>
     </div>
   );
 };

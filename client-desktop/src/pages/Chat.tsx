@@ -63,7 +63,7 @@ const Chat: Component<ChatPageProps> = () => {
         <div class="flex-1 overflow-y-auto">
           <Show when={!loading()} fallback={<div class="p-4 text-gray-400">Loading...</div>}>
             <Show
-              when={conversations().length > 0}
+              when={conversations() && conversations().length > 0}
               fallback={
                 <div class="p-4 text-gray-400 text-center">
                   <p>No conversations yet</p>
@@ -151,6 +151,7 @@ const Chat: Component<ChatPageProps> = () => {
               <button
                 type="submit"
                 disabled={!newMessage().trim()}
+                aria-label="Send message"
                 class="px-6 py-3 bg-guardyn-600 text-white rounded-lg hover:bg-guardyn-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

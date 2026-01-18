@@ -165,7 +165,8 @@ interface SkeletonMessageListProps {
 
 export const SkeletonMessageList: Component<SkeletonMessageListProps> = (props) => {
   const count = props.count || 6;
-  // Alternate between own and other messages
+  // Alternate between own and other messages - this is data preparation, not rendering
+  // eslint-disable-next-line solid/prefer-for
   const messages = Array(count)
     .fill(0)
     .map((_, i) => i % 3 !== 0);
