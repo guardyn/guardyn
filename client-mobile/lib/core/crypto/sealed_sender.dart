@@ -5,10 +5,13 @@
 //
 // Protocol based on Signal's Sealed Sender:
 // https://signal.org/blog/sealed-sender/
+//
+// NOTE: This implementation uses CryptoPrimitives which can use either
+// pure Dart or native Rust FFI depending on platform availability.
 
 import 'dart:typed_data';
 
-import 'package:cryptography/cryptography.dart';
+import 'crypto_primitives.dart';
 
 /// Sender Certificate - proves sender identity to recipient
 class SenderCertificate {
@@ -36,47 +39,41 @@ class SenderCertificate {
   });
 
   /// Create a new sender certificate
+  ///
+  /// [signingPrivateKey] - Ed25519 private key (32 bytes)
+  /// [signingPublicKey] - Ed25519 public key (32 bytes)
   static Future<SenderCertificate> create({
     required String senderUserId,
     required String senderDeviceId,
-    required SimpleKeyPair signingKeyPair,
+    required Uint8List signingPrivateKey,
+    required Uint8List signingPublicKey,
     required int expiresAt,
   }) async {
-    final ed25519 = Ed25519();
-    final publicKey = await signingKeyPair.extractPublicKey();
-    final identityKey = Uint8List.fromList(publicKey.bytes);
-
     // Create message to sign
     final message = _buildCertificateMessage(
       senderUserId,
       senderDeviceId,
-      identityKey,
+      signingPublicKey,
       expiresAt,
     );
 
-    // Sign the certificate
-    final signatureResult = await ed25519.sign(
-      message,
-      keyPair: signingKeyPair,
+    // Sign the certificate using CryptoPrimitives
+    final signatureBytes = await CryptoPrimitives.signEd25519(
+      privateKey: signingPrivateKey,
+      message: message,
     );
 
     return SenderCertificate(
       senderUserId: senderUserId,
       senderDeviceId: senderDeviceId,
-      senderIdentityKey: identityKey,
+      senderIdentityKey: signingPublicKey,
       expiresAt: expiresAt,
-      signature: Uint8List.fromList(signatureResult.bytes),
+      signature: signatureBytes,
     );
   }
 
   /// Verify the certificate signature
   Future<bool> verify() async {
-    final ed25519 = Ed25519();
-    final publicKey = SimplePublicKey(
-      senderIdentityKey.toList(),
-      type: KeyPairType.ed25519,
-    );
-
     final message = _buildCertificateMessage(
       senderUserId,
       senderDeviceId,
@@ -84,9 +81,11 @@ class SenderCertificate {
       expiresAt,
     );
 
-    final sig = Signature(signature.toList(), publicKey: publicKey);
-
-    return ed25519.verify(message, signature: sig);
+    return CryptoPrimitives.verifyEd25519(
+      publicKey: senderIdentityKey,
+      message: message,
+      signature: signature,
+    );
   }
 
   /// Check if certificate has expired
@@ -230,8 +229,8 @@ class SenderCertificate {
 
   @override
   String toString() {
-    return 'SenderCertificate(user: $senderUserId, device: $senderDeviceId, '
-        'expires: ${DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000)})';
+    return 'SenderCertificate(user: \$senderUserId, device: \$senderDeviceId, '
+        'expires: \${DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000)})';
   }
 }
 
@@ -243,7 +242,7 @@ class SealedSenderEnvelope {
   /// Ephemeral X25519 public key (32 bytes)
   final Uint8List ephemeralPublicKey;
 
-  /// Encrypted payload: nonce (12) + ciphertext (certificate + message)
+  /// Encrypted payload: nonce (12) + ciphertext + tag (16)
   final Uint8List encryptedPayload;
 
   SealedSenderEnvelope({
@@ -255,16 +254,9 @@ class SealedSenderEnvelope {
   /// Serialize to bytes
   Uint8List toBytes() {
     final buffer = BytesBuilder();
-
-    // Version (1 byte)
     buffer.addByte(version);
-
-    // Ephemeral public key (32 bytes)
     buffer.add(ephemeralPublicKey);
-
-    // Encrypted payload
     buffer.add(encryptedPayload);
-
     return buffer.toBytes();
   }
 
@@ -276,7 +268,7 @@ class SealedSenderEnvelope {
 
     final version = bytes[0];
     if (version != 1) {
-      throw FormatException('Unsupported envelope version: $version');
+      throw FormatException('Unsupported envelope version: \$version');
     }
 
     final ephemeralPublicKey = Uint8List.fromList(bytes.sublist(1, 33));
@@ -289,7 +281,6 @@ class SealedSenderEnvelope {
     );
   }
 
-  /// Get hex representation for debugging
   String toHex() {
     final bytes = toBytes();
     final buffer = StringBuffer();
@@ -310,42 +301,29 @@ class UnsealResult {
 
 /// Sealed Sender Protocol Implementation
 class SealedSender {
-  /// HKDF label for key derivation
   static const _hkdfLabel = 'Guardyn-SealedSender-v1';
 
   /// Seal a message with hidden sender identity
-  ///
-  /// [certificate] - Sender's certificate proving identity
-  /// [recipientPublicKey] - Recipient's X25519 public key (32 bytes)
-  /// [innerMessage] - The actual message to encrypt
   static Future<SealedSenderEnvelope> seal({
     required SenderCertificate certificate,
     required Uint8List recipientPublicKey,
     required Uint8List innerMessage,
   }) async {
-    final x25519 = X25519();
-    final aesGcm = AesGcm.with256bits();
+    // 1. Generate ephemeral X25519 key pair
+    final (ephemeralPublic, ephemeralPrivate) =
+        await CryptoPrimitives.generateX25519KeyPair();
 
-    // 1. Generate ephemeral key pair
-    final ephemeralKeyPair = await x25519.newKeyPair();
-    final ephemeralPublicKey = await ephemeralKeyPair.extractPublicKey();
-
-    // 2. Perform ECDH with recipient's identity key
-    final recipientKey = SimplePublicKey(
-      recipientPublicKey.toList(),
-      type: KeyPairType.x25519,
-    );
-    final sharedSecret = await x25519.sharedSecretKey(
-      keyPair: ephemeralKeyPair,
-      remotePublicKey: recipientKey,
+    // 2. Perform ECDH with recipient's public key
+    final sharedSecret = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: ephemeralPrivate,
+      remotePublicKey: recipientPublicKey,
     );
 
     // 3. Derive encryption key using HKDF
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-    final derivedKey = await hkdf.deriveKey(
-      secretKey: sharedSecret,
-      info: _hkdfLabel.codeUnits,
-      nonce: const [],
+    final derivedKey = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: sharedSecret,
+      info: Uint8List.fromList(_hkdfLabel.codeUnits),
+      outputLength: 32,
     );
 
     // 4. Create payload: certificate_length || certificate || inner_message
@@ -360,87 +338,78 @@ class SealedSender {
     payload.add(innerMessage);
 
     // 5. Encrypt with AES-GCM
-    final secretBox = await aesGcm.encrypt(
-      payload.toBytes(),
-      secretKey: derivedKey,
+    final (ciphertext, nonce, tag) = await CryptoPrimitives.encryptAesGcm(
+      plaintext: payload.toBytes(),
+      key: derivedKey,
     );
 
-    // 6. Build encrypted payload: nonce || ciphertext || mac
+    // 6. Build encrypted payload: nonce || ciphertext || tag
     final encryptedPayload = BytesBuilder();
-    encryptedPayload.add(secretBox.nonce);
-    encryptedPayload.add(secretBox.cipherText);
-    encryptedPayload.add(secretBox.mac.bytes);
+    encryptedPayload.add(nonce);
+    encryptedPayload.add(ciphertext);
+    encryptedPayload.add(tag);
 
     return SealedSenderEnvelope(
       version: 1,
-      ephemeralPublicKey: Uint8List.fromList(ephemeralPublicKey.bytes),
+      ephemeralPublicKey: ephemeralPublic,
       encryptedPayload: encryptedPayload.toBytes(),
     );
   }
 
   /// Unseal a message and reveal sender identity
-  ///
-  /// [envelope] - The sealed envelope to decrypt
-  /// [recipientKeyPair] - Recipient's X25519 key pair
   static Future<UnsealResult> unseal({
     required SealedSenderEnvelope envelope,
-    required SimpleKeyPair recipientKeyPair,
+    required Uint8List recipientPrivateKey,
   }) async {
     if (envelope.version != 1) {
       throw FormatException(
-        'Unsupported envelope version: ${envelope.version}',
+        'Unsupported envelope version: \${envelope.version}',
       );
     }
 
-    final x25519 = X25519();
-    final aesGcm = AesGcm.with256bits();
-
-    // 1. Parse ephemeral public key
-    final ephemeralPublicKey = SimplePublicKey(
-      envelope.ephemeralPublicKey.toList(),
-      type: KeyPairType.x25519,
+    // 1. Perform ECDH with ephemeral public key
+    final sharedSecret = await CryptoPrimitives.x25519DiffieHellman(
+      privateKey: recipientPrivateKey,
+      remotePublicKey: envelope.ephemeralPublicKey,
     );
 
-    // 2. Perform ECDH
-    final sharedSecret = await x25519.sharedSecretKey(
-      keyPair: recipientKeyPair,
-      remotePublicKey: ephemeralPublicKey,
+    // 2. Derive decryption key
+    final derivedKey = await CryptoPrimitives.hkdf(
+      inputKeyMaterial: sharedSecret,
+      info: Uint8List.fromList(_hkdfLabel.codeUnits),
+      outputLength: 32,
     );
 
-    // 3. Derive decryption key
-    final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-    final derivedKey = await hkdf.deriveKey(
-      secretKey: sharedSecret,
-      info: _hkdfLabel.codeUnits,
-      nonce: const [],
-    );
-
-    // 4. Parse encrypted payload: nonce (12) || ciphertext || mac (16)
+    // 3. Parse encrypted payload: nonce (12) || ciphertext || tag (16)
     final encPayload = envelope.encryptedPayload;
     if (encPayload.length < 12 + 16) {
       throw FormatException('Encrypted payload too short');
     }
 
-    final nonce = encPayload.sublist(0, 12);
-    final ciphertextWithMac = encPayload.sublist(12);
-    final macBytes = ciphertextWithMac.sublist(ciphertextWithMac.length - 16);
-    final cipherText = ciphertextWithMac.sublist(
-      0,
-      ciphertextWithMac.length - 16,
+    final nonce = Uint8List.fromList(encPayload.sublist(0, 12));
+    final ciphertextWithTag = encPayload.sublist(12);
+    final tag = Uint8List.fromList(
+      ciphertextWithTag.sublist(ciphertextWithTag.length - 16),
+    );
+    final ciphertext = Uint8List.fromList(
+      ciphertextWithTag.sublist(0, ciphertextWithTag.length - 16),
     );
 
-    final secretBox = SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes));
+    // 4. Decrypt with AES-GCM
+    final payload = await CryptoPrimitives.decryptAesGcm(
+      ciphertext: ciphertext,
+      key: derivedKey,
+      nonce: nonce,
+      tag: tag,
+    );
 
-    // 5. Decrypt
-    final payload = await aesGcm.decrypt(secretBox, secretKey: derivedKey);
-
-    // 6. Parse payload: cert_length (4) || certificate || inner_message
+    // 5. Parse payload: cert_length (4) || certificate || inner_message
     if (payload.length < 4) {
       throw FormatException('Payload too short');
     }
 
     final certLen = ByteData.sublistView(
-      Uint8List.fromList(payload),
+      payload,
       0,
       4,
     ).getUint32(0, Endian.big);
@@ -453,13 +422,13 @@ class SealedSender {
 
     final certificate = SenderCertificate.fromBytes(certBytes);
 
-    // 7. Verify certificate signature
+    // 6. Verify certificate signature
     final isValid = await certificate.verify();
     if (!isValid) {
       throw SecurityException('Invalid sender certificate signature');
     }
 
-    // 8. Check certificate expiration
+    // 7. Check certificate expiration
     if (certificate.isExpired) {
       throw SecurityException('Sender certificate has expired');
     }
@@ -477,5 +446,5 @@ class SecurityException implements Exception {
   SecurityException(this.message);
 
   @override
-  String toString() => 'SecurityException: $message';
+  String toString() => 'SecurityException: \$message';
 }

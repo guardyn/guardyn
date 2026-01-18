@@ -4,17 +4,24 @@
 
 import 'dart:typed_data';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
 import 'package:guardyn_client/core/crypto/sealed_sender.dart';
 
 void main() {
+  // Initialize CryptoPrimitives before tests
+  setUpAll(() async {
+    await CryptoPrimitives.initialize();
+  });
+
   group('SenderCertificate', () {
-    late SimpleKeyPair signingKeyPair;
+    late Uint8List signingPrivateKey;
+    late Uint8List signingPublicKey;
 
     setUpAll(() async {
-      final ed25519 = Ed25519();
-      signingKeyPair = await ed25519.newKeyPair();
+      final (pubKey, privKey) = await CryptoPrimitives.generateEd25519KeyPair();
+      signingPublicKey = pubKey;
+      signingPrivateKey = privKey;
     });
 
     test('creates certificate with valid signature', () async {
@@ -24,7 +31,8 @@ void main() {
       final cert = await SenderCertificate.create(
         senderUserId: 'user-123',
         senderDeviceId: 'device-456',
-        signingKeyPair: signingKeyPair,
+        signingPrivateKey: signingPrivateKey,
+        signingPublicKey: signingPublicKey,
         expiresAt: expiresAt,
       );
 
@@ -40,7 +48,8 @@ void main() {
       final cert = await SenderCertificate.create(
         senderUserId: 'user-123',
         senderDeviceId: 'device-456',
-        signingKeyPair: signingKeyPair,
+        signingPrivateKey: signingPrivateKey,
+        signingPublicKey: signingPublicKey,
         expiresAt: expiresAt,
       );
 
@@ -56,7 +65,8 @@ void main() {
       final cert = await SenderCertificate.create(
         senderUserId: 'user-123',
         senderDeviceId: 'device-456',
-        signingKeyPair: signingKeyPair,
+        signingPrivateKey: signingPrivateKey,
+        signingPublicKey: signingPublicKey,
         expiresAt: expiresAt,
       );
 
@@ -69,7 +79,8 @@ void main() {
       final cert = await SenderCertificate.create(
         senderUserId: 'user-123',
         senderDeviceId: 'device-456',
-        signingKeyPair: signingKeyPair,
+        signingPrivateKey: signingPrivateKey,
+        signingPublicKey: signingPublicKey,
         expiresAt: expiresAt,
       );
 
@@ -124,14 +135,23 @@ void main() {
   });
 
   group('SealedSender', () {
-    late SimpleKeyPair senderSigningKeyPair;
-    late SimpleKeyPair recipientKeyPair;
+    late Uint8List senderSigningPrivateKey;
+    late Uint8List senderSigningPublicKey;
+    late Uint8List recipientPublicKey;
+    late Uint8List recipientPrivateKey;
 
     setUpAll(() async {
-      final ed25519 = Ed25519();
-      final x25519 = X25519();
-      senderSigningKeyPair = await ed25519.newKeyPair();
-      recipientKeyPair = await x25519.newKeyPair();
+      // Generate sender Ed25519 keys for signing
+      final (senderPub, senderPriv) =
+          await CryptoPrimitives.generateEd25519KeyPair();
+      senderSigningPublicKey = senderPub;
+      senderSigningPrivateKey = senderPriv;
+
+      // Generate recipient X25519 keys for encryption
+      final (recipientPub, recipientPriv) =
+          await CryptoPrimitives.generateX25519KeyPair();
+      recipientPublicKey = recipientPub;
+      recipientPrivateKey = recipientPriv;
     });
 
     test('seals and unseals message successfully', () async {
@@ -140,18 +160,16 @@ void main() {
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
         senderDeviceId: 'sender-device',
-        signingKeyPair: senderSigningKeyPair,
+        signingPrivateKey: senderSigningPrivateKey,
+        signingPublicKey: senderSigningPublicKey,
         expiresAt: expiresAt,
       );
-
-      // Get recipient public key
-      final recipientPublicKey = await recipientKeyPair.extractPublicKey();
 
       // Seal message
       final innerMessage = Uint8List.fromList('Hello, secret world!'.codeUnits);
       final envelope = await SealedSender.seal(
         certificate: senderCert,
-        recipientPublicKey: Uint8List.fromList(recipientPublicKey.bytes),
+        recipientPublicKey: recipientPublicKey,
         innerMessage: innerMessage,
       );
 
@@ -162,7 +180,7 @@ void main() {
       // Unseal message
       final result = await SealedSender.unseal(
         envelope: envelope,
-        recipientKeyPair: recipientKeyPair,
+        recipientPrivateKey: recipientPrivateKey,
       );
 
       expect(result.senderCertificate.senderUserId, 'sender-user');
@@ -175,16 +193,16 @@ void main() {
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
         senderDeviceId: 'sender-device',
-        signingKeyPair: senderSigningKeyPair,
+        signingPrivateKey: senderSigningPrivateKey,
+        signingPublicKey: senderSigningPublicKey,
         expiresAt: expiresAt,
       );
 
-      final recipientPublicKey = await recipientKeyPair.extractPublicKey();
       final innerMessage = Uint8List.fromList('Test message'.codeUnits);
 
       final envelope = await SealedSender.seal(
         certificate: senderCert,
-        recipientPublicKey: Uint8List.fromList(recipientPublicKey.bytes),
+        recipientPublicKey: recipientPublicKey,
         innerMessage: innerMessage,
       );
 
@@ -195,7 +213,7 @@ void main() {
       // Unseal recovered envelope
       final result = await SealedSender.unseal(
         envelope: recoveredEnvelope,
-        recipientKeyPair: recipientKeyPair,
+        recipientPrivateKey: recipientPrivateKey,
       );
 
       expect(result.innerMessage, innerMessage);
@@ -208,46 +226,47 @@ void main() {
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
         senderDeviceId: 'sender-device',
-        signingKeyPair: senderSigningKeyPair,
+        signingPrivateKey: senderSigningPrivateKey,
+        signingPublicKey: senderSigningPublicKey,
         expiresAt: expiresAt,
       );
 
-      final recipientPublicKey = await recipientKeyPair.extractPublicKey();
       final innerMessage = Uint8List.fromList('Test'.codeUnits);
 
       final envelope = await SealedSender.seal(
         certificate: senderCert,
-        recipientPublicKey: Uint8List.fromList(recipientPublicKey.bytes),
+        recipientPublicKey: recipientPublicKey,
         innerMessage: innerMessage,
       );
 
       expect(
         () async => SealedSender.unseal(
           envelope: envelope,
-          recipientKeyPair: recipientKeyPair,
+          recipientPrivateKey: recipientPrivateKey,
         ),
         throwsA(isA<SecurityException>()),
       );
     });
 
     test('wrong recipient cannot decrypt', () async {
-      final x25519 = X25519();
-      final wrongRecipientKeyPair = await x25519.newKeyPair();
+      // Generate a different recipient keypair
+      final (_, wrongPrivateKey) =
+          await CryptoPrimitives.generateX25519KeyPair();
 
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
         senderDeviceId: 'sender-device',
-        signingKeyPair: senderSigningKeyPair,
+        signingPrivateKey: senderSigningPrivateKey,
+        signingPublicKey: senderSigningPublicKey,
         expiresAt: expiresAt,
       );
 
-      final recipientPublicKey = await recipientKeyPair.extractPublicKey();
       final innerMessage = Uint8List.fromList('Secret'.codeUnits);
 
       final envelope = await SealedSender.seal(
         certificate: senderCert,
-        recipientPublicKey: Uint8List.fromList(recipientPublicKey.bytes),
+        recipientPublicKey: recipientPublicKey,
         innerMessage: innerMessage,
       );
 
@@ -255,7 +274,7 @@ void main() {
       expect(
         () async => SealedSender.unseal(
           envelope: envelope,
-          recipientKeyPair: wrongRecipientKeyPair,
+          recipientPrivateKey: wrongPrivateKey,
         ),
         throwsA(anything), // Will fail decryption
       );
@@ -266,16 +285,16 @@ void main() {
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
         senderDeviceId: 'sender-device',
-        signingKeyPair: senderSigningKeyPair,
+        signingPrivateKey: senderSigningPrivateKey,
+        signingPublicKey: senderSigningPublicKey,
         expiresAt: expiresAt,
       );
 
-      final recipientPublicKey = await recipientKeyPair.extractPublicKey();
       final innerMessage = Uint8List.fromList('Secret'.codeUnits);
 
       final envelope = await SealedSender.seal(
         certificate: senderCert,
-        recipientPublicKey: Uint8List.fromList(recipientPublicKey.bytes),
+        recipientPublicKey: recipientPublicKey,
         innerMessage: innerMessage,
       );
 
@@ -292,7 +311,7 @@ void main() {
       expect(
         () async => SealedSender.unseal(
           envelope: tamperedEnvelope,
-          recipientKeyPair: recipientKeyPair,
+          recipientPrivateKey: recipientPrivateKey,
         ),
         throwsA(anything), // Will fail MAC verification
       );

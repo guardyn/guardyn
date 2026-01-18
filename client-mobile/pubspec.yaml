@@ -44,10 +44,7 @@ dependencies:
   intl: ^0.20.2
   uuid: ^4.0.0
 
-  # E2EE Cryptography
-  # NOTE: cryptography is only used by sealed_sender.dart (to be migrated later)
-  # Primary crypto operations use Rust FFI via CryptoPrimitives
-  cryptography: ^2.7.0  # TODO: Remove after sealed_sender.dart migration
+  # E2EE Cryptography - using unified CryptoPrimitives (Rust FFI / Dart fallback)
   pointycastle: ^3.7.3  # Used for MLS and other crypto utilities
 
   # SVG Support
