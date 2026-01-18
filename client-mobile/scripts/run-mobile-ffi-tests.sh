@@ -126,7 +126,10 @@ test_android() {
     
     # Get first Android device if not specified
     if [ -z "$device_id" ]; then
-        device_id=$(flutter devices | grep android | head -1 | awk '{print $2}' | tr -d '•')
+        # Extract device ID from flutter devices output
+        # Format: "Name (type) • device-id • platform • OS"
+        # Example: "sdk gphone64 x86 64 (mobile) • emulator-5554 • android-x64 • Android 16"
+        device_id=$(flutter devices 2>/dev/null | grep -i android | head -1 | awk -F'•' '{print $2}' | xargs)
         if [ -z "$device_id" ]; then
             log_error "No Android device found. Connect a device or start an emulator."
             exit 1
@@ -134,6 +137,7 @@ test_android() {
     fi
     
     log_info "Testing on device: $device_id"
+
     
     flutter test integration_test/crypto/rust_ffi_test.dart \
         -d "$device_id" \
