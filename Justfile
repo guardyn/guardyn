@@ -398,3 +398,23 @@ ffi-install-linux:
     @echo "[ffi] Installing crypto-ffi for Linux..."
     cd backend && cargo build -p guardyn-crypto-ffi --release
     client-mobile/scripts/install-linux-lib.sh
+
+# Run FFI integration tests on Android device
+ffi-test-android:
+    @echo "[ffi] Running integration tests on Android..."
+    client-mobile/scripts/run-mobile-ffi-tests.sh android
+
+# Run FFI integration tests on iOS device (macOS only)
+ffi-test-ios:
+    @echo "[ffi] Running integration tests on iOS..."
+    client-mobile/scripts/run-mobile-ffi-tests.sh ios
+
+# Run FFI integration tests on all connected mobile devices
+ffi-test-mobile:
+    @echo "[ffi] Running integration tests on all mobile devices..."
+    client-mobile/scripts/run-mobile-ffi-tests.sh all
+
+# List available devices for FFI testing
+ffi-devices:
+    @echo "[ffi] Available devices:"
+    client-mobile/scripts/run-mobile-ffi-tests.sh list

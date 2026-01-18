@@ -19,6 +19,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRATE_DIR="$SCRIPT_DIR"
+BACKEND_DIR="$SCRIPT_DIR/../.."
 CLIENT_MOBILE_DIR="$SCRIPT_DIR/../../../client-mobile"
 NATIVE_DIR="$CLIENT_MOBILE_DIR/native"
 
@@ -94,17 +95,22 @@ build_android() {
     
     log_info "Using Android NDK: $ANDROID_NDK_HOME"
     
+    local TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+    
     # Create cargo config for Android
-    mkdir -p "$CRATE_DIR/.cargo"
-    cat > "$CRATE_DIR/.cargo/config.toml" << EOF
+    mkdir -p "$BACKEND_DIR/.cargo"
+    cat > "$BACKEND_DIR/.cargo/config.toml" << EOF
 [target.aarch64-linux-android]
-linker = "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"
+linker = "${TOOLCHAIN}/bin/aarch64-linux-android24-clang"
+ar = "${TOOLCHAIN}/bin/llvm-ar"
 
 [target.armv7-linux-androideabi]
-linker = "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"
+linker = "${TOOLCHAIN}/bin/armv7a-linux-androideabi24-clang"
+ar = "${TOOLCHAIN}/bin/llvm-ar"
 
 [target.x86_64-linux-android]
-linker = "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang"
+linker = "${TOOLCHAIN}/bin/x86_64-linux-android24-clang"
+ar = "${TOOLCHAIN}/bin/llvm-ar"
 EOF
     
     # Build for each Android architecture
@@ -118,11 +124,31 @@ EOF
         IFS=':' read -r target arch <<< "$target_info"
         log_info "Building for Android $arch ($target)..."
         
+        cd "$BACKEND_DIR"
+        
+        # Set CC and AR environment variables for ring crate
+        local CC_VAR
+        case "$target" in
+            aarch64-linux-android)
+                CC_VAR="aarch64-linux-android24-clang"
+                ;;
+            armv7-linux-androideabi)
+                CC_VAR="armv7a-linux-androideabi24-clang"
+                ;;
+            x86_64-linux-android)
+                CC_VAR="x86_64-linux-android24-clang"
+                ;;
+        esac
+        
+        CC="${TOOLCHAIN}/bin/${CC_VAR}" \
+        AR="${TOOLCHAIN}/bin/llvm-ar" \
         cargo build --release --target "$target" -p guardyn-crypto-ffi --features full
+        
+        cd "$CRATE_DIR"
         
         # Copy to Flutter project
         mkdir -p "$NATIVE_DIR/android/$arch"
-        cp "$CRATE_DIR/../target/$target/release/libguardyn_crypto_ffi.so" \
+        cp "$BACKEND_DIR/target/$target/release/libguardyn_crypto_ffi.so" \
            "$NATIVE_DIR/android/$arch/"
     done
     
@@ -138,6 +164,8 @@ build_ios() {
     
     log_info "Building for iOS..."
     
+    cd "$BACKEND_DIR"
+    
     # Build for device (arm64)
     log_info "Building for iOS device (arm64)..."
     cargo build --release --target aarch64-apple-ios -p guardyn-crypto-ffi --features full
@@ -146,6 +174,8 @@ build_ios() {
     log_info "Building for iOS simulator..."
     cargo build --release --target aarch64-apple-ios-sim -p guardyn-crypto-ffi --features full
     cargo build --release --target x86_64-apple-ios -p guardyn-crypto-ffi --features full
+    
+    cd "$CRATE_DIR"
     
     # Create XCFramework
     log_info "Creating XCFramework..."
@@ -156,13 +186,13 @@ build_ios() {
     # Create fat library for simulator (combines arm64 and x86_64)
     mkdir -p "$IOS_OUTPUT/simulator"
     lipo -create \
-        "$CRATE_DIR/../target/aarch64-apple-ios-sim/release/libguardyn_crypto_ffi.a" \
-        "$CRATE_DIR/../target/x86_64-apple-ios/release/libguardyn_crypto_ffi.a" \
+        "$BACKEND_DIR/target/aarch64-apple-ios-sim/release/libguardyn_crypto_ffi.a" \
+        "$BACKEND_DIR/target/x86_64-apple-ios/release/libguardyn_crypto_ffi.a" \
         -output "$IOS_OUTPUT/simulator/libguardyn_crypto_ffi.a"
     
     # Copy device library
     mkdir -p "$IOS_OUTPUT/device"
-    cp "$CRATE_DIR/../target/aarch64-apple-ios/release/libguardyn_crypto_ffi.a" \
+    cp "$BACKEND_DIR/target/aarch64-apple-ios/release/libguardyn_crypto_ffi.a" \
        "$IOS_OUTPUT/device/"
     
     # Create XCFramework
@@ -179,7 +209,9 @@ build_ios() {
 build_desktop() {
     log_info "Building for current desktop platform..."
     
+    cd "$BACKEND_DIR"
     cargo build --release -p guardyn-crypto-ffi --features full
+    cd "$CRATE_DIR"
     
     local LIB_NAME
     local LIB_EXT
@@ -208,7 +240,7 @@ build_desktop() {
     esac
     
     mkdir -p "$NATIVE_DIR/$OS_DIR"
-    cp "$CRATE_DIR/../target/release/${LIB_NAME}.${LIB_EXT}" "$NATIVE_DIR/$OS_DIR/"
+    cp "$BACKEND_DIR/target/release/${LIB_NAME}.${LIB_EXT}" "$NATIVE_DIR/$OS_DIR/"
     
     log_info "Desktop build complete!"
 }

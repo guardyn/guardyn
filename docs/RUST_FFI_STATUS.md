@@ -1,8 +1,8 @@
 # Rust FFI Integration - Complete Status
 
-> **Last Updated**: Full migration complete - all crypto modules now use CryptoPrimitives (Rust FFI)
+> **Last Updated**: 2026-01-18 - Android libraries built, mobile testing ready
 >
-> **Test Results**: 62/62 unit tests passing
+> **Test Results**: 62/62 unit tests passing, 17/17 integration tests passing (Linux)
 
 ## ✅ Migration Complete
 
@@ -15,6 +15,19 @@
 | `sealed_sender.dart` | ✅ Migrated | 12/12 |
 | `crypto_primitives.dart` | ✅ Core module | 8/8 |
 | `crypto_bridge_factory_test` | ✅ Tests | 8/8 |
+
+### Native Libraries Built
+
+| Platform | Architecture | Size | Status |
+|----------|-------------|------|--------|
+| Android | arm64-v8a | 940 KB | ✅ Built |
+| Android | armeabi-v7a | 633 KB | ✅ Built |
+| Android | x86_64 | 1.1 MB | ✅ Built |
+| iOS | arm64 | - | 🔜 macOS required |
+| iOS | Simulator | - | 🔜 macOS required |
+| Linux | x86_64 | 1 MB | ✅ Built |
+| macOS | Universal | - | 🔜 macOS required |
+| Windows | x86_64 | - | 🔜 Windows required |
 
 ### Dependencies Removed
 
@@ -224,6 +237,22 @@ The following were previously part of the migration plan and are now complete:
 - [ ] Integration tests on Android device (pending)
 - [ ] Integration tests on iOS device (pending)
 
+### Mobile Testing Commands
+
+```bash
+# List available devices
+just ffi-devices
+
+# Build and test on Android
+just ffi-test-android
+
+# Build and test on iOS (macOS only)
+just ffi-test-ios
+
+# Test on all connected devices
+just ffi-test-mobile
+```
+
 ## 🔒 Security Notes
 
 ### Why Rust FFI is Preferred
@@ -236,7 +265,14 @@ The following were previously part of the migration plan and are now complete:
 
 ### Audit Considerations
 
+See [docs/security/RUST_FFI_SECURITY_AUDIT.md](security/RUST_FFI_SECURITY_AUDIT.md) for the complete security audit checklist.
+
+**Summary:**
+
 - [ ] Rust crypto library (guardyn-crypto) security audit
 - [ ] FFI boundary review (no key leakage)
 - [ ] Memory zeroization on key destruction
 - [ ] Side-channel resistance verification
+- [ ] Fuzzing coverage for FFI inputs
+- [ ] Platform-specific security review (JNI/XCFramework)
+

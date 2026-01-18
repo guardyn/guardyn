@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Native Rust FFI libraries (built separately, not committed)
+/android/app/src/main/jniLibs/
+/native/android/
+/native/ios/
+/native/linux/
+/native/macos/
+/native/windows/
