@@ -159,7 +159,7 @@ pub fn setup_window_state<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::e
         }
     }
 
-    // Listen for window close event to save state
+    // Listen for window events to save state
     if let Some(window) = app.get_webview_window("main") {
         let window_clone = window.clone();
         let app_data_dir_clone = app_data_dir.clone();
@@ -168,16 +168,15 @@ pub fn setup_window_state<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::e
             use tauri::WindowEvent;
             
             match event {
-                WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed => {
-                    // Save window state before closing
+                WindowEvent::CloseRequested { .. } 
+                | WindowEvent::Destroyed 
+                | WindowEvent::Resized(_) 
+                | WindowEvent::Moved(_) => {
+                    // Save window state on close, resize, or move
                     let state = WindowState::capture_from_window(&window_clone);
                     if let Err(e) = state.save(&app_data_dir_clone) {
                         tracing::error!("Failed to save window state: {}", e);
                     }
-                }
-                WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
-                    // Debounced save on resize/move would be ideal,
-                    // but for simplicity we only save on close
                 }
                 _ => {}
             }

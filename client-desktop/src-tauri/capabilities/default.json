@@ -1,0 +1,42 @@
+{
+    "identifier": "default",
+    "description": "Default capabilities for Guardyn desktop app",
+    "windows": [
+        "main"
+    ],
+    "permissions": [
+        "core:default",
+        "core:event:default",
+        "core:event:allow-listen",
+        "core:event:allow-emit",
+        "core:event:allow-unlisten",
+        "core:window:default",
+        "core:window:allow-show",
+        "core:window:allow-hide",
+        "core:window:allow-close",
+        "core:window:allow-set-focus",
+        "core:window:allow-outer-position",
+        "core:window:allow-outer-size",
+        "core:window:allow-is-maximized",
+        "core:window:allow-is-fullscreen",
+        "core:window:allow-set-position",
+        "core:window:allow-set-size",
+        "core:window:allow-maximize",
+        "core:window:allow-set-fullscreen",
+        "core:app:default",
+        "core:path:default",
+        "core:tray:default",
+        "core:menu:default",
+        "notification:default",
+        "notification:allow-is-permission-granted",
+        "notification:allow-request-permission",
+        "notification:allow-notify",
+        "shell:allow-open",
+        "dialog:default",
+        "fs:default",
+        "fs:allow-read-file",
+        "fs:allow-write-file",
+        "fs:allow-exists",
+        "fs:allow-mkdir"
+    ]
+}

@@ -84,6 +84,31 @@ const App: Component<{ children?: JSX.Element }> = (props) => {
     }
   };
 
+  // Check if current path is auth page
+  const isAuthPage = () => {
+    const path = window.location.pathname;
+    return path === '/login' || path === '/register';
+  };
+
+  // Redirect to login if not authenticated and not on auth page
+  onMount(() => {
+    if (!loading() && !user() && !isAuthPage()) {
+      navigate('/login');
+    }
+  });
+
+  // Watch for auth state changes
+  const checkAuth = () => {
+    if (!loading() && !user() && !isAuthPage()) {
+      navigate('/login');
+    }
+  };
+
+  // Re-check when loading completes
+  if (!loading()) {
+    checkAuth();
+  }
+
   return (
     <div class="h-screen bg-gray-900 text-white">
       {/* Global overlays */}

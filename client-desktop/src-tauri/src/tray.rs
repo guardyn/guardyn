@@ -8,7 +8,7 @@ use tauri::{
     image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    App, AppHandle, Manager, Runtime,
+    App, AppHandle, Emitter, Manager, Runtime,
 };
 
 /// User presence status
@@ -132,16 +132,16 @@ impl<R: Runtime> TrayManager<R> {
 pub fn setup_tray<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Error>> {
     // Create menu items
     let open = MenuItem::with_id(app, "open", "Open Guardyn", true, None::<&str>)?;
-    
+
     // Mute toggle
     let mute = CheckMenuItem::with_id(app, "mute", "Mute All Notifications", true, false, None::<&str>)?;
-    
+
     // Status submenu
     let status_online = CheckMenuItem::with_id(app, "status_online", "● Online", true, true, None::<&str>)?;
     let status_away = CheckMenuItem::with_id(app, "status_away", "◐ Away", true, false, None::<&str>)?;
     let status_busy = CheckMenuItem::with_id(app, "status_busy", "◉ Busy", true, false, None::<&str>)?;
     let status_invisible = CheckMenuItem::with_id(app, "status_invisible", "○ Invisible", true, false, None::<&str>)?;
-    
+
     let status_menu = Submenu::with_items(
         app,
         "Status",
@@ -171,15 +171,21 @@ pub fn setup_tray<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Er
         ],
     )?;
 
-    // Build tray icon
-    let _tray = TrayIconBuilder::new()
+    // Clone status items for use in event handler
+    let status_online_c = status_online.clone();
+    let status_away_c = status_away.clone();
+    let status_busy_c = status_busy.clone();
+    let status_invisible_c = status_invisible.clone();
+
+    // Build tray icon with ID for later access
+    let _tray = TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().unwrap().clone())
         .tooltip("Guardyn")
         .menu(&menu)
-        .menu_on_left_click(false)
+        .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| {
             let event_id = event.id.as_ref();
-            
+
             match event_id {
                 "open" => {
                     if let Some(window) = app.get_webview_window("main") {
@@ -197,11 +203,29 @@ pub fn setup_tray<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Er
                     let _ = app.emit("tray:mute-toggled", ());
                 }
                 id if id.starts_with("status_") => {
+                    // Implement radio button behavior - uncheck all, check selected
+                    let _ = status_online_c.set_checked(false);
+                    let _ = status_away_c.set_checked(false);
+                    let _ = status_busy_c.set_checked(false);
+                    let _ = status_invisible_c.set_checked(false);
+
                     let status = match id {
-                        "status_online" => "online",
-                        "status_away" => "away",
-                        "status_busy" => "busy",
-                        "status_invisible" => "invisible",
+                        "status_online" => {
+                            let _ = status_online_c.set_checked(true);
+                            "online"
+                        }
+                        "status_away" => {
+                            let _ = status_away_c.set_checked(true);
+                            "away"
+                        }
+                        "status_busy" => {
+                            let _ = status_busy_c.set_checked(true);
+                            "busy"
+                        }
+                        "status_invisible" => {
+                            let _ = status_invisible_c.set_checked(true);
+                            "invisible"
+                        }
                         _ => return,
                     };
                     tracing::info!("Status changed to {} from tray", status);
@@ -212,7 +236,7 @@ pub fn setup_tray<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Er
                     let conversation_id = id.strip_prefix("recent_").unwrap_or("");
                     tracing::info!("Opening recent chat: {}", conversation_id);
                     let _ = app.emit("tray:open-chat", conversation_id);
-                    
+
                     // Show and focus window
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.show();
@@ -246,7 +270,7 @@ pub fn setup_tray<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::error::Er
 #[tauri::command]
 pub async fn update_tray_badge(count: u32, app: AppHandle) -> Result<(), String> {
     tracing::debug!("Updating tray badge: {} unread", count);
-    
+
     // Update tooltip to show unread count
     if let Some(tray) = app.tray_by_id("main") {
         let tooltip = if count > 0 {
@@ -256,7 +280,7 @@ pub async fn update_tray_badge(count: u32, app: AppHandle) -> Result<(), String>
         };
         tray.set_tooltip(Some(&tooltip)).map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }
 
