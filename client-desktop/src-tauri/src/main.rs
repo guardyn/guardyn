@@ -13,6 +13,7 @@ mod services;
 mod state;
 mod tray;
 mod webrtc;
+mod window_state;
 
 use tauri::Manager;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -43,9 +44,13 @@ fn main() {
             let state = AppState::new();
             app.manage(state);
 
-            // Setup system tray
+            // Setup system tray with enhanced menu
             #[cfg(desktop)]
             tray::setup_tray(app)?;
+
+            // Setup window state persistence
+            #[cfg(desktop)]
+            window_state::setup_window_state(app)?;
 
             tracing::info!("Application setup complete");
             Ok(())
@@ -78,6 +83,13 @@ fn main() {
             // Settings commands
             commands::settings::get_settings,
             commands::settings::update_settings,
+            // Tray commands
+            tray::update_tray_badge,
+            tray::set_tray_muted,
+            tray::update_tray_recent_chats,
+            // Window state commands
+            window_state::save_window_state,
+            window_state::get_window_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

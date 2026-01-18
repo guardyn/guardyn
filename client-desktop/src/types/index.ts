@@ -169,3 +169,13 @@ export interface Settings {
 
 export type Theme = 'light' | 'dark' | 'system';
 export type VideoQuality = 'low' | 'medium' | 'high' | 'auto';
+
+// Simplified settings for Settings page (matches Rust UserSettings struct)
+export interface UserSettings {
+  theme: Theme;
+  notifications_enabled: boolean;
+  sound_enabled: boolean;
+  show_message_preview: boolean;
+  language: string;
+  disappearing_messages_default?: number;
+}

@@ -1,0 +1,218 @@
+name: Desktop CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'client-desktop/**'
+      - '.github/workflows/desktop-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'client-desktop/**'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: '20'
+
+jobs:
+  # Task 17: Test Job
+  test:
+    name: Test
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client-desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: client-desktop
+        run: npm ci
+
+      - name: Run tests with coverage
+        working-directory: client-desktop
+        run: npx vitest run --coverage --reporter=verbose
+        continue-on-error: false
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: client-desktop/coverage
+          if-no-files-found: warn
+
+  # Task 19: Linting CI Check  
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client-desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: client-desktop
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: client-desktop
+        run: npm run lint
+
+      - name: Run TypeScript check
+        working-directory: client-desktop
+        run: npx tsc --noEmit
+
+  # Task 16: Vitest Coverage >80%
+  coverage-check:
+    name: Coverage Check
+    runs-on: ubuntu-22.04
+    needs: test
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client-desktop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: client-desktop
+        run: npm ci
+
+      - name: Run tests with coverage threshold
+        working-directory: client-desktop
+        run: npx vitest run --coverage --coverage.thresholds.lines=70 --coverage.thresholds.functions=70 --coverage.thresholds.branches=60
+
+  # Rust tests
+  rust-test:
+    name: Rust Tests
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            client-desktop/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Rust tests
+        working-directory: client-desktop/src-tauri
+        run: cargo test --all-features
+
+      - name: Run Clippy
+        working-directory: client-desktop/src-tauri
+        run: cargo clippy -- -D warnings
+        continue-on-error: true
+
+  # Task 18: Linux Build
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-22.04
+    needs: [test, lint, rust-test]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client-desktop/package-lock.json
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            client-desktop/src-tauri/target/
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install frontend dependencies
+        working-directory: client-desktop
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client-desktop
+        run: npm run build
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: client-desktop
+          tauriScript: npm run tauri
+          args: --target x86_64-unknown-linux-gnu
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardyn-desktop-linux-x64
+          path: |
+            client-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.deb
+            client-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.AppImage
+          if-no-files-found: warn
+          retention-days: 30
