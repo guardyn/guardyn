@@ -44,8 +44,7 @@ dependencies:
   intl: ^0.20.2
   uuid: ^4.0.0
 
-  # E2EE Cryptography - using unified CryptoPrimitives (Rust FFI / Dart fallback)
-  pointycastle: ^3.7.3  # Used for MLS and other crypto utilities
+  # E2EE Cryptography - all crypto now uses CryptoPrimitives (Rust FFI / Dart fallback)
 
   # SVG Support
   flutter_svg: ^2.0.9

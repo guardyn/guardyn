@@ -22,12 +22,9 @@
 |---------|---------|--------|
 | `pinenacl` | ^0.6.0 | ✅ Removed |
 | `cryptography` | ^2.7.0 | ✅ Removed |
+| `pointycastle` | ^3.7.3 | ✅ Removed (was unused) |
 
-### Remaining Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `pointycastle` | ^3.7.3 | MLS and other crypto utilities (future removal possible) |
+**All third-party crypto dependencies eliminated.** Cryptography now uses only:
 
 ### 1. NativeRustCryptoBridge Activated in CryptoBridgeFactory
 
@@ -183,7 +180,7 @@ Application Code
 ┌──────────────────┐    ┌──────────────────┐
 │ NativeRustCrypto │    │   DartCrypto     │
 │     Bridge       │    │     Bridge       │
-│  (mobile/desktop)│    │   (web fallback) │
+│  (mobile/desktop)│    │    (fallback)    │
 └──────────────────┘    └──────────────────┘
       │
       ▼
@@ -222,6 +219,7 @@ The following were previously part of the migration plan and are now complete:
 - [x] sealed_sender.dart migrated to CryptoPrimitives
 - [x] `pinenacl` dependency removed
 - [x] `cryptography` dependency removed
+- [x] `pointycastle` dependency removed
 - [x] flutter analyze passes
 - [ ] Integration tests on Android device (pending)
 - [ ] Integration tests on iOS device (pending)
