@@ -376,13 +376,29 @@ class CryptoBridgeFactory {
       return DartCryptoBridge();
     }
 
-    // TODO: Check for native library availability
-    // if (NativeRustCryptoBridge.isAvailable) {
+    // Try native Rust implementation on mobile/desktop
+    // Import: import 'native/rust_crypto_bridge.dart';
+    // if (NativeRustCryptoBridge.checkNativeAvailable()) {
+    //   debugPrint('🔐 Using native Rust crypto implementation');
     //   return NativeRustCryptoBridge();
     // }
 
     debugPrint('🔐 Native crypto not available, falling back to Dart');
     return DartCryptoBridge();
+  }
+
+  /// Force native implementation (for testing)
+  @visibleForTesting
+  static void useNative() {
+    // Import: import 'native/rust_crypto_bridge.dart';
+    // _instance = NativeRustCryptoBridge();
+    throw UnimplementedError('Enable after flutter_rust_bridge generation');
+  }
+
+  /// Force Dart implementation (for testing or Web)
+  @visibleForTesting
+  static void useDart() {
+    _instance = DartCryptoBridge();
   }
 
   /// Reset instance (for testing)

@@ -59,6 +59,10 @@ dependencies:
   flutter_local_notifications: ^19.0.0
   audioplayers: ^6.1.0
 
+  # Rust FFI Bridge (for native cryptography)
+  flutter_rust_bridge: ^2.0.0
+  ffi: ^2.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

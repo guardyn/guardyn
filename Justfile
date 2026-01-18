@@ -354,3 +354,42 @@ dc-pull:
     @echo "[docker] Pulling latest images..."
     {{COMPOSE}} pull
 
+# =============================================================================
+# Rust FFI Commands (Native Crypto Library)
+# =============================================================================
+
+# Build crypto-ffi for all platforms
+ffi-build-all:
+    @echo "[ffi] Building crypto-ffi for all platforms..."
+    cd backend/crates/crypto-ffi && ./build-mobile.sh all
+
+# Build crypto-ffi for Android
+ffi-build-android:
+    @echo "[ffi] Building crypto-ffi for Android..."
+    cd backend/crates/crypto-ffi && ./build-mobile.sh android
+
+# Build crypto-ffi for iOS (macOS only)
+ffi-build-ios:
+    @echo "[ffi] Building crypto-ffi for iOS..."
+    cd backend/crates/crypto-ffi && ./build-mobile.sh ios
+
+# Build crypto-ffi for desktop (current platform)
+ffi-build-desktop:
+    @echo "[ffi] Building crypto-ffi for desktop..."
+    cd backend/crates/crypto-ffi && ./build-mobile.sh desktop
+
+# Generate Dart bindings with flutter_rust_bridge
+ffi-generate:
+    @echo "[ffi] Generating Dart bindings..."
+    cd backend/crates/crypto-ffi && ./build-mobile.sh generate
+
+# Test crypto-ffi crate
+ffi-test:
+    @echo "[ffi] Testing crypto-ffi..."
+    cd backend && cargo test -p guardyn-crypto-ffi --features full
+
+# Check crypto-ffi compiles
+ffi-check:
+    @echo "[ffi] Checking crypto-ffi..."
+    cd backend && cargo check -p guardyn-crypto-ffi --features full
+

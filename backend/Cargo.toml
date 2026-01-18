@@ -9,6 +9,7 @@ members = [
     "crates/call-service",
     "crates/common",
     "crates/crypto",
+    "crates/crypto-ffi",
     "crates/e2e-tests",
 ]
 
@@ -74,6 +75,11 @@ config = "0.14"
 # Testing
 mockall = "0.13"
 uuid = { version = "1.11", features = ["v4", "v5", "serde"] }
+
+# FFI (Flutter Rust Bridge)
+flutter_rust_bridge = "2"
+log = "0.4"
+subtle = "2.5"
 
 [profile.release]
 opt-level = 3

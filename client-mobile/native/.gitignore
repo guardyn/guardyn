@@ -1,0 +1,20 @@
+# Native library binaries - do not commit to git
+# These are built from backend/crates/crypto-ffi
+
+# Android
+android/**/*.so
+
+# iOS
+ios/**/*.a
+ios/**/*.xcframework/
+
+# Linux
+linux/**/*.so
+
+# macOS
+macos/**/*.dylib
+macos/**/*.framework/
+
+# Windows
+windows/**/*.dll
+windows/**/*.lib

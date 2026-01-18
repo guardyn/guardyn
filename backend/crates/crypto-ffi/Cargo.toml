@@ -1,0 +1,46 @@
+[package]
+name = "guardyn-crypto-ffi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Flutter Rust Bridge bindings for guardyn-crypto"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+name = "guardyn_crypto_ffi"
+
+[features]
+default = ["full"]
+full = ["pq"]
+pq = ["guardyn-crypto/pq"]
+
+[dependencies]
+# Core crypto library
+guardyn-crypto = { path = "../crypto", features = ["ffi"] }
+
+# Flutter Rust Bridge for automatic Dart bindings generation
+flutter_rust_bridge = "2"
+
+# Async runtime
+tokio = { version = "1", features = ["rt", "sync"] }
+
+# Serialization for complex types
+serde = { version = "1.0", features = ["derive"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+
+# Crypto utilities
+rand = "0.8"
+subtle = "2.5"
+
+[build-dependencies]
+flutter_rust_bridge_codegen = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
