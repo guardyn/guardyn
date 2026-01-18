@@ -14,6 +14,11 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+// Conditional import for native bridge
+// Uses stub on Web, real implementation on mobile/desktop
+import 'native/native_bridge_stub.dart'
+    if (dart.library.io) 'native/native_bridge_io.dart' as native_bridge;
+
 /// Configuration for native crypto backend
 class NativeCryptoConfig {
   /// Whether to prefer native crypto when available
@@ -377,22 +382,39 @@ class CryptoBridgeFactory {
     }
 
     // Try native Rust implementation on mobile/desktop
-    // Import: import 'native/rust_crypto_bridge.dart';
-    // if (NativeRustCryptoBridge.checkNativeAvailable()) {
-    //   debugPrint('🔐 Using native Rust crypto implementation');
-    //   return NativeRustCryptoBridge();
-    // }
+    try {
+      // Import is already at the top of the file via native_crypto_bridge.dart
+      // which re-exports NativeRustCryptoBridge from native/rust_crypto_bridge.dart
+      final nativeBridge = _tryCreateNativeBridge();
+      if (nativeBridge != null) {
+        debugPrint('🔐 Using native Rust crypto implementation');
+        return nativeBridge;
+      }
+    } catch (e) {
+      debugPrint('🔐 Failed to create native bridge: $e');
+    }
 
     debugPrint('🔐 Native crypto not available, falling back to Dart');
     return DartCryptoBridge();
   }
 
+  /// Attempt to create native bridge (separated for lazy loading)
+  static CryptoBridge? _tryCreateNativeBridge() {
+    // Uses conditional import: native_bridge_stub.dart on Web,
+    // native_bridge_io.dart on mobile/desktop
+    return native_bridge.createNativeCryptoBridge();
+  }
+
   /// Force native implementation (for testing)
   @visibleForTesting
   static void useNative() {
-    // Import: import 'native/rust_crypto_bridge.dart';
-    // _instance = NativeRustCryptoBridge();
-    throw UnimplementedError('Enable after flutter_rust_bridge generation');
+    final bridge = native_bridge.createNativeCryptoBridge();
+    if (bridge == null) {
+      throw UnsupportedError(
+        'Native Rust crypto is not available on this platform',
+      );
+    }
+    _instance = bridge;
   }
 
   /// Force Dart implementation (for testing or Web)
