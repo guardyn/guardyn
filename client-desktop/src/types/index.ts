@@ -179,3 +179,75 @@ export interface UserSettings {
   language: string;
   disappearing_messages_default?: number;
 }
+
+// Groups
+export interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  avatar_url?: string;
+  member_count: number;
+  created_at: number;
+  updated_at: number;
+  created_by: string;
+  is_muted: boolean;
+  last_message?: GroupMessagePreview;
+  unread_count: number;
+}
+
+export interface GroupMember {
+  user_id: string;
+  username: string;
+  display_name?: string;
+  avatar_url?: string;
+  role: GroupRole;
+  joined_at: number;
+  is_online?: boolean;
+  last_seen?: number;
+}
+
+export type GroupRole = 'owner' | 'admin' | 'member';
+
+export interface GroupMessagePreview {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  content: string;
+  timestamp: number;
+}
+
+export interface GroupMessage {
+  id: string;
+  group_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_avatar?: string;
+  content: string;
+  timestamp: number;
+  status: MessageStatus;
+  reply_to?: string;
+  reactions: Reaction[];
+}
+
+export interface CreateGroupRequest {
+  name: string;
+  description?: string;
+  member_ids: string[];
+}
+
+export interface UpdateGroupRequest {
+  name?: string;
+  description?: string;
+  avatar_url?: string;
+}
+
+// Presence
+export interface UserPresence {
+  user_id: string;
+  status: PresenceStatus;
+  last_seen?: number;
+  status_message?: string;
+}
+
+export type PresenceStatus = 'online' | 'away' | 'busy' | 'offline';
+

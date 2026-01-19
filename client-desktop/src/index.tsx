@@ -11,6 +11,7 @@ import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
+import { GroupList, GroupChat, GroupCreate, GroupInfo } from './pages/groups';
 
 // Components
 import IncomingCallDialog from './components/IncomingCall';
@@ -44,6 +45,10 @@ render(
       <Route path="/chat/:conversationId?" component={Chat} />
       <Route path="/call/:id" component={Call} />
       <Route path="/calls" component={CallHistory} />
+      <Route path="/groups" component={GroupList} />
+      <Route path="/groups/create" component={GroupCreate} />
+      <Route path="/groups/:id" component={GroupChat} />
+      <Route path="/groups/:id/info" component={GroupInfo} />
       <Route path="/settings" component={Settings} />
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
