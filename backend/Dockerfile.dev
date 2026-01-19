@@ -34,6 +34,7 @@ COPY crates/notification-service/Cargo.toml crates/notification-service/
 COPY crates/call-service/Cargo.toml crates/call-service/
 COPY crates/common/Cargo.toml crates/common/
 COPY crates/crypto/Cargo.toml crates/crypto/
+COPY crates/crypto-ffi/Cargo.toml crates/crypto-ffi/
 COPY crates/e2e-tests/Cargo.toml crates/e2e-tests/
 
 # Create dummy main files to satisfy cargo
@@ -46,6 +47,7 @@ RUN mkdir -p crates/auth-service/src && echo 'fn main() {}' > crates/auth-servic
     mkdir -p crates/common/src && echo '' > crates/common/src/lib.rs && \
     mkdir -p crates/crypto/src && echo '' > crates/crypto/src/lib.rs && \
     mkdir -p crates/crypto/benches && echo 'fn main() {}' > crates/crypto/benches/crypto_benchmarks.rs && \
+    mkdir -p crates/crypto-ffi/src && echo '' > crates/crypto-ffi/src/lib.rs && \
     mkdir -p crates/e2e-tests/src && echo '' > crates/e2e-tests/src/lib.rs
 
 # Download dependencies (this layer will be cached)
