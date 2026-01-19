@@ -51,10 +51,12 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052 &
 # Chrome only: Start Envoy proxy
 ./scripts/test-client.sh envoy
 
-# Run Flutter
-flutter run -d chrome          # Chrome
-flutter run -d linux            # Linux desktop
+# Run Flutter Mobile
+flutter run -d chrome           # Chrome (Web)
 flutter run -d emulator-5554    # Android emulator
+
+# For Desktop (Windows/macOS/Linux) use Tauri:
+cd ../client-desktop && npm run tauri dev
 ```
 
 ---

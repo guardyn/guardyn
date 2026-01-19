@@ -145,22 +145,22 @@ flutter test test/core/crypto/
 ### Device Testing (Integration Tests)
 
 ```bash
-# Linux Desktop
-cd client-mobile
-flutter test integration_test/crypto/rust_ffi_test.dart -d linux
-
 # Android Device
+cd client-mobile
 flutter test integration_test/crypto/rust_ffi_test.dart -d <device-id>
+
+# For Desktop testing, use Tauri client instead:
+cd client-desktop && npm run test
 ```
 
 ### Verify Native Library
 
 ```bash
-# Check library is installed
-ls -la client-mobile/linux/libguardyn_crypto_ffi.so
+# Check library is installed (Android)
+ls -la client-mobile/android/app/src/main/jniLibs/arm64-v8a/libguardyn_crypto_ffi.so
 
-# Run full FFI test suite
-just ffi-test
+# Run mobile FFI test suite
+just ffi-test-android
 ```
 
 ## 📋 Legacy Dart Crypto - Migration Complete ✅

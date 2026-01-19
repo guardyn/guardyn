@@ -180,14 +180,25 @@ resources:
     @echo "Data: $(kubectl get pods -n data --no-headers 2>/dev/null | wc -l) pods"
 
 # =============================================================================
-# Flutter Client Commands
+# Flutter Mobile Client Commands (iOS/Android only)
+# For Desktop (Windows/macOS/Linux) use Tauri: just dev-desktop
 # =============================================================================
 
-# Run Flutter Linux client (requires dev-all + dev-envoy-local)
-dev-linux:
-    @echo "[dev] Starting Flutter Linux client..."
-    @echo "[dev] Make sure services are running: just dev-all && just dev-envoy-local"
-    cd client && flutter run -d linux
+# Run Tauri Desktop client (Windows/macOS/Linux)
+dev-desktop:
+    @echo "[dev] Starting Tauri Desktop client..."
+    @echo "[dev] Make sure backend is running: docker compose -f docker-compose.dev.yml up -d"
+    cd client-desktop && npm run tauri dev
+
+# Build Tauri Desktop for production
+build-desktop:
+    @echo "[build] Building Tauri Desktop client..."
+    cd client-desktop && npm run tauri build
+
+# Run Tauri Desktop tests
+test-desktop:
+    @echo "[test] Running Tauri Desktop tests..."
+    cd client-desktop && npm run test
 
 # Run Flutter Android client (requires dev-all + dev-envoy-local + emulator)
 dev-android:
@@ -393,12 +404,6 @@ ffi-check:
     @echo "[ffi] Checking crypto-ffi..."
     cd backend && cargo check -p guardyn-crypto-ffi --features full
 
-# Install crypto-ffi library for Linux Flutter development
-ffi-install-linux:
-    @echo "[ffi] Installing crypto-ffi for Linux..."
-    cd backend && cargo build -p guardyn-crypto-ffi --release
-    client-mobile/scripts/install-linux-lib.sh
-
 # Run FFI integration tests on Android device
 ffi-test-android:
     @echo "[ffi] Running integration tests on Android..."
@@ -418,12 +423,8 @@ ffi-test-mobile:
 ffi-devices:
     @echo "[ffi] Available devices:"
     client-mobile/scripts/run-mobile-ffi-tests.sh list
-# Run Android + Linux FFI comparison test
-ffi-android-linux:
-    @echo "[ffi] Running Android + Linux FFI tests..."
-    client-mobile/scripts/run-android-linux-test.sh
 
-# Run two-client E2EE messaging test (Android + Linux)
+# Run two-client E2EE messaging test (Android + Tauri Desktop)
 test-two-client-messaging:
     @echo "[test] Running two-client E2EE messaging test..."
     client-mobile/scripts/run-two-client-messaging.sh

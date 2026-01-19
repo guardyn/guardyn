@@ -206,9 +206,13 @@ Build scripts are provided to compile the app for all platforms with warnings su
    ```bash
    flutter devices  # List available devices
    flutter run -d chrome        # Web browser (needs Envoy)
-   flutter run -d linux         # Linux desktop (no Envoy needed)
    flutter run -d <device-id>   # Android emulator (no Envoy needed)
    ```
+
+   > **Note**: For Desktop (Windows/macOS/Linux), use [Tauri Desktop Client](../client-desktop/README.md):
+   > ```bash
+   > cd client-desktop && npm run tauri dev
+   > ```
 
 ## Testing
 
