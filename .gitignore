@@ -25,3 +25,5 @@ codeql-database/
 landing/media/video/
 client-mobile/assets/sounds/call/
 client-mobile/assets/sounds/notify/
+client-desktop/test-results/
+client-desktop/e2e-report/

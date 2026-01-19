@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [['html', { outputFolder: 'e2e-report' }]],
 
   use: {
-    baseURL: 'http://localhost:1420',
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

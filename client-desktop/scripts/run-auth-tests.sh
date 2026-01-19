@@ -104,8 +104,8 @@ if ! npx playwright --version &> /dev/null; then
     npx playwright install chromium
 fi
 
-# Check if dev server is running on port 1420 (Vite default for Tauri)
-DEV_SERVER_PORT=1420
+# Check if dev server is running on port 5173 (Vite default)
+DEV_SERVER_PORT=5173
 if ! nc -z localhost $DEV_SERVER_PORT 2>/dev/null; then
     warn "Dev server not running on port $DEV_SERVER_PORT"
     info "Starting dev server in background..."
