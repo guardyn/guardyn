@@ -273,7 +273,7 @@ class CryptoService {
   }
 
   /// Create a new session as responder (Bob)
-  /// 
+  ///
   /// NOTE: Session is NOT saved to persistent storage here!
   /// This is intentional: the responder session starts without a sending chain key.
   /// The sending chain key is established during the first decrypt() call when
