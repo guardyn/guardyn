@@ -346,15 +346,136 @@ html {
   animation: pulse-slow 3s ease-in-out infinite;
 }
 
-/* Message bubble styles */
+/* ============================================
+   Chat Area Styles
+   ============================================ */
+
+/* Pastel gradient backgrounds for chat */
+.chat-bg-gradient {
+  background: linear-gradient(180deg, #f5fdf8 0%, #ecfdf3 50%, #f0fdf4 100%);
+  position: relative;
+}
+
+.chat-bg-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(34, 197, 94, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+:is(.dark .chat-bg-gradient) {
+  background: linear-gradient(180deg, #0d1f12 0%, #0f2616 50%, #0d1f12 100%);
+}
+
+:is(.dark .chat-bg-gradient)::before {
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(34, 197, 94, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
+}
+
+/* Subtle pattern overlay for chat */
+.chat-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2322c55e' fill-opacity='0.03'%3E%3Ccircle cx='5' cy='5' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+:is(.dark .chat-pattern) {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2322c55e' fill-opacity='0.06'%3E%3Ccircle cx='5' cy='5' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ============================================
+   Neumorphic Button Styles
+   ============================================ */
+
+/* Base neumorphic button */
+.neumorphic-btn {
+  background: #f0f0f3;
+  box-shadow: 
+    5px 5px 10px #d1d9e6, 
+    -5px -5px 10px #ffffff;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease-out;
+}
+
+:is(.dark .neumorphic-btn) {
+  background: #1a1a1a;
+  box-shadow: 
+    5px 5px 10px #0d0d0d, 
+    -5px -5px 10px #2a2a2a;
+}
+
+.neumorphic-btn:hover {
+  box-shadow: 
+    3px 3px 6px #d1d9e6, 
+    -3px -3px 6px #ffffff;
+}
+
+:is(.dark .neumorphic-btn):hover {
+  box-shadow: 
+    3px 3px 6px #0d0d0d, 
+    -3px -3px 6px #2a2a2a;
+}
+
+/* Pressed state for neumorphic button */
+.neumorphic-btn-pressed {
+  background: #e8e8eb;
+  box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff;
+}
+
+:is(.dark .neumorphic-btn-pressed) {
+  background: #0f0f0f;
+  box-shadow: inset 4px 4px 8px #0a0a0a, inset -4px -4px 8px #1e1e1e;
+}
+
+/* Primary neumorphic button */
+.neumorphic-btn-primary {
+  background: linear-gradient(145deg, #25d466, #1fb854);
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.15), -5px -5px 10px rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: all 0.2s ease-out;
+}
+
+.neumorphic-btn-primary:hover {
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2), -3px -3px 6px rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.neumorphic-btn-primary:active {
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.2), inset -3px -3px 6px rgba(255, 255, 255, 0.05);
+  transform: translateY(0);
+}
+
+/* ============================================
+   Message bubble styles
+   ============================================ */
 .message-bubble {
   @apply rounded-2xl px-4 py-2 max-w-xs md:max-w-md lg:max-w-lg;
+  animation: messageIn 0.3s ease-out;
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .message-bubble-sent {
   @apply bg-guardyn-600 text-white rounded-br-none;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 }
 
 .message-bubble-received {
-  @apply bg-gray-700 text-white rounded-bl-none;
+  @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+:is(.dark .message-bubble-received) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }

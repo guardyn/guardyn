@@ -2,12 +2,27 @@
 import '@testing-library/jest-dom/vitest';
 import { Component, JSX } from 'solid-js';
 
-// Mock browser APIs for jsdom that are needed by solid-router
+// Mock browser APIs for jsdom that are needed by solid-router and theme detection
 if (typeof window !== 'undefined') {
   // Mock history API if needed
   Object.defineProperty(window, 'scrollTo', {
     value: vi.fn(),
     writable: true,
+  });
+
+  // Mock matchMedia for theme detection
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(prefers-color-scheme: dark)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
   });
 }
 

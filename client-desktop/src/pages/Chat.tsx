@@ -104,7 +104,7 @@ const Chat: Component<ChatPageProps> = () => {
       </div>
 
       {/* Chat area */}
-      <div class="flex-1 flex flex-col bg-chat-light dark:bg-chat-dark transition-colors duration-200">
+      <div class="flex-1 flex flex-col bg-chat-light dark:bg-chat-dark chat-bg-gradient chat-pattern transition-colors duration-200">
         <Show
           when={selectedConversation()}
           fallback={

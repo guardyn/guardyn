@@ -288,7 +288,8 @@ describe('Chat Page', () => {
     await fireEvent.click(aliceConv!);
 
     await waitFor(() => {
-      expect(aliceConv).toHaveClass('bg-gray-700');
+      // Check for selected state - in light mode it's bg-gray-100, in dark mode bg-gray-700
+      expect(aliceConv).toHaveClass('bg-gray-100');
     });
   });
 
