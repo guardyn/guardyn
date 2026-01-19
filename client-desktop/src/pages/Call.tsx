@@ -184,20 +184,20 @@ const Call: Component = () => {
   };
 
   return (
-    <div class="flex flex-col h-full bg-gray-900">
+    <div class="flex flex-col h-full bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
       {/* Video area */}
-      <div class="flex-1 relative bg-gray-800">
+      <div class="flex-1 relative bg-gray-200 dark:bg-gray-800">
         {/* Remote video placeholder */}
         <div class="absolute inset-0 flex items-center justify-center">
           <Show
             when={callInfo()?.participants?.length}
             fallback={
-              <div class="text-gray-500 text-xl">
+              <div class="text-gray-600 dark:text-gray-500 text-xl">
                 Connecting...
               </div>
             }
           >
-            <div class="text-white text-2xl">
+            <div class="text-gray-900 dark:text-white text-2xl">
               {callInfo()?.caller_name || 'Unknown'}
             </div>
           </Show>
@@ -205,8 +205,8 @@ const Call: Component = () => {
 
         {/* Local video preview (picture-in-picture) */}
         <Show when={isVideoEnabled()}>
-          <div class="absolute bottom-4 right-4 w-48 h-36 bg-gray-700 rounded-lg shadow-lg">
-            <div class="flex items-center justify-center h-full text-gray-400 text-sm">
+          <div class="absolute bottom-4 right-4 w-48 h-36 bg-gray-300 dark:bg-gray-700 rounded-lg shadow-lg">
+            <div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 text-sm">
               Your camera
             </div>
           </div>
@@ -227,7 +227,7 @@ const Call: Component = () => {
       </div>
 
       {/* Controls bar */}
-      <div class="bg-gray-950 p-4">
+      <div class="bg-gray-200 dark:bg-gray-950 p-4">
         <div class="flex items-center justify-center gap-4">
           {/* Mute button */}
           <button
@@ -235,7 +235,7 @@ const Call: Component = () => {
             class={`p-4 rounded-full transition-colors ${
               isMuted()
                 ? 'bg-red-600 text-white'
-                : 'bg-gray-700 text-white hover:bg-gray-600'
+                : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600'
             }`}
             title={isMuted() ? 'Unmute' : 'Mute'}
           >
@@ -250,7 +250,7 @@ const Call: Component = () => {
             class={`p-4 rounded-full transition-colors ${
               !isVideoEnabled()
                 ? 'bg-red-600 text-white'
-                : 'bg-gray-700 text-white hover:bg-gray-600'
+                : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600'
             }`}
             title={isVideoEnabled() ? 'Turn off camera' : 'Turn on camera'}
           >
@@ -265,7 +265,7 @@ const Call: Component = () => {
             class={`p-4 rounded-full transition-colors ${
               isScreenSharing()
                 ? 'bg-green-600 text-white'
-                : 'bg-gray-700 text-white hover:bg-gray-600'
+                : 'bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600'
             }`}
             title={isScreenSharing() ? 'Stop sharing' : 'Share screen'}
           >
@@ -286,8 +286,8 @@ const Call: Component = () => {
       {/* Screen picker modal */}
       <Show when={showScreenPicker()}>
         <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h2 class="text-xl font-semibold text-white mb-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-2xl">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Choose what to share
             </h2>
 
@@ -296,9 +296,9 @@ const Call: Component = () => {
                 {(source) => (
                   <button
                     onClick={() => handleSelectScreen(source)}
-                    class="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 text-left transition-colors"
+                    class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg p-4 text-left transition-colors"
                   >
-                    <div class="aspect-video bg-gray-600 rounded mb-2 flex items-center justify-center">
+                    <div class="aspect-video bg-gray-200 dark:bg-gray-600 rounded mb-2 flex items-center justify-center">
                       <Show when={source.thumbnail} fallback={
                         <ScreenShareIcon />
                       }>
@@ -309,8 +309,8 @@ const Call: Component = () => {
                         />
                       </Show>
                     </div>
-                    <div class="text-white text-sm truncate">{source.name}</div>
-                    <div class="text-gray-400 text-xs capitalize">{source.source_type}</div>
+                    <div class="text-gray-900 dark:text-white text-sm truncate">{source.name}</div>
+                    <div class="text-gray-500 dark:text-gray-400 text-xs capitalize">{source.source_type}</div>
                   </button>
                 )}
               </For>
@@ -319,7 +319,7 @@ const Call: Component = () => {
             <div class="flex justify-end mt-4">
               <button
                 onClick={() => setShowScreenPicker(false)}
-                class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 transition-colors"
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
               >
                 Cancel
               </button>

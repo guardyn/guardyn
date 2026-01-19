@@ -10,7 +10,7 @@ import { Component, For } from 'solid-js';
 /**
  * Base skeleton pulse animation class
  */
-const pulseClass = 'animate-pulse bg-gray-700/50 rounded';
+const pulseClass = 'animate-pulse bg-gray-300/50 dark:bg-gray-700/50 rounded';
 
 /**
  * Generic skeleton box
@@ -33,7 +33,7 @@ export const SkeletonBox: Component<SkeletonBoxProps> = (props) => {
 
   return (
     <div
-      class={`animate-pulse bg-gray-700/50 ${roundedClasses[props.rounded || 'md']} ${props.class || ''}`}
+      class={`animate-pulse bg-gray-300/50 dark:bg-gray-700/50 ${roundedClasses[props.rounded || 'md']} ${props.class || ''}`}
       style={{
         width: props.width || '100%',
         height: props.height || '1rem',
@@ -144,7 +144,7 @@ interface SkeletonMessageProps {
 
 export const SkeletonMessage: Component<SkeletonMessageProps> = (props) => {
   const alignment = props.isOwn ? 'justify-end' : 'justify-start';
-  const bgColor = props.isOwn ? 'bg-guardyn-800/30' : 'bg-gray-700/30';
+  const bgColor = props.isOwn ? 'bg-guardyn-800/30' : 'bg-gray-300/30 dark:bg-gray-700/30';
 
   return (
     <div class={`flex ${alignment}`} role="status" aria-label="Loading message...">
@@ -186,7 +186,7 @@ export const SkeletonMessageList: Component<SkeletonMessageListProps> = (props) 
 export const SkeletonProfileCard: Component = () => {
   return (
     <div
-      class="flex items-center gap-4 p-4 rounded-lg bg-gray-800/50"
+      class="flex items-center gap-4 p-4 rounded-lg bg-gray-100/50 dark:bg-gray-800/50"
       role="status"
       aria-label="Loading profile..."
     >
@@ -227,7 +227,7 @@ export const SkeletonSettingsSection: Component = () => {
 export const SkeletonCallParticipant: Component = () => {
   return (
     <div
-      class="flex flex-col items-center justify-center p-4 bg-gray-800/50 rounded-xl animate-pulse"
+      class="flex flex-col items-center justify-center p-4 bg-gray-100/50 dark:bg-gray-800/50 rounded-xl animate-pulse"
       role="status"
       aria-label="Loading participant..."
     >

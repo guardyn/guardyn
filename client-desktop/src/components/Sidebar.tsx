@@ -13,11 +13,11 @@ const Sidebar: Component<SidebarProps> = (props) => {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <aside class="w-64 bg-gray-800 flex flex-col h-full border-r border-gray-700">
+    <aside class="w-64 bg-sidebar-light dark:bg-sidebar-dark flex flex-col h-full border-r border-gray-200 dark:border-gray-700 transition-colors duration-200">
       {/* Logo */}
-      <div class="p-4 border-b border-gray-700">
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
         <h1 class="text-xl font-bold text-guardyn-500">Guardyn</h1>
-        <p class="text-xs text-gray-400">Secure Messenger</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Secure Messenger</p>
       </div>
 
       {/* Navigation */}
@@ -27,7 +27,7 @@ const Sidebar: Component<SidebarProps> = (props) => {
           class={`flex items-center px-3 py-2 rounded-lg transition-colors ${
             isActive('/chat')
               ? 'bg-guardyn-600 text-white'
-              : 'text-gray-300 hover:bg-gray-700'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,7 +41,7 @@ const Sidebar: Component<SidebarProps> = (props) => {
           class={`flex items-center px-3 py-2 rounded-lg transition-colors ${
             isActive('/calls') || isActive('/call/')
               ? 'bg-guardyn-600 text-white'
-              : 'text-gray-300 hover:bg-gray-700'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,7 +55,7 @@ const Sidebar: Component<SidebarProps> = (props) => {
           class={`flex items-center px-3 py-2 rounded-lg transition-colors ${
             isActive('/settings')
               ? 'bg-guardyn-600 text-white'
-              : 'text-gray-300 hover:bg-gray-700'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,22 +67,22 @@ const Sidebar: Component<SidebarProps> = (props) => {
       </nav>
 
       {/* User info */}
-      <div class="p-4 border-t border-gray-700">
+      <div class="p-4 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full bg-guardyn-600 flex items-center justify-center text-sm font-medium">
+            <div class="w-8 h-8 rounded-full bg-guardyn-600 flex items-center justify-center text-sm font-medium text-white">
               {props.user.display_name?.[0] || props.user.username[0]}
             </div>
             <div class="ml-2">
-              <p class="text-sm font-medium text-white">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">
                 {props.user.display_name || props.user.username}
               </p>
-              <p class="text-xs text-gray-400">Online</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Online</p>
             </div>
           </div>
           <button
             onClick={props.onLogout}
-            class="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700 transition-colors"
+            class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Logout"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

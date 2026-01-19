@@ -161,7 +161,7 @@ export const CollapsibleSidebar: Component<CollapsibleSidebarProps> = (props) =>
 
   return (
     <aside
-      class="h-full bg-gray-800 border-r border-gray-700 transition-all duration-300 ease-in-out overflow-hidden flex flex-col"
+      class="h-full bg-sidebar-light dark:bg-sidebar-dark border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out overflow-hidden flex flex-col"
       style={{ width: width(), 'min-width': props.collapsedWidth || '64px' }}
     >
       {props.children}
@@ -302,7 +302,7 @@ export const SplitView: Component<SplitViewProps> = (props) => {
             <Show when={activePane() === 'right'}>
               <button
                 onClick={() => setActivePane('left')}
-                class="p-2 text-gray-400 hover:text-white"
+                class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 aria-label="Go back"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

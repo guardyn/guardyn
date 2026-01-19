@@ -34,9 +34,9 @@ const ErrorDisplay: Component<ErrorDisplayProps> = (props) => {
         </svg>
       </div>
 
-      <h3 class="text-lg font-semibold text-white mb-2">Something went wrong</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Something went wrong</h3>
 
-      <p class="text-gray-400 text-sm mb-4 max-w-md">{props.error.message}</p>
+      <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 max-w-md">{props.error.message}</p>
 
       <button
         onClick={props.reset}
@@ -48,10 +48,10 @@ const ErrorDisplay: Component<ErrorDisplayProps> = (props) => {
       {/* Show stack trace in development */}
       {import.meta.env.DEV && (
         <details class="mt-4 text-left w-full max-w-lg">
-          <summary class="text-gray-500 text-sm cursor-pointer hover:text-gray-400">
+          <summary class="text-gray-500 text-sm cursor-pointer hover:text-gray-600 dark:hover:text-gray-400">
             Error details
           </summary>
-          <pre class="mt-2 p-3 bg-gray-800 rounded-lg text-xs text-gray-400 overflow-auto max-h-48">
+          <pre class="mt-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 overflow-auto max-h-48">
             {props.error.stack}
           </pre>
         </details>
@@ -246,15 +246,15 @@ export const EmptyState: Component<EmptyStateProps> = (props) => {
   return (
     <div class="flex flex-col items-center justify-center p-8 text-center">
       <Show when={props.icon}>
-        <div class="w-16 h-16 mb-4 rounded-full bg-gray-800 flex items-center justify-center text-gray-500">
+        <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500">
           {props.icon}
         </div>
       </Show>
 
-      <h3 class="text-lg font-medium text-white mb-1">{props.title}</h3>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">{props.title}</h3>
 
       <Show when={props.description}>
-        <p class="text-gray-400 text-sm mb-4 max-w-sm">{props.description}</p>
+        <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 max-w-sm">{props.description}</p>
       </Show>
 
       <Show when={props.action}>

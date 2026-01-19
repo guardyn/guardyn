@@ -223,7 +223,7 @@ export const RetryButton: Component<RetryButtonProps> = (props) => {
     <button
       onClick={handleClick}
       disabled={loading()}
-      class={`flex items-center gap-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors ${sizeClasses[props.size || 'md']} ${props.class || ''}`}
+      class={`flex items-center gap-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-white rounded-lg transition-colors ${sizeClasses[props.size || 'md']} ${props.class || ''}`}
       aria-label="Retry"
     >
       <Show
@@ -295,11 +295,11 @@ export const ErrorState: Component<ErrorStateProps> = (props) => {
         </svg>
       </div>
 
-      <h3 class="text-lg font-semibold text-white mb-2">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         {props.title || 'Something went wrong'}
       </h3>
 
-      <p class="text-gray-400 text-sm mb-4 max-w-md">{props.message}</p>
+      <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 max-w-md">{props.message}</p>
 
       <Show when={props.onRetry}>
         <RetryButton onRetry={props.onRetry!} />

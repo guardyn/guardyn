@@ -4,6 +4,9 @@ import { Component, createContext, createSignal, JSX, onMount, Show, useContext 
 
 // Components
 import { ToastContainer } from './components/ErrorHandling';
+
+// Theme
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { openShortcutsModal, ShortcutsModal } from './components/KeyboardShortcuts';
 import { OfflineBanner } from './components/NetworkStatus';
 import Sidebar from './components/Sidebar';
@@ -110,21 +113,21 @@ const App: Component<{ children?: JSX.Element }> = (props) => {
   }
 
   return (
-    <div class="h-screen bg-gray-900 text-white">
+    <div class="h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-200">
       {/* Global overlays */}
       <OfflineBanner />
       <ShortcutsModal />
       <ToastContainer />
 
       <Show when={!loading()} fallback={
-        <div class="flex h-screen items-center justify-center bg-gray-900">
-          <div class="text-white text-xl">Loading...</div>
+        <div class="flex h-screen items-center justify-center bg-white dark:bg-gray-900">
+          <div class="text-gray-900 dark:text-white text-xl">Loading...</div>
         </div>
       }>
         <Show when={user()} fallback={props.children}>
           <div class="flex h-full">
             <Sidebar user={user()!} onLogout={handleLogout} />
-            <main class="flex-1">
+            <main class="flex-1 bg-sidebar-light dark:bg-sidebar-dark">
               {props.children}
             </main>
           </div>
@@ -134,4 +137,13 @@ const App: Component<{ children?: JSX.Element }> = (props) => {
   );
 };
 
-export default App;
+// Wrap App with ThemeProvider for theme management
+const ThemedApp: Component<{ children?: JSX.Element }> = (props) => {
+  return (
+    <ThemeProvider>
+      <App>{props.children}</App>
+    </ThemeProvider>
+  );
+};
+
+export default ThemedApp;

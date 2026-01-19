@@ -88,7 +88,7 @@ const IncomingCallDialog: Component = () => {
   return (
     <Show when={incomingCall()}>
       <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
           {/* Avatar placeholder */}
           <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
             <Show when={incomingCall()?.caller_avatar} fallback={
@@ -105,10 +105,10 @@ const IncomingCallDialog: Component = () => {
           </div>
 
           {/* Caller info */}
-          <h2 class="text-2xl font-semibold text-white mb-2">
+          <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
             {incomingCall()?.caller_name || 'Unknown'}
           </h2>
-          <p class="text-gray-400 mb-8">
+          <p class="text-gray-500 dark:text-gray-400 mb-8">
             Incoming {incomingCall()?.call_type} call...
           </p>
 

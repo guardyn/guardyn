@@ -119,7 +119,7 @@ const KeyBadge: Component<KeyBadgeProps> = (props) => {
   };
 
   return (
-    <kbd class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 bg-gray-700 border border-gray-600 rounded text-sm font-mono text-gray-200 shadow-sm">
+    <kbd class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-mono text-gray-700 dark:text-gray-200 shadow-sm">
       {displayKey()}
     </kbd>
   );
@@ -179,17 +179,17 @@ export const ShortcutsModal: Component = () => {
         aria-labelledby="shortcuts-title"
       >
         <div
-          class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
           tabindex="-1"
         >
           {/* Header */}
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-            <h2 id="shortcuts-title" class="text-xl font-semibold text-white">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 id="shortcuts-title" class="text-xl font-semibold text-gray-900 dark:text-white">
               Keyboard Shortcuts
             </h2>
             <button
               onClick={closeShortcutsModal}
-              class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              class="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               aria-label="Close"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,7 +211,7 @@ export const ShortcutsModal: Component = () => {
                   <h3 class="text-sm font-semibold text-guardyn-400 uppercase tracking-wide mb-3">
                     {category.name}
                   </h3>
-                  <div class="divide-y divide-gray-700/50">
+                  <div class="divide-y divide-gray-200/50 dark:divide-gray-700/50">
                     <For each={category.shortcuts}>
                       {(shortcut) => <ShortcutRow shortcut={shortcut} />}
                     </For>
@@ -222,7 +222,7 @@ export const ShortcutsModal: Component = () => {
           </div>
 
           {/* Footer */}
-          <div class="px-6 py-3 border-t border-gray-700 bg-gray-800/50">
+          <div class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <p class="text-xs text-gray-500 text-center">
               Press <KeyBadge key="Escape" /> to close
             </p>
@@ -247,7 +247,7 @@ export const ShortcutHint: Component<ShortcutHintProps> = (props) => {
       <For each={props.keys}>
         {(key, index) => (
           <>
-            <kbd class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gray-700/50 border border-gray-600/50 rounded text-xs font-mono text-gray-400">
+            <kbd class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-gray-200/50 dark:bg-gray-700/50 border border-gray-300/50 dark:border-gray-600/50 rounded text-xs font-mono text-gray-600 dark:text-gray-400">
               {key}
             </kbd>
             <Show when={index() < props.keys.length - 1}>

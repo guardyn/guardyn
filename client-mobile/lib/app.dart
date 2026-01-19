@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
+import 'package:guardyn_client/shared/theme/app_theme.dart';
+import 'package:guardyn_client/shared/theme/theme_bloc.dart';
 import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
@@ -101,6 +103,9 @@ class GuardynApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
+          create: (context) => ThemeBloc()..add(LoadSavedTheme()),
+        ),
+        BlocProvider(
           create: (context) => AuthBloc(
             registerUser: registerUser,
             loginUser: loginUser,
@@ -133,11 +138,15 @@ class GuardynApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Guardyn',
-        theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
-        // Localization support for international keyboard input
-        localizationsDelegates: const [
+      child: BlocBuilder<ThemeBloc, ThemeState>(
+        builder: (context, themeState) {
+          return MaterialApp(
+            title: 'Guardyn',
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeState.mode,
+            // Localization support for international keyboard input
+            localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
@@ -176,6 +185,8 @@ class GuardynApp extends StatelessWidget {
             );
           }
           return null;
+        },
+          );
         },
       ),
     );

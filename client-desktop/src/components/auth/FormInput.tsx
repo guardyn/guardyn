@@ -35,7 +35,7 @@ const FormInput: Component<FormInputProps> = (props) => {
     <div class="form-group">
       <label
         for={props.id}
-        class="block text-sm font-medium text-gray-300 mb-1.5 transition-colors"
+        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 transition-colors"
         classList={{ 'text-guardyn-400': focused() }}
       >
         {props.label}
@@ -45,7 +45,7 @@ const FormInput: Component<FormInputProps> = (props) => {
       <div class="relative">
         {/* Left icon */}
         <Show when={props.icon}>
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400">
             {props.icon}
           </div>
         </Show>
@@ -64,7 +64,7 @@ const FormInput: Component<FormInputProps> = (props) => {
             setFocused(false);
             props.onBlur?.();
           }}
-          class="input-field w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 transition-all duration-200"
+          class="input-field w-full px-4 py-3 rounded-xl placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200"
           classList={{
             'pl-10': !!props.icon,
             'pr-10': props.type === 'password',
@@ -78,7 +78,7 @@ const FormInput: Component<FormInputProps> = (props) => {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword())}
-            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             tabIndex={-1}
           >
             <Show

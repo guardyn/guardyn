@@ -265,11 +265,11 @@ const Register: Component<RegisterPageProps> = (props) => {
         </div>
 
         {/* Login link */}
-        <p class="text-center text-sm text-gray-400">
+        <p class="text-center text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
           <A
             href="/login"
-            class="text-guardyn-400 hover:text-guardyn-300 font-medium transition-colors hover:underline"
+            class="text-guardyn-500 dark:text-guardyn-400 hover:text-guardyn-400 dark:hover:text-guardyn-300 font-medium transition-colors hover:underline"
           >
             Sign in
           </A>

@@ -48,14 +48,14 @@ const AuthLayout: Component<AuthLayoutProps> = (props) => {
           <h1 class="text-3xl font-bold bg-gradient-to-r from-guardyn-400 to-guardyn-600 bg-clip-text text-transparent">
             {props.title}
           </h1>
-          <p class="mt-2 text-gray-400 text-sm">{props.subtitle}</p>
+          <p class="mt-2 text-gray-500 dark:text-gray-400 text-sm">{props.subtitle}</p>
         </div>
 
         {/* Form container */}
         <div class="space-y-6">{props.children}</div>
 
         {/* Security badge */}
-        <div class="mt-8 pt-6 border-t border-white/5">
+        <div class="mt-8 pt-6 border-t border-black/5 dark:border-white/5">
           <div class="flex items-center justify-center gap-4 text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@ const AuthLayout: Component<AuthLayoutProps> = (props) => {
               </svg>
               <span>E2E Encrypted</span>
             </div>
-            <div class="w-1 h-1 rounded-full bg-gray-600" />
+            <div class="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-600" />
             <div class="flex items-center gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

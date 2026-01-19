@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/shared/widgets/theme_switcher.dart';
 
 /// Settings page with account management options
 class SettingsPage extends StatefulWidget {
@@ -109,6 +110,41 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Appearance section
+          _buildSectionHeader('Appearance'),
+          const SizedBox(height: 8),
+
+          // Theme switcher
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Theme',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Choose your preferred color scheme',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const ThemeSwitcher(),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           // Account section
           _buildSectionHeader('Account'),
           const SizedBox(height: 8),

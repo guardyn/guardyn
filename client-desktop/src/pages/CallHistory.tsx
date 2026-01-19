@@ -111,17 +111,17 @@ const CallHistory: Component = () => {
   };
 
   return (
-    <div class="h-full flex flex-col bg-gray-900">
+    <div class="h-full flex flex-col bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <div class="p-4 border-b border-gray-700">
-        <h1 class="text-xl font-semibold text-white">Call History</h1>
+      <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Call History</h1>
       </div>
 
       {/* Content */}
       <div class="flex-1 overflow-y-auto">
         <Show when={loading()}>
           <div class="flex items-center justify-center h-32">
-            <div class="text-gray-400">Loading...</div>
+            <div class="text-gray-500 dark:text-gray-400">Loading...</div>
           </div>
         </Show>
 
@@ -133,16 +133,16 @@ const CallHistory: Component = () => {
           <Show
             when={calls().length > 0}
             fallback={
-              <div class="flex flex-col items-center justify-center h-64 text-gray-400">
+              <div class="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
                 <CallIcon />
                 <p class="mt-2">No call history</p>
               </div>
             }
           >
-            <div class="divide-y divide-gray-800">
+            <div class="divide-y divide-gray-200 dark:divide-gray-800">
               <For each={calls()}>
                 {(call) => (
-                  <div class="p-4 hover:bg-gray-800 transition-colors flex items-center gap-4">
+                  <div class="p-4 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors flex items-center gap-4">
                     {/* Call type icon */}
                     <div class="flex-shrink-0">
                       {getCallIcon(call)}
@@ -151,16 +151,16 @@ const CallHistory: Component = () => {
                     {/* Call info */}
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2">
-                        <span class="text-white font-medium truncate">
+                        <span class="text-gray-900 dark:text-white font-medium truncate">
                           {call.other_user_name || 'Unknown'}
                         </span>
                         <Show when={call.call_type === 'video'}>
-                          <span class="text-gray-500">
+                          <span class="text-gray-500 dark:text-gray-500">
                             <VideoIcon />
                           </span>
                         </Show>
                       </div>
-                      <div class="text-sm text-gray-400 flex items-center gap-2">
+                      <div class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <span>{call.is_outgoing ? 'Outgoing' : 'Incoming'}</span>
                         <Show when={call.duration_seconds > 0}>
                           <span>•</span>
@@ -173,7 +173,7 @@ const CallHistory: Component = () => {
                     </div>
 
                     {/* Time */}
-                    <div class="text-sm text-gray-400 flex-shrink-0">
+                    <div class="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
                       {formatDate(call.started_at)}
                     </div>
 
