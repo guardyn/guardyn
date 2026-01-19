@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, onMount } from 'solid-js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
-import type { Theme, UserSettings } from '../types';
+import type { UserSettings } from '../types';
 
 interface SettingsPageProps {}
 

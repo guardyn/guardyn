@@ -8,13 +8,13 @@ import { useNavigate, useParams } from '@solidjs/router';
 import { listen } from '@tauri-apps/api/event';
 import { Component, createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 import {
-    endCall,
-    getScreenSources,
-    startScreenShare,
-    stopScreenShare,
-    toggleMute,
-    toggleVideo,
-    type ScreenSource
+  endCall,
+  getScreenSources,
+  startScreenShare,
+  stopScreenShare,
+  toggleMute,
+  toggleVideo,
+  type ScreenSource
 } from '../api/calls';
 import type { CallInfo } from '../types';
 

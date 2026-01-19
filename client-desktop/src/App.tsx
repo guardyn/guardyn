@@ -6,10 +6,10 @@ import { Component, createContext, createSignal, JSX, onMount, Show, useContext 
 import { ToastContainer } from './components/ErrorHandling';
 
 // Theme
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { openShortcutsModal, ShortcutsModal } from './components/KeyboardShortcuts';
 import { OfflineBanner } from './components/NetworkStatus';
 import Sidebar from './components/Sidebar';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Hooks
 import { useAppShortcuts } from './hooks';
