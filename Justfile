@@ -125,7 +125,7 @@ dev-envoy-stop:
 
 # Run Envoy port-forward from k8s (for testing with cluster services)
 dev-envoy-k8s:
-    @echo "[dev] Starting Envoy port-forward from k8s on :18080..."
+    @echo "[dev] Starting Envoy port-forward from k8s on :18080 (API Gateway)..."
     kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
 
 # Stop all services (tmux session + port-forwards)
@@ -243,7 +243,7 @@ dc-up:
     @echo "✅ Services starting. Check status: just dc-ps"
     @echo "📊 Redpanda Console: http://localhost:8088"
     @echo "🪣 MinIO Console: http://localhost:9001 (guardyn/guardyn-dev-secret)"
-    @echo "🔌 Envoy (gRPC-Web): http://localhost:8080"
+    @echo "🔌 Envoy (API Gateway): http://localhost:8080"
 
 # Start only data layer (TiKV, ScyllaDB, Redpanda, MinIO)
 dc-up-data:

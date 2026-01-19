@@ -63,14 +63,13 @@ $HOME/Android/Sdk/emulator/emulator -avd <avd-name> &
 flutter devices  # Should show emulator-5554
 ```
 
-### 3. Flutter Desktop Enabled
+### 3. Desktop Client (Tauri)
+
+For desktop testing, use the Tauri desktop client:
 
 ```bash
-# Verify Linux desktop support
-flutter devices | grep linux
-
-# If not shown, enable it
-flutter config --enable-linux-desktop
+# Start Tauri desktop client
+cd client-desktop && npm run tauri dev
 ```
 
 ## Running the Tests
@@ -102,14 +101,14 @@ cd client-mobile/
 
 If you need to run tests manually:
 
-**Terminal 1 - Linux (Alice):**
+**Terminal 1 - Desktop (Alice) - Tauri:**
 
 ```bash
-cd client-mobile/
-flutter run -d linux
+cd client-desktop/
+npm run tauri dev
 ```
 
-**Terminal 2 - Android (Bob):**
+**Terminal 2 - Android (Bob) - Flutter:**
 
 ```bash
 cd client-mobile/
@@ -120,8 +119,8 @@ flutter run -d emulator-5554
 
 ### Scenario 1: Basic Message Exchange
 
-1. **Alice (Linux)**: Register as `alice` / `password12345`
-2. **Bob (Android)**: Register as `bob` / `password12345`
+1. **Alice (Desktop - Tauri)**: Register as `alice` / `password12345`
+2. **Bob (Android - Flutter)**: Register as `bob` / `password12345`
 3. **Alice**: Copy Bob's User ID from his HomePage
 4. **Alice**: Open Messages → New Chat → Enter Bob's User ID
 5. **Alice**: Send message "Hello Bob!"
@@ -237,26 +236,24 @@ cargo build --release
 - Requires ADB port-forwarding for USB debugging
 - Test on API 30+ for best results
 
-### Linux
+### Desktop (Tauri)
 
-- Uses native gRPC (not gRPC-Web)
-- Connects directly to `localhost:50051`
-- Requires GTK libraries installed
-
-### iOS (Future)
-
-- Uses `localhost` like Linux
-- Requires Xcode and iOS Simulator
-- Same gRPC configuration as Linux
-
-### macOS/Windows Desktop (via Tauri)
-
-For desktop platforms, use the Tauri client:
+For desktop platforms (Windows/macOS/Linux), use the Tauri client:
 
 ```bash
 cd client-desktop/
 npm run tauri dev
 ```
+
+- Uses native gRPC
+- Connects directly to `localhost:50051`
+- Rust-based crypto integration
+
+### iOS (Future)
+
+- Uses `localhost`
+- Requires Xcode and iOS Simulator
+- Same gRPC configuration
 
 ## Additional Resources
 

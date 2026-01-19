@@ -35,9 +35,9 @@ docker compose -f docker-compose.dev.yml down -v
 
 ### Edge Layer
 
-| Service   | Port(s)                       | Description                  |
-| --------- | ----------------------------- | ---------------------------- |
-| **Envoy** | 8080 (gRPC-Web), 9901 (Admin) | API Gateway / gRPC-Web proxy |
+| Service   | Port(s)                       | Description        |
+| --------- | ----------------------------- | ------------------ |
+| **Envoy** | 8080 (HTTP), 9901 (Admin)     | API Gateway        |
 
 ### Backend Services
 
@@ -154,13 +154,13 @@ services:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Client (Flutter/Tauri)                    │
+│              Client (Flutter Mobile / Tauri Desktop)             │
 └─────────────────────────────────────────────────────────────────┘
                                     │
-                                    │ gRPC-Web
+                                    │ gRPC (native)
                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                           Envoy Proxy                            │
+│                      Envoy API Gateway                           │
 │                         localhost:8080                           │
 └─────────────────────────────────────────────────────────────────┘
                                     │

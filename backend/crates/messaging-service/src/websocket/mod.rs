@@ -1,11 +1,11 @@
 /// WebSocket Gateway Module
 ///
 /// Provides real-time message delivery, presence updates, and typing indicators
-/// over WebSocket connections. This replaces the HTTP polling approach used in
-/// the gRPC-Web client for better performance and lower latency.
+/// over WebSocket connections. This provides better performance and lower latency
+/// compared to polling approaches.
 ///
 /// Architecture:
-/// - WebSocket server runs on a separate port (default: 8080)
+/// - WebSocket server runs on a separate port (default: 8081)
 /// - Connections are authenticated via JWT token in the initial handshake
 /// - Messages are fanout via NATS JetStream to all connected clients
 

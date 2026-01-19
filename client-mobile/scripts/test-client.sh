@@ -353,16 +353,16 @@ setup_two_device_testing() {
   # Display instructions
   log_header "Testing Instructions"
 
-  log_success "Device 1 (Alice): Linux desktop"
+  log_success "Device 1 (Alice): Desktop (Tauri)"
   echo ""
-  echo -e "${YELLOW}Terminal 1 - Run Linux client:${NC}"
-  echo "  cd $CLIENT_DIR"
-  echo "  flutter run -d linux"
+  echo -e "${YELLOW}Terminal 1 - Run Desktop client (Tauri):${NC}"
+  echo "  cd $PROJECT_ROOT/client-desktop"
+  echo "  npm run tauri dev"
 
   echo ""
   log_success "Device 2 (Bob): Android emulator (${EMULATOR_ID:-emulator-5554})"
   echo ""
-  echo -e "${YELLOW}Terminal 2 - Run Android client:${NC}"
+  echo -e "${YELLOW}Terminal 2 - Run Android client (Flutter):${NC}"
   echo "  cd $CLIENT_DIR"
   echo "  flutter run -d ${EMULATOR_ID:-emulator-5554}"
 
@@ -406,12 +406,12 @@ verify_setup() {
   cd "$CLIENT_DIR"
 
   echo ""
-  log_info "Testing Linux client build..."
-  if flutter build linux > /tmp/flutter-linux-build.log 2>&1; then
-    log_success "Linux build successful"
+  log_info "Testing Android client build..."
+  if flutter build apk --debug > /tmp/flutter-android-build.log 2>&1; then
+    log_success "Android build successful"
   else
-    log_error "Linux build failed"
-    cat /tmp/flutter-linux-build.log
+    log_error "Android build failed"
+    cat /tmp/flutter-android-build.log
     exit 1
   fi
 
@@ -420,12 +420,12 @@ verify_setup() {
   echo ""
   log_info "Platform-specific configuration:"
   echo "  • Android Emulator → 10.0.2.2:50051/50052"
-  echo "  • Linux Desktop    → localhost:50051/50052"
+  echo "  • Desktop (Tauri)  → localhost:50051/50052"
   echo "  • iOS Simulator    → localhost:50051/50052"
   echo ""
   log_info "To test manually:"
-  echo "  Linux:   flutter run -d linux"
-  echo "  Android: flutter run -d emulator-5554"
+  echo "  Desktop (Tauri): cd client-desktop && npm run tauri dev"
+  echo "  Android (Flutter): flutter run -d emulator-5554"
 }
 
 # ============================================================

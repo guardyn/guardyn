@@ -38,9 +38,8 @@ For complete testing documentation, see:
 # Prerequisites (Docker Compose backend)
 docker compose -f ../docker-compose.dev.yml up -d
 
-# Run Flutter Mobile
+# Run Flutter Mobile (iOS/Android only)
 flutter run -d emulator-5554    # Android emulator
-flutter run -d linux            # Linux desktop
 
 # For Desktop clients (Windows/macOS/Linux) use Tauri:
 cd ../client-desktop && npm run tauri dev

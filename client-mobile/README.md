@@ -210,7 +210,6 @@ Build scripts are provided to compile the app for all platforms with warnings su
    ```bash
    flutter devices               # List available devices
    flutter run -d <device-id>    # Android emulator or device
-   flutter run -d linux          # Linux desktop (for testing)
    ```
 
    > **Note**: For Desktop (Windows/macOS/Linux), use [Tauri Desktop Client](../client-desktop/README.md):
@@ -308,8 +307,8 @@ See [Two-Client Testing Guide](../docs/TWO_CLIENT_TESTING.md) for detailed instr
 **Run on specific device:**
 
 ```bash
-flutter test integration_test/ -d emulator-5554
-flutter test integration_test/ -d linux
+flutter test integration_test/ -d emulator-5554  # Android emulator
+flutter test integration_test/ -d <device-id>    # Physical Android/iOS device
 ```
 
 ````

@@ -17,9 +17,8 @@ import 'package:integration_test/integration_test.dart';
 /// Prerequisites:
 /// - Backend services running (auth-service, messaging-service)
 /// - Port-forwarding: localhost:50051 (auth), localhost:50052 (messaging)
-/// - Envoy proxy running: localhost:8080 (for Chrome gRPC-Web)
 /// - Android emulator running
-/// - Chrome available
+/// - For desktop testing, use Tauri client (client-desktop)
 ///
 /// Run with test driver:
 /// flutter drive \
@@ -28,12 +27,8 @@ import 'package:integration_test/integration_test.dart';
 ///   -d emulator-5554 \
 ///   --dart-define=TEST_PLATFORM=android
 ///
-/// Then in parallel:
-/// flutter drive \
-///   --driver=test_driver/integration_test.dart \
-///   --target=integration_test/two_client_messaging_test.dart \
-///   -d chrome \
-///   --dart-define=TEST_PLATFORM=chrome
+/// For desktop, use Tauri client:
+///   cd client-desktop && npm run tauri dev
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 

@@ -10,7 +10,7 @@ This document provides a comprehensive overview of all ports used in the Guardyn
 | **50052** | messaging-service      | gRPC      | apps          | Messaging operations              |
 | **50053** | presence-service       | gRPC      | apps          | Online status & typing indicators |
 | **50054** | media-service          | gRPC      | apps          | File upload/download              |
-| **8080**  | envoy                  | HTTP      | apps          | gRPC-Web proxy (browser clients)  |
+| **8080**  | envoy                  | HTTP      | apps          | API Gateway (gRPC routing)        |
 | **8080**  | notification-service   | HTTP      | apps          | Push notifications (HTTP API)     |
 | **8081**  | messaging-service      | WebSocket | apps          | Real-time messaging               |
 | **9090**  | notification-service   | HTTP      | apps          | Metrics endpoint                  |
@@ -84,10 +84,10 @@ This document provides a comprehensive overview of all ports used in the Guardyn
 
 #### Envoy Proxy
 
-| Port | Name     | Protocol | Purpose                                          |
-| ---- | -------- | -------- | ------------------------------------------------ |
-| 8080 | grpc-web | TCP      | gRPC-Web to gRPC translation for browser clients |
-| 9901 | admin    | TCP      | Envoy admin interface (stats, config dump)       |
+| Port | Name    | Protocol | Purpose                                                   |
+| ---- | ------- | -------- | --------------------------------------------------------- |
+| 8080 | http    | TCP      | API Gateway - routes gRPC requests to backend services    |
+| 9901 | admin   | TCP      | Envoy admin interface (stats, config dump)                |
 
 **K8s Service:** `guardyn-envoy.apps.svc.cluster.local:8080`
 
@@ -212,14 +212,10 @@ Services → :4317 (OTel Collector or Tempo) → Tempo storage → :3200 (Grafan
 
 ## Connection Flow Diagrams
 
-### Browser Client (gRPC-Web)
-
-```
-Browser → :80/:443 (Ingress) → :8080 (Envoy) → :50051/:50052 (gRPC services)
-Browser → :80/:443 (Ingress) → :8081 (WebSocket) → messaging-service
-```
-
 ### Mobile/Desktop Client (native gRPC)
+
+> **Note**: Web browser clients are not supported for security reasons.
+> Mobile (Flutter iOS/Android) and Desktop (Tauri) clients use native gRPC.
 
 ```
 Client → :50051 (auth-service) → Authentication

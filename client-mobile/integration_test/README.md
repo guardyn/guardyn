@@ -68,9 +68,11 @@ flutter devices
 # Run on Android emulator
 flutter test integration_test/messaging_two_device_test.dart -d emulator-5554
 
-# Run on Chrome
-flutter test integration_test/messaging_two_device_test.dart -d chrome
+# For desktop testing, use Tauri client:
+cd ../client-desktop && npm run tauri dev
 ```
+
+> **Note**: Web/Chrome testing is disabled for security reasons.
 
 ### Run with Verbose Output
 
@@ -107,13 +109,10 @@ flutter test integration_test/android_linux_messaging_test.dart \
   --dart-define=TEST_RUN_ID=12345
 ```
 
-**Terminal 2 (Linux - Bob):**
+**Terminal 2 (Desktop - Bob) - Tauri:**
 ```bash
-flutter test integration_test/android_linux_messaging_test.dart \
-  -d linux \
-  --dart-define=TEST_ROLE=bob \
-  --dart-define=TEST_RUN_ID=12345
-```
+cd ../client-desktop && npm run tauri dev
+# Manual testing with Tauri desktop client
 
 > ⚠️ **Important**: Use the same `TEST_RUN_ID` for both clients to enable synchronization.
 

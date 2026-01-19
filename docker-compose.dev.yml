@@ -153,8 +153,8 @@ services:
     volumes:
       - ./infra/envoy/envoy-dev.yaml:/etc/envoy/envoy.yaml:ro
     ports:
-      - "8080:8080"      # gRPC-Web
-      - "8443:8443"      # gRPC-Web TLS (if needed)
+      - "8080:8080"      # API Gateway (gRPC routing)
+      - "8443:8443"      # API Gateway TLS (if needed)
       - "9901:9901"      # Admin
     depends_on:
       - auth-service

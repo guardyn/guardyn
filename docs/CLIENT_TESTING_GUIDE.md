@@ -490,14 +490,14 @@ This script will:
 
 2. **Wait for emulator to boot** (30-60 seconds)
 
-3. **Run Flutter on Linux (Device 1 - Alice)**:
+3. **Run Desktop Client (Device 1 - Alice) - Tauri:**
 
    ```bash
-   cd client-mobile
-   flutter run -d linux
+   cd client-desktop
+   npm run tauri dev
    ```
 
-4. **Run Flutter on Android (Device 2 - Bob)**:
+4. **Run Flutter on Android (Device 2 - Bob):**
 
    ```bash
    # New terminal window
@@ -899,11 +899,11 @@ $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 -no-snapshot -no-
 # Wait 30-60 seconds for boot, then verify
 flutter devices  # Should show: emulator-5554
 
-# Terminal 4: Run Linux client (Device 1 - Alice)
-cd client-mobile
-flutter run -d linux
+# Terminal 4: Run Desktop client (Device 1 - Alice) - Tauri
+cd client-desktop
+npm run tauri dev
 
-# Terminal 5: Run Android client (Device 2 - Bob)
+# Terminal 5: Run Android client (Device 2 - Bob) - Flutter
 cd client-mobile
 flutter run -d emulator-5554
 ```

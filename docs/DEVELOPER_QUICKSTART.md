@@ -150,11 +150,11 @@ flutter pub get
 # Generate protobuf code
 ./scripts/generate-protos.sh
 
-# Run on Chrome (Web)
-flutter run -d chrome
-
-# Run on connected device
+# Run on connected Android/iOS device
 flutter run
+
+# For Desktop (Windows/macOS/Linux) use Tauri:
+cd ../client-desktop && npm run tauri dev
 
 # Run tests
 flutter test

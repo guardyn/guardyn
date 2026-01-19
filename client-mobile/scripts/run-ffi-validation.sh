@@ -50,7 +50,7 @@ LINUX_RESULT="SKIPPED"
 # Test Android if available
 if [ -n "$ANDROID_DEVICE" ]; then
     log_info "Testing on Android: $ANDROID_DEVICE"
-    
+
     if flutter test integration_test/crypto/rust_ffi_test.dart \
         -d "$ANDROID_DEVICE" \
         --reporter compact 2>&1; then
@@ -101,8 +101,8 @@ if [ "$ANDROID_RESULT" = "PASSED" ] && [ "$LINUX_RESULT" = "PASSED" ]; then
     echo ""
     echo "For two-client E2EE messaging test, follow the manual steps:"
     echo "  1. Start backend: docker compose -f docker-compose.dev.yml up -d"
-    echo "  2. Terminal 1: cd client-mobile && flutter run -d linux"
-    echo "  3. Terminal 2: cd client-mobile && flutter run -d emulator-5554"
+    echo "  2. Terminal 1: cd client-desktop && npm run tauri dev (Desktop)"
+    echo "  3. Terminal 2: cd client-mobile && flutter run -d emulator-5554 (Android)"
     echo "  4. Register different users on each device"
     echo "  5. Send messages between them"
     exit 0

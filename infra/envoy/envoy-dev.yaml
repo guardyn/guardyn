@@ -1,5 +1,6 @@
 # Envoy Development Configuration for Guardyn
-# Provides gRPC-Web proxy for Flutter/web clients
+# API Gateway for Flutter Mobile (iOS/Android) and Tauri Desktop clients
+# Routes gRPC requests to backend services
 
 admin:
   address:

@@ -12,7 +12,7 @@ graph TB
     end
 
     subgraph "Edge Layer"
-        Envoy[Envoy Proxy<br/>gRPC-Web Gateway]
+        Envoy[Envoy Proxy<br/>API Gateway]
         LB[Load Balancer<br/>k3d/Ingress]
     end
 

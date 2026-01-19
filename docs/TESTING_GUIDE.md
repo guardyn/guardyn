@@ -40,10 +40,12 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 
 **Platform Requirements**:
 
-| Platform | Protocol | Ports | Envoy Required? |
-|----------|----------|-------|----------------|
-| Web browsers | gRPC-Web | 8080 | ✅ Yes |
-| Android/iOS/Desktop | Native gRPC | 50051/50052 | ❌ No |
+| Platform | Protocol | Ports | Notes |
+|----------|----------|-------|-------|
+| Android/iOS | Native gRPC | 50051/50052 | Flutter mobile client |
+| Desktop (Win/Mac/Linux) | Native gRPC | 50051/50052 | Tauri desktop client |
+
+> **Note**: Web browser clients are not supported for security reasons.
 
 ## 🧪 E2E Tests
 

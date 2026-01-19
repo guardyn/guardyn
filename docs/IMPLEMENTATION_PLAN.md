@@ -87,7 +87,7 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 - [x] ScyllaDB cluster (message storage)
 - [x] Redpanda cluster (event streaming, replacing NATS)
 - [x] Cert-manager (TLS automation)
-- [x] Envoy proxy (gRPC-Web translation)
+- [x] Envoy proxy (API Gateway)
 
 #### 1.4 Observability Stack
 
@@ -580,7 +580,7 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 - **TiKV cluster deployed** (Placement Driver + TiKV nodes in `data` namespace)
 - **ScyllaDB cluster operational** (1 node, datacenter `dc1`, 4/4 containers running)
 - **NATS JetStream** (with 4 streams: MESSAGES, PRESENCE, NOTIFICATIONS, MEDIA)
-- **Envoy Proxy** (gRPC-Web translation for browsers, 1/1 replica running)
+- **Envoy Proxy** (API Gateway for gRPC routing, 1/1 replica running)
 - **Cert-manager** (for TLS certificate automation)
 - **Auth Service** - Fully deployed and tested ✅
 - **Messaging Service** - Fully deployed and tested ✅
@@ -725,11 +725,11 @@ WebSocket infrastructure is **fully implemented** in both backend and Flutter cl
    - `client-mobile/lib/features/messaging/presentation/bloc/message_bloc.dart` — WebSocket integration
    - `infra/k8s/` — WebSocket service deployment
 
-#### Why Not Fix gRPC-Web Streaming?
+#### Why WebSocket Instead of gRPC Streaming?
 
-- Envoy's gRPC-Web filter is designed for unary calls, not long-lived streams
-- Alternative: Use `grpc-web-text` format or Server-Sent Events (SSE)
+- Native gRPC streaming works well for mobile/desktop clients
 - WebSocket is industry standard for real-time messaging and better supported
+- Simpler debugging and monitoring tools available
 
 #### Code References
 

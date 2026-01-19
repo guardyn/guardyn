@@ -160,16 +160,16 @@ flutter devices
 
 **Option B: Manual (two terminals)**
 
-**Terminal 1 - Linux (Bob):**
+**Terminal 1 - Desktop (Bob) - Tauri:**
 
 ```bash
-cd client-mobile
+cd client-desktop
 
-# Run Linux desktop app
-flutter run -d linux --dart-define=TEST_USER=bob
+# Run Tauri desktop app
+npm run tauri dev
 ```
 
-**Terminal 2 - Android (Alice):**
+**Terminal 2 - Android (Alice) - Flutter:**
 
 ```bash
 cd client-mobile
@@ -180,9 +180,9 @@ flutter run -d <device-id> --dart-define=TEST_USER=alice
 
 #### 5. Manual test flow
 
-1. **Bob (Linux):** Register account → copy username
-2. **Alice (Android):** Register account → search for Bob → send message
-3. **Bob (Linux):** Receive message → verify decryption → reply
+1. **Bob (Desktop - Tauri):** Register account → copy username
+2. **Alice (Android - Flutter):** Register account → search for Bob → send message
+3. **Bob (Desktop):** Receive message → verify decryption → reply
 4. **Alice (Android):** Receive reply → verify decryption
 
 ---

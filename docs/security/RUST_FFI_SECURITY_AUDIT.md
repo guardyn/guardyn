@@ -193,17 +193,17 @@ cargo test -p guardyn-crypto --features full
 | PQXDH          | 5     | 80%+     |
 | Padding        | 5     | 90%+     |
 
-### 4.2 Integration Tests (Flutter)
+### 4.2 Integration Tests (Flutter Mobile / Tauri Desktop)
 
 ```bash
-# Desktop
-flutter test integration_test/crypto/rust_ffi_test.dart -d linux
-
 # Android (device required)
 flutter test integration_test/crypto/rust_ffi_test.dart -d <device>
 
 # iOS (macOS + device required)
 flutter test integration_test/crypto/rust_ffi_test.dart -d <ios-device>
+
+# Desktop (Tauri) - uses native Rust crypto directly
+cd client-desktop && npm run test
 ```
 
 | Platform            | Tests | Status     |
