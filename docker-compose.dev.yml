@@ -162,10 +162,11 @@ services:
       - presence-service
       - media-service
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9901/ready"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9901' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
 
   # ═══════════════════════════════════════════════════════════════
   # BACKEND SERVICES (with hot reload via cargo-watch)
@@ -177,10 +178,14 @@ services:
     command: cargo watch -x 'run --bin auth-service'
     environment:
       <<: *rust-env
-      SERVICE_NAME: auth-service
-      GRPC_PORT: "50051"
-      TIKV_PD_ENDPOINTS: pd:2379
-      REDPANDA_BROKERS: redpanda:9092
+      GUARDYN_SERVICE_NAME: auth-service
+      GUARDYN_HOST: "0.0.0.0"
+      GUARDYN_PORT: "50051"
+      GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
+      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
+      GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
       - "50051:50051"
     depends_on:
@@ -197,12 +202,15 @@ services:
     command: cargo watch -x 'run --bin messaging-service'
     environment:
       <<: *rust-env
-      SERVICE_NAME: messaging-service
-      GRPC_PORT: "50052"
+      GUARDYN_SERVICE_NAME: messaging-service
+      GUARDYN_HOST: "0.0.0.0"
+      GUARDYN_PORT: "50052"
       WEBSOCKET_PORT: "8081"
-      TIKV_PD_ENDPOINTS: pd:2379
-      SCYLLA_HOSTS: scylladb:9042
-      REDPANDA_BROKERS: redpanda:9092
+      GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
+      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
+      GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
       - "50052:50052"
       - "8081:8081"      # WebSocket
@@ -222,10 +230,14 @@ services:
     command: cargo watch -x 'run --bin presence-service'
     environment:
       <<: *rust-env
-      SERVICE_NAME: presence-service
-      GRPC_PORT: "50053"
-      REDPANDA_BROKERS: redpanda:9092
-      TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_SERVICE_NAME: presence-service
+      GUARDYN_HOST: "0.0.0.0"
+      GUARDYN_PORT: "50053"
+      GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
+      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
+      GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
       - "50053:50053"
     depends_on:
@@ -240,13 +252,18 @@ services:
     command: cargo watch -x 'run --bin media-service'
     environment:
       <<: *rust-env
-      SERVICE_NAME: media-service
-      GRPC_PORT: "50054"
+      GUARDYN_SERVICE_NAME: media-service
+      GUARDYN_HOST: "0.0.0.0"
+      GUARDYN_PORT: "50054"
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: guardyn
       MINIO_SECRET_KEY: guardyn-dev-secret
       MINIO_BUCKET: guardyn-media
-      SCYLLA_HOSTS: scylladb:9042
+      GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
+      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
+      GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
       - "50054:50054"
     depends_on:
@@ -261,10 +278,14 @@ services:
     command: cargo watch -x 'run --bin notification-service'
     environment:
       <<: *rust-env
-      SERVICE_NAME: notification-service
-      GRPC_PORT: "50055"
-      REDPANDA_BROKERS: redpanda:9092
-      TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_SERVICE_NAME: notification-service
+      GUARDYN_HOST: "0.0.0.0"
+      GUARDYN_PORT: "50055"
+      GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
+      GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
+      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
+      GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
       - "50055:50055"
     depends_on:

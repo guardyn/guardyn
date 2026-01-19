@@ -80,6 +80,120 @@ flutter test integration_test/messaging_two_device_test.dart --verbose
 
 ---
 
+## 🔄 Two-Client Testing (Android + Linux)
+
+### Overview
+
+The `android_linux_messaging_test.dart` tests **simultaneous communication** between:
+- **Alice**: Android device/emulator
+- **Bob**: Linux desktop
+
+Both clients run the same test file with different roles, synchronized via file-based signaling.
+
+### Quick Start (Recommended)
+
+```bash
+# Run both clients simultaneously
+./scripts/run-android-linux-messaging.sh
+```
+
+### Manual Execution
+
+**Terminal 1 (Android - Alice):**
+```bash
+flutter test integration_test/android_linux_messaging_test.dart \
+  -d <android-device-id> \
+  --dart-define=TEST_ROLE=alice \
+  --dart-define=TEST_RUN_ID=12345
+```
+
+**Terminal 2 (Linux - Bob):**
+```bash
+flutter test integration_test/android_linux_messaging_test.dart \
+  -d linux \
+  --dart-define=TEST_ROLE=bob \
+  --dart-define=TEST_RUN_ID=12345
+```
+
+> ⚠️ **Important**: Use the same `TEST_RUN_ID` for both clients to enable synchronization.
+
+### Synchronization Mechanism
+
+Tests coordinate via files in `/tmp/guardyn_test_sync/<TEST_RUN_ID>/`:
+
+```
+Timeline:
+────────────────────────────────────────────────────────────────────────────
+Alice (Android)                    Bob (Linux)
+────────────────────────────────────────────────────────────────────────────
+1. Register                        1. Wait for alice_registered.done
+2. Signal: alice_registered.done   2. (receives signal)
+3. Wait for bob_registered.done    3. Register
+4. (receives signal)               4. Signal: bob_registered.done
+5. Start conversation              5. Wait for alice_message_sent.done
+6. Send message                    
+7. Signal: alice_message_sent      6. (receives signal)
+8. Wait for bob_message_sent       7. Open conversation, see message
+9. (receives signal)               8. Send reply
+10. Verify reply received          9. Signal: bob_message_sent.done
+11. Signal: alice_complete.done    10. Wait for alice_complete.done
+                                   11. Cleanup sync files
+────────────────────────────────────────────────────────────────────────────
+```
+
+### Script Options
+
+```bash
+# Test both clients (default)
+./scripts/run-android-linux-messaging.sh
+
+# Test only Android client
+./scripts/run-android-linux-messaging.sh --android-only
+
+# Test only Linux client
+./scripts/run-android-linux-messaging.sh --linux-only
+
+# Clean up old sync files
+./scripts/run-android-linux-messaging.sh --cleanup
+
+# Verbose mode (show sync events)
+./scripts/run-android-linux-messaging.sh --verbose
+```
+
+### Prerequisites for Two-Client Testing
+
+1. **Backend running** (Docker Compose or Kubernetes)
+2. **Android device connected** with USB debugging enabled
+3. **FFI libraries built** for both platforms:
+   ```bash
+   just ffi-install-linux
+   just ffi-build-android
+   ```
+
+### Troubleshooting
+
+**Android device not found:**
+```bash
+flutter devices  # Verify device listed
+adb devices      # Check ADB connection
+```
+
+**Sync timeout:**
+- Increase timeout in test file (`TestSyncHelper.waitFor()`)
+- Check if other client is running
+- Clean sync files: `rm -rf /tmp/guardyn_test_sync`
+
+**Library not found:**
+```bash
+# Linux
+ls -la linux/libguardyn_crypto_ffi.so
+
+# Android (check jniLibs)
+ls -la android/app/src/main/jniLibs/arm64-v8a/
+```
+
+---
+
 ## 📊 Test Structure
 
 ### Test Group 1: Two-Device Messaging Flow

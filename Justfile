@@ -427,3 +427,22 @@ ffi-android-linux:
 test-two-client-messaging:
     @echo "[test] Running two-client E2EE messaging test..."
     client-mobile/scripts/run-two-client-messaging.sh
+
+# =============================================================================
+# Authentication Tests
+# =============================================================================
+
+# Run auth integration tests on Android (registration + login flow)
+test-auth-android:
+    @echo "[test] Running auth integration tests on Android..."
+    client-mobile/scripts/run-auth-test-android.sh
+
+# Run auth tests - full flow only
+test-auth-android-full:
+    @echo "[test] Running full auth flow test on Android..."
+    client-mobile/scripts/run-auth-test-android.sh --full
+
+# Run auth tests - validation only
+test-auth-android-validation:
+    @echo "[test] Running auth validation tests on Android..."
+    client-mobile/scripts/run-auth-test-android.sh --validation
