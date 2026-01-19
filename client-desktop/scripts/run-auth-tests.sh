@@ -111,7 +111,7 @@ if ! nc -z localhost $DEV_SERVER_PORT 2>/dev/null; then
     info "Starting dev server in background..."
     npm run dev &
     DEV_PID=$!
-    
+
     # Wait for dev server to be ready (max 60 seconds)
     info "Waiting for dev server to start..."
     for i in {1..60}; do
@@ -126,7 +126,7 @@ if ! nc -z localhost $DEV_SERVER_PORT 2>/dev/null; then
         fi
         sleep 1
     done
-    
+
     # Cleanup function
     cleanup() {
         info "Stopping dev server..."
