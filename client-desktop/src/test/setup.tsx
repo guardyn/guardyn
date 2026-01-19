@@ -26,11 +26,38 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Mock Tauri API for testing
-const mockInvoke = vi.fn();
+// Note: @tauri-apps/api/core mock is defined in each test file that needs it
+// using vi.hoisted() for proper module mocking
 
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: mockInvoke,
+// Mock WebSocket modules to prevent actual connections during tests
+vi.mock('../api/websocket', () => ({
+  MessageType: {
+    TEXT_MESSAGE: 'TEXT_MESSAGE',
+    TYPING_START: 'TYPING_START',
+    TYPING_STOP: 'TYPING_STOP',
+    PRESENCE_UPDATE: 'PRESENCE_UPDATE',
+    READ_RECEIPT: 'READ_RECEIPT',
+    DELIVERED_RECEIPT: 'DELIVERED_RECEIPT',
+    MESSAGE_DELETED: 'MESSAGE_DELETED',
+    MESSAGE_EDITED: 'MESSAGE_EDITED',
+    REACTION_ADDED: 'REACTION_ADDED',
+    REACTION_REMOVED: 'REACTION_REMOVED',
+  },
+  initWebSocket: vi.fn(),
+  getWebSocket: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    send: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    isConnected: false,
+  })),
+  destroyWebSocket: vi.fn(),
+}));
+
+vi.mock('../api/websocket.mock', () => ({
+  startMockGenerator: vi.fn(),
+  stopMockGenerator: vi.fn(),
 }));
 
 // Mock @solidjs/router to avoid client-only API issues
@@ -54,10 +81,3 @@ vi.mock('@solidjs/router', () => {
   };
 });
 
-// Reset mocks before each test
-beforeEach(() => {
-  mockInvoke.mockClear();
-});
-
-// Expose mock for tests
-export { mockInvoke };

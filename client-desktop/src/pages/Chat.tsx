@@ -1,19 +1,73 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Component, createSignal, For, onMount, Show } from 'solid-js';
-import type { Conversation, Message } from '../types';
+import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import type { Conversation } from '../types';
+import { initWebSocket, destroyWebSocket, getWebSocket, MessageType } from '../api/websocket';
+import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
+import {
+  messageStore,
+  addMessage,
+  setActiveConversation,
+  getActiveMessages,
+  getTypingUsers,
+  addTypingUser,
+  removeTypingUser,
+} from '../stores/messageStore';
+import { TypingIndicator } from '../components/shared';
 
 interface ChatPageProps {}
 
 const Chat: Component<ChatPageProps> = () => {
   const [conversations, setConversations] = createSignal<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = createSignal<string | null>(null);
-  const [messages, setMessages] = createSignal<Message[]>([]);
   const [newMessage, setNewMessage] = createSignal('');
   const [loading, setLoading] = createSignal(true);
+  const [isConnected, setIsConnected] = createSignal(false);
+
+  // Get messages from store for active conversation
+  const messages = () => getActiveMessages();
+  const typingUsers = () => getTypingUsers();
 
   onMount(async () => {
     try {
-      // Load conversations
+      // Initialize WebSocket in stub mode for development
+      initWebSocket('wss://localhost:3000/ws', true);
+      const ws = getWebSocket();
+      
+      if (ws) {
+        // Listen for connection events
+        ws.on('connected', () => setIsConnected(true));
+        ws.on('disconnected', () => setIsConnected(false));
+        
+        // Listen for incoming messages
+        ws.on(MessageType.TEXT_MESSAGE, (data) => {
+          addMessage({
+            id: data.id || crypto.randomUUID(),
+            conversationId: data.conversationId || selectedConversation() || 'demo',
+            senderId: data.senderId || 'other',
+            senderName: data.senderName || 'User',
+            content: data.content,
+            timestamp: new Date(data.timestamp || Date.now()),
+            status: 'delivered',
+          });
+        });
+        
+        // Listen for typing indicators
+        ws.on(MessageType.TYPING_START, (data) => {
+          addTypingUser(data.conversationId, data.userId, data.userName);
+        });
+        
+        ws.on(MessageType.TYPING_STOP, (data) => {
+          removeTypingUser(data.conversationId, data.userId);
+        });
+        
+        // Connect WebSocket
+        ws.connect();
+        
+        // Start mock generator in development
+        startMockGenerator();
+      }
+
+      // Load conversations from Tauri backend
       const convs = await invoke<Conversation[]>('get_conversations');
       setConversations(convs);
     } catch (err) {
@@ -22,33 +76,93 @@ const Chat: Component<ChatPageProps> = () => {
       setLoading(false);
     }
   });
+  
+  onCleanup(() => {
+    stopMockGenerator();
+    destroyWebSocket();
+  });
 
   const selectConversation = async (id: string) => {
     setSelectedConversation(id);
+    setActiveConversation(id);
+    
+    // Also load messages from Tauri backend if available
     try {
-      const msgs = await invoke<Message[]>('get_messages', { conversationId: id });
-      setMessages(msgs);
+      const msgs = await invoke<Array<{
+        id: string;
+        sender_id: string;
+        content: string;
+        timestamp: string;
+      }>>('get_messages', { conversationId: id });
+      
+      // Add backend messages to store
+      msgs.forEach(msg => {
+        addMessage({
+          id: msg.id,
+          conversationId: id,
+          senderId: msg.sender_id,
+          senderName: msg.sender_id === 'self' ? 'You' : 'User',
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          status: 'delivered',
+        });
+      });
     } catch (err) {
-      console.error('Failed to load messages:', err);
+      console.error('Failed to load messages from backend:', err);
     }
   };
 
   const sendMessage = async (e: Event) => {
     e.preventDefault();
     const content = newMessage().trim();
-    if (!content || !selectedConversation()) return;
+    const convId = selectedConversation();
+    if (!content || !convId) return;
+
+    // Create optimistic message
+    const messageId = crypto.randomUUID();
+    addMessage({
+      id: messageId,
+      conversationId: convId,
+      senderId: 'self',
+      senderName: 'You',
+      content,
+      timestamp: new Date(),
+      status: 'sending',
+    });
+    
+    setNewMessage('');
 
     try {
+      // Send via WebSocket
+      const ws = getWebSocket();
+      if (ws && isConnected()) {
+        ws.send({
+          type: MessageType.TEXT_MESSAGE,
+          conversationId: convId,
+          content,
+          timestamp: Date.now(),
+        });
+      }
+      
+      // Also send via Tauri backend
       await invoke('send_message', {
-        conversationId: selectedConversation(),
+        conversationId: convId,
         content,
       });
-      setNewMessage('');
-      // Refresh messages
-      const msgs = await invoke<Message[]>('get_messages', { conversationId: selectedConversation() });
-      setMessages(msgs);
     } catch (err) {
       console.error('Failed to send message:', err);
+    }
+  };
+
+  // Handle typing indicator
+  const handleTyping = () => {
+    const ws = getWebSocket();
+    const convId = selectedConversation();
+    if (ws && convId && isConnected()) {
+      ws.send({
+        type: MessageType.TYPING_START,
+        conversationId: convId,
+      });
     }
   };
 
@@ -57,7 +171,18 @@ const Chat: Component<ChatPageProps> = () => {
       {/* Conversations list */}
       <div class="w-80 bg-sidebar-light dark:bg-sidebar-dark border-r border-gray-200 dark:border-gray-700 flex flex-col transition-colors duration-200">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Messages</h2>
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Messages</h2>
+            <div class="flex items-center gap-2">
+              <span 
+                class={`w-2 h-2 rounded-full ${isConnected() ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}
+                title={isConnected() ? 'Connected' : 'Disconnected'}
+              />
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                {isConnected() ? 'Live' : 'Offline'}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="flex-1 overflow-y-auto">
@@ -122,20 +247,37 @@ const Chat: Component<ChatPageProps> = () => {
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <For each={messages()}>
               {(message) => (
-                <div class={`flex ${message.sender_id === 'self' ? 'justify-end' : 'justify-start'}`}>
+                <div class={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}>
                   <div
                     class={`message-bubble ${
-                      message.sender_id === 'self' ? 'message-bubble-sent' : 'message-bubble-received'
+                      message.isOwn ? 'message-bubble-sent' : 'message-bubble-received'
                     }`}
                   >
+                    <Show when={!message.isOwn}>
+                      <p class="text-xs font-medium text-guardyn-600 dark:text-guardyn-400 mb-1">
+                        {message.senderName}
+                      </p>
+                    </Show>
                     <p>{message.content}</p>
-                    <p class="text-xs opacity-70 mt-1">
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </p>
+                    <div class="flex items-center justify-end gap-1 mt-1">
+                      <p class="text-xs opacity-70">
+                        {message.timestamp.toLocaleTimeString()}
+                      </p>
+                      <Show when={message.isOwn}>
+                        <span class="text-xs opacity-70">
+                          {message.status === 'sending' ? '◯' : message.status === 'delivered' ? '✓' : '✓✓'}
+                        </span>
+                      </Show>
+                    </div>
                   </div>
                 </div>
               )}
             </For>
+            
+            {/* Typing indicator */}
+            <Show when={typingUsers().length > 0}>
+              <TypingIndicator users={typingUsers()} />
+            </Show>
           </div>
 
           {/* Message input */}
@@ -144,7 +286,10 @@ const Chat: Component<ChatPageProps> = () => {
               <input
                 type="text"
                 value={newMessage()}
-                onInput={(e) => setNewMessage(e.currentTarget.value)}
+                onInput={(e) => {
+                  setNewMessage(e.currentTarget.value);
+                  handleTyping();
+                }}
                 placeholder="Type a message..."
                 class="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-guardyn-500 focus:border-transparent"
               />
