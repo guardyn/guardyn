@@ -92,13 +92,16 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Check if Playwright browsers are installed (check for chromium)
-if [ ! -d "node_modules/.cache/ms-playwright/chromium-"* ] 2>/dev/null; then
-    info "Checking Playwright installation..."
-    if ! npx playwright --version &> /dev/null; then
-        warn "Installing Playwright browsers (this may take a moment)..."
-        npx playwright install chromium --with-deps
-    fi
+# Check if @playwright/test is installed
+if ! npm list @playwright/test &> /dev/null; then
+    warn "Installing @playwright/test..."
+    npm install -D @playwright/test
+fi
+
+# Check if Playwright browsers are installed
+if ! npx playwright --version &> /dev/null; then
+    warn "Installing Playwright browsers (this may take a moment)..."
+    npx playwright install chromium
 fi
 
 # Check if dev server is running on port 1420 (Vite default for Tauri)
