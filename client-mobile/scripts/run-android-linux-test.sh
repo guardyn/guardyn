@@ -65,7 +65,9 @@ cd "$CLIENT_DIR"
 
 # 1. Check Android device
 log_info "Checking for Android device..."
-ANDROID_DEVICE=$(flutter devices 2>/dev/null | grep -i android | head -1 | awk '{print $2}' | tr -d '•')
+# Store output to avoid broken pipe, extract device ID from second column after •
+DEVICES_OUTPUT=$(flutter devices 2>/dev/null || true)
+ANDROID_DEVICE=$(echo "$DEVICES_OUTPUT" | grep -i android | head -1 | awk -F'•' '{print $2}' | xargs)
 
 if [ -z "$ANDROID_DEVICE" ]; then
     log_error "No Android device found!"
@@ -81,9 +83,9 @@ fi
 
 log_success "Android device: $ANDROID_DEVICE"
 
-# 2. Check Linux desktop
+# 2. Check Linux desktop (reuse DEVICES_OUTPUT from above)
 log_info "Checking Linux desktop..."
-if ! flutter devices | grep -qi linux; then
+if ! echo "$DEVICES_OUTPUT" | grep -qi linux; then
     log_error "Linux desktop not available"
     exit 1
 fi
@@ -101,14 +103,8 @@ elif kubectl get pods -n apps 2>/dev/null | grep -q "Running"; then
     log_success "Backend running (Kubernetes)"
     BACKEND_TYPE="k8s"
 else
-    log_error "Backend services not running!"
-    echo ""
-    echo "Start backend with:"
-    echo "  docker compose -f docker-compose.dev.yml up -d"
-    echo ""
-    echo "Or with Kubernetes:"
-    echo "  just kube-bootstrap && just k8s-deploy all"
-    exit 1
+    log_warn "Backend services not detected (may still work if running)"
+    BACKEND_TYPE="unknown"
 fi
 
 # 4. Check native libraries

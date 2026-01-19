@@ -56,8 +56,9 @@ log_header "Two-Client E2EE Messaging Test (Android + Linux)"
 
 cd "$CLIENT_DIR"
 
-# Find Android device
-ANDROID_DEVICE=$(flutter devices 2>/dev/null | grep -i android | head -1 | awk '{print $2}' | tr -d '•')
+# Find Android device - store output first to avoid broken pipe
+DEVICES_OUTPUT=$(flutter devices 2>/dev/null || true)
+ANDROID_DEVICE=$(echo "$DEVICES_OUTPUT" | grep -i android | head -1 | awk -F'•' '{print $2}' | xargs)
 
 if [ -z "$ANDROID_DEVICE" ]; then
     log_error "No Android device found"
@@ -67,6 +68,28 @@ fi
 log_info "Android device: $ANDROID_DEVICE"
 log_info "Alice (Android): $ALICE_USER"
 log_info "Bob (Linux): $BOB_USER"
+
+# ============================================================
+# Clear App Data (for clean test state)
+# ============================================================
+
+log_header "Clearing App Data"
+
+# Get package name
+PACKAGE_NAME="io.guardyn.client"
+
+# Clear Android app data
+log_info "Clearing Android app data..."
+adb -s "$ANDROID_DEVICE" shell pm clear "$PACKAGE_NAME" 2>/dev/null || {
+    log_info "Could not clear Android data (app may not be installed yet)"
+}
+
+# Clear Linux app data
+log_info "Clearing Linux app data..."
+rm -rf "$HOME/.local/share/guardyn_client" 2>/dev/null || true
+rm -rf "$HOME/.config/guardyn_client" 2>/dev/null || true
+
+log_success "App data cleared"
 
 # ============================================================
 # Run Integration Test
