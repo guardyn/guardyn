@@ -3,8 +3,15 @@ import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
+import 'package:logger/logger.dart';
 // Auth feature imports
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
+// Calls feature imports
+import 'package:guardyn_client/features/calls/data/datasources/datasources.dart';
+import 'package:guardyn_client/features/calls/data/repositories/call_repository_impl.dart';
+import 'package:guardyn_client/features/calls/domain/repositories/call_repository.dart';
+import 'package:guardyn_client/features/calls/domain/usecases/usecases.dart';
+import 'package:guardyn_client/features/calls/presentation/bloc/bloc.dart';
 // Groups feature imports
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
@@ -77,6 +84,9 @@ Future<void> configureDependencies() async {
 
   // Register presence feature dependencies
   _registerPresenceDependencies();
+
+  // Register calls feature dependencies
+  _registerCallsDependencies();
 }
 
 void _registerAuthDependencies() {
@@ -255,6 +265,91 @@ void _registerPresenceDependencies() {
       sendTypingIndicator: getIt<SendTypingIndicator>(),
       sendHeartbeat: getIt<SendHeartbeat>(),
       presenceRepository: getIt<PresenceRepository>(),
+    ),
+  );
+}
+
+void _registerCallsDependencies() {
+  // Logger for calls
+  final callLogger = Logger(
+    printer: PrettyPrinter(methodCount: 0),
+    filter: ProductionFilter(),
+  );
+
+  // Data layer - Data Sources
+  getIt.registerLazySingleton<WebRTCDataSource>(
+    () => WebRTCDataSourceImpl(logger: callLogger),
+  );
+
+  getIt.registerLazySingleton<SignalingDataSource>(
+    () => SignalingDataSourceImpl(logger: callLogger),
+  );
+
+  // Repository
+  // Note: currentUserId should come from auth state in production
+  getIt.registerLazySingleton<CallRepository>(
+    () => CallRepositoryImpl(
+      webrtcDataSource: getIt<WebRTCDataSource>(),
+      signalingDataSource: getIt<SignalingDataSource>(),
+      logger: callLogger,
+      currentUserId: 'temp-user-id', // TODO: Get from auth state
+    ),
+  );
+
+  // Domain layer - Use cases
+  getIt.registerLazySingleton<InitiateCall>(
+    () => InitiateCall(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<AcceptCall>(
+    () => AcceptCall(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<RejectCall>(
+    () => RejectCall(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<EndCall>(
+    () => EndCall(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<ToggleMute>(
+    () => ToggleMute(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<ToggleVideo>(
+    () => ToggleVideo(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<ToggleSpeaker>(
+    () => ToggleSpeaker(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<SwitchCamera>(
+    () => SwitchCamera(getIt<CallRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetCallHistory>(
+    () => GetCallHistory(getIt<CallRepository>()),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<CallBloc>(
+    () => CallBloc(
+      initiateCall: getIt<InitiateCall>(),
+      acceptCall: getIt<AcceptCall>(),
+      endCall: getIt<EndCall>(),
+      rejectCall: getIt<RejectCall>(),
+      toggleMute: getIt<ToggleMute>(),
+      toggleVideo: getIt<ToggleVideo>(),
+      toggleSpeaker: getIt<ToggleSpeaker>(),
+      switchCamera: getIt<SwitchCamera>(),
+    ),
+  );
+
+  getIt.registerFactory<CallHistoryBloc>(
+    () => CallHistoryBloc(
+      getCallHistory: getIt<GetCallHistory>(),
     ),
   );
 }
