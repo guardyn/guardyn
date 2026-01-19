@@ -5,12 +5,12 @@
  * Simulates real-time events like messages, typing, and presence.
  */
 
-import { 
-  MessageType, 
-  TextMessagePayload, 
-  TypingPayload, 
-  PresencePayload,
-  type WebSocketClient 
+import {
+    MessageType,
+    PresencePayload,
+    TextMessagePayload,
+    TypingPayload,
+    type WebSocketClient
 } from './websocket';
 
 // =============================================================================

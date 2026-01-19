@@ -38,8 +38,8 @@ vi.mock('../api/websocket.mock', () => ({
   stopMockGenerator: vi.fn(),
 }));
 
-import Chat from './Chat';
 import { resetMessageStore } from '../stores/messageStore';
+import Chat from './Chat';
 
 // Helper to render with router
 const renderWithRouter = (ui: () => ReturnType<typeof Chat>) => {

@@ -5,7 +5,7 @@
  * Optionally displays names of users who are typing.
  */
 
-import { Component, Show, For, createMemo } from 'solid-js';
+import { Component, For, Show, createMemo } from 'solid-js';
 
 // =============================================================================
 // TYPES

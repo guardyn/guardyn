@@ -5,7 +5,7 @@
  * Includes emoji picker, attachment button, and neumorphic send button.
  */
 
-import { Component, createSignal, Show, For } from 'solid-js';
+import { Component, createSignal, For, Show } from 'solid-js';
 
 // =============================================================================
 // TYPES

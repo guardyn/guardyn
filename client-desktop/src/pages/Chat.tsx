@@ -1,18 +1,17 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import type { Conversation } from '../types';
-import { initWebSocket, destroyWebSocket, getWebSocket, MessageType } from '../api/websocket';
+import { destroyWebSocket, getWebSocket, initWebSocket, MessageType } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
-import {
-  messageStore,
-  addMessage,
-  setActiveConversation,
-  getActiveMessages,
-  getTypingUsers,
-  addTypingUser,
-  removeTypingUser,
-} from '../stores/messageStore';
 import { TypingIndicator } from '../components/shared';
+import {
+    addMessage,
+    addTypingUser,
+    getActiveMessages,
+    getTypingUsers,
+    removeTypingUser,
+    setActiveConversation
+} from '../stores/messageStore';
+import type { Conversation } from '../types';
 
 interface ChatPageProps {}
 

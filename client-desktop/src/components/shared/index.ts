@@ -5,7 +5,8 @@
  */
 
 export { Avatar, type AvatarProps, type AvatarSize } from './Avatar';
-export { PresenceIndicator, type PresenceIndicatorProps, type PresenceStatus, type IndicatorSize } from './PresenceIndicator';
-export { TypingIndicator, type TypingIndicatorProps } from './TypingIndicator';
-export { Badge, type BadgeProps, type BadgeVariant, type BadgeSize } from './Badge';
+export { Badge, type BadgeProps, type BadgeSize, type BadgeVariant } from './Badge';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
+export { PresenceIndicator, type IndicatorSize, type PresenceIndicatorProps, type PresenceStatus } from './PresenceIndicator';
+export { TypingIndicator, type TypingIndicatorProps } from './TypingIndicator';
+

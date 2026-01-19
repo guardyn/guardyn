@@ -5,7 +5,7 @@
  * Supports filtering and virtualization for performance.
  */
 
-import { Component, createSignal, createMemo, For, Show } from 'solid-js';
+import { Component, createMemo, createSignal, For, Show } from 'solid-js';
 import { ConversationItem, type PresenceStatus } from './ConversationItem';
 
 // =============================================================================

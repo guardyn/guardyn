@@ -5,7 +5,7 @@
  * Supports sent and received message states, reactions, and read receipts.
  */
 
-import { Component, Show, For } from 'solid-js';
+import { Component, For, Show } from 'solid-js';
 
 // =============================================================================
 // TYPES
