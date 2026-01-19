@@ -48,3 +48,6 @@ export {
 } from './ResponsiveLayout';
 export type { Breakpoint } from './ResponsiveLayout';
 
+// Theme
+export { ThemeSwitcher, ThemeToggle } from './ThemeSwitcher';
+

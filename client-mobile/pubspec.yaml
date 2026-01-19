@@ -61,6 +61,10 @@ dependencies:
   ffi: ^2.1.0
   freezed_annotation: ^2.4.1
 
+  # Theme & Preferences
+  shared_preferences: ^2.2.2
+  google_fonts: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
