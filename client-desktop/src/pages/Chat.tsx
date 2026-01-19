@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { destroyWebSocket, getWebSocket, initWebSocket, MessageType } from '../api/websocket';
+import { destroyWebSocket, getWebSocket, initWebSocket, WsMessageType, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
 import { TypingIndicator } from '../components/shared';
 import {
@@ -29,21 +29,25 @@ const Chat: Component<ChatPageProps> = () => {
   onMount(async () => {
     try {
       // Initialize WebSocket in stub mode for development
-      initWebSocket('wss://localhost:3000/ws', true);
-      const ws = getWebSocket();
+      const ws = initWebSocket({
+        url: 'wss://localhost:3000/ws',
+        stubMode: true,
+        autoReconnect: true,
+      });
       
       if (ws) {
-        // Listen for connection events
-        ws.on('connected', () => setIsConnected(true));
-        ws.on('disconnected', () => setIsConnected(false));
+        // Listen for connection state changes
+        ws.onStateChange((state) => {
+          setIsConnected(state === 'connected');
+        });
         
         // Listen for incoming messages
-        ws.on(MessageType.TEXT_MESSAGE, (data) => {
+        ws.onMessage((data: MessagePayload) => {
           addMessage({
-            id: data.id || crypto.randomUUID(),
-            conversationId: data.conversationId || selectedConversation() || 'demo',
-            senderId: data.senderId || 'other',
-            senderName: data.senderName || 'User',
+            id: data.message_id || crypto.randomUUID(),
+            conversationId: data.conversation_id || selectedConversation() || 'demo',
+            senderId: data.sender_id || 'other',
+            senderName: data.sender_id || 'User',
             content: data.content,
             timestamp: new Date(data.timestamp || Date.now()),
             status: 'delivered',
@@ -51,19 +55,19 @@ const Chat: Component<ChatPageProps> = () => {
         });
         
         // Listen for typing indicators
-        ws.on(MessageType.TYPING_START, (data) => {
-          addTypingUser(data.conversationId, data.userId, data.userName);
-        });
-        
-        ws.on(MessageType.TYPING_STOP, (data) => {
-          removeTypingUser(data.conversationId, data.userId);
+        ws.onTyping((data: TypingPayload) => {
+          if (data.is_typing) {
+            addTypingUser(data.conversation_id, data.user_id, data.user_id);
+          } else {
+            removeTypingUser(data.conversation_id, data.user_id);
+          }
         });
         
         // Connect WebSocket
         ws.connect();
         
         // Start mock generator in development
-        startMockGenerator();
+        startMockGenerator(ws);
       }
 
       // Load conversations from Tauri backend
@@ -135,11 +139,8 @@ const Chat: Component<ChatPageProps> = () => {
       // Send via WebSocket
       const ws = getWebSocket();
       if (ws && isConnected()) {
-        ws.send({
-          type: MessageType.TEXT_MESSAGE,
-          conversationId: convId,
-          content,
-          timestamp: Date.now(),
+        ws.sendMessage(convId, content, {
+          clientMessageId: messageId,
         });
       }
       
@@ -158,10 +159,7 @@ const Chat: Component<ChatPageProps> = () => {
     const ws = getWebSocket();
     const convId = selectedConversation();
     if (ws && convId && isConnected()) {
-      ws.send({
-        type: MessageType.TYPING_START,
-        conversationId: convId,
-      });
+      ws.sendTyping(convId, true);
     }
   };
 

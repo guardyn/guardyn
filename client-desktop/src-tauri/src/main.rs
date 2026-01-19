@@ -80,6 +80,10 @@ fn main() {
             commands::crypto::generate_key_bundle,
             commands::crypto::encrypt_message,
             commands::crypto::decrypt_message,
+            // WebSocket commands
+            commands::websocket::get_websocket_config,
+            commands::websocket::get_websocket_url_with_token,
+            commands::websocket::report_websocket_status,
             // Settings commands
             commands::settings::get_settings,
             commands::settings::update_settings,

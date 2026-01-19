@@ -7,3 +7,4 @@ pub mod calls;
 pub mod crypto;
 pub mod messaging;
 pub mod settings;
+pub mod websocket;

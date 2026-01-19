@@ -1,27 +1,30 @@
 /**
  * WebSocket Mock Generator
- * 
+ *
  * Generates fake incoming messages for development/testing.
  * Simulates real-time events like messages, typing, and presence.
+ *
+ * @module websocket.mock
  */
 
 import {
-    MessageType,
-    PresencePayload,
-    TextMessagePayload,
-    TypingPayload,
-    type WebSocketClient
-} from './websocket';
+  type MessagePayload,
+  type PresencePayload,
+  type PresenceStatus,
+  type TypingPayload,
+  WsMessageType,
+} from './websocket.types';
+import type { WebSocketClient } from './websocket';
 
 // =============================================================================
 // MOCK DATA
 // =============================================================================
 
 const MOCK_USERS = [
-  { id: 'user-alice', name: 'Alice Johnson' },
-  { id: 'user-bob', name: 'Bob Smith' },
-  { id: 'user-carol', name: 'Carol Williams' },
-  { id: 'user-dave', name: 'Dave Brown' },
+  { id: 'user-alice', name: 'Alice Johnson', deviceId: 'device-alice-1' },
+  { id: 'user-bob', name: 'Bob Smith', deviceId: 'device-bob-1' },
+  { id: 'user-carol', name: 'Carol Williams', deviceId: 'device-carol-1' },
+  { id: 'user-dave', name: 'Dave Brown', deviceId: 'device-dave-1' },
 ];
 
 const MOCK_MESSAGES = [
@@ -35,13 +38,12 @@ const MOCK_MESSAGES = [
   "The build passed ✅",
   "Let's discuss this tomorrow",
   "Great work on the PR!",
+  "Working on the E2EE integration now",
+  "Security audit scheduled for next week",
+  "Can you review my PR when you get a chance?",
 ];
 
-const MOCK_CONVERSATIONS = [
-  'conv-1',
-  'conv-2',
-  'conv-3',
-];
+const MOCK_CONVERSATIONS = ['conv-1', 'conv-2', 'conv-3'];
 
 // =============================================================================
 // RANDOM HELPERS
@@ -62,18 +64,23 @@ function randomInt(min: number, max: number): number {
 export interface MockGeneratorOptions {
   /** Interval for generating mock messages (ms) */
   messageInterval?: number;
-  /** Probability of typing indicator (0-1) */
+  /** Probability of typing indicator before message (0-1) */
   typingProbability?: number;
   /** Duration of typing indicator (ms) */
   typingDuration?: number;
-  /** Probability of presence change (0-1) */
+  /** Probability of presence change per interval (0-1) */
   presenceProbability?: number;
+  /** Current user ID (to exclude from mock messages) */
+  currentUserId?: string;
 }
 
+/**
+ * Generates mock WebSocket events for development
+ */
 export class WebSocketMockGenerator {
   private client: WebSocketClient;
   private options: Required<MockGeneratorOptions>;
-  private messageTimer: ReturnType<typeof setInterval> | null = null;
+  private messageTimer: ReturnType<typeof setTimeout> | null = null;
   private presenceTimer: ReturnType<typeof setInterval> | null = null;
   private typingTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private isRunning = false;
@@ -81,10 +88,11 @@ export class WebSocketMockGenerator {
   constructor(client: WebSocketClient, options: MockGeneratorOptions = {}) {
     this.client = client;
     this.options = {
-      messageInterval: 5000,
-      typingProbability: 0.3,
-      typingDuration: 2000,
-      presenceProbability: 0.1,
+      messageInterval: 8000,
+      typingProbability: 0.4,
+      typingDuration: 2500,
+      presenceProbability: 0.15,
+      currentUserId: 'stub-user-id',
       ...options,
     };
   }
@@ -104,7 +112,7 @@ export class WebSocketMockGenerator {
       if (Math.random() < this.options.presenceProbability) {
         this.emitPresenceChange();
       }
-    }, 10000);
+    }, 12000);
   }
 
   /**
@@ -128,46 +136,50 @@ export class WebSocketMockGenerator {
   }
 
   /**
-   * Generate a single mock message
+   * Generate a single mock incoming message
    */
   emitMessage(conversationId?: string, senderId?: string): void {
-    const sender = senderId 
-      ? MOCK_USERS.find(u => u.id === senderId) ?? randomItem(MOCK_USERS)
+    const sender = senderId
+      ? (MOCK_USERS.find((u) => u.id === senderId) ?? randomItem(MOCK_USERS))
       : randomItem(MOCK_USERS);
-    
-    const payload: TextMessagePayload = {
-      conversationId: conversationId ?? randomItem(MOCK_CONVERSATIONS),
-      senderId: sender.id,
-      senderName: sender.name,
+
+    const convId = conversationId ?? randomItem(MOCK_CONVERSATIONS);
+
+    const payload: MessagePayload = {
+      message_id: crypto.randomUUID(),
+      conversation_id: convId,
+      sender_id: sender.id,
+      sender_device_id: sender.deviceId,
+      recipient_id: this.options.currentUserId,
       content: randomItem(MOCK_MESSAGES),
-      messageId: crypto.randomUUID(),
+      encrypted: false,
+      content_type: 'text',
+      timestamp: new Date().toISOString(),
     };
 
     // First emit typing stop if was typing
-    const typingKey = `${payload.conversationId}-${payload.senderId}`;
+    const typingKey = `${convId}-${sender.id}`;
     if (this.typingTimers.has(typingKey)) {
       clearTimeout(this.typingTimers.get(typingKey));
       this.typingTimers.delete(typingKey);
-      this.emitTypingStop(payload.conversationId, sender.id, sender.name);
+      this.emitTypingStop(convId, sender.id);
     }
 
-    // Emit the message
-    (this.client as unknown as { emitter: { emit: (type: MessageType, payload: unknown) => void } })
-      .emitter.emit(MessageType.TEXT_MESSAGE, payload);
+    // Emit the message via the client's internal emitter
+    this.emitToClient(WsMessageType.MESSAGE, payload);
   }
 
   /**
    * Start typing indicator for a user
    */
-  emitTypingStart(conversationId: string, userId: string, userName: string): void {
+  emitTypingStart(conversationId: string, userId: string): void {
     const payload: TypingPayload = {
-      conversationId,
-      userId,
-      userName,
+      user_id: userId,
+      conversation_id: conversationId,
+      is_typing: true,
     };
 
-    (this.client as unknown as { emitter: { emit: (type: MessageType, payload: unknown) => void } })
-      .emitter.emit(MessageType.TYPING_START, payload);
+    this.emitToClient(WsMessageType.TYPING, payload);
 
     // Auto-stop typing after duration
     const key = `${conversationId}-${userId}`;
@@ -175,43 +187,46 @@ export class WebSocketMockGenerator {
       clearTimeout(this.typingTimers.get(key));
     }
 
-    this.typingTimers.set(key, setTimeout(() => {
-      this.emitTypingStop(conversationId, userId, userName);
-      this.typingTimers.delete(key);
-    }, this.options.typingDuration));
+    this.typingTimers.set(
+      key,
+      setTimeout(() => {
+        this.emitTypingStop(conversationId, userId);
+        this.typingTimers.delete(key);
+      }, this.options.typingDuration)
+    );
   }
 
   /**
    * Stop typing indicator for a user
    */
-  emitTypingStop(conversationId: string, userId: string, userName: string): void {
+  emitTypingStop(conversationId: string, userId: string): void {
     const payload: TypingPayload = {
-      conversationId,
-      userId,
-      userName,
+      user_id: userId,
+      conversation_id: conversationId,
+      is_typing: false,
     };
 
-    (this.client as unknown as { emitter: { emit: (type: MessageType, payload: unknown) => void } })
-      .emitter.emit(MessageType.TYPING_STOP, payload);
+    this.emitToClient(WsMessageType.TYPING, payload);
   }
 
   /**
    * Emit a presence change
    */
   emitPresenceChange(userId?: string): void {
-    const user = userId 
-      ? MOCK_USERS.find(u => u.id === userId) ?? randomItem(MOCK_USERS)
+    const user = userId
+      ? (MOCK_USERS.find((u) => u.id === userId) ?? randomItem(MOCK_USERS))
       : randomItem(MOCK_USERS);
 
-    const statuses: PresencePayload['status'][] = ['online', 'offline', 'away', 'busy'];
+    const statuses: PresenceStatus[] = ['online', 'offline', 'away', 'do_not_disturb'];
+    const status = randomItem(statuses);
+
     const payload: PresencePayload = {
-      userId: user.id,
-      status: randomItem(statuses),
-      lastSeen: Date.now(),
+      user_id: user.id,
+      status,
+      last_seen: status === 'offline' ? new Date().toISOString() : undefined,
     };
 
-    (this.client as unknown as { emitter: { emit: (type: MessageType, payload: unknown) => void } })
-      .emitter.emit(MessageType.PRESENCE_UPDATE, payload);
+    this.emitToClient(WsMessageType.PRESENCE, payload);
   }
 
   // ---------------------------------------------------------------------------
@@ -231,9 +246,9 @@ export class WebSocketMockGenerator {
       if (Math.random() < this.options.typingProbability) {
         const sender = randomItem(MOCK_USERS);
         const convId = randomItem(MOCK_CONVERSATIONS);
-        
-        this.emitTypingStart(convId, sender.id, sender.name);
-        
+
+        this.emitTypingStart(convId, sender.id);
+
         // Then send message after typing
         setTimeout(() => {
           this.emitMessage(convId, sender.id);
@@ -245,6 +260,21 @@ export class WebSocketMockGenerator {
       this.scheduleNextMessage();
     }, interval);
   }
+
+  /**
+   * Emit a message through the client's internal event system
+   */
+  private emitToClient<T>(type: WsMessageType, payload: T): void {
+    // Access the client's internal emitter
+    // This is a workaround for the mock generator to emit events
+    const clientAny = this.client as unknown as {
+      emitter?: { emit: (type: WsMessageType, payload: unknown) => void };
+    };
+
+    if (clientAny.emitter && typeof clientAny.emitter.emit === 'function') {
+      clientAny.emitter.emit(type, payload);
+    }
+  }
 }
 
 // =============================================================================
@@ -253,7 +283,13 @@ export class WebSocketMockGenerator {
 
 let mockGeneratorInstance: WebSocketMockGenerator | null = null;
 
-export function startMockGenerator(client: WebSocketClient, options?: MockGeneratorOptions): WebSocketMockGenerator {
+/**
+ * Start the mock generator
+ */
+export function startMockGenerator(
+  client: WebSocketClient,
+  options?: MockGeneratorOptions
+): WebSocketMockGenerator {
   if (mockGeneratorInstance) {
     mockGeneratorInstance.stop();
   }
@@ -262,9 +298,19 @@ export function startMockGenerator(client: WebSocketClient, options?: MockGenera
   return mockGeneratorInstance;
 }
 
+/**
+ * Stop the mock generator
+ */
 export function stopMockGenerator(): void {
   if (mockGeneratorInstance) {
     mockGeneratorInstance.stop();
     mockGeneratorInstance = null;
   }
+}
+
+/**
+ * Get the current mock generator instance
+ */
+export function getMockGenerator(): WebSocketMockGenerator | null {
+  return mockGeneratorInstance;
 }
