@@ -40,6 +40,16 @@ class CryptoFailure extends Failure {
   const CryptoFailure([super.message = 'Cryptography operation failed']);
 }
 
+/// Call/WebRTC failures
+class CallFailure extends Failure {
+  const CallFailure([super.message = 'Call operation failed']);
+}
+
+/// Media failures (camera, microphone access)
+class MediaFailure extends Failure {
+  const MediaFailure([super.message = 'Media access failed']);
+}
+
 /// Generic/unknown failures
 class UnknownFailure extends Failure {
   const UnknownFailure([super.message = 'An unknown error occurred']);
