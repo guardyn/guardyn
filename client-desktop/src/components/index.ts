@@ -51,3 +51,8 @@ export type { Breakpoint } from './ResponsiveLayout';
 // Theme
 export { ThemeSwitcher, ThemeToggle } from './ThemeSwitcher';
 
+// Chat Components
+export * from './chat';
+
+// Shared Components
+export * from './shared';
