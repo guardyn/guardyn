@@ -117,10 +117,11 @@ dev-all:
     @echo "[dev] Starting all services in tmux..."
     bash infra/scripts/dev-local.sh all
 
-# Stop local Envoy
+# Stop local Envoy (if running from k8s proxy)
 dev-envoy-stop:
-    @echo "[dev] Stopping local Envoy..."
+    @echo "[dev] Stopping Envoy containers..."
     docker stop envoy-local 2>/dev/null || true
+    docker rm envoy-local 2>/dev/null || true
 
 # Run Envoy port-forward from k8s (for testing with cluster services)
 dev-envoy-k8s:
@@ -200,42 +201,17 @@ test-desktop:
     @echo "[test] Running Tauri Desktop tests..."
     cd client-desktop && npm run test
 
-# Run Flutter Android client (requires dev-all + dev-envoy-local + emulator)
+# Run Flutter Android client (requires Docker Compose backend)
 dev-android:
     @echo "[dev] Starting Flutter Android client..."
-    @echo "[dev] Make sure services are running: just dev-all && just dev-envoy-local"
-    @echo "[dev] Make sure Android emulator is running: flutter run -d <emulator_id> OR: flutter emulators --launch <emulator_id>"
-    cd client && flutter run -d emulator-5554
+    @echo "[dev] Make sure backend is running: docker compose -f docker-compose.dev.yml up -d"
+    @echo "[dev] Make sure Android emulator is running: flutter run -d <emulator_id>"
+    cd client-mobile && flutter run -d emulator-5554
 
 # List available Flutter devices
 dev-devices:
     @echo "[dev] Available Flutter devices:"
     flutter devices
-
-# Run Envoy LOCALLY for Flutter Web (gRPC-Web proxy to local services)
-# This is the recommended way for development - enables hot reload!
-# Uses port 18080 to avoid conflict with k3d (which uses 8080)
-dev-envoy-local:
-    @echo "[dev] Starting local Envoy on :18080 → localhost:50051-50054..."
-    @echo "[dev] Make sure services are running: just dev-all"
-    @docker rm -f envoy-local 2>/dev/null || true
-    docker run -d --name envoy-local \
-        --network host \
-        -v $(pwd)/client-mobile/envoy-local.yaml:/etc/envoy/envoy.yaml:ro \
-        envoyproxy/envoy:v1.28-latest
-    @sleep 2 && nc -z localhost 18080 && echo "[dev] ✅ Envoy running on port 18080" || echo "[dev] ❌ Envoy failed to start"
-
-
-# Run Flutter Web client (requires dev-envoy-local in another terminal)
-dev-web:
-    @echo "[dev] Starting Flutter Web on :3000..."
-    @echo "[dev] Make sure Envoy is running: just dev-envoy-local"
-    cd client && flutter run -d chrome --web-port=3000
-
-# Run Flutter Web client in release mode
-dev-web-release:
-    @echo "[dev] Starting Flutter Web in release mode on :3000..."
-    cd client && flutter run -d chrome --web-port=3000 --release
 
 # =============================================================================
 # Client Data Management

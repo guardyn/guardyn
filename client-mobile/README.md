@@ -162,38 +162,42 @@ Build scripts are provided to compile the app for all platforms with warnings su
 
    **Platform requirements:**
 
-   | Platform                  | Envoy (18080) | Auth (50051) | Messaging (50052) |
-   | ------------------------- | ------------- | ------------ | ----------------- |
-   | **Chrome/Firefox/Safari** | ✅ Required   | ✅ Required  | ✅ Required       |
-   | **Android/iOS native**    | ❌ Not needed | ✅ Required  | ✅ Required       |
-   | **Linux/macOS/Windows**   | ❌ Not needed | ✅ Required  | ✅ Required       |
+   | Platform                | Auth (50051) | Messaging (50052) | Notes |
+   | ----------------------- | ------------ | ----------------- | ----- |
+   | **Android (emulator)**  | ✅ Required  | ✅ Required       | Uses 10.0.2.2 |
+   | **Android (device)**    | ✅ Required  | ✅ Required       | Uses adb reverse |
+   | **iOS Simulator**       | ✅ Required  | ✅ Required       | Uses localhost |
+   | **Linux (Flutter)**     | ✅ Required  | ✅ Required       | Uses localhost |
 
-   **Alternative: Manual Port-Forwarding**
+   > **Note**: Web platform is NOT supported for security reasons. Use [Tauri Desktop Client](../client-desktop/) for desktop.
 
-   **Terminal 1: Envoy Proxy (Web browsers ONLY)**
+   **Alternative: Docker Compose (Recommended for development):**
 
    ```bash
-   kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
+   # Start all backend services
+   docker compose -f docker-compose.dev.yml up -d
+
+   # Services will be available on:
+   # - Auth: localhost:50051
+   # - Messaging: localhost:50052
+   # - Presence: localhost:50053
    ```
 
-   **Required for**: Chrome, Firefox, Safari (any web browser)  
-   **Not needed for**: Android, iOS, Linux, macOS, Windows desktop apps
+   **Alternative: Manual Port-Forwarding (k8s cluster)**
 
-   **Why Envoy?** Browsers cannot create TCP sockets directly (security sandbox), so they cannot use native gRPC. Envoy translates gRPC-Web (HTTP/1.1 or HTTP/2 via browser `fetch` API) to native gRPC (HTTP/2 with gRPC framing).
-
-   **Terminal 2: Auth Service (All platforms)**
+   **Terminal 1: Auth Service**
 
    ```bash
    kubectl port-forward -n apps svc/auth-service 50051:50051
    ```
 
-   **Terminal 3: Messaging Service (All platforms)**
+   **Terminal 2: Messaging Service**
 
    ```bash
    kubectl port-forward -n apps svc/messaging-service 50052:50052
    ```
 
-   **⚠️ Note**: Manual port-forwards can die unexpectedly. Use the watchdog script for reliable testing.
+   **⚠️ Note**: Manual port-forwards can die unexpectedly. Use Docker Compose for reliable testing.
 
 3. **Run Flutter app:**
 
@@ -204,15 +208,22 @@ Build scripts are provided to compile the app for all platforms with warnings su
    Or for specific device:
 
    ```bash
-   flutter devices  # List available devices
-   flutter run -d chrome        # Web browser (needs Envoy)
-   flutter run -d <device-id>   # Android emulator (no Envoy needed)
+   flutter devices               # List available devices
+   flutter run -d <device-id>    # Android emulator or device
+   flutter run -d linux          # Linux desktop (for testing)
    ```
 
    > **Note**: For Desktop (Windows/macOS/Linux), use [Tauri Desktop Client](../client-desktop/README.md):
+   >
    > ```bash
    > cd client-desktop && npm run tauri dev
    > ```
+
+   > **⚠️ Security Notice**: Web platform (Chrome/Firefox/Safari) is NOT supported.
+   > Web browsers cannot provide the same security guarantees as native apps:
+   > - No Rust FFI for post-quantum cryptography (ML-KEM)
+   > - No secure key storage (localStorage is vulnerable to XSS)
+   > - Browser extensions can intercept data
 
 ## Testing
 
@@ -263,43 +274,43 @@ kubectl port-forward -n apps svc/auth-service 50051:50051
 kubectl port-forward -n apps svc/messaging-service 50052:50052
 ```
 
-**Note**: Envoy (port 18080) is only required when testing on Chrome/web browsers. Native platforms (Android, Linux, iOS, macOS, Windows) connect directly to services on ports 50051/50052.
+**Note**: All native platforms (Android, iOS, Linux, macOS, Windows) connect directly to gRPC services on ports 50051/50052.
 
 **Run integration tests:**
 
 **Single-device test (simulated):**
 
 ```bash
-cd client
+cd client-mobile
 ./scripts/test-client.sh integration
 ```
 
-**Two-client test (Android + Chrome):**
+**Two-client test (Android + Linux):**
 
-This tests real cross-platform messaging between Android and Chrome:
+This tests real cross-platform E2EE messaging between Android and Linux:
 
 ```bash
-# Quick setup (manual testing)
-cd client
-./scripts/quick-two-client-setup.sh
+# Start backend
+docker compose -f docker-compose.dev.yml up -d
 
-# Follow on-screen instructions to run:
-# Terminal 1: flutter run -d emulator-5554  (Alice on Android)
-# Terminal 2: flutter run -d chrome (Bob on Chrome)
+# Run two-client test
+just test-two-client-messaging
 ```
 
-**Automated two-client test:**
+**Automated FFI test on Android + Linux:**
 
 ```bash
-cd client
-./scripts/run-two-client-test.sh
+just ffi-android-linux
 ```
 
 See [Two-Client Testing Guide](../docs/TWO_CLIENT_TESTING.md) for detailed instructions
 
-# Run on specific device
+**Run on specific device:**
 
-flutter test integration_test/ -d chrome flutter test integration_test/ -d emulator-5554
+```bash
+flutter test integration_test/ -d emulator-5554
+flutter test integration_test/ -d linux
+```
 
 ````
 

@@ -1,110 +1,56 @@
-# Two-Client Integration Testing (Android + Chrome)
+# Two-Client Integration Testing (Android + Linux)
 
-This guide describes how to run automated integration tests between two different Flutter clients running on different platforms.
+This guide describes how to run integration tests between two different Flutter clients running on different platforms.
 
 ## Overview
 
 The two-client test simulates real-world messaging between:
 
 - **Alice** on Android emulator
-- **Bob** on Chrome browser
+- **Bob** on Linux desktop
 
 This validates cross-platform E2EE messaging, key exchange, and real-time communication.
+
+> **Security Note**: Web platform (Chrome/Firefox) has been removed for security reasons.
+> All cryptographic operations use native Rust FFI via guardyn-crypto library.
 
 ## Architecture
 
 ```
 ┌─────────────────┐         ┌─────────────────┐
-│  Alice (Android)│         │   Bob (Chrome)  │
-│   emulator      │◄───────►│    browser      │
+│  Alice (Android)│         │   Bob (Linux)   │
+│   emulator      │◄───────►│    desktop      │
 └────────┬────────┘         └────────┬────────┘
          │                           │
-         │        gRPC               │  gRPC-Web
-         │                           │   (Envoy)
+         │        Native gRPC        │  Native gRPC
+         │       (10.0.2.2:50051)    │  (localhost:50051)
          ▼                           ▼
     ┌────────────────────────────────────┐
-    │      Backend Services (k8s)        │
+    │      Backend Services              │
     │  - auth-service (port 50051)       │
     │  - messaging-service (port 50052)  │
-    │  - Envoy proxy (port 18080)        │
     └────────────────────────────────────┘
 ```
 
 ## Prerequisites
 
-### 1. Backend Services Running
+### 1. Backend Services Running (Docker Compose)
 
 ```bash
+# Start all backend services
+docker compose -f docker-compose.dev.yml up -d
+
 # Check services are running
-kubectl get pods -n apps
+docker compose -f docker-compose.dev.yml ps
 
 # Should show:
-# - auth-service (2 pods)
-# - messaging-service (3 pods)
-# - guardyn-envoy (1 pod)
+# - auth-service     Running
+# - messaging-service Running
+# - redis            Running
+# - scylla           Running
 ```
 
-### 2. Port-Forwarding Active
-
-```bash
-# Auth service
-kubectl port-forward -n apps svc/auth-service 50051:50051 &
-
-# Messaging service
-kubectl port-forward -n apps svc/messaging-service 50052:50052 &
-
-# Envoy proxy (for Chrome gRPC-Web)
-kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
-```
-
-### 3. ChromeDriver Running (for Chrome integration tests)
-
-ChromeDriver is required for `flutter drive` integration tests on Chrome:
-
-```bash
-# Check if ChromeDriver is running
-pgrep -f chromedriver
-
-# If not running, start it:
-chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
-
-# Verify it's ready
-sleep 2 && curl -s http://localhost:4444/status | jq -r '.value.ready'
-# Should output: true
-```
-
-**Download ChromeDriver:**
-
-If you don't have ChromeDriver, download it from [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/):
-
-```bash
-cd client
-mkdir -p chromedriver
-cd chromedriver
-# Download matching your Chrome version
-wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.175/linux64/chromedriver-linux64.zip
-unzip chromedriver-linux64.zip
-chmod +x chromedriver-linux64/chromedriver
-```
-
-#### Port-forward after Envoy restart
-
-**⚠️ IMPORTANT:** If you restart the Envoy deployment (e.g., after configuration changes), you **MUST restart port-forwarding**:
-
-```bash
-# Kill existing port-forward
-pkill -f "kubectl port-forward.*guardyn-envoy"
-
-# Restart port-forward
-kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
-
-# Verify it's working
-sleep 2 && curl -s -I http://localhost:18080 | head -5
-```
-
-**Why this matters:** When `kubectl rollout restart` kills the old Envoy pod, the port-forward connection breaks. You won't get an error, but requests will fail silently.
-
-### 4. Android Emulator Running
+### 2. Android Emulator Running
 
 ```bash
 # List available AVDs
@@ -117,323 +63,208 @@ $HOME/Android/Sdk/emulator/emulator -avd <avd-name> &
 flutter devices  # Should show emulator-5554
 ```
 
-### 4. Chrome Available
+### 3. Flutter Desktop Enabled
 
 ```bash
-# Verify Chrome is available
-flutter devices | grep chrome
+# Verify Linux desktop support
+flutter devices | grep linux
+
+# If not shown, enable it
+flutter config --enable-linux-desktop
 ```
 
 ## Running the Tests
 
 ### Automated Test (Recommended)
 
-Run both clients in parallel with orchestration:
+Run the two-client messaging test:
 
 ```bash
-cd client-mobile/
-./scripts/run-two-client-test.sh
+just test-two-client-messaging
 ```
 
 This will:
 
 1. Verify all prerequisites
-2. Launch Android test (Alice) in background
-3. Launch Chrome test (Bob) in background
+2. Launch Android test (Alice)
+3. Launch Linux test (Bob)
 4. Monitor both test outputs
 5. Report results
 
-**Expected output:**
+### Quick Setup Script
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Two-Client Integration Test
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-ℹ️  Testing Android <-> Chrome messaging
-
-✅ Auth service: 2 pods
-✅ Messaging service: 3 pods
-✅ Port-forwarding active
-✅ Envoy proxy active
-✅ Android emulator: emulator-5554
-✅ Chrome available
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Running Tests
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  [Android] 📱 ANDROID CLIENT (Alice) - Starting...
-  [Chrome] 🌐 CHROME CLIENT (Bob) - Starting...
-  [Android] 📱 Registering Alice...
-  [Chrome] 🌐 Registering Bob...
-  [Android] 📱 ✅ Alice registered
-  [Chrome] 🌐 ✅ Bob registered
-  [Android] 📱 Sending message to Bob...
-  [Chrome] 🌐 ✅ Received message from Alice
-  [Chrome] 🌐 Sending reply to Alice...
-  [Android] 📱 ✅ Received reply from Bob
-  [Android] 📱 ✅ ANDROID CLIENT TEST COMPLETED
-  [Chrome] 🌐 ✅ CHROME CLIENT TEST COMPLETED
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Test Results
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Android test: PASSED
-✅ Chrome test: PASSED
-
-✅ ALL TESTS PASSED ✅
+```bash
+cd client-mobile/
+./scripts/test-client.sh two-device linux
 ```
 
 ### Manual Test (Each Client Separately)
 
 If you need to run tests manually:
 
-**Terminal 1 - Android (Alice):**
+**Terminal 1 - Linux (Alice):**
 
 ```bash
 cd client-mobile/
-flutter drive \
-  --driver=test_driver/integration_test.dart \
-  --target=integration_test/two_client_messaging_test.dart \
-  -d emulator-5554 \
-  --dart-define=TEST_PLATFORM=android
+flutter run -d linux
 ```
 
-**Terminal 2 - Chrome (Bob):**
+**Terminal 2 - Android (Bob):**
 
 ```bash
 cd client-mobile/
-flutter drive \
-  --driver=test_driver/integration_test.dart \
-  --target=integration_test/two_client_messaging_test.dart \
-  -d chrome \
-  --dart-define=TEST_PLATFORM=chrome
+flutter run -d emulator-5554
 ```
 
-**Important:** Start both tests within a few seconds of each other for proper synchronization.
+## Test Scenarios
 
-## Test Flow
+### Scenario 1: Basic Message Exchange
 
-### Alice (Android) Timeline
+1. **Alice (Linux)**: Register as `alice` / `password12345`
+2. **Bob (Android)**: Register as `bob` / `password12345`
+3. **Alice**: Copy Bob's User ID from his HomePage
+4. **Alice**: Open Messages → New Chat → Enter Bob's User ID
+5. **Alice**: Send message "Hello Bob!"
+6. **Bob**: Receive message notification, open chat
+7. **Bob**: Reply "Hi Alice!"
+8. **Alice**: Receive Bob's reply
 
-1. **Launch app** → Login page
-2. **Register** as `alice_android`
-3. **Navigate** to Messages
-4. **Wait** for Bob to register (~10s)
-5. **Search** for `bob_chrome`
-6. **Send** message: "Hello from Android! 📱"
-7. **Wait** for Bob's reply (~30s)
-8. **Verify** received: "Hello from Chrome! 🌐"
-9. **Complete** ✅
+**Expected Results:**
 
-### Bob (Chrome) Timeline
+- ✅ Both users register successfully
+- ✅ Messages delivered in real-time (< 2 seconds)
+- ✅ Messages appear with correct sender/receiver alignment
+- ✅ Delivery status updates (sent → delivered)
 
-1. **Launch app** → Login page
-2. **Register** as `bob_chrome`
-3. **Navigate** to Messages
-4. **Wait** for Alice's message (~40s)
-5. **Open** conversation with Alice
-6. **Verify** message: "Hello from Android! 📱"
-7. **Send** reply: "Hello from Chrome! 🌐"
-8. **Complete** ✅
+### Scenario 2: Offline Message Delivery
 
-## Synchronization Points
+1. **Alice (Linux)**: Login as `alice`
+2. **Bob (Android)**: Close app completely
+3. **Alice**: Send message "Are you there?"
+4. **Bob**: Open app, login as `bob`
+5. **Bob**: Check Messages
 
-The tests use time-based coordination:
+**Expected Results:**
 
-| Time | Alice (Android)      | Bob (Chrome)         |
-| ---- | -------------------- | -------------------- |
-| 0s   | Register             | Register             |
-| 5s   | Navigate to Messages | Navigate to Messages |
-| 10s  | Search for Bob       | Wait for message     |
-| 15s  | Send message         | Still waiting        |
-| 20s  | Wait for reply       | Receive message      |
-| 25s  | Still waiting        | Send reply           |
-| 30s  | Receive reply ✅     | Complete ✅          |
+- ✅ Message queued on server while Bob offline
+- ✅ Message delivered when Bob comes online
+- ✅ Message history persisted correctly
+
+### Scenario 3: E2EE Key Exchange
+
+1. **Clear all local data on both devices**
+2. **Alice**: Register new user `alice2`
+3. **Bob**: Register new user `bob2`
+4. **Alice**: Send first message to Bob
+
+**Expected Results:**
+
+- ✅ X3DH key exchange happens automatically
+- ✅ Double Ratchet session established
+- ✅ Messages encrypted with forward secrecy
+- ✅ Check logs for `[CRYPTO]` messages showing key exchange
 
 ## Troubleshooting
 
-### Android Test Fails
-
-**Issue:** Android test times out or can't find widgets
-
-**Solutions:**
+### "Connection refused" on Android
 
 ```bash
-# 1. Check emulator is fully booted
-flutter devices
+# Verify backend services are running
+docker compose -f docker-compose.dev.yml ps
 
-# 2. Check backend connectivity
-curl -v http://localhost:50051  # Should connect
-
-# 3. Restart emulator
-adb reboot
-
-# 4. View Android test log
-tail -f /tmp/android_test.log
+# Check if ports are accessible
+nc -zv localhost 50051
+nc -zv localhost 50052
 ```
 
-### Chrome Test Fails
+Android emulator uses `10.0.2.2` to reach host's `localhost`.
 
-**Issue:** Chrome can't connect to backend
-
-**Solutions:**
+### "Connection refused" on Linux
 
 ```bash
-# 1. Verify Envoy proxy is running
-kubectl get pods -n apps -l app=guardyn-envoy
+# Check services
+docker compose -f docker-compose.dev.yml ps
 
-# 2. Check Envoy port-forward
-lsof -i :18080
-
-# 3. Test Envoy connectivity
-curl -v http://localhost:18080
-
-# 4. Restart Envoy port-forward
-kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
-
-# 5. View Chrome test log
-tail -f /tmp/chrome_test.log
+# View auth-service logs
+docker compose -f docker-compose.dev.yml logs auth-service
 ```
 
-### Messages Not Received
-
-**Issue:** Alice sends message but Bob doesn't receive it
-
-**Solutions:**
+### Messages not appearing
 
 ```bash
-# 1. Check if k8s messaging-service is competing with local service
-kubectl get deployment messaging-service -n apps
-# If replicas > 0 and you're running locally, scale down:
-kubectl scale deployment messaging-service -n apps --replicas=0
+# Check messaging-service logs
+docker compose -f docker-compose.dev.yml logs messaging-service
 
-# 2. Check messaging-service logs
-kubectl logs -n apps deployment/messaging-service --tail=50
-
-# 3. Check NATS consumers (should show only one websocket-relay consumer)
-kubectl run nats-check --rm -it --image=natsio/nats-box \
-  --restart=Never -n messaging -- \
-  nats con ls MESSAGES -s nats://nats:4222
-
-# 4. Check NATS connectivity
-kubectl exec -it -n messaging deployment/nats-0 -- nats sub "messages.>"
-
-# 5. Verify both users registered
-kubectl logs -n apps deployment/auth-service | grep -E "alice_android|bob_chrome"
-
-# 6. Check WebSocket connections
-kubectl logs -n apps deployment/messaging-service | grep "WebSocket"
-
-# 7. Clear client E2EE data if messages are garbled
-just clear-client-data
+# Verify both clients are connected to same backend
+# Check User IDs are copied correctly
 ```
 
-### Tests Timeout
-
-**Issue:** Tests run longer than expected
-
-**Causes:**
-
-- Slow emulator startup
-- Backend services under load
-- Network latency
-- Crypto operations taking longer
-
-**Solutions:**
-
-- Increase timeout in test code
-- Use faster emulator image
-- Check backend resource allocation
-- Run on better hardware
-
-## Test Logs
-
-All test logs are saved to `/tmp/`:
+### Crypto initialization error
 
 ```bash
-# View Android test log
-cat /tmp/android_test.log
+# Verify native library built
+ls client-mobile/native/target/release/
 
-# View Chrome test log
-cat /tmp/chrome_test.log
-
-# Follow logs in real-time
-tail -f /tmp/android_test.log /tmp/chrome_test.log
+# Rebuild if needed
+cd client-mobile/native
+cargo build --release
 ```
 
-## CI/CD Integration
+## Verification Checklist
 
-To run these tests in CI/CD:
+**Before testing:**
 
-```yaml
-# .github/workflows/integration-tests.yml
-name: Two-Client Integration Tests
+- [ ] Backend services running (`docker compose ps`)
+- [ ] Android emulator booted (`flutter devices`)
+- [ ] Linux desktop enabled (`flutter config`)
+- [ ] Native crypto library built
 
-on: [push, pull_request]
+**During testing:**
 
-jobs:
-  integration-test:
-    runs-on: ubuntu-latest
+- [ ] Both clients successfully register
+- [ ] User IDs displayed on HomePage
+- [ ] Messages send without errors
+- [ ] Messages received in real-time
+- [ ] Delivery status updates
+- [ ] Bidirectional communication works
+- [ ] No crashes or data loss
 
-    steps:
-      - uses: actions/checkout@v3
+## Platform-Specific Notes
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+### Android
 
-      - name: Setup k3d cluster
-        run: |
-          just kube-create
-          just kube-bootstrap
-          just k8s-deploy nats
-          just k8s-deploy auth
-          just k8s-deploy messaging
+- Uses host IP `10.0.2.2` for localhost access
+- Requires ADB port-forwarding for USB debugging
+- Test on API 30+ for best results
 
-      - name: Start port-forwarding
-        run: |
-          kubectl port-forward -n apps svc/auth-service 50051:50051 &
-          kubectl port-forward -n apps svc/messaging-service 50052:50052 &
-          kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 &
+### Linux
 
-      - name: Start Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
+- Uses native gRPC (not gRPC-Web)
+- Connects directly to `localhost:50051`
+- Requires GTK libraries installed
 
-      - name: Run two-client tests
-        run: |
-          cd client
-          ./scripts/run-two-client-test.sh
+### iOS (Future)
+
+- Uses `localhost` like Linux
+- Requires Xcode and iOS Simulator
+- Same gRPC configuration as Linux
+
+### macOS/Windows Desktop (via Tauri)
+
+For desktop platforms, use the Tauri client:
+
+```bash
+cd client-desktop/
+npm run tauri dev
 ```
 
-## Performance Metrics
+## Additional Resources
 
-Expected test duration:
+- [Client Testing Guide](CLIENT_TESTING_GUIDE.md)
+- [Docker Development Guide](DOCKER_DEV_GUIDE.md)
+- [Encryption Architecture](ENCRYPTION_ARCHITECTURE.md)
+- [Rust FFI Integration](RUST_FFI_INTEGRATION.md)
 
-- **Setup phase:** 10-15 seconds (registration)
-- **Message exchange:** 30-40 seconds
-- **Total:** ~60-90 seconds
+---
 
-If tests consistently take longer, investigate:
-
-- Backend performance
-- Database query times
-- Crypto operation efficiency
-- Network latency
-
-## Next Steps
-
-After successful two-client testing:
-
-1. **Add more platforms**: Test Android ↔ Linux, Chrome ↔ iOS
-2. **Stress testing**: Multiple clients simultaneously
-3. **Group messaging**: 3+ clients in same conversation
-4. **Media messages**: Test image/video exchange
-5. **Network conditions**: Test with packet loss, latency
-
-## Related Documentation
-
-- [Testing Guide](../docs/TESTING_GUIDE.md) - Complete testing overview
-- [Architecture](../docs/ARCHITECTURE.md) - System architecture
-- [E2EE Implementation](../docs/E2EE.md) - Encryption details
+**Ready to test! Good luck! 🚀**

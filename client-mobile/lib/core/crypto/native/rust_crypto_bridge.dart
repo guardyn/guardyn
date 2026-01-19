@@ -3,8 +3,14 @@
 /// This file provides the native Rust implementation of CryptoBridge
 /// using flutter_rust_bridge to call guardyn-crypto FFI functions.
 ///
-/// This implementation is used on mobile platforms (iOS/Android) and
-/// desktop platforms (Windows/macOS/Linux) where native libraries are available.
+/// Supported platforms:
+/// - Android (libguardyn_crypto_ffi.so)
+/// - iOS (GuardynCrypto.framework)
+/// - Linux (libguardyn_crypto_ffi.so)
+/// - macOS (libguardyn_crypto_ffi.dylib)
+/// - Windows (guardyn_crypto_ffi.dll)
+///
+/// IMPORTANT: Web platform is NOT supported for security reasons.
 library;
 
 import 'dart:io';
@@ -29,8 +35,6 @@ class NativeRustCryptoBridge implements CryptoBridge {
 
   /// Check if native library is available for current platform
   static bool checkNativeAvailable() {
-    if (kIsWeb) return false;
-
     try {
       // Try to load the native library
       final libName = _getLibraryName();
@@ -408,6 +412,10 @@ class NativeRustCryptoBridge implements CryptoBridge {
 }
 
 /// Extended CryptoBridgeFactory that includes native support
+///
+/// IMPORTANT: Web is NOT supported. Use only on native platforms:
+/// - Android, iOS (mobile)
+/// - Linux, macOS, Windows (desktop)
 class ExtendedCryptoBridgeFactory {
   static CryptoBridge? _instance;
 
@@ -418,19 +426,18 @@ class ExtendedCryptoBridgeFactory {
   }
 
   static CryptoBridge _createBridge() {
-    if (kIsWeb) {
-      debugPrint('🔐 Web platform detected, using Dart crypto');
-      return DartCryptoBridge();
-    }
-
-    // Try native first on mobile/desktop
+    // Native Rust implementation is required on all supported platforms
     if (NativeRustCryptoBridge.checkNativeAvailable()) {
       debugPrint('🔐 Native Rust crypto available');
       return NativeRustCryptoBridge();
     }
 
-    debugPrint('🔐 Native crypto not available, falling back to Dart');
-    return DartCryptoBridge();
+    // Native bridge not available - this is a critical error
+    throw UnsupportedError(
+      'Native Rust crypto is required but not available. '
+      'Ensure libguardyn_crypto_ffi is built and included in the app bundle. '
+      'Web platform is not supported.',
+    );
   }
 
   /// Reset instance (for testing)

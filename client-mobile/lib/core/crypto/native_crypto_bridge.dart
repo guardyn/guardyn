@@ -1,26 +1,31 @@
 /// Native Crypto Bridge - Interface for Rust-based cryptography
 ///
-/// This module provides a unified interface for cryptographic operations that
-/// can be backed by either:
-/// - Pure Dart implementations (fallback for Web, limited functionality)
-/// - Native Rust FFI via flutter_rust_bridge (full functionality)
+/// This module provides a unified interface for cryptographic operations
+/// backed by native Rust FFI via flutter_rust_bridge.
+///
+/// IMPORTANT: Web platform is NOT supported for security reasons:
+/// - No Rust FFI for post-quantum cryptography
+/// - No secure key storage (localStorage is vulnerable)
+/// - XSS and browser extension attacks possible
+///
+/// Supported platforms:
+/// - Android (via libguardyn_crypto_ffi.so)
+/// - iOS (via GuardynCrypto.framework)
+/// - Linux (via libguardyn_crypto_ffi.so)
+/// - macOS (via libguardyn_crypto_ffi.dylib)
+/// - Windows (via guardyn_crypto_ffi.dll)
 ///
 /// The Rust backend provides:
 /// - Post-quantum cryptography (ML-KEM / PQXDH)
 /// - MLS group encryption
 /// - Hardware-accelerated AES/ChaCha20
 /// - PADMÉ padding for traffic analysis protection
-///
-/// NOTE: On Web, most cryptographic operations are not available.
-/// Use native mobile/desktop platforms for full E2EE functionality.
 library;
 
 import 'package:flutter/foundation.dart';
 
-// Conditional import for native bridge
-// Uses stub on Web, real implementation on mobile/desktop
-import 'native/native_bridge_stub.dart'
-    if (dart.library.io) 'native/native_bridge_io.dart' as native_bridge;
+// Native bridge implementation (mobile/desktop only)
+import 'native/native_bridge_io.dart' as native_bridge;
 
 /// Configuration for native crypto backend
 class NativeCryptoConfig {
@@ -237,171 +242,11 @@ class EncryptedData {
   }
 }
 
-/// Implementation using pure Dart crypto libraries
+/// Factory for creating crypto bridge on native platforms
 ///
-/// This is the default fallback when native Rust FFI is not available
-/// (e.g., on Web platform)
-class DartCryptoBridge implements CryptoBridge {
-  late NativeCryptoConfig _config;
-
-  @override
-  Future<void> initialize(NativeCryptoConfig config) async {
-    _config = config;
-    debugPrint('🔐 DartCryptoBridge initialized (pure Dart implementation)');
-  }
-
-  @override
-  bool get isNativeAvailable => false;
-
-  @override
-  bool get isPostQuantumAvailable => false;
-
-  @override
-  Future<KeyPair> generateIdentityKey() async {
-    // Delegate to existing Dart crypto implementation
-    // This is a placeholder - full implementation requires NativeRustCryptoBridge
-    throw UnimplementedError(
-      'Use existing X3DHProtocol.initialize() for key generation',
-    );
-  }
-
-  @override
-  Future<KeyPair> generateSignedPreKey() async {
-    throw UnimplementedError(
-      'Use existing X3DHProtocol for signed pre-key generation',
-    );
-  }
-
-  @override
-  Future<List<KeyPair>> generateOneTimePreKeys(int count) async {
-    throw UnimplementedError(
-      'Use existing X3DHProtocol for one-time pre-key generation',
-    );
-  }
-
-  @override
-  Future<HybridKeyBundle?> generateHybridKeyBundle() async {
-    // Post-quantum not available in pure Dart
-    return null;
-  }
-
-  @override
-  Future<Uint8List> deriveHybridSharedSecret({
-    required Uint8List localPrivateKey,
-    required Uint8List remotePublicKey,
-    required Uint8List? remotePqPublicKey,
-  }) async {
-    // Fall back to standard X25519 DH
-    // PQ key is ignored in pure Dart mode
-    throw UnimplementedError('Use existing X3DH shared secret derivation');
-  }
-
-  @override
-  Future<EncryptedData> encryptAesGcm({
-    required Uint8List plaintext,
-    required Uint8List key,
-    Uint8List? nonce,
-    Uint8List? associatedData,
-  }) async {
-    // Uses cryptography package
-    throw UnimplementedError('Use existing crypto_service.dart for encryption');
-  }
-
-  @override
-  Future<Uint8List> decryptAesGcm({
-    required EncryptedData encrypted,
-    required Uint8List key,
-    Uint8List? associatedData,
-  }) async {
-    throw UnimplementedError('Use existing crypto_service.dart for decryption');
-  }
-
-  @override
-  Future<EncryptedData> encryptChaCha20Poly1305({
-    required Uint8List plaintext,
-    required Uint8List key,
-    Uint8List? nonce,
-    Uint8List? associatedData,
-  }) async {
-    throw UnimplementedError('ChaCha20-Poly1305 not implemented in Dart mode');
-  }
-
-  @override
-  Future<Uint8List> decryptChaCha20Poly1305({
-    required EncryptedData encrypted,
-    required Uint8List key,
-    Uint8List? associatedData,
-  }) async {
-    throw UnimplementedError('ChaCha20-Poly1305 not implemented in Dart mode');
-  }
-
-  @override
-  Future<Uint8List> padMessage(Uint8List message) async {
-    if (!_config.enablePadme) {
-      return message;
-    }
-    // Simple padding fallback (not PADMÉ, just PKCS7-like)
-    // Real PADMÉ implementation is in Rust
-    return message;
-  }
-
-  @override
-  Future<Uint8List> unpadMessage(Uint8List paddedMessage) async {
-    if (!_config.enablePadme) {
-      return paddedMessage;
-    }
-    return paddedMessage;
-  }
-
-  @override
-  Future<Uint8List> hkdfDerive({
-    required Uint8List inputKeyMaterial,
-    required Uint8List info,
-    Uint8List? salt,
-    int outputLength = 32,
-  }) async {
-    throw UnimplementedError('Use existing HKDF implementation');
-  }
-
-  @override
-  Future<Uint8List> signEd25519({
-    required Uint8List privateKey,
-    required Uint8List message,
-  }) async {
-    throw UnimplementedError('Use existing Ed25519 signing');
-  }
-
-  @override
-  Future<bool> verifyEd25519({
-    required Uint8List publicKey,
-    required Uint8List message,
-    required Uint8List signature,
-  }) async {
-    throw UnimplementedError('Use existing Ed25519 verification');
-  }
-
-  @override
-  Future<Uint8List> ed25519PublicToX25519(Uint8List ed25519Public) async {
-    // Ed25519 → X25519 conversion requires native Rust implementation
-    // Not available on Web platform
-    throw UnimplementedError(
-      'Ed25519 to X25519 conversion requires NativeRustCryptoBridge. '
-      'DartCryptoBridge on Web does not support this operation.',
-    );
-  }
-
-  @override
-  Future<Uint8List> ed25519SecretToX25519(Uint8List ed25519Seed) async {
-    // Ed25519 secret to X25519 conversion requires the native Rust implementation
-    // Not available on Web platform
-    throw UnimplementedError(
-      'Ed25519 secret to X25519 conversion requires NativeRustCryptoBridge. '
-      'DartCryptoBridge on Web does not support this operation.',
-    );
-  }
-}
-
-/// Factory for creating appropriate crypto bridge based on platform
+/// IMPORTANT: Web is NOT supported. Use only on:
+/// - Android, iOS (mobile)
+/// - Linux, macOS, Windows (desktop via Tauri)
 class CryptoBridgeFactory {
   static CryptoBridge? _instance;
 
@@ -412,33 +257,19 @@ class CryptoBridgeFactory {
   }
 
   static CryptoBridge _createBridge() {
-    if (kIsWeb) {
-      debugPrint('🔐 Web platform detected, using Dart crypto');
-      return DartCryptoBridge();
+    // Create native Rust implementation
+    final nativeBridge = native_bridge.createNativeCryptoBridge();
+    if (nativeBridge != null) {
+      debugPrint('🔐 Using native Rust crypto implementation');
+      return nativeBridge;
     }
 
-    // Try native Rust implementation on mobile/desktop
-    try {
-      // Import is already at the top of the file via native_crypto_bridge.dart
-      // which re-exports NativeRustCryptoBridge from native/rust_crypto_bridge.dart
-      final nativeBridge = _tryCreateNativeBridge();
-      if (nativeBridge != null) {
-        debugPrint('🔐 Using native Rust crypto implementation');
-        return nativeBridge;
-      }
-    } catch (e) {
-      debugPrint('🔐 Failed to create native bridge: $e');
-    }
-
-    debugPrint('🔐 Native crypto not available, falling back to Dart');
-    return DartCryptoBridge();
-  }
-
-  /// Attempt to create native bridge (separated for lazy loading)
-  static CryptoBridge? _tryCreateNativeBridge() {
-    // Uses conditional import: native_bridge_stub.dart on Web,
-    // native_bridge_io.dart on mobile/desktop
-    return native_bridge.createNativeCryptoBridge();
+    // Native bridge creation failed - this is a critical error on native platforms
+    throw UnsupportedError(
+      'Native Rust crypto is required but not available. '
+      'Ensure libguardyn_crypto_ffi is built and included in the app bundle. '
+      'Web platform is not supported.',
+    );
   }
 
   /// Force native implementation (for testing)
@@ -451,12 +282,6 @@ class CryptoBridgeFactory {
       );
     }
     _instance = bridge;
-  }
-
-  /// Force Dart implementation (for testing or Web)
-  @visibleForTesting
-  static void useDart() {
-    _instance = DartCryptoBridge();
   }
 
   /// Reset instance (for testing)

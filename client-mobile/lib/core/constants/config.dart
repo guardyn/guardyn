@@ -1,17 +1,24 @@
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 /// Application configuration constants
+///
+/// Guardyn supports ONLY native platforms:
+/// - Mobile: Android, iOS
+/// - Desktop: Linux, macOS, Windows (via Tauri client-desktop/)
+///
+/// Web platform is NOT supported for security reasons:
+/// - No Rust FFI for post-quantum cryptography
+/// - No secure key storage (localStorage is vulnerable)
+/// - XSS and browser extension attacks possible
 class AppConfig {
   // gRPC service endpoints
-  // For local development with k3d port-forwarding:
-  //   kubectl port-forward -n apps svc/auth-service 50051:50051
-  //   kubectl port-forward -n apps svc/messaging-service 50052:50052
+  // For local development with Docker Compose:
+  //   docker compose -f docker-compose.dev.yml up -d
+  //   Services available on localhost:50051, localhost:50052, etc.
 
   /// Get platform-specific gRPC host
   /// - Android Emulator: 10.0.2.2 (host machine from emulator)
-  /// - iOS Simulator, Chrome, Desktop: localhost
+  /// - iOS Simulator, Desktop: localhost
   /// Can be overridden with --dart-define=GRPC_HOST=<host>
   static String get authHost {
     // Allow override via dart-define for testing
@@ -19,12 +26,9 @@ class AppConfig {
     if (testHost.isNotEmpty) {
       return testHost;
     }
-    
-    if (kIsWeb) {
-      // Web (Chrome, Firefox, etc.) - use localhost
-      return 'localhost';
-    } else if (Platform.isAndroid) {
-      // Android emulator - use special host address
+
+    if (Platform.isAndroid) {
+      // Android emulator - use special host address to reach host machine
       return '10.0.2.2';
     } else {
       // iOS Simulator, Linux, macOS, Windows - use localhost
@@ -39,36 +43,6 @@ class AppConfig {
 
   static String get presenceHost => authHost; // Same logic as authHost
   static const int presencePort = 50053;
-
-  // Web-specific ports for Envoy gRPC-Web proxy
-  // Note: Using port 18080 to avoid conflict with k3d loadbalancer on 8080
-  static const int webProxyPort = 18080;
-
-  /// Get platform-specific gRPC URI for web
-  /// Web platforms need http:// or https:// URIs for gRPC-Web via Envoy proxy
-  static Uri getAuthUri() {
-    if (kIsWeb) {
-      // Use Envoy proxy on port 18080 which translates gRPC-Web to gRPC
-      return Uri.parse('http://$authHost:$webProxyPort');
-    }
-    throw UnsupportedError('getAuthUri is only for web platforms');
-  }
-
-  static Uri getMessagingUri() {
-    if (kIsWeb) {
-      // Use Envoy proxy on port 18080 which translates gRPC-Web to gRPC
-      return Uri.parse('http://$messagingHost:$webProxyPort');
-    }
-    throw UnsupportedError('getMessagingUri is only for web platforms');
-  }
-
-  static Uri getPresenceUri() {
-    if (kIsWeb) {
-      // Use Envoy proxy on port 18080 which translates gRPC-Web to gRPC
-      return Uri.parse('http://$presenceHost:$webProxyPort');
-    }
-    throw UnsupportedError('getPresenceUri is only for web platforms');
-  }
 
   // WebSocket configuration
   static String get websocketHost => authHost; // Same logic as gRPC hosts
@@ -91,3 +65,4 @@ class AppConfig {
   static const String appName = 'Guardyn';
   static const String appVersion = '0.1.0';
 }
+

@@ -26,7 +26,7 @@ This guide covers comprehensive testing of the Guardyn Flutter client, including
 - ✅ **Authentication Flow**: Registration, login, token persistence
 - ✅ **Two-Device Messaging**: Real-time message exchange, delivery status, offline messages
 - ✅ **Error Handling**: Network errors, validation, backend unavailability
-- ✅ **Cross-Platform**: Chrome (via Envoy), Linux desktop, Android emulator
+- ✅ **Cross-Platform**: Linux desktop, Android emulator
 
 ### Current Status
 
@@ -34,8 +34,9 @@ This guide covers comprehensive testing of the Guardyn Flutter client, including
 ✅ **Import paths corrected** - Fixed `lib/generated/` vs `lib/features/generated/`  
 ✅ **MessageBloc registered** - Added to MultiBlocProvider in `app.dart`  
 ✅ **Error handling fixed** - Proto enum values converted correctly  
-✅ **Platform-specific gRPC** - Android uses 10.0.2.2, Chrome/Linux use localhost  
-✅ **Compiles on all platforms** - Chrome, Linux, Android tested
+✅ **Platform-specific gRPC** - Android uses 10.0.2.2, Linux/Desktop use localhost  
+✅ **Compiles on all platforms** - Linux, Android, iOS tested  
+✅ **Security hardened** - Web platform removed for security (no Dart crypto fallback)
 
 ---
 
@@ -78,11 +79,11 @@ just port-forward-stop
 ```
 
 **Watchdog features:**
+
 - ✅ Auto-restarts port-forwards when they die
 - ✅ Health checks every 5 seconds
 - ✅ Exponential backoff on failures
 - ✅ Logs to `/tmp/guardyn-pf/`
-- ✅ Includes ChromeDriver for Chrome testing
 
 #### Alternative: Manual Port-Forwarding
 
@@ -94,7 +95,7 @@ just port-forward-stop
 kubectl port-forward -n apps svc/auth-service 50051:50051
 ```
 
-**Required for**: All platforms (Android, iOS, Linux, macOS, Windows, Chrome)
+**Required for**: All platforms (Android, iOS, Linux, macOS, Windows)
 
 #### Terminal 2: Messaging Service (All platforms)
 
@@ -104,135 +105,18 @@ kubectl port-forward -n apps svc/messaging-service 50052:50052
 
 **Required for**: All platforms
 
-#### Terminal 3: Envoy Proxy (Web browsers ONLY)
-
-```bash
-kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
-```
-
-**Required for**: Chrome, Firefox, Safari (any web browser)  
-**Not needed for**: Android, iOS, Linux, macOS, Windows desktop apps
-
 **Keep these terminals running throughout testing!**
 
 **Run in background** (optional):
+
 ```bash
 kubectl port-forward -n apps svc/auth-service 50051:50051 > /tmp/auth-pf.log 2>&1 &
 kubectl port-forward -n apps svc/messaging-service 50052:50052 > /tmp/msg-pf.log 2>&1 &
-kubectl port-forward -n apps svc/guardyn-envoy 18080:8080 > /tmp/envoy-pf.log 2>&1 &
 ```
 
 **⚠️ CRITICAL**: Manual port-forwarding MUST be restarted after backend pod restarts or Kubernetes cluster restarts! Use the watchdog script to avoid this issue.
 
-**Note**: Native platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052. Web browsers connect via Envoy on port 18080.
-
-### Envoy Proxy Requirements
-
-**⚠️ Web browsers (Chrome/Firefox) require Envoy gRPC-Web proxy**
-
-#### Why Envoy is Needed
-
-Browsers cannot create TCP sockets directly (security sandbox), so they cannot use native gRPC. Envoy translates between:
-
-- **gRPC-Web** (HTTP/1.1 or HTTP/2 via browser `fetch` API)
-- **Native gRPC** (HTTP/2 with gRPC framing)
-
-```
-❌ Chrome → gRPC Backend
-   Error: "Unsupported operation: Socket constructor"
-
-✅ Chrome → Envoy (Port 18080) → gRPC Backend
-   Works! Envoy translates protocols
-```
-
-#### Platform Requirements
-
-| Platform                        | Native gRPC Support | Needs Envoy? |
-| ------------------------------- | ------------------- | ------------ |
-| **Chrome/Firefox/Safari**       | ❌ No               | ✅ **Yes**   |
-| **Android/iOS native**          | ✅ Yes              | ❌ No        |
-| **Linux/macOS/Windows desktop** | ✅ Yes              | ❌ No        |
-
-#### Starting Envoy Proxy
-
-**Option 1: Port-forward to Kubernetes** (Recommended):
-
-```bash
-kubectl port-forward -n apps svc/guardyn-envoy 18080:8080
-```
-
-Verify Envoy is running:
-
-```bash
-lsof -i :18080
-# Should show kubectl port-forward to guardyn-envoy
-```
-
-**Option 2: Docker (standalone)**:
-
-```bash
-cd client
-docker run -p 8080:8080 -v $(pwd)/envoy-grpc-web.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.31-latest
-```
-
-**Note**: Linux desktop and Android emulator use native gRPC and don't need Envoy.
-
-### ChromeDriver Requirements (Chrome integration tests)
-
-**⚠️ Chrome integration tests require ChromeDriver for `flutter drive`**
-
-#### Why ChromeDriver is Needed
-
-Flutter integration tests on Chrome use WebDriver protocol, which requires ChromeDriver running on port 4444.
-
-#### Starting ChromeDriver
-
-**Check if running:**
-
-```bash
-pgrep -f chromedriver
-```
-
-**Start ChromeDriver:**
-
-```bash
-# If you have ChromeDriver in client-mobile/chromedriver/
-cd client-mobile
-chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
-
-# Or if ChromeDriver is in your PATH
-chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
-```
-
-**Verify it's ready:**
-
-```bash
-sleep 2 && curl -s http://localhost:4444/status | jq -r '.value.ready'
-# Should output: true
-```
-
-#### Installing ChromeDriver
-
-If you don't have ChromeDriver, download it from [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/):
-
-```bash
-cd client
-mkdir -p chromedriver
-cd chromedriver
-
-# Check your Chrome version first:
-google-chrome --version  # Example: Google Chrome 142.0.7444.175
-
-# Download matching ChromeDriver version
-wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.175/linux64/chromedriver-linux64.zip
-unzip chromedriver-linux64.zip
-chmod +x chromedriver-linux64/chromedriver
-
-# Test it
-./chromedriver-linux64/chromedriver --version
-```
-
-**Note**: ChromeDriver version must match your Chrome browser version.
+**Note**: All platforms (Android/iOS/Desktop) connect directly to services via ports 50051/50052 using native gRPC.
 
 ---
 
@@ -263,13 +147,13 @@ cd client
 **Run time**: 5 minutes setup + 15-20 minutes testing
 
 ```bash
-cd client
-./scripts/test-client.sh two-device chrome  # Or 'linux' for desktop
+cd client-mobile
+./scripts/test-client.sh two-device linux
 ```
 
 **Output shows:**
 
-- Device 1 (Alice): Command to run on Chrome/Linux
+- Device 1 (Alice): Command to run on Linux desktop
 - Device 2 (Bob): Command to run on Android emulator
 
 ### Option 3: Quick Commands
@@ -277,12 +161,6 @@ cd client
 ```bash
 # Verify setup and build
 ./scripts/test-client.sh verify
-
-# Start port-forwarding only
-./scripts/test-client.sh port-forward
-
-# Start Envoy proxy for Chrome
-./scripts/test-client.sh envoy
 
 # Show help
 ./scripts/test-client.sh help
@@ -472,9 +350,9 @@ kubectl port-forward -n apps svc/auth-service 50051:50051
 
 1. Verify you're on HomePage (logged in as testuser1)
 2. **Close the app completely** (not just minimize):
-   - Chrome: Close the browser tab
    - Android: Swipe away the app from recents
    - Linux: Close window
+   - iOS: Swipe up and swipe away the app
 3. **Restart the app** (run `flutter run` again or reopen browser)
 
 **Expected Results:**
@@ -584,8 +462,8 @@ You have **three options** for running two simultaneous instances:
 #### Option A: Automated Setup Script (Recommended) 🚀
 
 ```bash
-cd client
-./scripts/test-client.sh two-device chrome  # Or 'linux' for desktop
+cd client-mobile
+./scripts/test-client.sh two-device linux
 ```
 
 This script will:
@@ -593,12 +471,12 @@ This script will:
 - ✅ Check backend services
 - ✅ Setup port-forwarding automatically
 - ✅ Launch Android emulator
-- ✅ Guide you through Chrome or Linux desktop setup
+- ✅ Guide you through Linux desktop setup
 - ✅ Display step-by-step instructions
 
 ---
 
-#### Option B: Manual - Chrome + Android Emulator
+#### Option B: Manual - Linux Desktop + Android Emulator
 
 1. **Launch Android emulator** (use full path on Linux):
 
@@ -612,44 +490,19 @@ This script will:
 
 2. **Wait for emulator to boot** (30-60 seconds)
 
-3. **Run Flutter on Chrome (Device 1 - Alice)**:
-
-   ```bash
-   cd client
-   flutter run -d chrome
-   ```
-
-4. **Run Flutter on Android (Device 2 - Bob)**:
-   ```bash
-   # New terminal window
-   cd client
-   flutter devices  # Find emulator ID (e.g., emulator-5554)
-   flutter run -d emulator-5554
-   ```
-
----
-
-#### Option C: Manual - Linux Desktop + Android Emulator
-
-1. **Launch Android emulator**:
-
-   ```bash
-   $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 &
-   ```
-
-2. **Wait for emulator to boot** (30-60 seconds)
-
 3. **Run Flutter on Linux (Device 1 - Alice)**:
 
    ```bash
-   cd client
+   cd client-mobile
    flutter run -d linux
    ```
 
 4. **Run Flutter on Android (Device 2 - Bob)**:
+
    ```bash
    # New terminal window
-   cd client
+   cd client-mobile
+   flutter devices  # Find emulator ID (e.g., emulator-5554)
    flutter run -d emulator-5554
    ```
 
@@ -1024,17 +877,8 @@ The new unified script `test-client.sh` provides all testing functionality:
 # Run integration tests
 ./scripts/test-client.sh integration
 
-# Setup two-device testing (Chrome + Android)
-./scripts/test-client.sh two-device chrome
-
 # Setup two-device testing (Linux + Android)
 ./scripts/test-client.sh two-device linux
-
-# Start port-forwarding only
-./scripts/test-client.sh port-forward
-
-# Start Envoy proxy for Chrome
-./scripts/test-client.sh envoy
 
 # Verify backend and build
 ./scripts/test-client.sh verify
@@ -1056,54 +900,11 @@ $HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 -no-snapshot -no-
 flutter devices  # Should show: emulator-5554
 
 # Terminal 4: Run Linux client (Device 1 - Alice)
-cd /home/anry/projects/guardyn/guardyn/client
+cd client-mobile
 flutter run -d linux
 
 # Terminal 5: Run Android client (Device 2 - Bob)
-cd /home/anry/projects/guardyn/guardyn/client
-flutter run -d emulator-5554
-```
-
----
-
-### Complete Testing Sequence - Chrome + Android
-
-**Using unified script (Recommended):**
-
-```bash
-# One command does it all
-cd client
-./scripts/test-client.sh two-device chrome
-```
-
-**Or manually:**
-
-```bash
-# Terminal 1: Auth service port-forwarding
-kubectl port-forward -n apps svc/auth-service 50051:50051
-
-# Terminal 2: Messaging service port-forwarding
-kubectl port-forward -n apps svc/messaging-service 50052:50052
-
-# Terminal 3: Start Envoy gRPC-Web proxy (required for Chrome)
-cd client
-./scripts/test-client.sh envoy
-
-# Verify Envoy is running
-lsof -i :8080  # Should show kubectl port-forward to guardyn-envoy
-
-# Terminal 4: Start Android emulator
-$HOME/Android/Sdk/emulator/emulator -avd Medium_Phone_API_36.1 -no-snapshot -no-audio -gpu swiftshader_indirect &
-
-# Wait 30-60 seconds, then verify
-flutter devices
-
-# Terminal 5: Run Chrome client (Device 1 - Alice)
-cd /home/anry/projects/guardyn/guardyn/client
-flutter run -d chrome
-
-# Terminal 6: Run Android client (Device 2 - Bob)
-cd /home/anry/projects/guardyn/guardyn/client
+cd client-mobile
 flutter run -d emulator-5554
 ```
 
@@ -1120,10 +921,6 @@ flutter run -d emulator-5554
 
 # Stop Android emulator
 adb emu kill
-
-# Stop Envoy proxy (if using Chrome)
-docker stop guardyn-envoy
-docker rm guardyn-envoy
 ```
 
 ---
@@ -1177,53 +974,6 @@ grpcurl -plaintext -d '{"access_token":"<TOKEN>","limit":50}' \
 ---
 
 ## Troubleshooting
-
-### "Connection refused" (Chrome only)
-
-Chrome needs Envoy gRPC-Web proxy:
-
-```bash
-# Start Envoy proxy
-cd client
-./scripts/test-client.sh envoy
-
-# Verify it's running
-lsof -i :18080
-```
-
----
-
-### "Unable to start a WebDriver session" (Chrome integration tests)
-
-Chrome integration tests (`flutter drive`) require ChromeDriver:
-
-```bash
-# Check if ChromeDriver is running
-pgrep -f chromedriver
-
-# If not running, start it:
-chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
-
-# Verify it's ready
-sleep 2 && curl -s http://localhost:4444/status | jq -r '.value.ready'
-# Should output: true
-```
-
-**If ChromeDriver is not installed:**
-
-```bash
-cd client
-mkdir -p chromedriver
-cd chromedriver
-
-# Download ChromeDriver matching your Chrome version
-google-chrome --version  # Check version first
-wget https://storage.googleapis.com/chrome-for-testing-public/142.0.7444.175/linux64/chromedriver-linux64.zip
-unzip chromedriver-linux64.zip
-chmod +x chromedriver-linux64/chromedriver
-```
-
----
 
 ### "Connection refused" (Linux/Android)
 
@@ -1410,7 +1160,6 @@ If you encounter issues, please provide:
 
 - [ ] Backend pods are Running (`kubectl get pods -n apps`)
 - [ ] Port-forwarding active on 50051 and 50052 (`lsof -i :50051`)
-- [ ] Envoy running if using Chrome (`docker ps | grep envoy`)
 - [ ] Android emulator booted (`flutter devices`)
 - [ ] Proto files generated (`./scripts/generate_proto.sh`)
 

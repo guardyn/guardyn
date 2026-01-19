@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Cross-platform notification service for message alerts
+///
+/// Supported platforms: Android, iOS, macOS, Linux
+/// Windows support is limited (no flutter_local_notifications support)
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -17,7 +20,6 @@ class NotificationService {
 
   /// Check if notifications are supported on current platform
   bool get _isSupported {
-    if (kIsWeb) return false;
     return Platform.isAndroid ||
         Platform.isIOS ||
         Platform.isMacOS ||

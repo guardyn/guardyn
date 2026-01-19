@@ -4,25 +4,25 @@
 #
 # This unified script provides all testing functionality:
 # 1. Integration tests (automated)
-# 2. Two-device manual testing (Chrome/Linux + Android)
-# 3. Port-forwarding management
-# 4. Envoy proxy management (for Chrome)
-# 5. Backend verification
+# 2. Two-device manual testing (Linux + Android)
+# 3. Backend verification
 #
 # Usage:
 #   ./scripts/test-client.sh [command] [options]
 #
 # Commands:
-#   integration                Run automated integration tests
-#   two-device <chrome|linux>  Setup two-device manual testing
-#   port-forward               Start port-forwarding only
-#   envoy                      Start Envoy proxy for Chrome
-#   verify                     Verify backend and build
-#   help                       Show this help message
+#   integration            Run automated integration tests
+#   two-device <linux>     Setup two-device manual testing
+#   verify                 Verify backend and build
+#   help                   Show this help message
 #
 # Options:
 #   -d DEVICE    Device for integration tests (default: first available)
 #   -v           Verbose output
+#
+# Security Note:
+#   Web platform (Chrome/Firefox) has been removed for security reasons.
+#   All platforms use native gRPC and Rust FFI for cryptography.
 #
 
 set -euo pipefail
@@ -190,69 +190,7 @@ stop_port_forwarding() {
     kill "$MESSAGING_PF_PID" 2>/dev/null || true
   fi
 
-  if [ -n "${ENVOY_PF_PID:-}" ]; then
-    kill "$ENVOY_PF_PID" 2>/dev/null || true
-  fi
-
   cleanup_port_forwards
-}
-
-# ============================================================
-# Envoy Proxy Functions (Chrome only)
-# ============================================================
-
-start_envoy_proxy() {
-  log_header "Starting Envoy gRPC-Web Proxy"
-
-  # Check if Envoy deployment exists
-  if ! kubectl get deployment -n apps guardyn-envoy &> /dev/null; then
-    log_error "Envoy deployment not found in Kubernetes"
-    log_warning "Deploy Envoy first: kubectl apply -k infra/k8s/base/envoy"
-    exit 1
-  fi
-
-  # Check if Envoy pod is running
-  POD_STATUS=$(kubectl get pods -n apps -l app=guardyn-envoy -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
-  if [ "$POD_STATUS" != "Running" ]; then
-    log_error "Envoy pod is not running (status: $POD_STATUS)"
-    log_warning "Check pod status: kubectl get pods -n apps -l app=guardyn-envoy"
-    exit 1
-  fi
-
-  log_success "Envoy pod is running"
-
-  # Check if port 8080 is available
-  if lsof -i :8080 > /dev/null 2>&1; then
-    if pgrep -f "port-forward.*guardyn-envoy.*8080" > /dev/null; then
-      log_success "Envoy port-forward already running"
-      return 0
-    else
-      log_error "Port 8080 is already in use by another process"
-      exit 1
-    fi
-  fi
-
-  log_info "Starting port-forward to Envoy service..."
-
-  # Start port-forward in background
-  kubectl port-forward -n apps svc/guardyn-envoy 8080:8080 > /dev/null 2>&1 &
-  ENVOY_PF_PID=$!
-
-  # Wait for port-forward to start
-  sleep 2
-
-  # Verify port-forward is working
-  if ! lsof -i :8080 > /dev/null 2>&1; then
-    log_error "Envoy port-forward failed to start"
-    kill $ENVOY_PF_PID 2>/dev/null || true
-    exit 1
-  fi
-
-  log_success "Envoy gRPC-Web proxy is ready!"
-  log_success "  Envoy Pod: apps/guardyn-envoy"
-  log_success "  Local access: http://localhost:8080 (PID: $ENVOY_PF_PID)"
-  echo ""
-  log_info "Chrome client will connect to http://localhost:8080"
 }
 
 # ============================================================
@@ -278,7 +216,7 @@ run_integration_tests() {
     # Extract device ID from flutter devices output
     # Format: "Device Name (type) • device-id • platform • details"
     # We need the device-id field (between first and second bullet)
-    DEVICE=$(flutter devices 2>/dev/null | grep -E "emulator|chrome|linux" | head -n 1 | awk -F '•' '{print $2}' | xargs || echo "")
+    DEVICE=$(flutter devices 2>/dev/null | grep -E "emulator|linux" | head -n 1 | awk -F '•' '{print $2}' | xargs || echo "")
     if [ -z "$DEVICE" ]; then
       log_warning "No device specified and none detected"
       log_info "Available devices:"
@@ -357,26 +295,6 @@ setup_two_device_testing() {
     log_success "Port-forwarding already active"
   fi
 
-  # Check for Chrome-specific setup
-  if [[ "$DEVICE1" == "chrome" ]]; then
-    echo ""
-    log_info "Chrome requires Envoy gRPC-Web proxy"
-
-    if ! lsof -i :8080 > /dev/null 2>&1; then
-      read -p "Start Envoy proxy now? (y/n) [y]: " START_ENVOY
-      START_ENVOY=${START_ENVOY:-y}
-
-      if [[ "$START_ENVOY" =~ ^[Yy]$ ]]; then
-        start_envoy_proxy
-      else
-        log_warning "Remember to start Envoy before testing Chrome"
-        log_info "Run: $0 envoy"
-      fi
-    else
-      log_success "Envoy proxy already running on port 8080"
-    fi
-  fi
-
   # Check for Android emulator
   echo ""
   log_info "Checking Android emulator..."
@@ -435,19 +353,11 @@ setup_two_device_testing() {
   # Display instructions
   log_header "Testing Instructions"
 
-  if [[ "$DEVICE1" == "chrome" ]]; then
-    log_success "Device 1 (Alice): Chrome browser"
-    echo ""
-    echo -e "${YELLOW}Terminal 1 - Run Chrome client:${NC}"
-    echo "  cd $CLIENT_DIR"
-    echo "  flutter run -d chrome"
-  else
-    log_success "Device 1 (Alice): Linux desktop"
-    echo ""
-    echo -e "${YELLOW}Terminal 1 - Run Linux client:${NC}"
-    echo "  cd $CLIENT_DIR"
-    echo "  flutter run -d linux"
-  fi
+  log_success "Device 1 (Alice): Linux desktop"
+  echo ""
+  echo -e "${YELLOW}Terminal 1 - Run Linux client:${NC}"
+  echo "  cd $CLIENT_DIR"
+  echo "  flutter run -d linux"
 
   echo ""
   log_success "Device 2 (Bob): Android emulator (${EMULATOR_ID:-emulator-5554})"
@@ -505,28 +415,16 @@ verify_setup() {
     exit 1
   fi
 
-  echo ""
-  log_info "Testing Chrome/Web client build..."
-  if flutter build web > /tmp/flutter-web-build.log 2>&1; then
-    log_success "Chrome/Web build successful"
-  else
-    log_error "Chrome/Web build failed"
-    cat /tmp/flutter-web-build.log
-    exit 1
-  fi
-
   log_header "Verification Complete"
   log_success "All checks passed!"
   echo ""
   log_info "Platform-specific configuration:"
   echo "  • Android Emulator → 10.0.2.2:50051/50052"
   echo "  • Linux Desktop    → localhost:50051/50052"
-  echo "  • Chrome/Web       → localhost:8080 (via Envoy)"
   echo "  • iOS Simulator    → localhost:50051/50052"
   echo ""
   log_info "To test manually:"
   echo "  Linux:   flutter run -d linux"
-  echo "  Chrome:  flutter run -d chrome"
   echo "  Android: flutter run -d emulator-5554"
 }
 
@@ -552,14 +450,15 @@ main() {
     two-device)
       if [ -z "${2:-}" ]; then
         log_error "Missing device type argument"
-        log_info "Usage: $0 two-device <chrome|linux>"
+        log_info "Usage: $0 two-device linux"
         exit 1
       fi
 
       DEVICE1=$2
-      if [[ "$DEVICE1" != "chrome" ]] && [[ "$DEVICE1" != "linux" ]]; then
+      if [[ "$DEVICE1" != "linux" ]]; then
         log_error "Invalid device type: $DEVICE1"
-        log_info "Use: chrome or linux"
+        log_info "Use: linux"
+        log_info "Note: Web platform has been removed for security reasons"
         exit 1
       fi
 
@@ -580,18 +479,6 @@ main() {
       while true; do sleep 1; done
       ;;
 
-    envoy)
-      check_kubectl
-      check_cluster
-      start_envoy_proxy
-      echo ""
-      log_info "Press Ctrl+C to stop"
-
-      # Keep script running
-      trap stop_port_forwarding EXIT INT TERM
-      while true; do sleep 1; done
-      ;;
-
     verify)
       verify_setup
       ;;
@@ -605,9 +492,8 @@ main() {
       echo ""
       log_info "Available commands:"
       echo "  integration      Run automated integration tests"
-      echo "  two-device       Setup two-device manual testing"
+      echo "  two-device       Setup two-device manual testing (Linux + Android)"
       echo "  port-forward     Start port-forwarding only"
-      echo "  envoy            Start Envoy proxy for Chrome"
       echo "  verify           Verify backend and build"
       echo "  help             Show help message"
       echo ""

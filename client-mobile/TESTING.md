@@ -22,20 +22,11 @@ For complete testing documentation, see:
 # Integration tests (automated)
 ./scripts/test-client.sh integration
 
-# Two-device manual testing (Chrome + Android)
-./scripts/test-client.sh two-device chrome
-
 # Two-device manual testing (Linux + Android)
 ./scripts/test-client.sh two-device linux
 
 # Verify setup and build
 ./scripts/test-client.sh verify
-
-# Start port-forwarding only
-./scripts/test-client.sh port-forward
-
-# Start Envoy proxy for Chrome
-./scripts/test-client.sh envoy
 
 # Show all commands
 ./scripts/test-client.sh help
@@ -44,18 +35,14 @@ For complete testing documentation, see:
 ### Manual Testing
 
 ```bash
-# Prerequisites
-kubectl port-forward -n apps svc/auth-service 50051:50051 &
-kubectl port-forward -n apps svc/messaging-service 50052:50052 &
-
-# Chrome only: Start Envoy proxy
-./scripts/test-client.sh envoy
+# Prerequisites (Docker Compose backend)
+docker compose -f ../docker-compose.dev.yml up -d
 
 # Run Flutter Mobile
-flutter run -d chrome           # Chrome (Web)
 flutter run -d emulator-5554    # Android emulator
+flutter run -d linux            # Linux desktop
 
-# For Desktop (Windows/macOS/Linux) use Tauri:
+# For Desktop clients (Windows/macOS/Linux) use Tauri:
 cd ../client-desktop && npm run tauri dev
 ```
 

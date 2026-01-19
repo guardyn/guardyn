@@ -66,24 +66,24 @@
 │  │  └── Sealed Sender                │                                      │
 │  └───────────────────────────────────┘                                      │
 │                  │                                                          │
-│         gRPC-Web │ gRPC (native)                                            │
+│              gRPC (native on all platforms)                                 │
 │                  ▼                                                          │
-│  ┌──────────────┐     ┌──────────────────────────────────────┐             │
-│  │    Envoy     │────►│  Backend Services (Rust)              │             │
-│  │   Proxy      │     │  ├── Auth Service (+ Sealed Sender)   │             │
-│  └──────────────┘     │  ├── Messaging Service                │             │
-│                       │  ├── Presence Service                 │             │
-│                       │  ├── Media Service                    │             │
-│                       │  ├── Notification Service (FCM/APNs)  │             │
-│                       │  └── Call Service (WebRTC SFU)        │             │
-│                       └──────────────┬───────────────────────┘             │
-│                                      │                                      │
-│         ┌────────────────────────────┼────────────────────────┐            │
-│         ▼                            ▼                        ▼            │
-│  ┌──────────────┐          ┌──────────────┐          ┌──────────────┐      │
-│  │    TiKV      │          │  ScyllaDB    │          │   Redpanda   │      │
-│  │              │          │              │          │(Kafka-compat)│      │
-│  └──────────────┘          └──────────────┘          └──────────────┘      │
+│         ┌──────────────────────────────────────┐                            │
+│         │  Backend Services (Rust)              │                            │
+│         │  ├── Auth Service (+ Sealed Sender)   │                            │
+│         │  ├── Messaging Service                │                            │
+│         │  ├── Presence Service                 │                            │
+│         │  ├── Media Service                    │                            │
+│         │  ├── Notification Service (FCM/APNs)  │                            │
+│         │  └── Call Service (WebRTC SFU)        │                            │
+│         └──────────────┬───────────────────────┘                            │
+│                        │                                                     │
+│         ┌──────────────┼─────────────────────────┐                          │
+│         ▼              ▼                         ▼                          │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐                    │
+│  │    TiKV      │   │  ScyllaDB    │   │   Redpanda   │                    │
+│  │              │   │              │   │(Kafka-compat)│                    │
+│  └──────────────┘   └──────────────┘   └──────────────┘                    │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -114,12 +114,16 @@ Guardyn aims to provide enterprise-grade secure communication with the same priv
 ## 📱 Cross-Platform Applications
 
 <p align="center">
-  <img src="docs/images/flutter_apps.png" alt="Guardyn Apps - Android, iOS, Linux, macOS, Web" width="100%" style="max-width: 900px; border-radius: 12px;"/>
+  <img src="docs/images/flutter_apps.png" alt="Guardyn Apps - Android, iOS, Linux, macOS" width="100%" style="max-width: 900px; border-radius: 12px;"/>
 </p>
 
 <p align="center">
-  <em>Guardyn running on Android, iOS, Linux, macOS, and Web — same encryption everywhere</em>
+  <em>Guardyn running on Android, iOS, Linux, macOS — same encryption everywhere via native Rust FFI</em>
 </p>
+
+> **Security Note**: Web platform (Chrome/Firefox) has been intentionally removed.
+> All platforms use native Rust FFI via guardyn-crypto library for post-quantum cryptography.
+> This eliminates JavaScript crypto vulnerabilities and ensures consistent security across all clients.
 
 ---
 
@@ -313,16 +317,15 @@ Modern messaging platforms face a fundamental tension:
 
 - Rust services (memory-safe, no buffer overflows)
 - gRPC APIs (efficient binary protocol)
-- Envoy proxy (gRPC-Web translation for browsers)
 - TiKV distributed KV store (ACID transactions)
 - ScyllaDB for message storage (high throughput)
 - Redpanda (Kafka-compatible event streaming)
 
 **Client Communication:**
 
-- Native gRPC for mobile/desktop (direct TCP connections)
-- gRPC-Web for browsers (via Envoy proxy on port 8080)
-- Automatic platform detection (transparent to developers)
+- Native gRPC for all platforms (direct TCP connections)
+- Platform-specific host resolution (Android: 10.0.2.2, Desktop: localhost)
+- No browser/web support (security decision - no JavaScript crypto)
 
 **Deployment (Production-Ready):**
 
@@ -377,7 +380,6 @@ Modern messaging platforms face a fundamental tension:
 - **Media Service**: File uploads, encryption, thumbnails
 - **Call Service**: WebRTC signaling, SFrame encryption for 1-on-1 voice/video
 - **Notification Service**: FCM (Android) and APNs (iOS) push notifications
-- **Envoy Proxy**: gRPC-Web translation for browser clients
 - **Cryptography**: PQXDH, Double Ratchet, OpenMLS, SFrame, Sealed Sender (fully implemented)
 - **Infrastructure**: Kubernetes, TiKV, ScyllaDB, Redpanda (operational)
 - **Testing**: E2E integration tests, k6 performance benchmarks, penetration testing
