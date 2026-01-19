@@ -5,3 +5,4 @@
  */
 
 export * from './messageStore';
+export * from './conversationStore';
