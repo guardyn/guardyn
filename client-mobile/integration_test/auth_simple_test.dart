@@ -7,6 +7,7 @@
 /// ```bash
 /// flutter test integration_test/auth_simple_test.dart -d emulator-5554
 /// ```
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';

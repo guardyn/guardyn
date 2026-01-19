@@ -39,7 +39,7 @@ void main() {
     ) async {
       print('\n${'=' * 60}');
       print('🔐 AUTH INTEGRATION TEST - Android');
-      print('${'=' * 60}');
+      print('=' * 60);
       print('📋 Test user: $testUsername');
       print('📱 Device: Android emulator/device');
       print('${'=' * 60}\n');
@@ -231,7 +231,7 @@ void main() {
       // ═══════════════════════════════════════════════════════════════
       print('\n${'=' * 60}');
       print('✅ ALL AUTH TESTS PASSED');
-      print('${'=' * 60}');
+      print('=' * 60);
       print('   ✓ Registration: OK');
       print('   ✓ Logout: OK');
       print('   ✓ Login: OK');
