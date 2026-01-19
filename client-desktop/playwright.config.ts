@@ -14,6 +14,7 @@ export default defineConfig({
   reporter: [['html', { outputFolder: 'e2e-report' }]],
 
   use: {
+    baseURL: 'http://localhost:1420',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -21,13 +22,9 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'tauri',
+      name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Tauri uses WebView, similar to Chrome
-        launchOptions: {
-          // Custom launch options for Tauri
-        },
       },
     },
   ],

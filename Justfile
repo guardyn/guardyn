@@ -447,3 +447,44 @@ test-auth-android-full:
 test-auth-android-validation:
     @echo "[test] Running auth validation tests on Android..."
     client-mobile/scripts/run-auth-test-android.sh --validation
+
+# =============================================================================
+# Desktop Client Tests
+# =============================================================================
+
+# Run Desktop unit tests (Vitest)
+test-desktop-unit:
+    @echo "[test] Running Desktop unit tests..."
+    cd client-desktop && npm run test
+
+# Run Desktop auth unit tests only
+test-desktop-auth-unit:
+    @echo "[test] Running Desktop auth unit tests..."
+    cd client-desktop && npm run test -- src/components/auth/ src/pages/Login.test.tsx src/pages/Register.test.tsx
+
+# Run Desktop E2E tests (Playwright - auto-starts dev server, requires backend)
+test-desktop-e2e:
+    @echo "[test] Running Desktop E2E tests..."
+    @echo "[test] Make sure backend is running: just dc-up"
+    client-desktop/scripts/run-auth-tests.sh
+
+# Run Desktop E2E auth tests in headed mode (visible browser)
+test-desktop-e2e-headed:
+    @echo "[test] Running Desktop E2E tests (headed mode)..."
+    @echo "[test] Make sure backend is running: just dc-up"
+    client-desktop/scripts/run-auth-tests.sh --headed
+
+# Run Desktop E2E tests with interactive UI
+test-desktop-e2e-ui:
+    @echo "[test] Running Desktop E2E tests with Playwright UI..."
+    @echo "[test] Make sure backend is running: just dc-up"
+    client-desktop/scripts/run-auth-tests.sh --ui
+
+# Run all Desktop tests (unit + E2E)
+test-desktop-all:
+    @echo "[test] Running all Desktop tests..."
+    @echo "==> Unit tests"
+    cd client-desktop && npm run test
+    @echo ""
+    @echo "==> E2E tests"
+    client-desktop/scripts/run-auth-tests.sh

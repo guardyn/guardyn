@@ -255,8 +255,8 @@ const Register: Component<RegisterPageProps> = (props) => {
 
         {/* Submit button */}
         <div class="pt-2">
-          <SubmitButton
-            loading={loading()}
+          <SubmitButton 
+            loading={loading()} 
             disabled={!isFormValid() && Object.keys(touched()).length > 0}
             data-testid="register-button"
           >
