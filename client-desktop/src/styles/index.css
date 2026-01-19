@@ -447,12 +447,53 @@ html {
   transform: translateY(0);
 }
 
+/* Neumorphic icon button (for Attachment, Emoji, etc.) */
+.neumorphic-icon-btn {
+  @apply p-3 rounded-lg transition-all duration-200;
+  background: #f0f0f3;
+  box-shadow: 3px 3px 6px #d1d9e6, -3px -3px 6px #ffffff;
+}
+
+:is(.dark .neumorphic-icon-btn) {
+  background: #1a1a1a;
+  box-shadow: 3px 3px 6px #0d0d0d, -3px -3px 6px #2a2a2a;
+}
+
+.neumorphic-icon-btn:hover {
+  @apply text-guardyn-600 dark:text-guardyn-400;
+  box-shadow: 2px 2px 4px #d1d9e6, -2px -2px 4px #ffffff;
+  transform: translateY(-1px);
+}
+
+:is(.dark .neumorphic-icon-btn):hover {
+  box-shadow: 2px 2px 4px #0d0d0d, -2px -2px 4px #2a2a2a;
+}
+
+.neumorphic-icon-btn:active {
+  box-shadow: inset 2px 2px 4px #d1d9e6, inset -2px -2px 4px #ffffff;
+  transform: translateY(0);
+}
+
+:is(.dark .neumorphic-icon-btn):active {
+  box-shadow: inset 2px 2px 4px #0d0d0d, inset -2px -2px 4px #2a2a2a;
+}
+
+/* Focus rings for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-guardyn-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900;
+}
+
 /* ============================================
-   Message bubble styles
+   Message bubble styles with Glassmorphism
    ============================================ */
 .message-bubble {
   @apply rounded-2xl px-4 py-2 max-w-xs md:max-w-md lg:max-w-lg;
   animation: messageIn 0.3s ease-out;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-bubble:hover {
+  transform: translateY(-1px);
 }
 
 @keyframes messageIn {
@@ -467,15 +508,51 @@ html {
 }
 
 .message-bubble-sent {
-  @apply bg-guardyn-600 text-white rounded-br-none;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  @apply text-white rounded-br-none;
+  /* Glassmorphism effect for sent messages */
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.95));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 4px 16px rgba(34, 197, 94, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .message-bubble-received {
-  @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  @apply text-gray-900 dark:text-white rounded-bl-none;
+  /* Glassmorphism effect for received messages */
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 :is(.dark .message-bubble-received) {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: rgba(55, 65, 81, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
+
+/* Message bubble hover effect */
+.message-bubble-sent:hover {
+  box-shadow: 
+    0 6px 24px rgba(34, 197, 94, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.message-bubble-received:hover {
+  box-shadow: 
+    0 6px 24px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+:is(.dark .message-bubble-received):hover {
+  box-shadow: 
+    0 6px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);

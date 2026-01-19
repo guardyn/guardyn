@@ -150,12 +150,12 @@ export const MessageInput: Component<MessageInputProps> = (props) => {
       </Show>
 
       <div class="flex items-end gap-2">
-        {/* Attachment button */}
+        {/* Attachment button with neumorphic style */}
         <button
           type="button"
           disabled={props.disabled}
           aria-label="Add attachment"
-          class="p-3 text-gray-500 dark:text-gray-400 hover:text-guardyn-600 dark:hover:text-guardyn-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-50"
+          class="neumorphic-icon-btn focus-ring text-gray-500 dark:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <AttachmentIcon />
         </button>
@@ -169,17 +169,17 @@ export const MessageInput: Component<MessageInputProps> = (props) => {
             placeholder={props.placeholder ?? 'Type a message...'}
             disabled={props.disabled}
             rows={1}
-            class="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-guardyn-500 focus:border-transparent resize-none disabled:opacity-50 transition"
+            class="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-guardyn-500 focus:ring-offset-1 focus:border-transparent resize-none disabled:opacity-50 transition-all"
             style={{ "max-height": "120px" }}
           />
           
-          {/* Emoji button */}
+          {/* Emoji button with hover effect */}
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker())}
             disabled={props.disabled}
             aria-label="Add emoji"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-guardyn-600 dark:hover:text-guardyn-500 transition disabled:opacity-50"
+            class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:text-guardyn-600 dark:hover:text-guardyn-500 hover:bg-gray-200 dark:hover:bg-gray-600 focus-ring transition-all disabled:opacity-50"
           >
             <EmojiIcon />
           </button>
@@ -191,7 +191,7 @@ export const MessageInput: Component<MessageInputProps> = (props) => {
           disabled={!content().trim() || props.disabled}
           aria-label="Send message"
           class={`
-            p-3 rounded-xl text-white
+            p-3 rounded-xl text-white focus-ring
             transition-all duration-200
             ${content().trim() && !props.disabled
               ? 'neumorphic-btn-primary cursor-pointer'
