@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'crypto_exceptions.dart';
+import 'crypto_primitives.dart';
 import 'double_ratchet.dart';
 import 'x3dh.dart';
 
@@ -43,9 +44,24 @@ class CryptoService {
     : _storage = storage ?? const FlutterSecureStorage();
 
   /// Initialize the crypto service
+  ///
+  /// This initializes the underlying CryptoPrimitives (Rust FFI on mobile/desktop,
+  /// Dart on web) and loads any previously saved X3DH state from secure storage.
   Future<void> initialize() async {
     // ignore: avoid_print
     print('🔐 CryptoService.initialize() called');
+
+    // Initialize CryptoPrimitives (Rust FFI) FIRST before any crypto operations
+    if (!CryptoPrimitives.isInitialized) {
+      debugPrint('🔐 CryptoService: initializing CryptoPrimitives...');
+      await CryptoPrimitives.initialize();
+      debugPrint(
+        '🔐 CryptoService: CryptoPrimitives initialized, '
+        'native=${CryptoPrimitives.isNativeAvailable}, '
+        'pq=${CryptoPrimitives.isPostQuantumAvailable}',
+      );
+    }
+
     await _loadX3DHState();
     // ignore: avoid_print
     print(
