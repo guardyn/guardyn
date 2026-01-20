@@ -1,5 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/features/auth/domain/entities/user.dart';
 import 'package:guardyn_client/features/auth/domain/repositories/auth_repository.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
@@ -15,6 +16,7 @@ class MockRegisterUser extends Mock implements RegisterUser {}
 class MockLoginUser extends Mock implements LoginUser {}
 class MockLogoutUser extends Mock implements LogoutUser {}
 class MockAuthRepository extends Mock implements AuthRepository {}
+class MockCryptoService extends Mock implements CryptoService {}
 
 void main() {
   late AuthBloc authBloc;
@@ -22,18 +24,25 @@ void main() {
   late MockLoginUser mockLoginUser;
   late MockLogoutUser mockLogoutUser;
   late MockAuthRepository mockAuthRepository;
+  late MockCryptoService mockCryptoService;
 
   setUp(() {
     mockRegisterUser = MockRegisterUser();
     mockLoginUser = MockLoginUser();
     mockLogoutUser = MockLogoutUser();
     mockAuthRepository = MockAuthRepository();
+    mockCryptoService = MockCryptoService();
+    
+    // Setup default mock behavior for crypto service
+    when(() => mockCryptoService.replenishOneTimePreKeysInBackground())
+        .thenAnswer((_) async => []);
     
     authBloc = AuthBloc(
       registerUser: mockRegisterUser,
       loginUser: mockLoginUser,
       logoutUser: mockLogoutUser,
       authRepository: mockAuthRepository,
+      cryptoService: mockCryptoService,
     );
   });
 

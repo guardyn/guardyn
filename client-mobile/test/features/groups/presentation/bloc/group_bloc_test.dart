@@ -5,8 +5,10 @@ import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/features/groups/domain/entities/group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
@@ -19,6 +21,8 @@ class MockCreateGroup extends Mock implements CreateGroup {}
 
 class MockGetGroups extends Mock implements GetGroups {}
 
+class MockGetGroupById extends Mock implements GetGroupById {}
+
 class MockSendGroupMessage extends Mock implements SendGroupMessage {}
 
 class MockGetGroupMessages extends Mock implements GetGroupMessages {}
@@ -26,6 +30,8 @@ class MockGetGroupMessages extends Mock implements GetGroupMessages {}
 class MockAddGroupMember extends Mock implements AddGroupMember {}
 
 class MockRemoveGroupMember extends Mock implements RemoveGroupMember {}
+
+class MockLeaveGroup extends Mock implements LeaveGroup {}
 
 // Fake classes for argument matchers
 class FakeCreateGroupParams extends Fake implements CreateGroupParams {}
@@ -42,10 +48,12 @@ void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
   late MockGetGroups mockGetGroups;
+  late MockGetGroupById mockGetGroupById;
   late MockSendGroupMessage mockSendGroupMessage;
   late MockGetGroupMessages mockGetGroupMessages;
   late MockAddGroupMember mockAddGroupMember;
   late MockRemoveGroupMember mockRemoveGroupMember;
+  late MockLeaveGroup mockLeaveGroup;
 
   // Test data
   const tGroupId = 'group-001';
@@ -96,18 +104,22 @@ void main() {
   setUp(() {
     mockCreateGroup = MockCreateGroup();
     mockGetGroups = MockGetGroups();
+    mockGetGroupById = MockGetGroupById();
     mockSendGroupMessage = MockSendGroupMessage();
     mockGetGroupMessages = MockGetGroupMessages();
     mockAddGroupMember = MockAddGroupMember();
     mockRemoveGroupMember = MockRemoveGroupMember();
+    mockLeaveGroup = MockLeaveGroup();
 
     bloc = GroupBloc(
       createGroup: mockCreateGroup,
       getGroups: mockGetGroups,
+      getGroupById: mockGetGroupById,
       sendGroupMessage: mockSendGroupMessage,
       getGroupMessages: mockGetGroupMessages,
       addGroupMember: mockAddGroupMember,
       removeGroupMember: mockRemoveGroupMember,
+      leaveGroup: mockLeaveGroup,
     );
   });
 

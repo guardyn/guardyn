@@ -3,6 +3,9 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/features/messaging/domain/entities/message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
@@ -21,6 +24,12 @@ class MockReceiveMessages extends Mock implements ReceiveMessages {}
 
 class MockMarkAsRead extends Mock implements MarkAsRead {}
 
+class MockDecryptMessage extends Mock implements DecryptMessage {}
+
+class MockClearChat extends Mock implements ClearChat {}
+
+class MockDeleteMessage extends Mock implements DeleteMessage {}
+
 // Fake classes for argument matchers
 class FakeSendMessageParams extends Fake implements SendMessageParams {}
 
@@ -28,12 +37,17 @@ class FakeGetMessagesParams extends Fake implements GetMessagesParams {}
 
 class FakeMarkAsReadParams extends Fake implements MarkAsReadParams {}
 
+class FakeDecryptMessageParams extends Fake implements DecryptMessageParams {}
+
 void main() {
   late MessageBloc bloc;
   late MockSendMessage mockSendMessage;
   late MockGetMessages mockGetMessages;
   late MockReceiveMessages mockReceiveMessages;
   late MockMarkAsRead mockMarkAsRead;
+  late MockDecryptMessage mockDecryptMessage;
+  late MockClearChat mockClearChat;
+  late MockDeleteMessage mockDeleteMessage;
 
   // Test data
   const tConversationUserId = 'user-456';
@@ -76,6 +90,7 @@ void main() {
     registerFallbackValue(FakeSendMessageParams());
     registerFallbackValue(FakeGetMessagesParams());
     registerFallbackValue(FakeMarkAsReadParams());
+    registerFallbackValue(FakeDecryptMessageParams());
   });
 
   setUp(() {
@@ -83,12 +98,24 @@ void main() {
     mockGetMessages = MockGetMessages();
     mockReceiveMessages = MockReceiveMessages();
     mockMarkAsRead = MockMarkAsRead();
+    mockDecryptMessage = MockDecryptMessage();
+    mockClearChat = MockClearChat();
+    mockDeleteMessage = MockDeleteMessage();
+    
+    // Setup default mock behavior for decryptMessage
+    when(() => mockDecryptMessage.call(any()))
+        .thenAnswer((_) async => const Right('decrypted message content'));
+    mockClearChat = MockClearChat();
+    mockDeleteMessage = MockDeleteMessage();
 
     bloc = MessageBloc(
       sendMessage: mockSendMessage,
       getMessages: mockGetMessages,
       receiveMessages: mockReceiveMessages,
       markAsRead: mockMarkAsRead,
+      decryptMessage: mockDecryptMessage,
+      clearChat: mockClearChat,
+      deleteMessage: mockDeleteMessage,
     );
   });
 
