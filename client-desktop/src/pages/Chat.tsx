@@ -2,18 +2,22 @@ import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { destroyWebSocket, getWebSocket, initWebSocket, WsMessageType, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
-import { ReactionMenu } from '../components/chat';
+import { QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
     addMessage,
     addTypingUser,
+    clearReplyingTo,
     getActiveMessages,
+    getReplyingTo,
     getTypingUsers,
     removeTypingUser,
     setActiveConversation,
+    setReplyingTo,
     toggleReaction,
     deleteMessage as deleteMessageFromStore,
     type Message as StoreMessage,
+    type ReplyToMessage,
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
 
@@ -44,6 +48,7 @@ const Chat: Component<ChatPageProps> = () => {
   // Get messages from store for active conversation
   const messages = () => getActiveMessages();
   const typingUsers = () => getTypingUsers();
+  const replyingTo = () => getReplyingTo();
 
   onMount(async () => {
     try {
@@ -140,17 +145,35 @@ const Chat: Component<ChatPageProps> = () => {
     const convId = selectedConversation();
     if (!content || !convId) return;
 
-    // Create optimistic message
+    // Get reply context if replying
+    const replyContext = replyingTo();
+    
+    // Create optimistic message with optional replyTo
     const messageId = crypto.randomUUID();
-    addMessage({
+    const messageData = {
       id: messageId,
       conversationId: convId,
       senderId: 'self',
       senderName: 'You',
       content,
       timestamp: new Date(),
-      status: 'sending',
-    });
+      status: 'sending' as const,
+      ...(replyContext && {
+        replyTo: {
+          id: replyContext.id,
+          senderId: replyContext.senderId,
+          senderName: replyContext.senderName,
+          preview: replyContext.preview,
+        },
+      }),
+    };
+    
+    addMessage(messageData);
+    
+    // Clear reply state
+    if (replyContext) {
+      clearReplyingTo();
+    }
     
     setNewMessage('');
 
@@ -235,6 +258,28 @@ const Chat: Component<ChatPageProps> = () => {
       } catch (err) {
         console.error('Failed to delete message:', err);
       }
+    }
+  };
+
+  // Handle reply to message
+  const handleReply = () => {
+    const convId = selectedConversation();
+    const msgId = reactionMenu().messageId;
+    if (convId && msgId) {
+      setReplyingTo(convId, msgId);
+    }
+  };
+
+  // Scroll to a specific message
+  const scrollToMessage = (messageId: string) => {
+    const element = document.getElementById(`message-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Highlight the message briefly
+      element.classList.add('ring-2', 'ring-guardyn-500');
+      setTimeout(() => {
+        element.classList.remove('ring-2', 'ring-guardyn-500');
+      }, 2000);
     }
   };
 
@@ -325,7 +370,8 @@ const Chat: Component<ChatPageProps> = () => {
             <For each={messages()}>
               {(message) => (
                 <div 
-                  class={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
+                  id={`message-${message.id}`}
+                  class={`flex ${message.isOwn ? 'justify-end' : 'justify-start'} transition-all duration-300`}
                   onContextMenu={(e) => handleMessageContextMenu(e, message)}
                 >
                   <div class="max-w-[70%]">
@@ -334,6 +380,17 @@ const Chat: Component<ChatPageProps> = () => {
                         message.isOwn ? 'message-bubble-sent' : 'message-bubble-received'
                       } cursor-pointer transition-transform hover:scale-[1.01]`}
                     >
+                      {/* Quoted message (reply) */}
+                      <Show when={message.replyTo}>
+                        <QuotedMessage
+                          senderName={message.replyTo!.senderName}
+                          preview={message.replyTo!.preview}
+                          isOwnMessage={message.replyTo!.senderId === 'self'}
+                          onClick={() => scrollToMessage(message.replyTo!.id)}
+                          variant="bubble"
+                        />
+                      </Show>
+                      
                       <Show when={!message.isOwn}>
                         <p class="text-xs font-medium text-guardyn-600 dark:text-guardyn-400 mb-1">
                           {message.senderName}
@@ -399,15 +456,29 @@ const Chat: Component<ChatPageProps> = () => {
             messageId={reactionMenu().messageId}
             isOwnMessage={reactionMenu().isOwnMessage}
             onReaction={handleReaction}
+            onReply={handleReply}
             onCopy={handleCopy}
             onDelete={reactionMenu().isOwnMessage ? handleDelete : undefined}
             onClose={closeReactionMenu}
           />
 
           {/* Message input */}
-          <form onSubmit={sendMessage} class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
-            <div class="flex space-x-2">
-              <input
+          <div class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
+            {/* Reply composer preview */}
+            <Show when={replyingTo()}>
+              <div class="px-4 pt-3">
+                <QuotedMessage
+                  senderName={replyingTo()!.senderName}
+                  preview={replyingTo()!.preview}
+                  onDismiss={clearReplyingTo}
+                  variant="input"
+                />
+              </div>
+            </Show>
+            
+            <form onSubmit={sendMessage} class="p-4">
+              <div class="flex space-x-2">
+                <input
                 type="text"
                 value={newMessage()}
                 onInput={(e) => {
@@ -429,6 +500,7 @@ const Chat: Component<ChatPageProps> = () => {
               </button>
             </div>
           </form>
+          </div>
         </Show>
       </div>
     </div>

@@ -34,6 +34,18 @@ export interface Message {
   reactions?: { emoji: string; count: number; hasReacted: boolean }[];
   /** Optional attachment metadata */
   attachments?: MessageAttachment[];
+  /** Reply to another message */
+  replyTo?: ReplyToMessage;
+}
+
+/** Quoted message metadata for replies */
+export interface ReplyToMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  /** Truncated preview of the original message */
+  preview: string;
 }
 
 export interface MessageAttachment {
@@ -85,6 +97,8 @@ export interface MessageStoreState {
   isLoading: boolean;
   /** Global error message */
   error: string | null;
+  /** Message being replied to (for input UI) */
+  replyingTo: ReplyToMessage | null;
 }
 
 /** Maximum retry attempts for failed messages */
@@ -103,6 +117,7 @@ const createInitialState = (): MessageStoreState => ({
   currentUserId: 'self', // Will be set by auth
   isLoading: false,
   error: null,
+  replyingTo: null,
 });
 
 const createInitialConversationState = (): ConversationState => ({
@@ -710,6 +725,93 @@ export function getMessageReactions(
 ): MessageReaction[] {
   const message = getMessage(conversationId, messageId);
   return message?.reactions ?? [];
+}
+
+// -----------------------------------------------------------------------------
+// Reply/Quote
+// -----------------------------------------------------------------------------
+
+/**
+ * Set a message to reply to
+ */
+export function setReplyingTo(
+  conversationId: string,
+  messageId: string
+): void {
+  const message = getMessage(conversationId, messageId);
+  if (!message) return;
+
+  const preview = message.content.length > 100 
+    ? message.content.substring(0, 100) + '...'
+    : message.content;
+
+  setState('replyingTo', {
+    id: message.id,
+    senderId: message.senderId,
+    senderName: message.senderName,
+    content: message.content,
+    preview,
+  });
+}
+
+/**
+ * Clear the reply-to message
+ */
+export function clearReplyingTo(): void {
+  setState('replyingTo', null);
+}
+
+/**
+ * Get the current message being replied to
+ */
+export function getReplyingTo(): ReplyToMessage | null {
+  return state.replyingTo;
+}
+
+/**
+ * Send a message with reply reference
+ * This is a helper that creates the message with replyTo set
+ */
+export function addMessageWithReply(
+  message: Omit<Message, 'isOwn'>,
+  replyTo: ReplyToMessage | null
+): void {
+  const { conversationId } = message;
+  ensureConversation(conversationId);
+
+  const isOwn = message.senderId === state.currentUserId;
+
+  setState(
+    'conversations',
+    conversationId,
+    produce((conv: ConversationState) => {
+      // Check for duplicate
+      const isDuplicate = conv.messages.some(m => 
+        m.id === message.id || 
+        (message.clientMessageId && m.clientMessageId === message.clientMessageId)
+      );
+      if (isDuplicate) return;
+      
+      conv.messages.push({
+        ...message,
+        isOwn,
+        replyTo: replyTo ?? undefined,
+      });
+
+      // Sort by timestamp
+      conv.messages.sort((a, b) => a.timestamp - b.timestamp);
+
+      // Update unread count if not active and not own message
+      if (state.activeConversationId !== conversationId && !isOwn) {
+        conv.unreadCount++;
+      }
+    })
+  );
+
+  // Clear reply after sending
+  if (isOwn) {
+    clearReplyingTo();
+  }
 }
 
 // =============================================================================
