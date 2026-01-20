@@ -1,17 +1,26 @@
+/// Double Ratchet Protocol Tests
+///
+/// Tests for the Double Ratchet algorithm implementation.
+/// Note: Most tests require native crypto library (FFI) and will be skipped
+/// in headless flutter test. Run integration tests for full coverage.
+library;
+
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/crypto_exceptions.dart';
-import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
 import 'package:guardyn_client/core/crypto/double_ratchet.dart';
+
+import 'crypto_test_helper.dart';
 
 void main() {
   setUpAll(() async {
-    await CryptoPrimitives.initialize();
+    await initializeCryptoForTests();
   });
 
-  group('X25519KeyPair', () {
+  // This group requires native crypto for X25519KeyPair.generate()
+  nativeCryptoGroup('X25519KeyPair', () {
     test('generate creates valid key pair', () async {
       final keyPair = await X25519KeyPair.generate();
 
@@ -42,7 +51,8 @@ void main() {
     });
   });
 
-  group('MessageHeader', () {
+  // This group requires native crypto for X25519KeyPair.generate()
+  nativeCryptoGroup('MessageHeader', () {
     test('serialization roundtrip', () async {
       final keyPair = await X25519KeyPair.generate();
       final header = MessageHeader(
@@ -67,7 +77,8 @@ void main() {
     });
   });
 
-  group('EncryptedMessage', () {
+  // This group requires native crypto for X25519KeyPair.generate()
+  nativeCryptoGroup('EncryptedMessage', () {
     test('serialization roundtrip', () async {
       final keyPair = await X25519KeyPair.generate();
       final header = MessageHeader(
@@ -120,7 +131,8 @@ void main() {
     });
   });
 
-  group('DoubleRatchet', () {
+  // This group requires native crypto for key generation and encryption
+  nativeCryptoGroup('DoubleRatchet', () {
     late Uint8List sharedSecret;
     late Uint8List bobPublicKey;
 

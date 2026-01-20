@@ -8,6 +8,10 @@ void main() {
   const tGroupId = 'group-001';
   const tUserId = 'user-123';
 
+  // Use current date for time display tests
+  final now = DateTime.now();
+  final todayTimestamp = DateTime(now.year, now.month, now.day, 10, 30);
+
   final tSentMessage = GroupMessage(
     messageId: 'msg-001',
     groupId: tGroupId,
@@ -16,8 +20,8 @@ void main() {
     senderUsername: 'alice',
     messageType: GroupMessageType.text,
     textContent: 'Hello group!',
-    clientTimestamp: DateTime(2025, 11, 29, 10, 0),
-    serverTimestamp: DateTime(2025, 11, 29, 10, 0),
+    clientTimestamp: todayTimestamp,
+    serverTimestamp: todayTimestamp,
     currentUserId: tUserId, // Same as sender - message was sent by me
   );
 
@@ -29,8 +33,8 @@ void main() {
     senderUsername: 'bob',
     messageType: GroupMessageType.text,
     textContent: 'Hi everyone!',
-    clientTimestamp: DateTime(2025, 11, 29, 10, 1),
-    serverTimestamp: DateTime(2025, 11, 29, 10, 1),
+    clientTimestamp: todayTimestamp,
+    serverTimestamp: todayTimestamp,
     currentUserId: tUserId, // Different from sender - message was received
   );
 

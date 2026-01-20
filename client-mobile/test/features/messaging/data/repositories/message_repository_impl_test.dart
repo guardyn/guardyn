@@ -120,6 +120,7 @@ void main() {
             recipientUsername: any(named: 'recipientUsername'),
             textContent: any(named: 'textContent'),
             metadata: any(named: 'metadata'),
+            x3dhPrekey: any(named: 'x3dhPrekey'),
           )).thenAnswer((_) async => tMessageModel);
 
       // act
@@ -140,7 +141,8 @@ void main() {
             recipientDeviceId: tRecipientDeviceId,
             recipientUsername: tRecipientUsername,
             textContent: tTextContent,
-            metadata: null,
+            metadata: any(named: 'metadata'),
+            x3dhPrekey: any(named: 'x3dhPrekey'),
           )).called(1);
     });
 

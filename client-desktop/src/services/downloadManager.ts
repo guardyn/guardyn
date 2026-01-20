@@ -7,8 +7,8 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
-import { createStore } from 'solid-js/store';
 import { createSignal } from 'solid-js';
+import { createStore } from 'solid-js/store';
 
 // ============================================================================
 // Types

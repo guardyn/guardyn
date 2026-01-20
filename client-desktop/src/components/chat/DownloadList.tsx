@@ -1,15 +1,15 @@
-import { Component, createSignal, For, Show, createEffect, type JSX } from 'solid-js';
+import { Component, createEffect, createSignal, For, Show, type JSX } from 'solid-js';
 import {
-  getDownloads,
-  cancelDownload,
-  retryDownload,
-  removeDownload,
-  clearCompletedDownloads,
-  openDownloadedFile,
-  showInFolder,
-  useDownloadUpdates,
-  type DownloadItem,
-  type DownloadStatus,
+    cancelDownload,
+    clearCompletedDownloads,
+    getDownloads,
+    openDownloadedFile,
+    removeDownload,
+    retryDownload,
+    showInFolder,
+    useDownloadUpdates,
+    type DownloadItem,
+    type DownloadStatus,
 } from '../../services/downloadManager';
 
 /**
@@ -19,14 +19,14 @@ export const DownloadList: Component = () => {
   const [downloads, setDownloads] = createSignal<DownloadItem[]>([]);
   const [isOpen, setIsOpen] = createSignal(false);
   const downloadUpdates = useDownloadUpdates();
-  
+
   // Refresh downloads list when updates occur
   createEffect(() => {
     // Subscribe to download updates - access the signal to track it
     downloadUpdates();
     setDownloads(getDownloads());
   });
-  
+
   // Format file size
   const formatSize = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -35,7 +35,7 @@ export const DownloadList: Component = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
-  
+
   // Get status icon
   const getStatusIcon = (status: DownloadStatus) => {
     switch (status) {
@@ -72,10 +72,10 @@ export const DownloadList: Component = () => {
         );
     }
   };
-  
+
   // Get active count for badge
   const activeCount = () => downloads().filter(d => d.status === 'downloading' || d.status === 'pending').length;
-  
+
   return (
     <div class="relative">
       {/* Toggle Button */}
@@ -87,7 +87,7 @@ export const DownloadList: Component = () => {
         <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        
+
         {/* Badge */}
         <Show when={activeCount() > 0}>
           <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-xs font-medium text-white bg-guardyn-500 rounded-full px-1">
@@ -95,7 +95,7 @@ export const DownloadList: Component = () => {
           </span>
         </Show>
       </button>
-      
+
       {/* Downloads Panel */}
       <Show when={isOpen()}>
         <div class="absolute right-0 mt-2 w-80 max-h-96 overflow-hidden rounded-xl shadow-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 z-50">
@@ -111,7 +111,7 @@ export const DownloadList: Component = () => {
               </button>
             </Show>
           </div>
-          
+
           {/* Downloads List */}
           <div class="overflow-y-auto max-h-72">
             <Show when={downloads().length === 0}>
@@ -122,7 +122,7 @@ export const DownloadList: Component = () => {
                 <p class="text-sm">No downloads</p>
               </div>
             </Show>
-            
+
             <For each={downloads()}>
               {(download) => (
                 <DownloadItemRow
@@ -135,11 +135,11 @@ export const DownloadList: Component = () => {
           </div>
         </div>
       </Show>
-      
+
       {/* Click outside to close */}
       <Show when={isOpen()}>
-        <div 
-          class="fixed inset-0 z-40" 
+        <div
+          class="fixed inset-0 z-40"
           onClick={() => setIsOpen(false)}
         />
       </Show>
@@ -161,7 +161,7 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
       // Failed to open file
     }
   };
-  
+
   const handleShowInFolder = async () => {
     try {
       await showInFolder(props.download.id);
@@ -169,7 +169,7 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
       // Failed to show in folder
     }
   };
-  
+
   return (
     <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 last:border-b-0">
       <div class="flex items-start gap-3">
@@ -177,18 +177,18 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
         <div class="flex-shrink-0 mt-0.5">
           {props.getStatusIcon(props.download.status)}
         </div>
-        
+
         {/* Content */}
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium text-gray-900 dark:text-white truncate" title={props.download.fileName}>
             {props.download.fileName}
           </p>
-          
+
           {/* Progress bar for downloading */}
           <Show when={props.download.status === 'downloading'}>
             <div class="mt-1">
               <div class="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div 
+                <div
                   class="h-full bg-guardyn-500 rounded-full transition-all duration-300"
                   style={{ width: `${props.download.progress}%` }}
                 />
@@ -199,14 +199,14 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
               </div>
             </div>
           </Show>
-          
+
           {/* Size for completed */}
           <Show when={props.download.status === 'completed'}>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {props.formatSize(props.download.fileSize)}
             </p>
           </Show>
-          
+
           {/* Error message */}
           <Show when={props.download.status === 'failed' && props.download.error}>
             <p class="text-xs text-red-500 truncate" title={props.download.error}>
@@ -214,7 +214,7 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
             </p>
           </Show>
         </div>
-        
+
         {/* Actions */}
         <div class="flex-shrink-0 flex items-center gap-1">
           {/* Cancel button for downloading/pending */}
@@ -229,7 +229,7 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
               </svg>
             </button>
           </Show>
-          
+
           {/* Retry button for failed */}
           <Show when={props.download.status === 'failed'}>
             <button
@@ -242,7 +242,7 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
               </svg>
             </button>
           </Show>
-          
+
           {/* Open/Folder buttons for completed */}
           <Show when={props.download.status === 'completed'}>
             <button
@@ -264,7 +264,7 @@ const DownloadItemRow: Component<DownloadItemRowProps> = (props) => {
               </svg>
             </button>
           </Show>
-          
+
           {/* Remove button */}
           <Show when={['completed', 'failed', 'cancelled'].includes(props.download.status)}>
             <button

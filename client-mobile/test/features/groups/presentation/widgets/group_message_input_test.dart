@@ -129,13 +129,11 @@ void main() {
       expect(find.text('Test message'), findsNothing);
     });
 
-    testWidgets('does not call onSend when loading', (tester) async {
-      bool wasCalled = false;
-
+    testWidgets('does not show send button when loading', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: GroupMessageInput(
-            onSend: (_) => wasCalled = true,
+            onSend: (_) {},
             isLoading: true,
           ),
         ),
@@ -145,11 +143,10 @@ void main() {
       await tester.enterText(find.byType(TextField), 'Hello');
       await tester.pump();
 
-      // Tap send
-      await tester.tap(find.byIcon(Icons.send));
-      await tester.pump();
-
-      expect(wasCalled, false);
+      // Send button should not be visible when loading
+      expect(find.byIcon(Icons.send), findsNothing);
+      // Loading indicator should be visible
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
     testWidgets('shows loading indicator when isLoading is true',

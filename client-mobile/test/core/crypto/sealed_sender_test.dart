@@ -8,10 +8,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
 import 'package:guardyn_client/core/crypto/sealed_sender.dart';
 
+import 'crypto_test_helper.dart';
+
 void main() {
   // Initialize CryptoPrimitives before tests
   setUpAll(() async {
-    await CryptoPrimitives.initialize();
+    await initializeCryptoForTests();
   });
 
   group('SenderCertificate', () {
@@ -19,12 +21,13 @@ void main() {
     late Uint8List signingPublicKey;
 
     setUpAll(() async {
+      if (!nativeCryptoAvailable) return;
       final (pubKey, privKey) = await CryptoPrimitives.generateEd25519KeyPair();
       signingPublicKey = pubKey;
       signingPrivateKey = privKey;
     });
 
-    test('creates certificate with valid signature', () async {
+    nativeCryptoTest('creates certificate with valid signature', () async {
       final expiresAt =
           (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400; // 24h
 
@@ -42,7 +45,7 @@ void main() {
       expect(cert.signature.length, 64);
     });
 
-    test('verifies valid certificate', () async {
+    nativeCryptoTest('verifies valid certificate', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
 
       final cert = await SenderCertificate.create(
@@ -57,7 +60,7 @@ void main() {
       expect(isValid, isTrue);
     });
 
-    test('detects expired certificate', () async {
+    nativeCryptoTest('detects expired certificate', () async {
       final expiresAt =
           (DateTime.now().millisecondsSinceEpoch ~/ 1000) -
           3600; // Expired 1h ago
@@ -73,7 +76,7 @@ void main() {
       expect(cert.isExpired, isTrue);
     });
 
-    test('serializes and deserializes correctly', () async {
+    nativeCryptoTest('serializes and deserializes correctly', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
 
       final cert = await SenderCertificate.create(
@@ -141,6 +144,7 @@ void main() {
     late Uint8List recipientPrivateKey;
 
     setUpAll(() async {
+      if (!nativeCryptoAvailable) return;
       // Generate sender Ed25519 keys for signing
       final (senderPub, senderPriv) =
           await CryptoPrimitives.generateEd25519KeyPair();
@@ -154,7 +158,7 @@ void main() {
       recipientPrivateKey = recipientPriv;
     });
 
-    test('seals and unseals message successfully', () async {
+    nativeCryptoTest('seals and unseals message successfully', () async {
       // Create sender certificate
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
@@ -188,7 +192,7 @@ void main() {
       expect(result.innerMessage, innerMessage);
     });
 
-    test('envelope serialization round trip works', () async {
+    nativeCryptoTest('envelope serialization round trip works', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
@@ -219,7 +223,7 @@ void main() {
       expect(result.innerMessage, innerMessage);
     });
 
-    test('rejects expired certificate during unseal', () async {
+    nativeCryptoTest('rejects expired certificate during unseal', () async {
       final expiresAt =
           (DateTime.now().millisecondsSinceEpoch ~/ 1000) - 3600; // Expired
 
@@ -248,7 +252,7 @@ void main() {
       );
     });
 
-    test('wrong recipient cannot decrypt', () async {
+    nativeCryptoTest('wrong recipient cannot decrypt', () async {
       // Generate a different recipient keypair
       final (_, wrongPrivateKey) =
           await CryptoPrimitives.generateX25519KeyPair();
@@ -280,7 +284,7 @@ void main() {
       );
     });
 
-    test('tampered envelope fails decryption', () async {
+    nativeCryptoTest('tampered envelope fails decryption', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',

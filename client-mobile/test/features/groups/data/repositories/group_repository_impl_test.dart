@@ -149,7 +149,13 @@ void main() {
   });
 
   group('getGroups', () {
-    test('returns empty list initially', () async {
+    test('returns empty list when remote returns empty', () async {
+      // Arrange
+      setUpAuthenticatedUser();
+      when(() => mockDatasource.getGroups(
+            accessToken: tAccessToken,
+          )).thenAnswer((_) async => <GroupModel>[]);
+
       // Act
       final result = await repository.getGroups();
 
@@ -161,17 +167,12 @@ void main() {
       );
     });
 
-    test('returns cached groups after creating one', () async {
+    test('returns groups from remote datasource', () async {
       // Arrange
       setUpAuthenticatedUser();
-      when(() => mockDatasource.createGroup(
+      when(() => mockDatasource.getGroups(
             accessToken: tAccessToken,
-            name: tGroupName,
-            memberUserIds: const [],
-          )).thenAnswer((_) async => tGroupModel);
-
-      // Create a group first
-      await repository.createGroup(name: tGroupName, memberUserIds: const []);
+          )).thenAnswer((_) async => [tGroupModel]);
 
       // Act
       final result = await repository.getGroups();
@@ -189,7 +190,14 @@ void main() {
   });
 
   group('getGroupById', () {
-    test('returns ServerFailure when group not found', () async {
+    test('returns ServerFailure when group not found on remote', () async {
+      // Arrange
+      setUpAuthenticatedUser();
+      when(() => mockDatasource.getGroupById(
+            accessToken: tAccessToken,
+            groupId: 'non-existent',
+          )).thenThrow(GrpcError.notFound('Group not found'));
+
       // Act
       final result = await repository.getGroupById('non-existent');
 
@@ -201,17 +209,13 @@ void main() {
       );
     });
 
-    test('returns cached group when found', () async {
+    test('returns group from remote datasource', () async {
       // Arrange
       setUpAuthenticatedUser();
-      when(() => mockDatasource.createGroup(
+      when(() => mockDatasource.getGroupById(
             accessToken: tAccessToken,
-            name: tGroupName,
-            memberUserIds: const [],
+            groupId: tGroupId,
           )).thenAnswer((_) async => tGroupModel);
-
-      // Create a group first
-      await repository.createGroup(name: tGroupName, memberUserIds: const []);
 
       // Act
       final result = await repository.getGroupById(tGroupId);
@@ -476,10 +480,10 @@ void main() {
     test('returns true when successfully left group', () async {
       // Arrange
       setUpAuthenticatedUser();
-      when(() => mockDatasource.removeGroupMember(
+      when(
+        () => mockDatasource.leaveGroup(
             accessToken: tAccessToken,
-            groupId: tGroupId,
-            memberUserId: tUserId,
+          groupId: tGroupId,
           )).thenAnswer((_) async => true);
 
       // Act
@@ -493,9 +497,11 @@ void main() {
       );
     });
 
-    test('returns AuthFailure when user ID is null', () async {
-      // Arrange
-      when(() => mockSecureStorage.getUserId()).thenAnswer((_) async => null);
+    test('returns AuthFailure when not authenticated', () async {
+      // Arrange - leaveGroup only checks accessToken, not userId
+      when(
+        () => mockSecureStorage.getAccessToken(),
+      ).thenAnswer((_) async => null);
 
       // Act
       final result = await repository.leaveGroup(tGroupId);
@@ -508,39 +514,23 @@ void main() {
       );
     });
 
-    test('removes group from cache after leaving', () async {
+    test('calls leaveGroup on datasource and succeeds', () async {
       // Arrange
       setUpAuthenticatedUser();
-      when(() => mockDatasource.createGroup(
-            accessToken: tAccessToken,
-            name: tGroupName,
-            memberUserIds: const [],
-          )).thenAnswer((_) async => tGroupModel);
-      when(() => mockDatasource.removeGroupMember(
+      when(() => mockDatasource.leaveGroup(
             accessToken: tAccessToken,
             groupId: tGroupId,
-            memberUserId: tUserId,
           )).thenAnswer((_) async => true);
 
-      // Create group first
-      await repository.createGroup(name: tGroupName, memberUserIds: const []);
+      // Act
+      final result = await repository.leaveGroup(tGroupId);
 
-      // Verify group exists
-      var groupsResult = await repository.getGroups();
-      expect(
-        groupsResult.fold((l) => 0, (groups) => groups.length),
-        1,
-      );
-
-      // Act - leave the group
-      await repository.leaveGroup(tGroupId);
-
-      // Assert - group should be removed from cache
-      groupsResult = await repository.getGroups();
-      expect(
-        groupsResult.fold((l) => 0, (groups) => groups.length),
-        0,
-      );
+      // Assert
+      expect(result.isRight(), true);
+      verify(() => mockDatasource.leaveGroup(
+            accessToken: tAccessToken,
+            groupId: tGroupId,
+          )).called(1);
     });
   });
 }
