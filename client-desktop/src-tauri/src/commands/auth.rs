@@ -39,9 +39,14 @@ pub struct AuthResponse {
 
 /// Generate a key bundle for registration/login
 fn generate_key_bundle() -> Result<KeyBundle, String> {
+    tracing::debug!("Generating key bundle...");
     let bundle = X3DHProtocol::generate_key_bundle()
-        .map_err(|e| format!("Failed to generate key bundle: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to generate key bundle: {}", e);
+            format!("Failed to generate key bundle: {}", e)
+        })?;
     
+    tracing::debug!("Key bundle generated successfully");
     Ok(KeyBundle {
         identity_key: bundle.identity_key,
         signed_pre_key: bundle.signed_pre_key,
@@ -124,8 +129,13 @@ pub async fn register(
     tracing::info!("Registration attempt for user: {}", request.username);
 
     // Generate crypto key bundle for E2EE
+    tracing::debug!("Generating key bundle for registration...");
     let key_bundle = generate_key_bundle()
-        .map_err(|e| format!("Failed to generate key bundle: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("Key bundle generation failed: {}", e);
+            format!("Failed to generate key bundle: {}", e)
+        })?;
+    tracing::debug!("Key bundle generated, calling auth service...");
 
     // Call the auth service
     match state.auth().register(
@@ -137,6 +147,7 @@ pub async fn register(
         key_bundle,
     ).await {
         Ok(result) => {
+            tracing::info!("Registration successful for user: {}", request.username);
             // Store session in state
             state.set_authenticated(true);
             state.set_user_id(Some(result.user_id.clone()));

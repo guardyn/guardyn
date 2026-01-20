@@ -16,8 +16,8 @@ class RegisterUser {
     if (username.trim().isEmpty) {
       throw AuthException('Username cannot be empty');
     }
-    if (password.length < 8) {
-      throw AuthException('Password must be at least 8 characters');
+    if (password.length < 12) {
+      throw AuthException('Password must be at least 12 characters');
     }
     if (deviceName.trim().isEmpty) {
       throw AuthException('Device name cannot be empty');

@@ -116,13 +116,13 @@ void main() {
       expect(
         () => registerUser(
           username: testUsername,
-          password: '1234567',
+          password: '1234567890a',
           deviceName: testDeviceName,
         ),
         throwsA(isA<AuthException>().having(
           (e) => e.message,
           'message',
-          'Password must be at least 8 characters',
+          'Password must be at least 12 characters',
         )),
       );
     });
@@ -138,7 +138,7 @@ void main() {
         throwsA(isA<AuthException>().having(
           (e) => e.message,
           'message',
-          'Password must be at least 8 characters',
+          'Password must be at least 12 characters',
         )),
       );
     });

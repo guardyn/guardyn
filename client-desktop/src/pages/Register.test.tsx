@@ -66,7 +66,7 @@ describe('Register Page', () => {
       // Error shown in ErrorAlert component
       const errorMessage = screen.getByTestId('error-message');
       expect(errorMessage).toBeInTheDocument();
-      expect(errorMessage.textContent).toMatch(/at least 8 characters/i);
+      expect(errorMessage.textContent).toMatch(/at least 12 characters/i);
     });
     expect(mockInvoke).not.toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe('Register Page', () => {
     const submitButton = screen.getByTestId('register-button');
 
     await fireEvent.input(usernameInput, { target: { value: 'testuser' } });
-    await fireEvent.input(passwordInput, { target: { value: 'validpassword123' } }); // Valid length password
+    await fireEvent.input(passwordInput, { target: { value: 'validpassword123456' } }); // Valid length password
     await fireEvent.input(confirmInput, { target: { value: 'differentpassword456' } }); // Different password
     
     // Submit triggers touched state for all fields
@@ -111,14 +111,14 @@ describe('Register Page', () => {
 
     await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
     await fireEvent.input(displayNameInput, { target: { value: 'New User' } });
-    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-    await fireEvent.input(confirmInput, { target: { value: 'password123' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123456' } });
+    await fireEvent.input(confirmInput, { target: { value: 'password123456' } });
     await fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith('register', {
         username: 'newuser',
-        password: 'password123',
+        password: 'password123456',
         displayName: 'New User',
       });
     });
@@ -138,8 +138,8 @@ describe('Register Page', () => {
     const submitButton = screen.getByTestId('register-button');
 
     await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
-    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-    await fireEvent.input(confirmInput, { target: { value: 'password123' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123456' } });
+    await fireEvent.input(confirmInput, { target: { value: 'password123456' } });
     await fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -165,8 +165,8 @@ describe('Register Page', () => {
     const submitButton = screen.getByTestId('register-button');
 
     await fireEvent.input(usernameInput, { target: { value: 'existinguser' } });
-    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-    await fireEvent.input(confirmInput, { target: { value: 'password123' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123456' } });
+    await fireEvent.input(confirmInput, { target: { value: 'password123456' } });
     await fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -186,8 +186,8 @@ describe('Register Page', () => {
     const submitButton = screen.getByTestId('register-button');
 
     await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
-    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-    await fireEvent.input(confirmInput, { target: { value: 'password123' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123456' } });
+    await fireEvent.input(confirmInput, { target: { value: 'password123456' } });
     await fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -209,8 +209,8 @@ describe('Register Page', () => {
     const submitButton = screen.getByTestId('register-button');
 
     await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
-    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-    await fireEvent.input(confirmInput, { target: { value: 'password123' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123456' } });
+    await fireEvent.input(confirmInput, { target: { value: 'password123456' } });
     await fireEvent.click(submitButton);
 
     // Button should be disabled
@@ -238,14 +238,14 @@ describe('Register Page', () => {
     const submitButton = screen.getByTestId('register-button');
 
     await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
-    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
-    await fireEvent.input(confirmInput, { target: { value: 'password123' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123456' } });
+    await fireEvent.input(confirmInput, { target: { value: 'password123456' } });
     await fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith('register', {
         username: 'newuser',
-        password: 'password123',
+        password: 'password123456',
         displayName: undefined,
       });
     });

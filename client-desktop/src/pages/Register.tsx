@@ -53,7 +53,7 @@ const Register: Component<RegisterPageProps> = (props) => {
   const passwordError = createMemo(() => {
     if (!touched().password) return '';
     if (!password()) return 'Password is required';
-    if (password().length < 8) return 'Password must be at least 8 characters';
+    if (password().length < 12) return 'Password must be at least 12 characters';
     return '';
   });
 
@@ -67,7 +67,7 @@ const Register: Component<RegisterPageProps> = (props) => {
   const isFormValid = createMemo(() => {
     return (
       username().trim().length >= 3 &&
-      password().length >= 8 &&
+      password().length >= 12 &&
       password() === confirmPassword() &&
       !usernameError() &&
       !passwordError() &&

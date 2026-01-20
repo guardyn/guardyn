@@ -111,11 +111,17 @@ impl AuthClient {
             key_bundle: Some(key_bundle),
         };
 
+        debug!("Creating gRPC client for registration...");
         let mut client = self.client().await?;
+        debug!("gRPC client created, sending register request...");
         let response = client
             .register(Request::new(request))
             .await
-            .map_err(|e| GrpcError::RequestFailed(e.to_string()))?;
+            .map_err(|e| {
+                warn!("gRPC register request failed: {:?}", e);
+                GrpcError::RequestFailed(e.to_string())
+            })?;
+        debug!("Register response received");
 
         let result = response.into_inner();
 
