@@ -199,33 +199,24 @@ class _Orb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final blurSigma = isDark ? 80.0 : 60.0;
+    // Match CSS filter: blur(60px) - sigma ~= blur/2 for similar visual effect
+    // But we need higher values for truly soft edges like desktop
+    final blurSigma = isDark ? 60.0 : 50.0;
 
     return Opacity(
       opacity: opacity,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: gradient,
-          boxShadow: [
-            BoxShadow(
-              color: (gradient as LinearGradient).colors.first.withValues(
-                alpha: 0.3,
-              ),
-              blurRadius: blurSigma,
-              spreadRadius: blurSigma / 2,
-            ),
-          ],
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(
+          sigmaX: blurSigma,
+          sigmaY: blurSigma,
+          tileMode: TileMode.decal,
         ),
-        child: ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: gradient,
-            ),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: gradient,
           ),
         ),
       ),
