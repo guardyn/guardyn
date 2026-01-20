@@ -11,9 +11,9 @@ import {
   deleteMessage as deleteMessageFromStore,
   forwardMessage,
   getActiveMessages,
+  getActiveTypingUsers,
   getMessageById,
   getReplyingTo,
-  getTypingUsers,
   removeTypingUser,
   setActiveConversation,
   setReplyingTo,
@@ -59,7 +59,7 @@ const Chat: Component<ChatPageProps> = () => {
 
   // Get messages from store for active conversation
   const messages = () => getActiveMessages();
-  const typingUsers = () => getTypingUsers();
+  const typingUsers = () => getActiveTypingUsers();
   const replyingTo = () => getReplyingTo();
 
   onMount(async () => {
@@ -85,7 +85,7 @@ const Chat: Component<ChatPageProps> = () => {
             senderId: data.sender_id || 'other',
             senderName: data.sender_id || 'User',
             content: data.content,
-            timestamp: new Date(data.timestamp || Date.now()),
+            timestamp: typeof data.timestamp === 'string' ? new Date(data.timestamp).getTime() : (data.timestamp || Date.now()),
             status: 'delivered',
           });
         });
@@ -142,7 +142,7 @@ const Chat: Component<ChatPageProps> = () => {
           senderId: msg.sender_id,
           senderName: msg.sender_id === 'self' ? 'You' : 'User',
           content: msg.content,
-          timestamp: new Date(msg.timestamp),
+          timestamp: new Date(msg.timestamp).getTime(),
           status: 'delivered',
         });
       });
@@ -168,13 +168,14 @@ const Chat: Component<ChatPageProps> = () => {
       senderId: 'self',
       senderName: 'You',
       content,
-      timestamp: new Date(),
+      timestamp: Date.now(),
       status: 'sending' as const,
       ...(replyContext && {
         replyTo: {
           id: replyContext.id,
           senderId: replyContext.senderId,
           senderName: replyContext.senderName,
+          content: replyContext.preview,
           preview: replyContext.preview,
         },
       }),
@@ -239,11 +240,11 @@ const Chat: Component<ChatPageProps> = () => {
     if (convId && msgId) {
       toggleReaction(convId, msgId, emoji);
 
-      // Send reaction to backend
-      const ws = getWebSocket();
-      if (ws && isConnected()) {
-        ws.sendReaction?.(convId, msgId, emoji);
-      }
+      // TODO: Send reaction to backend once implemented
+      // const ws = getWebSocket();
+      // if (ws && isConnected()) {
+      //   ws.sendReaction(convId, msgId, emoji);
+      // }
     }
   };
 
@@ -489,7 +490,7 @@ const Chat: Component<ChatPageProps> = () => {
 
             {/* Typing indicator */}
             <Show when={typingUsers().length > 0}>
-              <TypingIndicator users={typingUsers()} />
+              <TypingIndicator users={typingUsers().map(u => u.userName)} />
             </Show>
           </div>
 

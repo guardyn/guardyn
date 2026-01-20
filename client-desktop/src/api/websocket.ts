@@ -152,6 +152,10 @@ export class WebSocketClient {
     return this._latency;
   }
 
+  get lastPingTime(): number {
+    return this._lastPingTime;
+  }
+
   get queueSize(): number {
     return this.messageQueue.length;
   }
