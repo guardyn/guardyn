@@ -16,7 +16,7 @@ interface LazyImageProps {
 
 /**
  * LazyImage - Image component with lazy loading and placeholder
- * 
+ *
  * Features:
  * - Loads image only when visible in viewport
  * - Shows shimmer placeholder while loading
@@ -25,14 +25,14 @@ interface LazyImageProps {
  */
 export const LazyImage: Component<LazyImageProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
-  
+
   const [isInView, setIsInView] = createSignal(false);
   const [isLoaded, setIsLoaded] = createSignal(false);
   const [hasError, setHasError] = createSignal(false);
-  
+
   createEffect(() => {
     if (!containerRef) return;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -47,21 +47,21 @@ export const LazyImage: Component<LazyImageProps> = (props) => {
         threshold: props.threshold ?? 0,
       }
     );
-    
+
     observer.observe(containerRef);
-    
+
     onCleanup(() => observer.disconnect());
   });
-  
+
   const handleLoad = () => {
     setIsLoaded(true);
   };
-  
+
   const handleError = () => {
     setHasError(true);
     setIsLoaded(true);
   };
-  
+
   return (
     <div
       ref={containerRef}
@@ -74,14 +74,14 @@ export const LazyImage: Component<LazyImageProps> = (props) => {
     >
       {/* Shimmer placeholder */}
       <Show when={!isLoaded()}>
-        <div 
+        <div
           class={`absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 animate-shimmer ${props.placeholderClass ?? ''}`}
           style={{
             'background-size': '200% 100%',
           }}
         />
       </Show>
-      
+
       {/* Actual image */}
       <Show when={isInView()}>
         <Show

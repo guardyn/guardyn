@@ -5,20 +5,20 @@ import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
 import { ForwardModal, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
-    addMessage,
-    addTypingUser,
-    clearReplyingTo,
-    deleteMessage as deleteMessageFromStore,
-    forwardMessage,
-    getActiveMessages,
-    getMessageById,
-    getReplyingTo,
-    getTypingUsers,
-    removeTypingUser,
-    setActiveConversation,
-    setReplyingTo,
-    toggleReaction,
-    type Message as StoreMessage
+  addMessage,
+  addTypingUser,
+  clearReplyingTo,
+  deleteMessage as deleteMessageFromStore,
+  forwardMessage,
+  getActiveMessages,
+  getMessageById,
+  getReplyingTo,
+  getTypingUsers,
+  removeTypingUser,
+  setActiveConversation,
+  setReplyingTo,
+  toggleReaction,
+  type Message as StoreMessage
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
 
@@ -30,7 +30,7 @@ const Chat: Component<ChatPageProps> = () => {
   const [newMessage, setNewMessage] = createSignal('');
   const [loading, setLoading] = createSignal(true);
   const [isConnected, setIsConnected] = createSignal(false);
-  
+
   // Reaction menu state
   const [reactionMenu, setReactionMenu] = createSignal<{
     isOpen: boolean;
@@ -45,7 +45,7 @@ const Chat: Component<ChatPageProps> = () => {
     isOwnMessage: false,
     messageContent: '',
   });
-  
+
   // Forward modal state
   const [forwardModal, setForwardModal] = createSignal<{
     isOpen: boolean;
@@ -70,13 +70,13 @@ const Chat: Component<ChatPageProps> = () => {
         stubMode: true,
         autoReconnect: true,
       });
-      
+
       if (ws) {
         // Listen for connection state changes
         ws.onStateChange((state) => {
           setIsConnected(state === 'connected');
         });
-        
+
         // Listen for incoming messages
         ws.onMessage((data: MessagePayload) => {
           addMessage({
@@ -89,7 +89,7 @@ const Chat: Component<ChatPageProps> = () => {
             status: 'delivered',
           });
         });
-        
+
         // Listen for typing indicators
         ws.onTyping((data: TypingPayload) => {
           if (data.is_typing) {
@@ -98,10 +98,10 @@ const Chat: Component<ChatPageProps> = () => {
             removeTypingUser(data.conversation_id, data.user_id);
           }
         });
-        
+
         // Connect WebSocket
         ws.connect();
-        
+
         // Start mock generator in development
         startMockGenerator(ws);
       }
@@ -115,7 +115,7 @@ const Chat: Component<ChatPageProps> = () => {
       setLoading(false);
     }
   });
-  
+
   onCleanup(() => {
     stopMockGenerator();
     destroyWebSocket();
@@ -124,7 +124,7 @@ const Chat: Component<ChatPageProps> = () => {
   const selectConversation = async (id: string) => {
     setSelectedConversation(id);
     setActiveConversation(id);
-    
+
     // Also load messages from Tauri backend if available
     try {
       const msgs = await invoke<Array<{
@@ -133,7 +133,7 @@ const Chat: Component<ChatPageProps> = () => {
         content: string;
         timestamp: string;
       }>>('get_messages', { conversationId: id });
-      
+
       // Add backend messages to store
       msgs.forEach(msg => {
         addMessage({
@@ -159,7 +159,7 @@ const Chat: Component<ChatPageProps> = () => {
 
     // Get reply context if replying
     const replyContext = replyingTo();
-    
+
     // Create optimistic message with optional replyTo
     const messageId = crypto.randomUUID();
     const messageData = {
@@ -179,14 +179,14 @@ const Chat: Component<ChatPageProps> = () => {
         },
       }),
     };
-    
+
     addMessage(messageData);
-    
+
     // Clear reply state
     if (replyContext) {
       clearReplyingTo();
     }
-    
+
     setNewMessage('');
 
     try {
@@ -197,7 +197,7 @@ const Chat: Component<ChatPageProps> = () => {
           clientMessageId: messageId,
         });
       }
-      
+
       // Also send via Tauri backend
       await invoke('send_message', {
         conversationId: convId,
@@ -238,7 +238,7 @@ const Chat: Component<ChatPageProps> = () => {
     const msgId = reactionMenu().messageId;
     if (convId && msgId) {
       toggleReaction(convId, msgId, emoji);
-      
+
       // Send reaction to backend
       const ws = getWebSocket();
       if (ws && isConnected()) {
@@ -261,7 +261,7 @@ const Chat: Component<ChatPageProps> = () => {
     const msgId = reactionMenu().messageId;
     if (convId && msgId) {
       deleteMessageFromStore(convId, msgId);
-      
+
       try {
         await invoke('delete_message', {
           conversationId: convId,
@@ -341,7 +341,7 @@ const Chat: Component<ChatPageProps> = () => {
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Messages</h2>
             <div class="flex items-center gap-2">
-              <span 
+              <span
                 class={`w-2 h-2 rounded-full ${isConnected() ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}
                 title={isConnected() ? 'Connected' : 'Disconnected'}
               />
@@ -414,7 +414,7 @@ const Chat: Component<ChatPageProps> = () => {
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <For each={messages()}>
               {(message) => (
-                <div 
+                <div
                   id={`message-${message.id}`}
                   class={`flex ${message.isOwn ? 'justify-end' : 'justify-start'} transition-all duration-300`}
                   onContextMenu={(e) => handleMessageContextMenu(e, message)}
@@ -435,7 +435,7 @@ const Chat: Component<ChatPageProps> = () => {
                           variant="bubble"
                         />
                       </Show>
-                      
+
                       <Show when={!message.isOwn}>
                         <p class="text-xs font-medium text-guardyn-600 dark:text-guardyn-400 mb-1">
                           {message.senderName}
@@ -452,7 +452,7 @@ const Chat: Component<ChatPageProps> = () => {
                         </Show>
                       </div>
                     </div>
-                    
+
                     {/* Reactions display */}
                     <Show when={message.reactions && message.reactions.length > 0}>
                       <div class={`flex flex-wrap gap-1 mt-1 ${message.isOwn ? 'justify-end' : 'justify-start'}`}>
@@ -486,7 +486,7 @@ const Chat: Component<ChatPageProps> = () => {
                 </div>
               )}
             </For>
-            
+
             {/* Typing indicator */}
             <Show when={typingUsers().length > 0}>
               <TypingIndicator users={typingUsers()} />
@@ -534,7 +534,7 @@ const Chat: Component<ChatPageProps> = () => {
                 />
               </div>
             </Show>
-            
+
             <form onSubmit={sendMessage} class="p-4">
               <div class="flex space-x-2">
                 <input
