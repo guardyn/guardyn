@@ -56,8 +56,10 @@ const Login: Component<LoginPageProps> = (props) => {
 
     try {
       const response = await invoke<AuthResponse>('login', {
-        username: username(),
-        password: password(),
+        request: {
+          username: username(),
+          password: password(),
+        },
       });
 
       if (response.success && response.user) {

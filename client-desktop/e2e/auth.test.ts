@@ -369,7 +369,7 @@ test.describe('Registration Flow', () => {
     expect(await registerPage.isSubmitDisabled()).toBeTruthy();
 
     // Check for length error
-    const hasError = await page.isVisible('text=/at least 8 characters/i');
+    const hasError = await page.isVisible('text=/at least 12 characters/i');
     expect(hasError).toBeTruthy();
   });
 

@@ -100,9 +100,11 @@ const Register: Component<RegisterPageProps> = (props) => {
 
     try {
       const response = await invoke<AuthResponse>('register', {
-        username: username(),
-        password: password(),
-        displayName: displayName() || undefined,
+        request: {
+          username: username(),
+          password: password(),
+          displayName: displayName() || undefined,
+        },
       });
 
       if (response.success && response.user) {

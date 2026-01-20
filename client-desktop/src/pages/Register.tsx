@@ -10,11 +10,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { Component, createMemo, createSignal, onMount, Show } from 'solid-js';
 
 import {
-    AuthLayout,
-    ErrorAlert,
-    FormInput,
-    PasswordStrength,
-    SubmitButton,
+  AuthLayout,
+  ErrorAlert,
+  FormInput,
+  PasswordStrength,
+  SubmitButton,
 } from '../components/auth';
 import type { AuthResponse } from '../types';
 
@@ -100,9 +100,11 @@ const Register: Component<RegisterPageProps> = (props) => {
 
     try {
       const response = await invoke<AuthResponse>('register', {
-        username: username(),
-        password: password(),
-        displayName: displayName() || undefined,
+        request: {
+          username: username(),
+          password: password(),
+          displayName: displayName() || undefined,
+        },
       });
 
       if (response.success && response.user) {

@@ -17,7 +17,7 @@ interface Requirement {
 }
 
 const requirements: Requirement[] = [
-  { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+  { label: 'At least 12 characters', test: (p) => p.length >= 12 },
   { label: 'Contains uppercase letter', test: (p) => /[A-Z]/.test(p) },
   { label: 'Contains lowercase letter', test: (p) => /[a-z]/.test(p) },
   { label: 'Contains a number', test: (p) => /\d/.test(p) },
