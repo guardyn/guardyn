@@ -1,15 +1,25 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import solid from 'vite-plugin-solid';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     solid({
       // Disable SSR for tests - use client-only components
       ssr: false,
     }),
-  ],
+    // Bundle analyzer - only in analyze mode
+    mode === 'analyze' &&
+      visualizer({
+        open: true,
+        filename: 'dist/bundle-stats.html',
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap', // 'treemap', 'sunburst', 'network'
+      }) as PluginOption,
+  ].filter(Boolean),
 
   // Tauri expects a fixed port
   server: {
@@ -23,6 +33,34 @@ export default defineConfig({
     target: 'esnext',
     minify: 'esbuild',
     outDir: 'dist',
+    // Code splitting configuration
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for optimal caching
+        manualChunks: {
+          // Vendor chunk for dependencies
+          vendor: ['solid-js', '@solidjs/router'],
+          // Tauri APIs in separate chunk
+          tauri: [
+            '@tauri-apps/api',
+            '@tauri-apps/plugin-dialog',
+            '@tauri-apps/plugin-fs',
+            '@tauri-apps/plugin-notification',
+            '@tauri-apps/plugin-os',
+            '@tauri-apps/plugin-process',
+            '@tauri-apps/plugin-shell',
+          ],
+        },
+        // Chunk naming for easier debugging
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
+    // Report compressed sizes
+    reportCompressedSize: true,
+    // Warn if chunks exceed 500kb
+    chunkSizeWarningLimit: 500,
   },
 
   // Path aliases
@@ -71,4 +109,4 @@ export default defineConfig({
       exclude: ['src/test/**', 'src/**/*.d.ts'],
     },
   },
-});
+}));

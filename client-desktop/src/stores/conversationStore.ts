@@ -564,3 +564,106 @@ export function getGroupConversations(): Conversation[] {
 // =============================================================================
 
 export { state as conversationState };
+
+// =============================================================================
+// LAZY LOADING
+// =============================================================================
+
+/** Page size for lazy loading */
+const PAGE_SIZE = 20;
+
+/**
+ * Load initial batch of conversations (first page)
+ * This should be called when the conversation list mounts
+ */
+export async function loadInitialConversations(): Promise<void> {
+  if (state.isLoading) return;
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    // In production, this would call the API:
+    // const response = await api.getConversations({ limit: PAGE_SIZE });
+    // addConversations(response.conversations);
+    // updatePagination(response.cursor, response.hasMore);
+
+    // For now, we simulate with a small delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Mark as loaded
+    updatePagination(null, false);
+  } catch (error) {
+    setError(error instanceof Error ? error.message : 'Failed to load conversations');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/**
+ * Load more conversations (pagination)
+ * Call this when user scrolls near the bottom of the list
+ */
+export async function loadMoreConversations(): Promise<void> {
+  if (state.isLoading || !state.hasMore) return;
+
+  setLoading(true);
+
+  try {
+    // In production, this would call the API with cursor:
+    // const response = await api.getConversations({
+    //   limit: PAGE_SIZE,
+    //   cursor: state.cursor,
+    // });
+    // addConversations(response.conversations);
+    // updatePagination(response.cursor, response.hasMore);
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+    updatePagination(null, false);
+  } catch (error) {
+    setError(error instanceof Error ? error.message : 'Failed to load more conversations');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/**
+ * Refresh conversations (pull-to-refresh or manual refresh)
+ */
+export async function refreshConversations(): Promise<void> {
+  // Reset pagination state
+  setState({ cursor: null, hasMore: true });
+
+  // Clear existing conversations
+  setState('conversations', {});
+
+  // Load fresh data
+  await loadInitialConversations();
+}
+
+/**
+ * Get paginated conversations for display
+ * Returns conversations in chunks suitable for virtual list rendering
+ */
+export function getPaginatedConversations(page: number): Conversation[] {
+  const all = getFilteredConversations();
+  const start = page * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  return all.slice(start, end);
+}
+
+/**
+ * Get total number of pages
+ */
+export function getTotalPages(): number {
+  const total = getFilteredConversations().length;
+  return Math.ceil(total / PAGE_SIZE);
+}
+
+/**
+ * Check if we should load more (for infinite scroll)
+ */
+export function shouldLoadMore(): boolean {
+  return state.hasMore && !state.isLoading;
+}
+
