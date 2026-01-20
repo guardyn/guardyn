@@ -52,7 +52,7 @@ export type { Breakpoint } from './ResponsiveLayout';
 export { ThemeSwitcher, ThemeToggle } from './ThemeSwitcher';
 
 // User Search
-export { UserSearch, UserCard, type UserSearchProps, type UserCardProps } from './UserSearch';
+export { UserCard, UserSearch, type UserCardProps, type UserSearchProps } from './UserSearch';
 
 // Chat Components
 export * from './chat';

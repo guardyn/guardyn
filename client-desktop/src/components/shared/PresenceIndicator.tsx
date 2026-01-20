@@ -9,9 +9,9 @@
 import { Component, Show, createMemo } from 'solid-js';
 import type { PresenceStatus } from '../../api/websocket.types';
 import {
-  createPresenceMemo,
-  formatLastSeen,
-  getStatusText,
+    createPresenceMemo,
+    formatLastSeen,
+    getStatusText,
 } from '../../stores/presenceStore';
 
 // =============================================================================

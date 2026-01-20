@@ -13,44 +13,32 @@ export * from './settings';
 // Crypto modules - renamed exports to avoid conflicts
 export * as crypto from './crypto';
 export * as mls from './mls';
-export * as websocket from './websocket';
 export * as users from './users';
+export * as websocket from './websocket';
 
 // Named exports for individual functions (most common ones)
 export {
-  generateKeyBundle,
-  hasIdentityKeys,
-  isPqAvailable,
+    generateKeyBundle,
+    hasIdentityKeys,
+    isPqAvailable
 } from './crypto';
 
 export {
-  init as mlsInit,
-  createGroup as mlsCreateGroup,
-  listGroups as mlsListGroups,
-  encryptMessage as mlsEncryptMessage,
-  decryptMessage as mlsDecryptMessage,
+    createGroup as mlsCreateGroup, decryptMessage as mlsDecryptMessage, encryptMessage as mlsEncryptMessage, init as mlsInit, listGroups as mlsListGroups
 } from './mls';
 
 export {
-  searchUsers,
-  searchUsersMock,
-  getUserProfile,
-  getUserProfileMock,
-  getContacts,
-  getContactsMock,
-  addContact,
-  removeContact,
-  blockUser,
-  unblockUser,
+    addContact, blockUser, getContacts,
+    getContactsMock, getUserProfile,
+    getUserProfileMock, removeContact, searchUsers,
+    searchUsersMock, unblockUser
 } from './users';
 
 export type {
-  UserProfile,
-  UserSearchResult,
-  UserSearchParams,
-  Contact,
+    Contact, UserProfile, UserSearchParams, UserSearchResult
 } from './users';
 
 export type {
-  WebSocketConfig,
+    WebSocketConfig
 } from './websocket';
+

@@ -5,11 +5,12 @@
  * Uses namespace exports to avoid naming conflicts.
  */
 
-export * as messageStore from './messageStore';
 export * as conversationStore from './conversationStore';
+export * as messageStore from './messageStore';
 export * as presenceStore from './presenceStore';
 
 // Re-export commonly used types for convenience
-export type { Message, MessageStatus, MessageAttachment, TypingUser } from './messageStore';
-export type { Conversation, ConversationParticipant, ConversationFilter } from './conversationStore';
-export type { UserPresence, TypingIndicator, PresenceEvent } from './presenceStore';
+export type { Conversation, ConversationFilter, ConversationParticipant } from './conversationStore';
+export type { Message, MessageAttachment, MessageStatus, TypingUser } from './messageStore';
+export type { PresenceEvent, TypingIndicator, UserPresence } from './presenceStore';
+

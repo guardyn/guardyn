@@ -14,14 +14,14 @@
 import { WebSocketClient } from '../api/websocket';
 import type { PresencePayload, PresenceStatus, TypingPayload } from '../api/websocket.types';
 import {
-  updatePresence,
-  setUserTyping,
-  clearUserTyping,
-  setMyStatus,
-  setBroadcasting,
-  clearAllTyping,
-  resetPresenceStore,
-  cleanupStalePresences,
+    cleanupStalePresences,
+    clearAllTyping,
+    clearUserTyping,
+    resetPresenceStore,
+    setBroadcasting,
+    setMyStatus,
+    setUserTyping,
+    updatePresence,
 } from '../stores/presenceStore';
 
 // =============================================================================

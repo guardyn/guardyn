@@ -8,9 +8,9 @@
 
 import { Component, For, Show, createMemo } from 'solid-js';
 import {
-  createTypingMemo,
-  formatTypingText,
-  getTypingUserNames,
+    createTypingMemo,
+    formatTypingText,
+    getTypingUserNames,
 } from '../../stores/presenceStore';
 
 // =============================================================================

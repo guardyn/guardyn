@@ -11,8 +11,8 @@
  * - Automatic cleanup of stale typing indicators
  */
 
-import { createStore, produce } from 'solid-js/store';
 import { createMemo } from 'solid-js';
+import { createStore, produce } from 'solid-js/store';
 import type { PresenceStatus } from '../api/websocket.types';
 
 // =============================================================================

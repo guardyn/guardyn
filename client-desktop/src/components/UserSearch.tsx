@@ -8,20 +8,20 @@
  */
 
 import {
-  Component,
-  createSignal,
-  createEffect,
-  For,
-  Show,
-  onCleanup,
+    Component,
+    createEffect,
+    createSignal,
+    For,
+    onCleanup,
+    Show,
 } from 'solid-js';
-import { Avatar } from './shared/Avatar';
-import { PresenceIndicator } from './shared/PresenceIndicator';
-import { Button } from './shared/Button';
-import { TextInput } from './shared/TextInput';
-import { Badge } from './shared/Badge';
-import type { UserSearchResult, UserProfile } from '../api/users';
+import type { UserProfile, UserSearchResult } from '../api/users';
 import { searchUsersMock } from '../api/users';
+import { Avatar } from './shared/Avatar';
+import { Badge } from './shared/Badge';
+import { Button } from './shared/Button';
+import { PresenceIndicator } from './shared/PresenceIndicator';
+import { TextInput } from './shared/TextInput';
 
 // =============================================================================
 // TYPES
