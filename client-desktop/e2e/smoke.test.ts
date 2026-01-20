@@ -31,6 +31,197 @@ const TEST_CONFIG = {
   messageTimeout: 5000,
 };
 
+// Helper to inject Tauri mock into page
+async function injectTauriMock(page: Page) {
+  await page.addInitScript(() => {
+    // Use localStorage to persist users and sessions across navigations
+    const getUsers = (): Record<string, { password: string; displayName?: string }> => {
+      try {
+        const data = localStorage.getItem('__GUARDYN_TEST_USERS__');
+        const users = data ? JSON.parse(data) : {};
+        // Add default test users
+        if (!users['testuser1']) {
+          users['testuser1'] = { password: 'TestPassword123!', displayName: 'Test User 1' };
+        }
+        if (!users['testuser2']) {
+          users['testuser2'] = { password: 'TestPassword123!', displayName: 'Test User 2' };
+        }
+        return users;
+      } catch {
+        return {
+          'testuser1': { password: 'TestPassword123!', displayName: 'Test User 1' },
+          'testuser2': { password: 'TestPassword123!', displayName: 'Test User 2' },
+        };
+      }
+    };
+
+    const saveUsers = (users: Record<string, { password: string; displayName?: string }>) => {
+      localStorage.setItem('__GUARDYN_TEST_USERS__', JSON.stringify(users));
+    };
+
+    const getCurrentUser = () => {
+      try {
+        const data = localStorage.getItem('__GUARDYN_CURRENT_USER__');
+        return data ? JSON.parse(data) : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const setCurrentUser = (user: { user_id: string; username: string; display_name?: string } | null) => {
+      if (user) {
+        localStorage.setItem('__GUARDYN_CURRENT_USER__', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('__GUARDYN_CURRENT_USER__');
+      }
+    };
+
+    // Mock conversations
+    const getConversations = () => {
+      return [
+        {
+          id: 'conv-1',
+          name: 'Test User 2',
+          last_message: { content: 'Hello!' },
+          unread_count: 0,
+        },
+        {
+          id: 'conv-2',
+          name: 'Group Chat',
+          last_message: { content: 'Welcome to the group' },
+          unread_count: 2,
+        },
+      ];
+    };
+
+    // Mock messages storage
+    const getMessages = (): Record<string, unknown[]> => {
+      try {
+        const data = localStorage.getItem('__GUARDYN_TEST_MESSAGES__');
+        return data ? JSON.parse(data) : {};
+      } catch {
+        return {};
+      }
+    };
+
+    const saveMessages = (msgs: Record<string, unknown[]>) => {
+      localStorage.setItem('__GUARDYN_TEST_MESSAGES__', JSON.stringify(msgs));
+    };
+
+    // Initialize default test users
+    saveUsers(getUsers());
+    
+    // Mock Tauri's invoke function
+    (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {
+      invoke: async (cmd: string, args?: Record<string, unknown>) => {
+        console.log('[Tauri Mock] invoke:', cmd, args);
+
+        switch (cmd) {
+          case 'register': {
+            const request = args?.request as { username: string; password: string; display_name?: string } | undefined;
+            const username = request?.username as string;
+            const password = request?.password as string;
+            const displayName = request?.display_name as string | undefined;
+
+            const users = getUsers();
+            if (users[username]) {
+              throw new Error('Username already exists');
+            }
+
+            users[username] = { password, displayName };
+            saveUsers(users);
+            
+            const currentUser = {
+              user_id: `user_${Date.now()}`,
+              username,
+              display_name: displayName,
+            };
+            setCurrentUser(currentUser);
+
+            return { token: 'mock_token_' + Date.now(), user: currentUser };
+          }
+
+          case 'login': {
+            const request = args?.request as { username: string; password: string } | undefined;
+            const username = request?.username as string;
+            const password = request?.password as string;
+
+            const users = getUsers();
+            const user = users[username];
+
+            if (!user || user.password !== password) {
+              throw new Error('Invalid credentials');
+            }
+
+            const currentUser = {
+              user_id: `user_${username}`,
+              username,
+              display_name: user.displayName,
+            };
+            setCurrentUser(currentUser);
+
+            return { token: 'mock_token_' + Date.now(), user: currentUser };
+          }
+
+          case 'logout': {
+            setCurrentUser(null);
+            return {};
+          }
+
+          case 'get_current_user': {
+            return getCurrentUser();
+          }
+
+          case 'get_conversations': {
+            return getConversations();
+          }
+
+          case 'get_messages': {
+            const conversationId = args?.conversationId as string;
+            const allMessages = getMessages();
+            return allMessages[conversationId] || [];
+          }
+
+          case 'send_message': {
+            const conversationId = args?.conversationId as string;
+            const content = args?.content as string;
+            const allMessages = getMessages();
+            if (!allMessages[conversationId]) {
+              allMessages[conversationId] = [];
+            }
+            const newMessage = {
+              id: `msg_${Date.now()}`,
+              sender_id: 'self',
+              content,
+              timestamp: new Date().toISOString(),
+            };
+            allMessages[conversationId].push(newMessage);
+            saveMessages(allMessages);
+            return newMessage;
+          }
+
+          case 'get_settings': {
+            return {
+              theme: 'system',
+              notifications: true,
+              sound: true,
+            };
+          }
+
+          case 'update_settings': {
+            return args?.settings || {};
+          }
+
+          default:
+            console.warn('[Tauri Mock] Unknown command:', cmd);
+            return null;
+        }
+      },
+      transformCallback: () => 0,
+    };
+  });
+}
+
 // Page Object helpers
 class LoginPage {
   constructor(private page: Page) {}
@@ -98,6 +289,9 @@ test.describe('Smoke Test: Core User Flow', () => {
   let settingsPage: SettingsPage;
 
   test.beforeEach(async ({ page }) => {
+    // Inject Tauri mock before any navigation
+    await injectTauriMock(page);
+    
     loginPage = new LoginPage(page);
     chatPage = new ChatPage(page);
     settingsPage = new SettingsPage(page);

@@ -353,7 +353,7 @@ const Chat: Component<ChatPageProps> = () => {
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto conversations" data-testid="conversation-list">
           <Show when={!loading()} fallback={<div class="p-4 text-gray-500 dark:text-gray-400">Loading...</div>}>
             <Show
               when={conversations() && conversations().length > 0}
