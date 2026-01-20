@@ -6,5 +6,6 @@ pub mod auth;
 pub mod calls;
 pub mod crypto;
 pub mod messaging;
+pub mod mls;
 pub mod settings;
 pub mod websocket;

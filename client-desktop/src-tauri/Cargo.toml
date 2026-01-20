@@ -73,6 +73,11 @@ base64 = { workspace = true }
 bytes = { workspace = true }
 hex = { workspace = true }
 
+# MLS (Messaging Layer Security) for groups
+openmls = { workspace = true }
+openmls_rust_crypto = { workspace = true }
+tls_codec = { workspace = true }
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
