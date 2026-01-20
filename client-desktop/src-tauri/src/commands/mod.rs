@@ -5,6 +5,7 @@
 pub mod auth;
 pub mod calls;
 pub mod crypto;
+pub mod downloads;
 pub mod messaging;
 pub mod mls;
 pub mod settings;

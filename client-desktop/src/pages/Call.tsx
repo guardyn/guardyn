@@ -158,7 +158,7 @@ const Call: Component = () => {
     }
   };
 
-  const handleSelectScreen = async (source: ScreenSource) => {
+  const handleSelectScreen = async (_source: ScreenSource) => {
     const callId = params.id;
     if (!callId) return;
 

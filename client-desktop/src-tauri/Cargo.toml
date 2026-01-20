@@ -66,12 +66,16 @@ chrono = { workspace = true }
 
 # Futures
 futures = { workspace = true }
+futures-util = { workspace = true }
 async-stream = { workspace = true }
 
 # Base64/Bytes/Hex
 base64 = { workspace = true }
 bytes = { workspace = true }
 hex = { workspace = true }
+
+# System directories
+dirs = { workspace = true }
 
 # MLS (Messaging Layer Security) for groups
 openmls = { workspace = true }

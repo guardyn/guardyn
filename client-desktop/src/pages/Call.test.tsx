@@ -79,7 +79,7 @@ describe('Call Page', () => {
       expect(mockListen).toHaveBeenCalledWith('call:state_changed', expect.any(Function));
     });
     if (stateCallback) {
-      stateCallback({ payload: { ...mockCallInfo, state: 'connected', participants: [{ id: 'user-1', name: 'Test User' }] } });
+      stateCallback({ payload: { ...mockCallInfo, state: 'connected', participants: [{ user_id: 'user-1', display_name: 'Test User', is_muted: false, has_video: false, is_screen_sharing: false, is_speaking: false }] } });
     }
   };
 

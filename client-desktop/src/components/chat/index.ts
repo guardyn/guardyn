@@ -7,6 +7,7 @@
 export { ConversationActions, type ConversationActionsProps } from './ConversationActions';
 export { ConversationItem, type ConversationItemProps } from './ConversationItem';
 export { ConversationList, type Conversation, type ConversationListProps } from './ConversationList';
+export { DownloadList } from './DownloadList';
 export { EmojiPicker, type EmojiPickerProps } from './EmojiPicker';
 export { ForwardModal } from './ForwardModal';
 export { ImagePreviewModal } from './ImagePreviewModal';

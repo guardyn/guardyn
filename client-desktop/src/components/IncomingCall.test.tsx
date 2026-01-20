@@ -181,7 +181,7 @@ describe('IncomingCallDialog', () => {
 
     // Find and click accept button (green one)
     const buttons = screen.getAllByRole('button');
-    const acceptButton = buttons.find((btn: HTMLButtonElement) => 
+    const acceptButton = buttons.find((btn: HTMLElement) => 
       btn.classList.contains('bg-green-600') || 
       btn.getAttribute('title') === 'Accept'
     );
@@ -205,7 +205,7 @@ describe('IncomingCallDialog', () => {
 
     // Find and click decline button (red one)
     const buttons = screen.getAllByRole('button');
-    const declineButton = buttons.find((btn: HTMLButtonElement) => 
+    const declineButton = buttons.find((btn: HTMLElement) => 
       btn.classList.contains('bg-red-600') || 
       btn.getAttribute('title') === 'Decline'
     );
@@ -228,7 +228,7 @@ describe('IncomingCallDialog', () => {
     });
 
     const buttons = screen.getAllByRole('button');
-    const acceptButton = buttons.find((btn: HTMLButtonElement) => 
+    const acceptButton = buttons.find((btn: HTMLElement) => 
       btn.classList.contains('bg-green-600')
     );
     
@@ -315,7 +315,7 @@ describe('IncomingCallDialog', () => {
     });
 
     const buttons = screen.getAllByRole('button');
-    const acceptButton = buttons.find((btn: HTMLButtonElement) => 
+    const acceptButton = buttons.find((btn: HTMLElement) => 
       btn.classList.contains('bg-green-600')
     );
     
@@ -346,7 +346,7 @@ describe('IncomingCallDialog', () => {
     });
 
     const buttons = screen.getAllByRole('button');
-    const declineButton = buttons.find((btn: HTMLButtonElement) => 
+    const declineButton = buttons.find((btn: HTMLElement) => 
       btn.classList.contains('bg-red-600')
     );
     

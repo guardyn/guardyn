@@ -114,6 +114,11 @@ fn main() {
             commands::websocket::get_websocket_config,
             commands::websocket::get_websocket_url_with_token,
             commands::websocket::report_websocket_status,
+            // Download commands
+            commands::downloads::download_file,
+            commands::downloads::cancel_download,
+            commands::downloads::open_file_with_default_app,
+            commands::downloads::show_in_folder,
             // Settings commands
             commands::settings::get_settings,
             commands::settings::update_settings,

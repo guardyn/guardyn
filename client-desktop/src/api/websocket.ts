@@ -17,7 +17,6 @@ import {
   type ConnectionState,
   DEFAULT_WS_CONFIG,
   type ErrorPayload,
-  type MarkReadPayload,
   type MessagePayload,
   type MessageSentPayload,
   type PayloadFor,
@@ -113,7 +112,7 @@ export class WebSocketClient {
   // Heartbeat
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private pongTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastPingTime = 0;
+  private _lastPingTime = 0;
   private _latency = 0;
 
   // Message queue for offline resilience
@@ -123,9 +122,6 @@ export class WebSocketClient {
   constructor(options: WebSocketConfig) {
     this.config = {
       ...DEFAULT_WS_CONFIG,
-      url: options.url,
-      token: options.token,
-      deviceId: options.deviceId,
       ...options,
     } as Required<WebSocketConfig>;
 
@@ -603,7 +599,7 @@ export class WebSocketClient {
   }
 
   private sendPing(): void {
-    this.lastPingTime = Date.now();
+    this._lastPingTime = Date.now();
     const pingMessage = createPingMessage();
 
     if (this.sendDirect(pingMessage)) {

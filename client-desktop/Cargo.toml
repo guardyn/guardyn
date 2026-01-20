@@ -68,6 +68,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Futures
 futures = "0.3"
+futures-util = "0.3"
 async-stream = "0.3"
 
 # Base64
@@ -78,6 +79,9 @@ hex = "0.4"
 
 # Bytes
 bytes = "1"
+
+# System directories
+dirs = "5"
 
 # MLS (Messaging Layer Security) for groups
 openmls = "0.6"
