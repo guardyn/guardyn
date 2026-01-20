@@ -9,6 +9,8 @@ export { ConversationItem, type ConversationItemProps } from './ConversationItem
 export { ConversationList, type Conversation, type ConversationListProps } from './ConversationList';
 export { EmojiPicker, type EmojiPickerProps } from './EmojiPicker';
 export { ForwardModal } from './ForwardModal';
+export { ImagePreviewModal } from './ImagePreviewModal';
+export { MediaAttachment } from './MediaAttachment';
 export { MessageBubble, type MessageBubbleProps, type MessageReaction } from './MessageBubble';
 export { MessageInput, type MessageInputProps } from './MessageInput';
 export { MessageStatusIndicator } from './MessageStatusIndicator';
