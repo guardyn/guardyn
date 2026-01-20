@@ -10,12 +10,12 @@
  */
 
 import {
-  Component,
-  JSX,
-  Suspense,
-  ErrorBoundary,
-  For,
-  lazy,
+    Component,
+    ErrorBoundary,
+    For,
+    JSX,
+    lazy,
+    Suspense,
 } from 'solid-js';
 import Shimmer from './Shimmer';
 

@@ -3,7 +3,7 @@ import { Route, Router } from '@solidjs/router';
 import { lazy, Suspense } from 'solid-js';
 import { render } from 'solid-js/web';
 import App, { AuthProvider, useAuth } from './App';
-import { RouteLoadingSkeleton, FormLoadingSkeleton, ListLoadingSkeleton } from './components/shared';
+import { FormLoadingSkeleton, ListLoadingSkeleton, RouteLoadingSkeleton } from './components/shared';
 import './styles/index.css';
 
 // =============================================================================

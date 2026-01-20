@@ -1,7 +1,7 @@
 import path from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig, type PluginOption } from 'vite';
 import solid from 'vite-plugin-solid';
-import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({

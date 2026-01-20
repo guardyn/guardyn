@@ -43,7 +43,7 @@ webrtc-srtp = "0.14"
 webrtc-media = "0.9"
 
 # HTTP client for signaling
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream"] }
 
 # Logging
 tracing = "0.1"
