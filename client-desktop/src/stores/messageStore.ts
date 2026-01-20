@@ -36,6 +36,15 @@ export interface Message {
   attachments?: MessageAttachment[];
   /** Reply to another message */
   replyTo?: ReplyToMessage;
+  /** Forwarded message metadata */
+  forwarded?: ForwardedMessage;
+}
+
+/** Forwarded message metadata */
+export interface ForwardedMessage {
+  originalMessageId: string;
+  originalSenderId: string;
+  originalSenderName: string;
 }
 
 /** Quoted message metadata for replies */
@@ -916,6 +925,69 @@ export function getError(): string | null {
  */
 export function isStoreLoading(): boolean {
   return state.isLoading;
+}
+
+// =============================================================================
+// FORWARD MESSAGE
+// =============================================================================
+
+/**
+ * Forward a message to one or more conversations
+ * Creates a new message with forwarded content in each target conversation
+ */
+export function forwardMessage(
+  originalMessage: {
+    id: string;
+    content: string;
+    senderId: string;
+    senderName: string;
+  },
+  targetConversationIds: string[]
+): void {
+  const timestamp = Date.now();
+  
+  for (const conversationId of targetConversationIds) {
+    ensureConversation(conversationId);
+    
+    const messageId = crypto.randomUUID();
+    
+    setState(
+      'conversations',
+      conversationId,
+      produce((conv: ConversationState) => {
+        conv.messages.push({
+          id: messageId,
+          conversationId,
+          senderId: state.currentUserId || 'self',
+          senderName: 'You',
+          content: originalMessage.content,
+          timestamp,
+          isOwn: true,
+          status: 'sending',
+          // Mark as forwarded with original sender info
+          forwarded: {
+            originalMessageId: originalMessage.id,
+            originalSenderId: originalMessage.senderId,
+            originalSenderName: originalMessage.senderName,
+          },
+        });
+        
+        // Sort by timestamp
+        conv.messages.sort((a, b) => a.timestamp - b.timestamp);
+      })
+    );
+  }
+}
+
+/**
+ * Get message by ID from any conversation
+ */
+export function getMessageById(messageId: string): Message | null {
+  for (const convId of Object.keys(state.conversations)) {
+    const message = state.conversations[convId]?.messages.find(m => m.id === messageId);
+    if (message) return message;
+  }
+  return null;
 }
 
 // =============================================================================

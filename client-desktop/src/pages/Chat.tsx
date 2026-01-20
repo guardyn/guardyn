@@ -1,23 +1,24 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { destroyWebSocket, getWebSocket, initWebSocket, WsMessageType, type MessagePayload, type TypingPayload } from '../api/websocket';
+import { destroyWebSocket, getWebSocket, initWebSocket, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
-import { QuotedMessage, ReactionMenu } from '../components/chat';
+import { ForwardModal, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
     addMessage,
     addTypingUser,
     clearReplyingTo,
+    deleteMessage as deleteMessageFromStore,
+    forwardMessage,
     getActiveMessages,
+    getMessageById,
     getReplyingTo,
     getTypingUsers,
     removeTypingUser,
     setActiveConversation,
     setReplyingTo,
     toggleReaction,
-    deleteMessage as deleteMessageFromStore,
-    type Message as StoreMessage,
-    type ReplyToMessage,
+    type Message as StoreMessage
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
 
@@ -42,6 +43,17 @@ const Chat: Component<ChatPageProps> = () => {
     position: { x: 0, y: 0 },
     messageId: '',
     isOwnMessage: false,
+    messageContent: '',
+  });
+  
+  // Forward modal state
+  const [forwardModal, setForwardModal] = createSignal<{
+    isOpen: boolean;
+    messageId: string;
+    messageContent: string;
+  }>({
+    isOpen: false,
+    messageId: '',
     messageContent: '',
   });
 
@@ -270,6 +282,39 @@ const Chat: Component<ChatPageProps> = () => {
     }
   };
 
+  // Handle forward message - open modal
+  const handleForward = () => {
+    const menu = reactionMenu();
+    setForwardModal({
+      isOpen: true,
+      messageId: menu.messageId,
+      messageContent: menu.messageContent,
+    });
+    closeReactionMenu();
+  };
+
+  // Handle forward confirm
+  const handleForwardConfirm = (conversationIds: string[], messageId: string) => {
+    const message = getMessageById(messageId);
+    if (message) {
+      forwardMessage(
+        {
+          id: message.id,
+          content: message.content,
+          senderId: message.senderId,
+          senderName: message.senderName,
+        },
+        conversationIds
+      );
+    }
+    setForwardModal({ isOpen: false, messageId: '', messageContent: '' });
+  };
+
+  // Close forward modal
+  const closeForwardModal = () => {
+    setForwardModal({ isOpen: false, messageId: '', messageContent: '' });
+  };
+
   // Scroll to a specific message
   const scrollToMessage = (messageId: string) => {
     const element = document.getElementById(`message-${messageId}`);
@@ -457,9 +502,24 @@ const Chat: Component<ChatPageProps> = () => {
             isOwnMessage={reactionMenu().isOwnMessage}
             onReaction={handleReaction}
             onReply={handleReply}
+            onForward={handleForward}
             onCopy={handleCopy}
             onDelete={reactionMenu().isOwnMessage ? handleDelete : undefined}
             onClose={closeReactionMenu}
+          />
+
+          {/* Forward Modal */}
+          <ForwardModal
+            isOpen={forwardModal().isOpen}
+            messageId={forwardModal().messageId}
+            messageContent={forwardModal().messageContent}
+            conversations={conversations().map(c => ({
+              id: c.id,
+              name: c.name || `Conversation ${c.id.slice(0, 8)}`,
+              lastMessage: c.last_message?.content,
+            }))}
+            onForward={handleForwardConfirm}
+            onClose={closeForwardModal}
           />
 
           {/* Message input */}

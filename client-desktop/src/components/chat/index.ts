@@ -8,6 +8,7 @@ export { ConversationActions, type ConversationActionsProps } from './Conversati
 export { ConversationItem, type ConversationItemProps } from './ConversationItem';
 export { ConversationList, type Conversation, type ConversationListProps } from './ConversationList';
 export { EmojiPicker, type EmojiPickerProps } from './EmojiPicker';
+export { ForwardModal } from './ForwardModal';
 export { MessageBubble, type MessageBubbleProps, type MessageReaction } from './MessageBubble';
 export { MessageInput, type MessageInputProps } from './MessageInput';
 export { NewConversationModal, type NewConversationModalProps, type UserSearchResult } from './NewConversationModal';
