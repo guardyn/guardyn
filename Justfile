@@ -294,6 +294,18 @@ dc-rebuild-all:
     @echo "[docker] Rebuilding all backend services..."
     {{COMPOSE}} up -d --build auth-service messaging-service presence-service media-service notification-service
 
+# Rebuild a specific service without cache (clean build)
+dc-rebuild-clean service:
+    @echo "[docker] Rebuilding {{service}} (no cache)..."
+    {{COMPOSE}} build --no-cache {{service}}
+    {{COMPOSE}} up -d {{service}}
+
+# Rebuild all backend services without cache (clean build)
+dc-rebuild-all-clean:
+    @echo "[docker] Rebuilding all backend services (no cache)..."
+    {{COMPOSE}} build --no-cache auth-service messaging-service presence-service media-service notification-service
+    {{COMPOSE}} up -d auth-service messaging-service presence-service media-service notification-service
+
 # Restart a specific service
 dc-restart service:
     {{COMPOSE}} restart {{service}}
