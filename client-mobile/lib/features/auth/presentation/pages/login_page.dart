@@ -1,9 +1,16 @@
+/// Login Page
+///
+/// Modern authentication page with glassmorphism design.
+/// Matches the desktop client design system.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
-import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
+import '../widgets/widgets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _errorMessage = '';
 
   @override
   void dispose() {
@@ -24,11 +32,18 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _clearError() {
+    if (_errorMessage.isNotEmpty) {
+      setState(() => _errorMessage = '');
+    }
+  }
+
   void _login() {
+    _clearError();
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(
         AuthLoginRequested(
-          username: _usernameController.text,
+          username: _usernameController.text.trim(),
           password: _passwordController.text,
         ),
       );
@@ -37,105 +52,114 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: BlocConsumer<AuthBloc, AuthState>(
+    return AuthLayout(
+      title: 'Guardyn',
+      subtitle: 'Secure Communication Platform',
+      child: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             Navigator.of(context).pushReplacementNamed('/home');
           } else if (state is AuthError) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
+            setState(() => _errorMessage = state.message);
           }
         },
         builder: (context, state) {
           final isLoading = state is AuthLoading;
 
-          return Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
+          return Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Error message
+                if (_errorMessage.isNotEmpty) ...[
+                  ErrorAlert(
+                    message: _errorMessage,
+                    onDismiss: _clearError,
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                // Username field
+                FormInput(
+                  label: 'Username',
+                  controller: _usernameController,
+                  hintText: 'Enter your username',
+                  icon: Icons.person_outline,
+                  enabled: !isLoading,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your username';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // Password field
+                FormInput(
+                  label: 'Password',
+                  controller: _passwordController,
+                  hintText: 'Enter your password',
+                  icon: Icons.lock_outline,
+                  isPassword: true,
+                  enabled: !isLoading,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _login(),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Submit button
+                SubmitButton(
+                  text: 'Sign In',
+                  onPressed: _login,
+                  isLoading: isLoading,
+                ),
+                const SizedBox(height: 20),
+
+                // Register link
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SvgPicture.asset(
-                      'assets/images/logo.svg',
-                      width: 80,
-                      height: 80,
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Welcome Back',
-                      textAlign: TextAlign.center,
+                    Text(
+                      "Don't have an account? ",
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 48),
-                    TextFormField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      enabled: !isLoading,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your username';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
-                      ),
-                      obscureText: true,
-                      enabled: !isLoading,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Login', style: TextStyle(fontSize: 16)),
-                    ),
-                    const SizedBox(height: 16),
                     TextButton(
                       onPressed: isLoading
                           ? null
                           : () {
-                              Navigator.of(
-                                context,
-                              ).pushReplacementNamed('/register');
+                              Navigator.of(context).pushReplacementNamed(
+                                '/register',
+                              );
                             },
-                      child: const Text('Don\'t have an account? Register'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Create account',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -143,3 +167,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+

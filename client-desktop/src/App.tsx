@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
-import { Component, createContext, createSignal, JSX, onMount, Show, useContext } from 'solid-js';
+import { Component, createContext, createEffect, createSignal, JSX, onMount, Show, useContext } from 'solid-js';
 
 // Components
 import { ToastContainer } from './components/ErrorHandling';
@@ -93,24 +93,13 @@ const App: Component<{ children?: JSX.Element }> = (props) => {
     return path === '/login' || path === '/register';
   };
 
-  // Redirect to login if not authenticated and not on auth page
-  onMount(() => {
+  // Reactive effect: redirect to login when not authenticated
+  // This runs whenever loading() or user() changes
+  createEffect(() => {
     if (!loading() && !user() && !isAuthPage()) {
       navigate('/login');
     }
   });
-
-  // Watch for auth state changes
-  const checkAuth = () => {
-    if (!loading() && !user() && !isAuthPage()) {
-      navigate('/login');
-    }
-  };
-
-  // Re-check when loading completes
-  if (!loading()) {
-    checkAuth();
-  }
 
   return (
     <div class="h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-200">
