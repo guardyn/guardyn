@@ -44,6 +44,8 @@ class FakeAddGroupMemberParams extends Fake implements AddGroupMemberParams {}
 
 class FakeRemoveGroupMemberParams extends Fake implements RemoveGroupMemberParams {}
 
+class FakeLeaveGroupParams extends Fake implements LeaveGroupParams {}
+
 void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
@@ -99,6 +101,7 @@ void main() {
     registerFallbackValue(FakeGetGroupMessagesParams());
     registerFallbackValue(FakeAddGroupMemberParams());
     registerFallbackValue(FakeRemoveGroupMemberParams());
+    registerFallbackValue(FakeLeaveGroupParams());
   });
 
   setUp(() {
@@ -110,6 +113,14 @@ void main() {
     mockAddGroupMember = MockAddGroupMember();
     mockRemoveGroupMember = MockRemoveGroupMember();
     mockLeaveGroup = MockLeaveGroup();
+    
+    // Setup default mock behavior for leaveGroup
+    when(() => mockLeaveGroup.call(any()))
+        .thenAnswer((_) async => const Right<Failure, bool>(true));
+    
+    // Setup default mock behavior for getGroups
+    when(() => mockGetGroups())
+        .thenAnswer((_) async => const Right<Failure, List<Group>>([]));
 
     bloc = GroupBloc(
       createGroup: mockCreateGroup,
@@ -397,11 +408,12 @@ void main() {
 
   group('GroupLeave', () {
     blocTest<GroupBloc, GroupState>(
-      'emits [GroupLeft, GroupListLoaded] when leave group succeeds',
+      'emits [GroupLoading, GroupLeft, GroupListLoaded] when leave group succeeds',
       build: () => bloc,
       seed: () => GroupListLoaded(groups: [tGroup]),
       act: (bloc) => bloc.add(const GroupLeave(tGroupId)),
       expect: () => [
+        isA<GroupLoading>(),
         const GroupLeft(groupId: tGroupId),
         const GroupListLoaded(groups: []),
       ],

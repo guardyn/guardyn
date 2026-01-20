@@ -29,6 +29,7 @@ void main() {
   });
 
   Widget buildTestableWidget({bool listenForPop = false}) {
+    final formKey = GlobalKey<FormState>();
     return MaterialApp(
       home: BlocProvider<GroupBloc>.value(
         value: mockGroupBloc,
@@ -46,7 +47,7 @@ void main() {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Form(
-                    key: const Key('create_group_form'),
+                    key: formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -124,8 +125,7 @@ void main() {
                           onPressed: isLoading
                               ? null
                               : () {
-                                  final form = Form.of(context);
-                                  if (form.validate()) {
+                                  if (formKey.currentState?.validate() ?? false) {
                                     context.read<GroupBloc>().add(
                                           const GroupCreate(
                                             name: 'Test Group',
