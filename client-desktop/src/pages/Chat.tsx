@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { destroyWebSocket, getWebSocket, initWebSocket, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
-import { ForwardModal, QuotedMessage, ReactionMenu } from '../components/chat';
+import { ForwardModal, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
     addMessage,
@@ -446,10 +446,9 @@ const Chat: Component<ChatPageProps> = () => {
                         <p class="text-xs opacity-70">
                           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
+                        {/* Read receipt status icons */}
                         <Show when={message.isOwn}>
-                          <span class="text-xs opacity-70">
-                            {message.status === 'sending' || message.status === 'pending' ? '◯' : message.status === 'delivered' || message.status === 'sent' ? '✓' : '✓✓'}
-                          </span>
+                          <MessageStatusIndicator status={message.status} class="w-4 h-4" />
                         </Show>
                       </div>
                     </div>
