@@ -51,6 +51,9 @@ export type { Breakpoint } from './ResponsiveLayout';
 // Theme
 export { ThemeSwitcher, ThemeToggle } from './ThemeSwitcher';
 
+// User Search
+export { UserSearch, UserCard, type UserSearchProps, type UserCardProps } from './UserSearch';
+
 // Chat Components
 export * from './chat';
 

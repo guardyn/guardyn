@@ -14,6 +14,7 @@ export * from './settings';
 export * as crypto from './crypto';
 export * as mls from './mls';
 export * as websocket from './websocket';
+export * as users from './users';
 
 // Named exports for individual functions (most common ones)
 export {
@@ -30,7 +31,26 @@ export {
   decryptMessage as mlsDecryptMessage,
 } from './mls';
 
+export {
+  searchUsers,
+  searchUsersMock,
+  getUserProfile,
+  getUserProfileMock,
+  getContacts,
+  getContactsMock,
+  addContact,
+  removeContact,
+  blockUser,
+  unblockUser,
+} from './users';
+
+export type {
+  UserProfile,
+  UserSearchResult,
+  UserSearchParams,
+  Contact,
+} from './users';
+
 export type {
   WebSocketConfig,
 } from './websocket';
-
