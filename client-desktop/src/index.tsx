@@ -11,7 +11,7 @@ import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
-import { GroupList, GroupChat, GroupCreate, GroupInfo } from './pages/groups';
+import { GroupChat, GroupCreate, GroupInfo, GroupList } from './pages/groups';
 
 // Components
 import IncomingCallDialog from './components/IncomingCall';

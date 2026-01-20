@@ -1,6 +1,6 @@
+import { useNavigate } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
 import { Avatar, Button, TextInput } from '../../components/shared';
 import type { CreateGroupRequest } from '../../types';
 

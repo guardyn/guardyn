@@ -1,6 +1,6 @@
+import { useNavigate, useParams } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { useNavigate, useParams } from '@solidjs/router';
 import { MessageBubble, MessageInput } from '../../components/chat';
 import { Avatar, TypingIndicator } from '../../components/shared';
 import type { Group, GroupMember, GroupMessage } from '../../types';

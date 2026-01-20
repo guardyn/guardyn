@@ -3,7 +3,6 @@ import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
-import 'package:logger/logger.dart';
 // Auth feature imports
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
 // Calls feature imports
@@ -50,6 +49,7 @@ import 'package:guardyn_client/features/presence/domain/usecases/send_typing_ind
 import 'package:guardyn_client/features/presence/domain/usecases/update_my_status.dart';
 import 'package:guardyn_client/features/presence/presentation/bloc/presence_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:logger/logger.dart';
 
 final getIt = GetIt.instance;
 
