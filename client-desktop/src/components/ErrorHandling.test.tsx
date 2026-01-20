@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@solidjs/testing-library';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    clearAllToasts,
     dismissToast,
     EmptyState,
     ErrorBoundary,
@@ -89,9 +90,11 @@ describe('ErrorBoundary', () => {
 describe('ToastContainer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    clearAllToasts(); // Reset toast state between tests
   });
 
   afterEach(() => {
+    clearAllToasts(); // Cleanup after each test
     vi.useRealTimers();
   });
 
@@ -175,28 +178,30 @@ describe('ToastContainer', () => {
     });
   });
 
-  // TODO: Fix solid-js state synchronization issue in test environment
-  it.skip('dismisses toast when close button clicked', async () => {
+  it('dismisses toast when close button clicked', async () => {
+    vi.useRealTimers(); // Use real timers for this test to avoid timing issues
+
     render(() => <ToastContainer />);
 
     showToast('info', 'Clickable dismiss', 0);
 
+    // Wait for toast to appear
     await waitFor(() => {
       expect(screen.getByText('Clickable dismiss')).toBeInTheDocument();
     });
 
-    const closeButtons = screen.getAllByRole('button');
-    if (closeButtons.length > 0) {
-      await fireEvent.click(closeButtons[0]);
+    // Find and click the close button (the button inside the toast)
+    const closeButton = screen.getByRole('button');
+    fireEvent.click(closeButton);
 
-      await waitFor(
-        () => {
-          expect(screen.queryByText('Clickable dismiss')).not.toBeInTheDocument();
-        },
-        { timeout: 2000 }
-      );
-    }
-  }, 10000);
+    // Wait for toast to be removed
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Clickable dismiss')).not.toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
+  });
 
   it('shows multiple toasts', async () => {
     render(() => <ToastContainer />);

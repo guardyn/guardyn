@@ -103,6 +103,13 @@ interface Toast {
  */
 const [toasts, setToasts] = createSignal<Toast[]>([]);
 
+/**
+ * Clear all toasts - useful for testing
+ */
+export function clearAllToasts() {
+  setToasts([]);
+}
+
 export function showToast(type: ToastType, message: string, duration = 5000) {
   const id = Math.random().toString(36).substring(2, 9);
   const toast: Toast = { id, type, message, duration };
