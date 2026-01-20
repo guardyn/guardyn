@@ -6,8 +6,8 @@
  */
 
 import { Component, createMemo, createSignal, For, Show } from 'solid-js';
-import { ConversationItem, type PresenceStatus } from './ConversationItem';
 import { VirtualList } from '../shared/VirtualList';
+import { ConversationItem, type PresenceStatus } from './ConversationItem';
 
 // =============================================================================
 // TYPES

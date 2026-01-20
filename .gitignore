@@ -23,7 +23,6 @@ codeql-database/
 .playwright-mcp
 .vscode/
 landing/media/video/
-client-mobile/assets/sounds/call/
-client-mobile/assets/sounds/notify/
 client-desktop/test-results/
 client-desktop/e2e-report/
+client-mobile/assets/audio/generate_audio_assets.py
