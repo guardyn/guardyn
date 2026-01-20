@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { destroyWebSocket, getWebSocket, initWebSocket, WsMessageType, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
+import { ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
     addMessage,
@@ -9,7 +10,10 @@ import {
     getActiveMessages,
     getTypingUsers,
     removeTypingUser,
-    setActiveConversation
+    setActiveConversation,
+    toggleReaction,
+    deleteMessage as deleteMessageFromStore,
+    type Message as StoreMessage,
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
 
@@ -21,6 +25,21 @@ const Chat: Component<ChatPageProps> = () => {
   const [newMessage, setNewMessage] = createSignal('');
   const [loading, setLoading] = createSignal(true);
   const [isConnected, setIsConnected] = createSignal(false);
+  
+  // Reaction menu state
+  const [reactionMenu, setReactionMenu] = createSignal<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    messageId: string;
+    isOwnMessage: boolean;
+    messageContent: string;
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    messageId: '',
+    isOwnMessage: false,
+    messageContent: '',
+  });
 
   // Get messages from store for active conversation
   const messages = () => getActiveMessages();
@@ -163,6 +182,67 @@ const Chat: Component<ChatPageProps> = () => {
     }
   };
 
+  // Handle right-click / long-press on message
+  const handleMessageContextMenu = (
+    e: MouseEvent,
+    message: StoreMessage
+  ) => {
+    e.preventDefault();
+    setReactionMenu({
+      isOpen: true,
+      position: { x: e.clientX, y: e.clientY },
+      messageId: message.id,
+      isOwnMessage: message.isOwn,
+      messageContent: message.content,
+    });
+  };
+
+  // Handle reaction
+  const handleReaction = (emoji: string) => {
+    const convId = selectedConversation();
+    const msgId = reactionMenu().messageId;
+    if (convId && msgId) {
+      toggleReaction(convId, msgId, emoji);
+      
+      // Send reaction to backend
+      const ws = getWebSocket();
+      if (ws && isConnected()) {
+        ws.sendReaction?.(convId, msgId, emoji);
+      }
+    }
+  };
+
+  // Handle copy message
+  const handleCopy = () => {
+    const content = reactionMenu().messageContent;
+    if (content) {
+      navigator.clipboard.writeText(content).catch(console.error);
+    }
+  };
+
+  // Handle delete message
+  const handleDelete = async () => {
+    const convId = selectedConversation();
+    const msgId = reactionMenu().messageId;
+    if (convId && msgId) {
+      deleteMessageFromStore(convId, msgId);
+      
+      try {
+        await invoke('delete_message', {
+          conversationId: convId,
+          messageId: msgId,
+        });
+      } catch (err) {
+        console.error('Failed to delete message:', err);
+      }
+    }
+  };
+
+  // Close reaction menu
+  const closeReactionMenu = () => {
+    setReactionMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
   return (
     <div class="flex h-full">
       {/* Conversations list */}
@@ -244,28 +324,63 @@ const Chat: Component<ChatPageProps> = () => {
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <For each={messages()}>
               {(message) => (
-                <div class={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}>
-                  <div
-                    class={`message-bubble ${
-                      message.isOwn ? 'message-bubble-sent' : 'message-bubble-received'
-                    }`}
-                  >
-                    <Show when={!message.isOwn}>
-                      <p class="text-xs font-medium text-guardyn-600 dark:text-guardyn-400 mb-1">
-                        {message.senderName}
-                      </p>
-                    </Show>
-                    <p>{message.content}</p>
-                    <div class="flex items-center justify-end gap-1 mt-1">
-                      <p class="text-xs opacity-70">
-                        {message.timestamp.toLocaleTimeString()}
-                      </p>
-                      <Show when={message.isOwn}>
-                        <span class="text-xs opacity-70">
-                          {message.status === 'sending' ? '◯' : message.status === 'delivered' ? '✓' : '✓✓'}
-                        </span>
+                <div 
+                  class={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
+                  onContextMenu={(e) => handleMessageContextMenu(e, message)}
+                >
+                  <div class="max-w-[70%]">
+                    <div
+                      class={`message-bubble ${
+                        message.isOwn ? 'message-bubble-sent' : 'message-bubble-received'
+                      } cursor-pointer transition-transform hover:scale-[1.01]`}
+                    >
+                      <Show when={!message.isOwn}>
+                        <p class="text-xs font-medium text-guardyn-600 dark:text-guardyn-400 mb-1">
+                          {message.senderName}
+                        </p>
                       </Show>
+                      <p>{message.content}</p>
+                      <div class="flex items-center justify-end gap-1 mt-1">
+                        <p class="text-xs opacity-70">
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <Show when={message.isOwn}>
+                          <span class="text-xs opacity-70">
+                            {message.status === 'sending' || message.status === 'pending' ? '◯' : message.status === 'delivered' || message.status === 'sent' ? '✓' : '✓✓'}
+                          </span>
+                        </Show>
+                      </div>
                     </div>
+                    
+                    {/* Reactions display */}
+                    <Show when={message.reactions && message.reactions.length > 0}>
+                      <div class={`flex flex-wrap gap-1 mt-1 ${message.isOwn ? 'justify-end' : 'justify-start'}`}>
+                        <For each={message.reactions}>
+                          {(reaction) => (
+                            <button
+                              onClick={() => {
+                                const convId = selectedConversation();
+                                if (convId) {
+                                  toggleReaction(convId, message.id, reaction.emoji);
+                                }
+                              }}
+                              class={`
+                                inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs
+                                transition-all duration-200 hover:scale-105 active:scale-95
+                                ${reaction.hasReacted
+                                  ? 'bg-guardyn-100 dark:bg-guardyn-900/30 border border-guardyn-300 dark:border-guardyn-700'
+                                  : 'bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
+                                }
+                              `}
+                              title={`${reaction.count} reaction${reaction.count > 1 ? 's' : ''}`}
+                            >
+                              <span>{reaction.emoji}</span>
+                              <span class="text-gray-600 dark:text-gray-300">{reaction.count}</span>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
                   </div>
                 </div>
               )}
@@ -276,6 +391,18 @@ const Chat: Component<ChatPageProps> = () => {
               <TypingIndicator users={typingUsers()} />
             </Show>
           </div>
+
+          {/* Reaction Menu */}
+          <ReactionMenu
+            isOpen={reactionMenu().isOpen}
+            position={reactionMenu().position}
+            messageId={reactionMenu().messageId}
+            isOwnMessage={reactionMenu().isOwnMessage}
+            onReaction={handleReaction}
+            onCopy={handleCopy}
+            onDelete={reactionMenu().isOwnMessage ? handleDelete : undefined}
+            onClose={closeReactionMenu}
+          />
 
           {/* Message input */}
           <form onSubmit={sendMessage} class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">

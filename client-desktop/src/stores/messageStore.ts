@@ -556,6 +556,162 @@ export function resetMessageStore(): void {
   setState(createInitialState());
 }
 
+// -----------------------------------------------------------------------------
+// Reactions
+// -----------------------------------------------------------------------------
+
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  hasReacted: boolean;
+}
+
+/**
+ * Toggle a reaction on a message
+ * If the user has already reacted with this emoji, remove it
+ * Otherwise, add the reaction
+ */
+export function toggleReaction(
+  conversationId: string,
+  messageId: string,
+  emoji: string
+): void {
+  ensureConversation(conversationId);
+
+  setState(
+    'conversations',
+    conversationId,
+    'messages',
+    (messages) => messages.map(m => {
+      if (m.id !== messageId) return m;
+
+      const reactions = [...(m.reactions ?? [])];
+      const existingIndex = reactions.findIndex(r => r.emoji === emoji);
+
+      if (existingIndex !== -1) {
+        const existing = reactions[existingIndex];
+        if (existing.hasReacted) {
+          // User has reacted - remove their reaction
+          if (existing.count <= 1) {
+            reactions.splice(existingIndex, 1);
+          } else {
+            reactions[existingIndex] = {
+              ...existing,
+              count: existing.count - 1,
+              hasReacted: false,
+            };
+          }
+        } else {
+          // User hasn't reacted - add their reaction
+          reactions[existingIndex] = {
+            ...existing,
+            count: existing.count + 1,
+            hasReacted: true,
+          };
+        }
+      } else {
+        // New reaction
+        reactions.push({
+          emoji,
+          count: 1,
+          hasReacted: true,
+        });
+      }
+
+      return { ...m, reactions };
+    })
+  );
+}
+
+/**
+ * Add a reaction from another user (received via WebSocket)
+ */
+export function addExternalReaction(
+  conversationId: string,
+  messageId: string,
+  emoji: string,
+  userId: string
+): void {
+  ensureConversation(conversationId);
+
+  setState(
+    'conversations',
+    conversationId,
+    'messages',
+    (messages) => messages.map(m => {
+      if (m.id !== messageId) return m;
+
+      const reactions = [...(m.reactions ?? [])];
+      const existingIndex = reactions.findIndex(r => r.emoji === emoji);
+
+      if (existingIndex !== -1) {
+        reactions[existingIndex] = {
+          ...reactions[existingIndex],
+          count: reactions[existingIndex].count + 1,
+        };
+      } else {
+        reactions.push({
+          emoji,
+          count: 1,
+          hasReacted: userId === state.currentUserId,
+        });
+      }
+
+      return { ...m, reactions };
+    })
+  );
+}
+
+/**
+ * Remove a reaction from another user (received via WebSocket)
+ */
+export function removeExternalReaction(
+  conversationId: string,
+  messageId: string,
+  emoji: string,
+  userId: string
+): void {
+  ensureConversation(conversationId);
+
+  setState(
+    'conversations',
+    conversationId,
+    'messages',
+    (messages) => messages.map(m => {
+      if (m.id !== messageId) return m;
+
+      const reactions = [...(m.reactions ?? [])];
+      const existingIndex = reactions.findIndex(r => r.emoji === emoji);
+
+      if (existingIndex !== -1) {
+        const existing = reactions[existingIndex];
+        if (existing.count <= 1) {
+          reactions.splice(existingIndex, 1);
+        } else {
+          reactions[existingIndex] = {
+            ...existing,
+            count: existing.count - 1,
+            hasReacted: userId === state.currentUserId ? false : existing.hasReacted,
+          };
+        }
+      }
+
+      return { ...m, reactions };
+    })
+  );
+}
+
+/**
+ * Get reactions for a specific message
+ */
+export function getMessageReactions(
+  conversationId: string,
+  messageId: string
+): MessageReaction[] {
+  const message = getMessage(conversationId, messageId);
+  return message?.reactions ?? [];
+}
+
 // =============================================================================
 // SELECTORS
 // =============================================================================
