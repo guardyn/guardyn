@@ -89,6 +89,7 @@ html {
    ============================================ */
 .auth-layout {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
+  position: relative;
 }
 
 :is(.dark .auth-layout) {
@@ -96,28 +97,32 @@ html {
 }
 
 .auth-bg {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
+  pointer-events: none;
 }
 
-/* Animated gradient orbs */
+/* Animated gradient orbs - visible floating shapes */
 .gradient-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.2;
+  filter: blur(60px);
+  opacity: 0.6;
   animation: float 20s ease-in-out infinite;
 }
 
 :is(.dark .gradient-orb) {
-  opacity: 0.4;
+  opacity: 0.5;
+  filter: blur(80px);
 }
 
 .gradient-orb-1 {
-  width: 600px;
-  height: 600px;
+  width: 500px;
+  height: 500px;
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  top: -200px;
-  right: -200px;
+  top: -150px;
+  right: -100px;
   animation-delay: 0s;
 }
 
@@ -125,8 +130,8 @@ html {
   width: 400px;
   height: 400px;
   background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
-  bottom: -150px;
-  left: -150px;
+  bottom: -100px;
+  left: -100px;
   animation-delay: -5s;
 }
 
@@ -138,7 +143,11 @@ html {
   left: 50%;
   transform: translate(-50%, -50%);
   animation-delay: -10s;
-  opacity: 0.2;
+  opacity: 0.4;
+}
+
+:is(.dark .gradient-orb-3) {
+  opacity: 0.3;
 }
 
 @keyframes float {

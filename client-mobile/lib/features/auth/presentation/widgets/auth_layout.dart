@@ -114,7 +114,7 @@ class _GradientOrbsState extends State<_GradientOrbs>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final orbOpacity = isDark ? 0.4 : 0.2;
+    final orbOpacity = isDark ? 0.5 : 0.6;
 
     return AnimatedBuilder(
       animation: _controller,
@@ -124,10 +124,10 @@ class _GradientOrbsState extends State<_GradientOrbs>
           children: [
             // Green orb - top right
             Positioned(
-              top: -200 + (30 * _wave(value, 0)),
-              right: -200 + (20 * _wave(value, 0.25)),
+              top: -150 + (30 * _wave(value, 0)),
+              right: -100 + (20 * _wave(value, 0.25)),
               child: _Orb(
-                size: 600,
+                size: 500,
                 gradient: const LinearGradient(
                   colors: [
                     GuardynColors.guardyn500,
@@ -139,8 +139,8 @@ class _GradientOrbsState extends State<_GradientOrbs>
             ),
             // Cyan orb - bottom left
             Positioned(
-              bottom: -150 + (20 * _wave(value, 0.5)),
-              left: -150 + (30 * _wave(value, 0.75)),
+              bottom: -100 + (20 * _wave(value, 0.5)),
+              left: -100 + (30 * _wave(value, 0.75)),
               child: _Orb(
                 size: 400,
                 gradient: const LinearGradient(
@@ -168,7 +168,7 @@ class _GradientOrbsState extends State<_GradientOrbs>
                         Color(0xFFA855F7),
                       ],
                     ),
-                    opacity: orbOpacity * 0.5,
+                    opacity: isDark ? 0.3 : 0.4,
                   ),
                 ),
               ),
@@ -198,17 +198,29 @@ class _Orb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: gradient,
-      ),
-      child: Opacity(
-        opacity: opacity,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final blurSigma = isDark ? 80.0 : 60.0;
+
+    return Opacity(
+      opacity: opacity,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: gradient,
+          boxShadow: [
+            BoxShadow(
+              color: (gradient as LinearGradient).colors.first.withValues(
+                alpha: 0.3,
+              ),
+              blurRadius: blurSigma,
+              spreadRadius: blurSigma / 2,
+            ),
+          ],
+        ),
         child: ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+          imageFilter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,

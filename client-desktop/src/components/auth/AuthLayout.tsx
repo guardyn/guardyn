@@ -15,19 +15,19 @@ interface AuthLayoutProps {
 
 const AuthLayout: Component<AuthLayoutProps> = (props) => {
   return (
-    <div class="auth-layout min-h-screen w-full flex items-center justify-center p-4 overflow-hidden relative">
+    <div class="auth-layout min-h-screen w-full flex items-center justify-center p-4 overflow-hidden">
       {/* Animated gradient background */}
-      <div class="auth-bg absolute inset-0 -z-10">
+      <div class="auth-bg">
         <div class="gradient-orb gradient-orb-1" />
         <div class="gradient-orb gradient-orb-2" />
         <div class="gradient-orb gradient-orb-3" />
       </div>
 
       {/* Grid pattern overlay */}
-      <div class="absolute inset-0 -z-5 bg-grid-pattern opacity-5" />
+      <div class="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none" />
 
       {/* Main content card */}
-      <div class="auth-card w-full max-w-md animate-scale-in">
+      <div class="auth-card w-full max-w-md animate-scale-in relative z-10">
         {/* Logo section */}
         <div class="text-center mb-8">
           <div class="logo-container inline-flex items-center justify-center mb-4">

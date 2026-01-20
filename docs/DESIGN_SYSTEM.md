@@ -220,6 +220,79 @@ Accent glow for focus states and highlights:
 box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); /* Guardyn green glow */
 ```
 
+### Auth Background Effects (Gradient Orbs)
+
+The authentication pages feature animated gradient orbs that create a dynamic, modern background:
+
+| Orb | Size | Color | Position |
+| --- | ---- | ----- | -------- |
+| **Orb 1 (Green)** | 500px | `#22c55e` → `#16a34a` | Top-right (-150px, -100px) |
+| **Orb 2 (Cyan)** | 400px | `#0ea5e9` → `#06b6d4` | Bottom-left (-100px, -100px) |
+| **Orb 3 (Purple)** | 300px | `#8b5cf6` → `#a855f7` | Center (50%, 50%) |
+
+**Visual Properties:**
+
+| Property | Light Theme | Dark Theme |
+| -------- | ----------- | ---------- |
+| **Opacity** | 0.6 | 0.5 |
+| **Blur** | 60px | 80px |
+| **Animation** | 20s float | 20s float |
+
+**Desktop CSS:**
+
+```css
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.6;
+  animation: float 20s ease-in-out infinite;
+}
+
+.gradient-orb-1 {
+  width: 500px; height: 500px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  top: -150px; right: -100px;
+}
+
+.gradient-orb-2 {
+  width: 400px; height: 400px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+  bottom: -100px; left: -100px;
+  animation-delay: -5s;
+}
+
+.gradient-orb-3 {
+  width: 300px; height: 300px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.4;
+  animation-delay: -10s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(20px, -20px); }
+  50% { transform: translate(-10px, 10px); }
+  75% { transform: translate(15px, 15px); }
+}
+```
+
+**Flutter Implementation:**
+
+```dart
+class _Orb extends StatelessWidget {
+  final double size;
+  final List<Color> colors;
+  final double top, left, right, bottom;
+  final Duration animationDelay;
+
+  // Opacity: isDark ? 0.5 : 0.6
+  // Blur: isDark ? 80.0 : 60.0
+}
+```
+
 ---
 
 ## Theming
