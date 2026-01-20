@@ -61,6 +61,13 @@ export default {
         'scale-in': 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
         'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
         'float': 'float 20s ease-in-out infinite',
+        'shimmer': 'shimmer 1.5s ease-in-out infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
       },
     },
   },
