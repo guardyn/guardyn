@@ -13,6 +13,7 @@ import '../bloc/call_event.dart';
 import '../bloc/call_state.dart' as call_state;
 import '../widgets/call_controls.dart';
 import '../widgets/call_timer.dart';
+import '../widgets/connection_quality_indicator.dart';
 import '../widgets/participant_tile.dart';
 
 /// Full-screen call page
@@ -217,7 +218,7 @@ class _CallPageState extends State<CallPage> {
     );
   }
 
-  /// Build call info overlay (status, timer)
+  /// Build call info overlay (status, timer, quality)
   Widget _buildCallInfo(call_state.CallState state) {
     final call = _getCall(state);
     if (call == null) return const SizedBox.shrink();
@@ -227,6 +228,20 @@ class _CallPageState extends State<CallPage> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            // Connection quality indicator (shown when connected)
+            if (state is call_state.CallConnected) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ConnectionQualityIndicator(
+                    qualityScore: call.qualityScore,
+                    showLabel: true,
+                    size: ConnectionQualitySize.medium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             // Status text
             Text(
               _getStatusText(state),

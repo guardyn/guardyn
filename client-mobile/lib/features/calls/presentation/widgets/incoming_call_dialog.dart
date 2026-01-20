@@ -1,11 +1,13 @@
 /// Incoming Call Dialog Widget
 ///
 /// Full-screen dialog for incoming calls with accept/reject buttons.
+/// Includes ringtone playback and vibration patterns.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/datasources/ringtone_datasource.dart';
 import '../../domain/entities/entities.dart';
 
 /// Full-screen incoming call dialog
@@ -45,10 +47,14 @@ class _IncomingCallDialogState extends State<IncomingCallDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  final RingtoneDatasource _ringtone = RingtoneDatasource.instance;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize and play ringtone
+    _initializeRingtone();
 
     // Vibration pattern for incoming call
     HapticFeedback.heavyImpact();
@@ -64,8 +70,14 @@ class _IncomingCallDialogState extends State<IncomingCallDialog>
     );
   }
 
+  Future<void> _initializeRingtone() async {
+    await _ringtone.initialize();
+    await _ringtone.playIncomingRingtone();
+  }
+
   @override
   void dispose() {
+    _ringtone.stop();
     _pulseController.dispose();
     super.dispose();
   }

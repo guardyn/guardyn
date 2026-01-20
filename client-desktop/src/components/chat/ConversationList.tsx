@@ -7,6 +7,7 @@
 
 import { Component, createMemo, createSignal, For, Show } from 'solid-js';
 import { ConversationItem, type PresenceStatus } from './ConversationItem';
+import { VirtualList } from '../shared/VirtualList';
 
 // =============================================================================
 // TYPES
@@ -39,6 +40,14 @@ export interface ConversationListProps {
   onNewConversation?: () => void;
   /** Additional CSS classes */
   class?: string;
+  /** Enable virtualization for large lists (default: true for 50+ items) */
+  virtualize?: boolean;
+  /** Height of each conversation item in pixels (for virtualization) */
+  itemHeight?: number;
+  /** Container height in pixels (for virtualization) */
+  containerHeight?: number;
+  /** Callback when scrolled to bottom (for pagination) */
+  onScrollToBottom?: () => void;
 }
 
 // =============================================================================
@@ -97,6 +106,16 @@ const PlusIcon: Component<{ class?: string }> = (props) => (
  */
 export const ConversationList: Component<ConversationListProps> = (props) => {
   const [searchQuery, setSearchQuery] = createSignal('');
+  
+  // Default item height for virtualization (72px = avatar 48px + padding)
+  const itemHeight = () => props.itemHeight ?? 72;
+  const containerHeight = () => props.containerHeight ?? 500;
+  
+  // Auto-enable virtualization for large lists
+  const shouldVirtualize = () => {
+    if (props.virtualize !== undefined) return props.virtualize;
+    return filteredConversations().length >= 50;
+  };
 
   const filteredConversations = createMemo(() => {
     const query = searchQuery().toLowerCase().trim();
@@ -107,6 +126,21 @@ export const ConversationList: Component<ConversationListProps> = (props) => {
       conv.lastMessage?.toLowerCase().includes(query)
     );
   });
+  
+  // Render a single conversation item
+  const renderConversationItem = (conv: Conversation) => (
+    <ConversationItem
+      id={conv.id}
+      name={conv.name}
+      avatarUrl={conv.avatarUrl}
+      presence={conv.presence}
+      lastMessage={conv.lastMessage}
+      lastMessageTime={conv.lastMessageTime}
+      unreadCount={conv.unreadCount}
+      isSelected={props.selectedId === conv.id}
+      onClick={props.onSelect}
+    />
+  );
 
   return (
     <div class={`flex flex-col h-full ${props.class ?? ''}`}>
@@ -190,21 +224,25 @@ export const ConversationList: Component<ConversationListProps> = (props) => {
               </div>
             }
           >
-            <For each={filteredConversations()}>
-              {(conv) => (
-                <ConversationItem
-                  id={conv.id}
-                  name={conv.name}
-                  avatarUrl={conv.avatarUrl}
-                  presence={conv.presence}
-                  lastMessage={conv.lastMessage}
-                  lastMessageTime={conv.lastMessageTime}
-                  unreadCount={conv.unreadCount}
-                  isSelected={props.selectedId === conv.id}
-                  onClick={props.onSelect}
-                />
-              )}
-            </For>
+            {/* Use VirtualList for large lists, For for small lists */}
+            <Show
+              when={shouldVirtualize()}
+              fallback={
+                <For each={filteredConversations()}>
+                  {(conv) => renderConversationItem(conv)}
+                </For>
+              }
+            >
+              <VirtualList
+                items={() => filteredConversations()}
+                itemHeight={itemHeight()}
+                containerHeight={containerHeight()}
+                overscan={3}
+                onScrollToBottom={props.onScrollToBottom}
+                class="h-full"
+                renderItem={(conv) => renderConversationItem(conv)}
+              />
+            </Show>
           </Show>
         </Show>
       </div>
