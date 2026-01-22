@@ -148,3 +148,133 @@ pub async fn update_profile(
         })),
     }
 }
+
+/// Validate JWT token and extract user_id
+/// Returns Ok(user_id) on success, Err(error_message) on failure
+pub fn validate_jwt_token(token: &str, jwt_secret: &str) -> Result<String, String> {
+    if token.is_empty() {
+        return Err("Access token is required".to_string());
+    }
+
+    match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &Validation::new(Algorithm::HS256),
+    ) {
+        Ok(token_data) => Ok(token_data.claims.sub),
+        Err(e) => Err(format!("Invalid or expired access token: {}", e)),
+    }
+}
+
+/// Merge profile fields - returns new value if provided, otherwise keeps existing
+pub fn merge_profile_field(new_value: &str, existing: Option<String>) -> Option<String> {
+    if new_value.is_empty() {
+        existing
+    } else {
+        Some(new_value.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jsonwebtoken::{encode, Header, EncodingKey};
+    use serde::Serialize;
+
+    #[derive(Debug, Serialize)]
+    struct TestClaims {
+        sub: String,
+        exp: i64,
+    }
+
+    fn create_test_token(user_id: &str, secret: &str, exp_seconds: i64) -> String {
+        let claims = TestClaims {
+            sub: user_id.to_string(),
+            exp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64 + exp_seconds,
+        };
+        encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes())).unwrap()
+    }
+
+    #[test]
+    fn test_validate_jwt_token_empty() {
+        let result = validate_jwt_token("", "test_secret");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Access token is required");
+    }
+
+    #[test]
+    fn test_validate_jwt_token_invalid() {
+        let result = validate_jwt_token("invalid_token", "test_secret");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid or expired access token"));
+    }
+
+    #[test]
+    fn test_validate_jwt_token_wrong_secret() {
+        let token = create_test_token("user123", "correct_secret", 3600);
+        let result = validate_jwt_token(&token, "wrong_secret");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_jwt_token_expired() {
+        let token = create_test_token("user123", "test_secret", -3600); // expired 1 hour ago
+        let result = validate_jwt_token(&token, "test_secret");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_jwt_token_success() {
+        let secret = "test_secret_key_123";
+        let user_id = "user-uuid-12345";
+        let token = create_test_token(user_id, secret, 3600);
+        
+        let result = validate_jwt_token(&token, secret);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), user_id);
+    }
+
+    #[test]
+    fn test_merge_profile_field_new_value() {
+        let result = merge_profile_field("new_avatar.jpg", Some("old_avatar.jpg".to_string()));
+        assert_eq!(result, Some("new_avatar.jpg".to_string()));
+    }
+
+    #[test]
+    fn test_merge_profile_field_empty_keeps_existing() {
+        let result = merge_profile_field("", Some("old_avatar.jpg".to_string()));
+        assert_eq!(result, Some("old_avatar.jpg".to_string()));
+    }
+
+    #[test]
+    fn test_merge_profile_field_empty_keeps_none() {
+        let result = merge_profile_field("", None);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_merge_profile_field_new_value_replaces_none() {
+        let result = merge_profile_field("new_avatar.jpg", None);
+        assert_eq!(result, Some("new_avatar.jpg".to_string()));
+    }
+
+    #[test]
+    fn test_merge_display_name() {
+        // Test display name with unicode characters
+        let result = merge_profile_field("Иван Иванов", None);
+        assert_eq!(result, Some("Иван Иванов".to_string()));
+        
+        let result = merge_profile_field("John Doe 日本語", Some("Old Name".to_string()));
+        assert_eq!(result, Some("John Doe 日本語".to_string()));
+    }
+
+    #[test]
+    fn test_merge_bio_long_text() {
+        let long_bio = "A".repeat(500);
+        let result = merge_profile_field(&long_bio, None);
+        assert_eq!(result, Some(long_bio));
+    }
+}

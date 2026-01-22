@@ -83,3 +83,74 @@ pub async fn handle_get_user_profile(
         }
     }
 }
+
+/// Validate user_id format
+/// Returns Ok(trimmed_user_id) if valid UUID, Err(error_message) otherwise
+pub fn validate_user_id(user_id: &str) -> Result<&str, String> {
+    let trimmed = user_id.trim();
+    
+    if trimmed.is_empty() {
+        return Err("User ID cannot be empty".to_string());
+    }
+    
+    if uuid::Uuid::parse_str(trimmed).is_err() {
+        return Err("Invalid user ID format".to_string());
+    }
+    
+    Ok(trimmed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_user_id_empty() {
+        let result = validate_user_id("");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "User ID cannot be empty");
+    }
+
+    #[test]
+    fn test_validate_user_id_whitespace_only() {
+        let result = validate_user_id("   ");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "User ID cannot be empty");
+    }
+
+    #[test]
+    fn test_validate_user_id_invalid_format() {
+        let result = validate_user_id("not-a-uuid");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid user ID format");
+    }
+
+    #[test]
+    fn test_validate_user_id_valid_v4() {
+        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
+        let result = validate_user_id(uuid_str);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), uuid_str);
+    }
+
+    #[test]
+    fn test_validate_user_id_with_whitespace() {
+        let uuid_str = "  550e8400-e29b-41d4-a716-446655440000  ";
+        let result = validate_user_id(uuid_str);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "550e8400-e29b-41d4-a716-446655440000");
+    }
+
+    #[test]
+    fn test_validate_user_id_uppercase() {
+        let uuid_str = "550E8400-E29B-41D4-A716-446655440000";
+        let result = validate_user_id(uuid_str);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_user_id_partial() {
+        let result = validate_user_id("550e8400-e29b-41d4");
+        assert!(result.is_err());
+    }
+}
