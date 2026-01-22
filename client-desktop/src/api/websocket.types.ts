@@ -113,6 +113,8 @@ export interface SendMessagePayload {
   client_message_id?: string;
   /** Content type (text, image, file, etc.) */
   content_type: ContentType;
+  /** Media attachment ID (if message contains media) */
+  media_id?: string;
 }
 
 /**
@@ -409,6 +411,7 @@ export function createSendMessage(
     encrypted?: boolean;
     contentType?: ContentType;
     clientMessageId?: string;
+    mediaId?: string;
   } = {}
 ): WsMessage {
   return {
@@ -419,6 +422,7 @@ export function createSendMessage(
       encrypted: options.encrypted ?? false,
       content_type: options.contentType ?? 'text',
       client_message_id: options.clientMessageId ?? crypto.randomUUID(),
+      ...(options.mediaId && { media_id: options.mediaId }),
     },
   };
 }

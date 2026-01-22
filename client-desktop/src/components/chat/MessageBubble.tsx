@@ -1,11 +1,13 @@
 /**
  * MessageBubble Component
- * 
+ *
  * Displays a single message in the chat with glassmorphism styling.
- * Supports sent and received message states, reactions, and read receipts.
+ * Supports sent and received message states, reactions, read receipts, and media attachments.
  */
 
-import { Component, For, Show } from 'solid-js';
+import { Component, For, Show, createSignal } from 'solid-js';
+import type { MediaMetadata } from '../../api/media';
+import { MediaPreview, MediaViewer } from '../media';
 
 // =============================================================================
 // TYPES
@@ -36,8 +38,16 @@ export interface MessageBubbleProps {
   isRead?: boolean;
   /** Whether the message is being sent */
   isSending?: boolean;
+  /** Media attachment metadata */
+  media?: MediaMetadata;
+  /** Media thumbnail URL */
+  mediaThumbnailUrl?: string;
+  /** Media download URL */
+  mediaDownloadUrl?: string;
   /** Callback when reaction is clicked */
   onReactionClick?: (emoji: string) => void;
+  /** Callback when media is clicked */
+  onMediaClick?: (media: MediaMetadata) => void;
   /** Additional CSS classes */
   class?: string;
 }
@@ -101,7 +111,7 @@ function getInitials(name: string): string {
 
 /**
  * MessageBubble displays a chat message with styling based on sender.
- * 
+ *
  * @example
  * ```tsx
  * // Own message
@@ -111,7 +121,7 @@ function getInitials(name: string): string {
  *   isOwn
  *   isRead
  * />
- * 
+ *
  * // Received message with avatar
  * <MessageBubble
  *   content="Hi there!"
@@ -123,6 +133,8 @@ function getInitials(name: string): string {
  * ```
  */
 export const MessageBubble: Component<MessageBubbleProps> = (props) => {
+  const [showViewer, setShowViewer] = createSignal(false);
+
   const bubbleClass = () => {
     const base = 'message-bubble';
     const variant = props.isOwn ? 'message-bubble-sent' : 'message-bubble-received';
@@ -130,33 +142,47 @@ export const MessageBubble: Component<MessageBubbleProps> = (props) => {
     return `${base} ${variant} ${sending} ${props.class ?? ''}`.trim();
   };
 
-  return (
-    <div
-      class={`flex ${props.isOwn ? 'justify-end' : 'justify-start'} ${
-        props.showAvatar ? 'items-end gap-2' : ''
-      }`}
-    >
-      {/* Avatar for received messages */}
-      <Show when={!props.isOwn && props.showAvatar}>
-        <div class="flex-shrink-0 mb-1">
-          <Show
-            when={props.senderAvatar}
-            fallback={
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-guardyn-400 to-guardyn-600 flex items-center justify-center text-white text-xs font-medium shadow-md">
-                {getInitials(props.senderName || 'User')}
-              </div>
-            }
-          >
-            <img
-              src={props.senderAvatar}
-              alt={props.senderName}
-              class="w-8 h-8 rounded-full object-cover shadow-md"
-            />
-          </Show>
-        </div>
-      </Show>
+  const handleMediaClick = () => {
+    if (props.media) {
+      if (props.onMediaClick) {
+        props.onMediaClick(props.media);
+      } else {
+        // Open built-in viewer for images/videos
+        if (props.media.type === 'image' || props.media.type === 'video') {
+          setShowViewer(true);
+        }
+      }
+    }
+  };
 
-      <div class="max-w-[70%]">
+  return (
+    <>
+      <div
+        class={`flex ${props.isOwn ? 'justify-end' : 'justify-start'} ${
+          props.showAvatar ? 'items-end gap-2' : ''
+        }`}
+      >
+        {/* Avatar for received messages */}
+        <Show when={!props.isOwn && props.showAvatar}>
+          <div class="flex-shrink-0 mb-1">
+            <Show
+              when={props.senderAvatar}
+              fallback={
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-guardyn-400 to-guardyn-600 flex items-center justify-center text-white text-xs font-medium shadow-md">
+                  {getInitials(props.senderName || 'User')}
+                </div>
+              }
+            >
+              <img
+                src={props.senderAvatar}
+                alt={props.senderName}
+                class="w-8 h-8 rounded-full object-cover shadow-md"
+              />
+            </Show>
+          </div>
+        </Show>
+
+        <div class="max-w-[70%]">
         {/* Sender name for group chats */}
         <Show when={!props.isOwn && props.senderName && props.showAvatar}>
           <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 ml-1">
@@ -166,8 +192,24 @@ export const MessageBubble: Component<MessageBubbleProps> = (props) => {
 
         {/* Message bubble */}
         <div class={bubbleClass()}>
-          <p class="whitespace-pre-wrap break-words">{props.content}</p>
-          
+          {/* Media attachment */}
+          <Show when={props.media}>
+            <div class="mb-2 -mx-2 -mt-2 rounded-t-lg overflow-hidden">
+              <MediaPreview
+                media={props.media!}
+                thumbnailUrl={props.mediaThumbnailUrl}
+                downloadUrl={props.mediaDownloadUrl}
+                size="md"
+                onClick={handleMediaClick}
+              />
+            </div>
+          </Show>
+
+          {/* Text content */}
+          <Show when={props.content.trim()}>
+            <p class="whitespace-pre-wrap break-words">{props.content}</p>
+          </Show>
+
           {/* Timestamp and read status */}
           <div class="flex items-center justify-end gap-1 mt-1">
             <span class="text-xs opacity-70">
@@ -209,7 +251,20 @@ export const MessageBubble: Component<MessageBubbleProps> = (props) => {
           </div>
         </Show>
       </div>
-    </div>
+      </div>
+
+      {/* Media viewer modal */}
+      <Show when={showViewer() && props.media && props.mediaDownloadUrl}>
+        <MediaViewer
+          isOpen={showViewer()}
+          media={[props.media!]}
+          initialIndex={0}
+          onClose={() => setShowViewer(false)}
+          getMediaUrl={() => props.mediaDownloadUrl!}
+          getThumbnailUrl={() => props.mediaThumbnailUrl}
+        />
+      </Show>
+    </>
   );
 };
 

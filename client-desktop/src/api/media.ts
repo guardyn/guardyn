@@ -375,3 +375,14 @@ export function getFileExtension(filename: string): string {
 export function isPreviewable(mediaType: MediaType): boolean {
   return mediaType === 'image' || mediaType === 'video' || mediaType === 'audio';
 }
+
+/**
+ * Build a media URL for local display.
+ * This returns a placeholder URL that will be resolved by the backend.
+ * In production, URLs are fetched asynchronously via getDownloadUrl().
+ */
+export function buildMediaUrl(mediaId: string): string {
+  // Return a URL that can be used to fetch media through the backend
+  // The actual presigned URL will be fetched when needed
+  return `/api/media/${mediaId}/download`;
+}

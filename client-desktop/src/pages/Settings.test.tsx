@@ -29,9 +29,23 @@ describe('Settings Page', () => {
     language: 'en',
   };
 
+  const mockUserProfile = {
+    display_name: 'Test User',
+    avatar_url: undefined,
+  };
+
   beforeEach(() => {
     mockInvoke.mockClear();
-    mockInvoke.mockResolvedValue(mockSettings);
+    // Default implementation that handles both get_settings and get_current_user
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'get_settings') {
+        return Promise.resolve(mockSettings);
+      }
+      if (command === 'get_current_user') {
+        return Promise.resolve(mockUserProfile);
+      }
+      return Promise.resolve(undefined);
+    });
   });
 
   it('renders settings sections', async () => {
@@ -151,10 +165,6 @@ describe('Settings Page', () => {
   });
 
   it('exports keys when button is clicked', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockSettings)
-      .mockResolvedValueOnce(undefined);
-
     renderWithRouter(() => <Settings />);
 
     await waitFor(() => {
@@ -195,10 +205,6 @@ describe('Settings Page', () => {
   it('shows saved confirmation after update', async () => {
     vi.useFakeTimers();
 
-    mockInvoke
-      .mockResolvedValueOnce(mockSettings)
-      .mockResolvedValueOnce(undefined);
-
     renderWithRouter(() => <Settings />);
 
     await waitFor(() => {
@@ -217,7 +223,15 @@ describe('Settings Page', () => {
 
   it('handles settings load error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockInvoke.mockRejectedValueOnce(new Error('Failed to load settings'));
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'get_settings') {
+        return Promise.reject(new Error('Failed to load settings'));
+      }
+      if (command === 'get_current_user') {
+        return Promise.resolve({ display_name: 'User' });
+      }
+      return Promise.resolve(undefined);
+    });
 
     renderWithRouter(() => <Settings />);
 
@@ -230,9 +244,20 @@ describe('Settings Page', () => {
 
   it('handles settings update error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockInvoke
-      .mockResolvedValueOnce(mockSettings)
-      .mockRejectedValueOnce(new Error('Failed to save'));
+    let updateCallCount = 0;
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'get_settings') {
+        return Promise.resolve(mockSettings);
+      }
+      if (command === 'get_current_user') {
+        return Promise.resolve({ display_name: 'User' });
+      }
+      if (command === 'update_settings') {
+        updateCallCount++;
+        return Promise.reject(new Error('Failed to save'));
+      }
+      return Promise.resolve(undefined);
+    });
 
     renderWithRouter(() => <Settings />);
 

@@ -19,6 +19,7 @@ const CallHistory = lazy(() => import('./pages/CallHistory'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Profile = lazy(() => import('./pages/Profile'));
 
 // Group pages
 const GroupList = lazy(() => import('./pages/groups/GroupList'));
@@ -120,6 +121,13 @@ render(
       <Route path="/settings" component={() => (
         <Suspense fallback={<FormLoadingSkeleton />}>
           <Settings />
+        </Suspense>
+      )} />
+      
+      {/* Profile */}
+      <Route path="/profile" component={() => (
+        <Suspense fallback={<FormLoadingSkeleton />}>
+          <Profile />
         </Suspense>
       )} />
       

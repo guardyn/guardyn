@@ -1,6 +1,8 @@
 import { useNavigate, useParams } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onMount, Show } from 'solid-js';
+import { getDownloadUrl, type MediaMetadata } from '../../api/media';
+import { MediaGallery, MediaViewer } from '../../components/media';
 import { Avatar, Button } from '../../components/shared';
 import type { Group, GroupMember, GroupRole } from '../../types';
 
@@ -26,6 +28,11 @@ const GroupInfo: Component = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_showAddMember, setShowAddMember] = createSignal(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = createSignal(false);
+  const [showMediaGallery, setShowMediaGallery] = createSignal(false);
+  const [showMediaViewer, setShowMediaViewer] = createSignal(false);
+  const [viewerMedia, setViewerMedia] = createSignal<MediaMetadata[]>([]);
+  const [viewerIndex, setViewerIndex] = createSignal(0);
+  const [mediaUrls, setMediaUrls] = createSignal<Map<string, string>>(new Map());
 
   onMount(async () => {
     await loadGroupInfo();
@@ -111,6 +118,26 @@ const GroupInfo: Component = () => {
 
   const openEditGroup = () => {
     navigate(`/groups/${params.id}/edit`);
+  };
+
+  const handleMediaSelect = async (_media: MediaMetadata, index: number, allMedia: MediaMetadata[]) => {
+    // Preload URLs for all media items
+    const urlMap = new Map<string, string>();
+    await Promise.all(
+      allMedia.map(async (m) => {
+        try {
+          const result = await getDownloadUrl(m.id);
+          urlMap.set(m.id, result.downloadUrl);
+        } catch (err) {
+          console.error('Failed to get download URL for', m.id, err);
+          urlMap.set(m.id, '');
+        }
+      })
+    );
+    setMediaUrls(urlMap);
+    setViewerMedia(allMedia);
+    setViewerIndex(index);
+    setShowMediaViewer(true);
   };
 
   const goBack = () => {
@@ -222,15 +249,36 @@ const GroupInfo: Component = () => {
               </div>
               <span class="text-xs text-neutral-600 dark:text-neutral-400">Search</span>
             </button>
-            <button class="flex flex-col items-center gap-2 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors">
-              <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+            <button 
+              onClick={() => setShowMediaGallery((prev) => !prev)}
+              class="flex flex-col items-center gap-2 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl transition-colors"
+            >
+              <div class={`w-10 h-10 rounded-full flex items-center justify-center ${showMediaGallery() ? 'bg-orange-200 dark:bg-orange-900/50' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
                 <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
               <span class="text-xs text-neutral-600 dark:text-neutral-400">Media</span>
             </button>
           </div>
+
+          {/* Media Gallery Section */}
+          <Show when={showMediaGallery()}>
+            <div class="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
+              <div class="px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
+                <h3 class="font-semibold text-neutral-900 dark:text-white">
+                  Media, Links & Docs
+                </h3>
+              </div>
+              <div class="max-h-96 overflow-y-auto">
+                <MediaGallery
+                  conversationId={params.id}
+                  onMediaSelect={handleMediaSelect}
+                  class="p-2"
+                />
+              </div>
+            </div>
+          </Show>
 
           {/* Members section */}
           <div class="bg-white dark:bg-neutral-900 mt-4">
@@ -363,6 +411,17 @@ const GroupInfo: Component = () => {
             </div>
           </div>
         </div>
+      </Show>
+
+      {/* Media Viewer Modal */}
+      <Show when={showMediaViewer() && viewerMedia().length > 0}>
+        <MediaViewer
+          media={viewerMedia()}
+          initialIndex={viewerIndex()}
+          isOpen={showMediaViewer()}
+          onClose={() => setShowMediaViewer(false)}
+          getMediaUrl={(m) => mediaUrls().get(m.id) || ''}
+        />
       </Show>
     </div>
   );
