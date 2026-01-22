@@ -69,6 +69,19 @@ dependencies:
   google_fonts: ^6.2.1
   shimmer: ^3.0.0
 
+  # Media Picking & Display
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  cached_network_image: ^3.4.1
+  video_player: ^2.9.3
+  photo_view: ^0.15.0
+
+  # File Handling
+  mime: ^2.0.0
+  path_provider: ^2.1.5
+  http: ^1.2.2
+  open_filex: ^4.6.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -84,7 +97,7 @@ dev_dependencies:
   injectable_generator: ^2.4.1
 
   # Rust FFI Code Generation
-  ffigen: ^8.0.0
+  ffigen: ^20.1.1
   freezed: ^2.4.5
 
   # Testing
