@@ -331,4 +331,30 @@ class GroupRepositoryImpl implements GroupRepository {
       return Left(UnknownFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, bool>> deleteGroup(String groupId) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final result = await _remoteDatasource.deleteGroup(
+        accessToken: accessToken,
+        groupId: groupId,
+      );
+
+      // Remove from cache if successful
+      if (result) {
+        _groupCache.remove(groupId);
+      }
+
+      return Right(result);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to delete group'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
 }

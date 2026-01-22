@@ -107,6 +107,16 @@ class GroupLeave extends GroupEvent {
   List<Object?> get props => [groupId];
 }
 
+/// Delete a group (admin only)
+class GroupDelete extends GroupEvent {
+  final String groupId;
+
+  const GroupDelete(this.groupId);
+
+  @override
+  List<Object?> get props => [groupId];
+}
+
 /// Load details of a specific group (for GroupInfoPage)
 class GroupLoadDetails extends GroupEvent {
   final String groupId;

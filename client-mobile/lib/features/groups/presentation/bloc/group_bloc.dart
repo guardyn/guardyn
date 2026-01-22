@@ -8,6 +8,7 @@ import '../../../messaging/data/datasources/websocket_datasource.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/usecases/add_group_member.dart';
 import '../../domain/usecases/create_group.dart';
+import '../../domain/usecases/delete_group.dart';
 import '../../domain/usecases/get_group_by_id.dart';
 import '../../domain/usecases/get_group_messages.dart';
 import '../../domain/usecases/get_groups.dart';
@@ -20,6 +21,7 @@ import 'group_state.dart';
 @injectable
 class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final CreateGroup createGroup;
+  final DeleteGroup deleteGroup;
   final GetGroups getGroups;
   final GetGroupById getGroupById;
   final SendGroupMessage sendGroupMessage;
@@ -39,6 +41,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
   GroupBloc({
     required this.createGroup,
+    required this.deleteGroup,
     required this.getGroups,
     required this.getGroupById,
     required this.sendGroupMessage,
@@ -49,6 +52,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   }) : super(const GroupInitial()) {
     on<GroupLoadAll>(_onLoadAll);
     on<GroupCreate>(_onCreateGroup);
+    on<GroupDelete>(_onDeleteGroup);
     on<GroupLoadDetails>(_onLoadDetails);
     on<GroupLoadMessages>(_onLoadMessages);
     on<GroupSendMessage>(_onSendMessage);
@@ -260,6 +264,33 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
       (success) {
         if (success) {
           emit(GroupLeft(groupId: event.groupId));
+          // Update groups list
+          final updatedGroups = currentGroups
+              .where((g) => g.groupId != event.groupId)
+              .toList();
+          emit(GroupListLoaded(groups: updatedGroups));
+        }
+      },
+    );
+  }
+
+  Future<void> _onDeleteGroup(
+    GroupDelete event,
+    Emitter<GroupState> emit,
+  ) async {
+    final currentGroups = state is GroupListLoaded
+        ? (state as GroupListLoaded).groups
+        : <Group>[];
+
+    emit(GroupLoading(groups: currentGroups));
+
+    final result = await deleteGroup(DeleteGroupParams(groupId: event.groupId));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message, groups: currentGroups)),
+      (success) {
+        if (success) {
+          emit(GroupDeleted(groupId: event.groupId));
           // Update groups list
           final updatedGroups = currentGroups
               .where((g) => g.groupId != event.groupId)

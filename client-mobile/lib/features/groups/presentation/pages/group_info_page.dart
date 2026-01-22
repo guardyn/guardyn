@@ -3,9 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../shared/theme/app_shadows.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
 import '../../domain/entities/group.dart';
@@ -38,6 +38,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   Group? _group;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _notificationsEnabled = true; // Default: notifications on
 
   @override
   void initState() {
@@ -45,6 +46,27 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     _group = widget.initialGroup;
     _loadCurrentUserId();
     _loadGroupDetails();
+    _loadNotificationSetting();
+  }
+
+  Future<void> _loadNotificationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled =
+            prefs.getBool('group_notifications_${widget.groupId}') ?? true;
+      });
+    }
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('group_notifications_${widget.groupId}', value);
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = value;
+      });
+    }
   }
 
   Future<void> _loadCurrentUserId() async {
@@ -527,7 +549,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
           const SizedBox(height: AppSpacing.space3),
 
-          // Mute Notifications (placeholder)
+          // Notifications Toggle
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.md),
             child: BackdropFilter(
@@ -548,40 +570,36 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                   leading: Container(
                     padding: const EdgeInsets.all(AppSpacing.space2),
                     decoration: BoxDecoration(
-                      color: GrayColors.gray500.withValues(alpha: 0.1),
+                      color: _notificationsEnabled
+                          ? GuardynColors.guardyn500.withValues(alpha: 0.1)
+                          : GrayColors.gray500.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: Icon(
-                      Icons.notifications_off,
-                      color: GrayColors.gray500,
+                      _notificationsEnabled
+                          ? Icons.notifications_active
+                          : Icons.notifications_off,
+                      color: _notificationsEnabled
+                          ? GuardynColors.guardyn500
+                          : GrayColors.gray500,
                     ),
                   ),
                   title: Text(
-                    'Mute Notifications',
+                    'Notifications',
                     style: AppTypography.bodyMedium.copyWith(
                       color: isDark ? Colors.white : GrayColors.gray900,
                     ),
                   ),
+                  subtitle: Text(
+                    _notificationsEnabled ? 'Enabled' : 'Muted',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: GrayColors.gray500,
+                    ),
+                  ),
                   trailing: Switch(
-                    value: false, // TODO: Implement notification settings
+                    value: _notificationsEnabled,
                     activeColor: GuardynColors.guardyn500,
-                    onChanged: (value) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Notification settings coming soon',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: Colors.white,
-                            ),
-                          ),
-                          backgroundColor: GrayColors.gray800,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                      );
-                    },
+                    onChanged: _toggleNotifications,
                   ),
                 ),
               ),
@@ -766,22 +784,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              // TODO: Implement group deletion
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Group deletion coming soon',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: Colors.white,
-                    ),
-                  ),
-                  backgroundColor: GrayColors.gray800,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                ),
-              );
+              context.read<GroupBloc>().add(GroupDelete(widget.groupId));
+              // Pop back to group list
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             child: Text(
               'Delete',

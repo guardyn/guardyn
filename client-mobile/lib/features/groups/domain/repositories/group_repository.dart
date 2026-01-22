@@ -47,4 +47,7 @@ abstract class GroupRepository {
 
   /// Leave a group (current user)
   Future<Either<Failure, bool>> leaveGroup(String groupId);
+
+  /// Delete a group (admin only)
+  Future<Either<Failure, bool>> deleteGroup(String groupId);
 }

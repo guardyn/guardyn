@@ -17,6 +17,7 @@ import 'package:guardyn_client/features/groups/data/repositories/group_repositor
 import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
@@ -207,10 +208,15 @@ void _registerGroupsDependencies() {
     () => LeaveGroup(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<DeleteGroup>(
+    () => DeleteGroup(getIt<GroupRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<GroupBloc>(
     () => GroupBloc(
       createGroup: getIt<CreateGroup>(),
+      deleteGroup: getIt<DeleteGroup>(),
       getGroups: getIt<GetGroups>(),
       getGroupById: getIt<GetGroupById>(),
       sendGroupMessage: getIt<SendGroupMessage>(),

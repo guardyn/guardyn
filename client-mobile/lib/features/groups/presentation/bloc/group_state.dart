@@ -127,6 +127,16 @@ class GroupLeft extends GroupState {
   List<Object?> get props => [groupId];
 }
 
+/// Group deleted successfully (admin action)
+class GroupDeleted extends GroupState {
+  final String groupId;
+
+  const GroupDeleted({required this.groupId});
+
+  @override
+  List<Object?> get props => [groupId];
+}
+
 /// Group details loaded successfully
 class GroupDetailsLoaded extends GroupState {
   final Group group;

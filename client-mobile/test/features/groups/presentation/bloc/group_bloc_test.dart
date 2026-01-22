@@ -5,6 +5,7 @@ import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/features/groups/domain/entities/group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
@@ -18,6 +19,8 @@ import 'package:mocktail/mocktail.dart';
 
 // Mocks
 class MockCreateGroup extends Mock implements CreateGroup {}
+
+class MockDeleteGroup extends Mock implements DeleteGroup {}
 
 class MockGetGroups extends Mock implements GetGroups {}
 
@@ -46,9 +49,12 @@ class FakeRemoveGroupMemberParams extends Fake implements RemoveGroupMemberParam
 
 class FakeLeaveGroupParams extends Fake implements LeaveGroupParams {}
 
+class FakeDeleteGroupParams extends Fake implements DeleteGroupParams {}
+
 void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
+  late MockDeleteGroup mockDeleteGroup;
   late MockGetGroups mockGetGroups;
   late MockGetGroupById mockGetGroupById;
   late MockSendGroupMessage mockSendGroupMessage;
@@ -102,10 +108,12 @@ void main() {
     registerFallbackValue(FakeAddGroupMemberParams());
     registerFallbackValue(FakeRemoveGroupMemberParams());
     registerFallbackValue(FakeLeaveGroupParams());
+    registerFallbackValue(FakeDeleteGroupParams());
   });
 
   setUp(() {
     mockCreateGroup = MockCreateGroup();
+    mockDeleteGroup = MockDeleteGroup();
     mockGetGroups = MockGetGroups();
     mockGetGroupById = MockGetGroupById();
     mockSendGroupMessage = MockSendGroupMessage();
@@ -118,12 +126,17 @@ void main() {
     when(() => mockLeaveGroup.call(any()))
         .thenAnswer((_) async => const Right<Failure, bool>(true));
     
+    // Setup default mock behavior for deleteGroup
+    when(() => mockDeleteGroup.call(any()))
+        .thenAnswer((_) async => const Right<Failure, bool>(true));
+    
     // Setup default mock behavior for getGroups
     when(() => mockGetGroups())
         .thenAnswer((_) async => const Right<Failure, List<Group>>([]));
 
     bloc = GroupBloc(
       createGroup: mockCreateGroup,
+      deleteGroup: mockDeleteGroup,
       getGroups: mockGetGroups,
       getGroupById: mockGetGroupById,
       sendGroupMessage: mockSendGroupMessage,
