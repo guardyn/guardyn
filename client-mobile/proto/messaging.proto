@@ -468,6 +468,8 @@ message GroupInfo {
   common.Timestamp created_at = 5;
   int32 member_count = 6;
   GroupMessage last_message = 7; // Optional: for preview
+  string icon_media_id = 8;      // Reference to media in MediaService
+  string description = 9;        // Optional group description
 }
 
 message GroupMemberInfo {
@@ -476,6 +478,8 @@ message GroupMemberInfo {
   string device_id = 3;
   string role = 4; // "owner", "admin", "member"
   common.Timestamp joined_at = 5;
+  string avatar_media_id = 6;    // Reference to avatar in MediaService
+  string display_name = 7;       // Optional display name
 }
 
 // ============================================================================

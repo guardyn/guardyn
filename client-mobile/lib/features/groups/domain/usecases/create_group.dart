@@ -1,10 +1,12 @@
 import 'package:dartz/dartz.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../../../core/error/failures.dart';
 import '../entities/group.dart';
 import '../repositories/group_repository.dart';
 
 /// Use case for creating a new group
+@injectable
 class CreateGroup {
   final GroupRepository repository;
 

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/entities/media_entity.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
 
@@ -10,6 +11,7 @@ import 'package:guardyn_client/features/media/domain/repositories/media_reposito
 /// 2. Get presigned URL from server if not cached
 /// 3. Download file from presigned URL
 /// 4. Save to local cache
+@injectable
 class DownloadMedia {
   final MediaRepository repository;
 

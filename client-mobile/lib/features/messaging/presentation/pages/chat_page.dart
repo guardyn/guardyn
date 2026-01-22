@@ -8,6 +8,10 @@ import '../../../../core/utils/conversation_utils.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../media/presentation/bloc/media_bloc.dart';
+import '../../../media/presentation/bloc/media_event.dart';
+import '../../../media/presentation/bloc/media_state.dart';
+import '../../../media/presentation/widgets/media_picker_sheet.dart';
 import '../../../presence/presentation/bloc/presence_bloc.dart';
 import '../../../presence/presentation/bloc/presence_event.dart';
 import '../../../presence/presentation/bloc/presence_state.dart';
@@ -43,6 +47,9 @@ class _ChatPageState extends State<ChatPage> {
   String? _conversationId;
   late PresenceBloc _presenceBloc;
   late MessageBloc _messageBloc;
+  late MediaBloc _mediaBloc;
+  bool _isUploadingMedia = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -51,6 +58,8 @@ class _ChatPageState extends State<ChatPage> {
     _messageBloc = context.read<MessageBloc>();
     // Initialize presence bloc
     _presenceBloc = getIt<PresenceBloc>();
+    // Initialize media bloc for attachment uploads
+    _mediaBloc = getIt<MediaBloc>();
     // Set current user as online and start heartbeat
     _presenceBloc.add(const PresenceSetOnline());
     _presenceBloc.add(PresenceFetchUser(widget.conversationUserId));
@@ -145,6 +154,8 @@ class _ChatPageState extends State<ChatPage> {
       _presenceBloc.add(const PresenceUnsubscribe());
       _presenceBloc.add(const PresenceSetOffline());
     }
+    // Close media bloc
+    _mediaBloc.close();
     _scrollController.dispose();
     super.dispose();
   }
@@ -212,6 +223,69 @@ class _ChatPageState extends State<ChatPage> {
     );
     // Scroll to bottom after sending
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _handleMediaSelected(MediaPickerResult result) {
+    setState(() {
+      _isUploadingMedia = true;
+      _uploadProgress = 0.0;
+    });
+
+    // Upload media
+    _mediaBloc.add(MediaUploadRequested(
+      filePath: result.filePath,
+      mimeType: result.mimeType,
+      conversationId: _conversationId,
+    ));
+
+    // Listen for upload completion
+    _mediaBloc.stream.listen((state) {
+      if (state is MediaUploading) {
+        setState(() {
+          _uploadProgress = state.progress;
+        });
+      } else if (state is MediaUploadSuccess) {
+        setState(() {
+          _isUploadingMedia = false;
+          _uploadProgress = 0.0;
+        });
+
+        // Send message with media attachment
+        context.read<MessageBloc>().add(
+          MessageSend(
+            recipientUserId: widget.conversationUserId,
+            recipientDeviceId: widget.deviceId,
+            recipientUsername: widget.conversationUserName,
+            textContent: '', // Caption can be added later
+            metadata: {
+              'media_id': state.media.id,
+              'media_type': state.media.type.name,
+              'filename': state.media.filename,
+              'mime_type': state.media.mimeType,
+              'size_bytes': state.media.sizeBytes.toString(),
+            },
+          ),
+        );
+
+        // Scroll to bottom after sending
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      } else if (state is MediaError) {
+        setState(() {
+          _isUploadingMedia = false;
+          _uploadProgress = 0.0;
+        });
+
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload: ${state.message}'),
+              backgroundColor: SemanticColors.error,
+            ),
+          );
+        }
+      }
+    });
   }
 
   void _handleTypingChanged(bool isTyping) {
@@ -489,15 +563,30 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ),
-          // Message input
+          // Message input with upload progress
           BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
               final isEnabled =
-                  state is! MessageSending && state is! MessageLoading;
-              return MessageInput(
-                onSend: _handleSendMessage,
-                onTypingChanged: _handleTypingChanged,
-                enabled: isEnabled,
+                  state is! MessageSending && state is! MessageLoading && !_isUploadingMedia;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Upload progress indicator
+                  if (_isUploadingMedia)
+                    LinearProgressIndicator(
+                      value: _uploadProgress,
+                      backgroundColor: GrayColors.gray300,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        GuardynColors.guardyn500,
+                      ),
+                    ),
+                  MessageInput(
+                    onSend: _handleSendMessage,
+                    onTypingChanged: _handleTypingChanged,
+                    onMediaSelected: _handleMediaSelected,
+                    enabled: isEnabled,
+                  ),
+                ],
               );
             },
           ),

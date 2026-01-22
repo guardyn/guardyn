@@ -7,6 +7,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_shadows.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../domain/entities/message.dart';
+import 'chat_media_bubble.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -17,6 +18,9 @@ class MessageBubble extends StatelessWidget {
     required this.message,
     this.onLongPress,
   });
+
+  /// Check if message has media attachment
+  bool get hasMedia => ChatMediaBubble.hasMedia(message);
 
   @override
   Widget build(BuildContext context) {
@@ -67,43 +71,67 @@ class MessageBubble extends StatelessWidget {
                   ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
                   : ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.space2_5,
-                  horizontal: AppSpacing.space3,
+                padding: EdgeInsets.only(
+                  top: hasMedia ? AppSpacing.space2 : AppSpacing.space2_5,
+                  bottom: AppSpacing.space2_5,
+                  left: hasMedia ? AppSpacing.space2 : AppSpacing.space3,
+                  right: hasMedia ? AppSpacing.space2 : AppSpacing.space3,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Message text
-                    Text(
-                      message.textContent,
-                      style: TextStyle(
-                        color: isSentByMe
-                            ? Colors.white
-                            : (isDark ? Colors.white : GrayColors.gray900),
-                        fontSize: 15,
-                        height: 1.4,
+                    // Media attachment (if present)
+                    if (hasMedia)
+                      ChatMediaBubble(
+                        message: message,
+                        isSentByMe: isSentByMe,
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.space1),
-                    // Timestamp and delivery status
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatTime(message.timestamp),
+                    // Message text (if not empty)
+                    if (message.textContent.isNotEmpty)
+                      Padding(
+                        padding: hasMedia
+                            ? const EdgeInsets.only(
+                                left: AppSpacing.space1,
+                                right: AppSpacing.space1,
+                              )
+                            : EdgeInsets.zero,
+                        child: Text(
+                          message.textContent,
                           style: TextStyle(
                             color: isSentByMe
-                                ? Colors.white.withOpacity(0.7)
-                                : GrayColors.gray500,
-                            fontSize: 11,
+                                ? Colors.white
+                                : (isDark ? Colors.white : GrayColors.gray900),
+                            fontSize: 15,
+                            height: 1.4,
                           ),
                         ),
-                        if (isSentByMe) ...[
-                          const SizedBox(width: AppSpacing.space1),
-                          _buildDeliveryStatusIcon(message.deliveryStatus),
+                      ),
+                    SizedBox(height: hasMedia && message.textContent.isEmpty 
+                        ? AppSpacing.space0_5 
+                        : AppSpacing.space1),
+                    // Timestamp and delivery status
+                    Padding(
+                      padding: hasMedia
+                          ? const EdgeInsets.only(left: AppSpacing.space1)
+                          : EdgeInsets.zero,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatTime(message.timestamp),
+                            style: TextStyle(
+                              color: isSentByMe
+                                  ? Colors.white.withOpacity(0.7)
+                                  : GrayColors.gray500,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (isSentByMe) ...[
+                            const SizedBox(width: AppSpacing.space1),
+                            _buildDeliveryStatusIcon(message.deliveryStatus),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ],
                 ),

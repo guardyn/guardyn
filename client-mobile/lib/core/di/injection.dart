@@ -50,6 +50,20 @@ import 'package:guardyn_client/features/presence/domain/usecases/send_heartbeat.
 import 'package:guardyn_client/features/presence/domain/usecases/send_typing_indicator.dart';
 import 'package:guardyn_client/features/presence/domain/usecases/update_my_status.dart';
 import 'package:guardyn_client/features/presence/presentation/bloc/presence_bloc.dart';
+// Media feature imports
+import 'package:guardyn_client/features/media/data/datasources/media_local_datasource.dart';
+import 'package:guardyn_client/features/media/data/datasources/media_remote_datasource.dart';
+import 'package:guardyn_client/features/media/data/repositories/media_repository_impl.dart';
+import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
+import 'package:guardyn_client/features/media/domain/usecases/delete_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/get_media_metadata.dart';
+import 'package:guardyn_client/features/media/domain/usecases/get_thumbnail_url.dart';
+import 'package:guardyn_client/features/media/domain/usecases/list_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/manage_media_cache.dart';
+import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
+import 'package:guardyn_client/features/media/presentation/bloc/media_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 import 'package:logger/logger.dart';
 
@@ -94,6 +108,9 @@ Future<void> configureDependencies() async {
 
   // Register calls feature dependencies
   _registerCallsDependencies();
+
+  // Register media feature dependencies
+  _registerMediaDependencies();
 }
 
 void _registerAuthDependencies() {
@@ -361,6 +378,72 @@ void _registerCallsDependencies() {
   getIt.registerFactory<CallHistoryBloc>(
     () => CallHistoryBloc(
       getCallHistory: getIt<GetCallHistory>(),
+    ),
+  );
+}
+
+void _registerMediaDependencies() {
+  // HTTP client for presigned URL uploads/downloads
+  getIt.registerLazySingleton<http.Client>(() => http.Client());
+
+  // Data layer
+  getIt.registerLazySingleton<MediaLocalDatasource>(
+    () => MediaLocalDatasource(),
+  );
+
+  getIt.registerLazySingleton<MediaRemoteDatasource>(
+    () => MediaRemoteDatasource(
+      getIt<GrpcClients>(),
+      getIt<http.Client>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<MediaRepository>(
+    () => MediaRepositoryImpl(
+      remoteDatasource: getIt<MediaRemoteDatasource>(),
+      localDatasource: getIt<MediaLocalDatasource>(),
+    ),
+  );
+
+  // Domain layer - Use cases
+  getIt.registerLazySingleton<UploadMedia>(
+    () => UploadMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<DownloadMedia>(
+    () => DownloadMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<ListMedia>(
+    () => ListMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetMediaMetadata>(
+    () => GetMediaMetadata(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetThumbnailUrl>(
+    () => GetThumbnailUrl(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<DeleteMedia>(
+    () => DeleteMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<ManageMediaCache>(
+    () => ManageMediaCache(getIt<MediaRepository>()),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<MediaBloc>(
+    () => MediaBloc(
+      uploadMedia: getIt<UploadMedia>(),
+      downloadMedia: getIt<DownloadMedia>(),
+      listMedia: getIt<ListMedia>(),
+      getMediaMetadata: getIt<GetMediaMetadata>(),
+      getThumbnailUrl: getIt<GetThumbnailUrl>(),
+      deleteMedia: getIt<DeleteMedia>(),
+      manageMediaCache: getIt<ManageMediaCache>(),
     ),
   );
 }

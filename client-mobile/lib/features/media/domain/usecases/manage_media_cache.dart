@@ -1,6 +1,8 @@
+import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
 
 /// Use case for managing media cache
+@injectable
 class ManageMediaCache {
   final MediaRepository repository;
 

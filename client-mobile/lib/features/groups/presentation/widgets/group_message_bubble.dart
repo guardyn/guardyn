@@ -6,6 +6,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
 import '../../domain/entities/group.dart';
+import 'group_chat_media_bubble.dart';
 
 /// Widget for displaying a group message bubble with glassmorphism styling
 class GroupMessageBubble extends StatelessWidget {
@@ -145,6 +146,12 @@ class GroupMessageBubble extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Media attachment (if present)
+        if (message.hasMedia)
+          GroupChatMediaBubble(
+            message: message,
+            isSentByMe: isSentByMe,
+          ),
         if (message.isDeleted)
           Text(
             'This message was deleted',
@@ -155,7 +162,7 @@ class GroupMessageBubble extends StatelessWidget {
               fontStyle: FontStyle.italic,
             ),
           )
-        else
+        else if (message.textContent.isNotEmpty)
           Text(
             message.textContent,
             style: AppTypography.bodyMedium.copyWith(
@@ -164,7 +171,9 @@ class GroupMessageBubble extends StatelessWidget {
                   : (isDark ? Colors.white : GrayColors.gray900),
             ),
           ),
-        const SizedBox(height: AppSpacing.space1),
+        SizedBox(height: message.hasMedia && message.textContent.isEmpty 
+            ? AppSpacing.space0_5 
+            : AppSpacing.space1),
         Text(
           message.displayTime,
           style: AppTypography.labelSmall.copyWith(

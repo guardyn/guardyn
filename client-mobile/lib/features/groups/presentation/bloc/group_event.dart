@@ -47,14 +47,16 @@ class GroupLoadMessages extends GroupEvent {
 class GroupSendMessage extends GroupEvent {
   final String groupId;
   final String textContent;
+  final Map<String, String>? metadata;
 
   const GroupSendMessage({
     required this.groupId,
     required this.textContent,
+    this.metadata,
   });
 
   @override
-  List<Object?> get props => [groupId, textContent];
+  List<Object?> get props => [groupId, textContent, metadata];
 }
 
 /// Receive a new message in a group (from stream/polling)

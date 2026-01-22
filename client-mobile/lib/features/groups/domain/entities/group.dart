@@ -10,6 +10,8 @@ class Group extends Equatable {
   final DateTime? updatedAt;
   final int memberCount;
   final GroupMessage? lastMessage;
+  final String? iconMediaId;
+  final String? description;
 
   const Group({
     required this.groupId,
@@ -20,6 +22,8 @@ class Group extends Equatable {
     this.updatedAt,
     required this.memberCount,
     this.lastMessage,
+    this.iconMediaId,
+    this.description,
   });
 
   /// Check if user is the creator/admin of the group
@@ -27,6 +31,9 @@ class Group extends Equatable {
 
   /// Check if user is a member of the group
   bool isMember(String userId) => members.any((m) => m.userId == userId);
+
+  /// Check if group has a custom icon
+  bool get hasIcon => iconMediaId != null && iconMediaId!.isNotEmpty;
 
   @override
   List<Object?> get props => [
@@ -38,6 +45,8 @@ class Group extends Equatable {
         updatedAt,
         memberCount,
         lastMessage,
+        iconMediaId,
+        description,
       ];
 }
 
@@ -48,6 +57,8 @@ class GroupMember extends Equatable {
   final String deviceId;
   final GroupRole role;
   final DateTime joinedAt;
+  final String? avatarMediaId;
+  final String? displayName;
 
   const GroupMember({
     required this.userId,
@@ -55,10 +66,18 @@ class GroupMember extends Equatable {
     required this.deviceId,
     required this.role,
     required this.joinedAt,
+    this.avatarMediaId,
+    this.displayName,
   });
 
+  /// Check if member has a custom avatar
+  bool get hasAvatar => avatarMediaId != null && avatarMediaId!.isNotEmpty;
+
+  /// Get display name with fallback to username
+  String get effectiveDisplayName => displayName?.isNotEmpty == true ? displayName! : username;
+
   @override
-  List<Object?> get props => [userId, username, deviceId, role, joinedAt];
+  List<Object?> get props => [userId, username, deviceId, role, joinedAt, avatarMediaId, displayName];
 }
 
 /// Group roles
@@ -81,6 +100,8 @@ class GroupMessage extends Equatable {
   final DateTime serverTimestamp;
   final bool isDeleted;
   final String? currentUserId;
+  /// Metadata for media attachments and other properties
+  final Map<String, String> metadata;
 
   const GroupMessage({
     required this.messageId,
@@ -94,7 +115,16 @@ class GroupMessage extends Equatable {
     required this.serverTimestamp,
     this.isDeleted = false,
     this.currentUserId,
+    this.metadata = const {},
   });
+
+  /// Check if this message has a media attachment
+  bool get hasMedia =>
+      metadata.containsKey('media_id') &&
+      metadata['media_id']?.isNotEmpty == true;
+
+  /// Get media ID from metadata
+  String? get mediaId => metadata['media_id'];
 
   /// Check if this message was sent by the current user
   bool get isSentByMe => currentUserId != null && senderUserId == currentUserId;
@@ -129,6 +159,7 @@ class GroupMessage extends Equatable {
         serverTimestamp,
         isDeleted,
         currentUserId,
+        metadata,
       ];
 }
 

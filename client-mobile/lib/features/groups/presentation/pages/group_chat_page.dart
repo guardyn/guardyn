@@ -7,6 +7,10 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../media/presentation/bloc/media_bloc.dart';
+import '../../../media/presentation/bloc/media_event.dart';
+import '../../../media/presentation/bloc/media_state.dart';
+import '../../../media/presentation/widgets/media_picker_sheet.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
@@ -34,11 +38,15 @@ class _GroupChatPageState extends State<GroupChatPage> {
   final ScrollController _scrollController = ScrollController();
   final _secureStorage = const FlutterSecureStorage();
   late GroupBloc _groupBloc;
+  late MediaBloc _mediaBloc;
+  bool _isUploadingMedia = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
     super.initState();
     _groupBloc = getIt<GroupBloc>();
+    _mediaBloc = getIt<MediaBloc>();
     _initializeChat();
   }
 
@@ -61,6 +69,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _mediaBloc.close();
     super.dispose();
   }
 
@@ -80,6 +89,65 @@ class _GroupChatPageState extends State<GroupChatPage> {
           textContent: text,
         ));
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _handleMediaSelected(MediaPickerResult result) {
+    setState(() {
+      _isUploadingMedia = true;
+      _uploadProgress = 0.0;
+    });
+
+    // Upload media
+    _mediaBloc.add(MediaUploadRequested(
+      filePath: result.filePath,
+      mimeType: result.mimeType,
+      conversationId: widget.groupId,
+    ));
+
+    // Listen for upload completion
+    _mediaBloc.stream.listen((state) {
+      if (state is MediaUploading) {
+        setState(() {
+          _uploadProgress = state.progress;
+        });
+      } else if (state is MediaUploadSuccess) {
+        setState(() {
+          _isUploadingMedia = false;
+          _uploadProgress = 0.0;
+        });
+
+        // Send message with media attachment
+        _groupBloc.add(GroupSendMessage(
+          groupId: widget.groupId,
+          textContent: '', // Caption can be added later
+          metadata: {
+            'media_id': state.media.id,
+            'media_type': state.media.type.name,
+            'filename': state.media.filename,
+            'mime_type': state.media.mimeType,
+            'size_bytes': state.media.sizeBytes.toString(),
+          },
+        ));
+
+        // Scroll to bottom after sending
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      } else if (state is MediaError) {
+        setState(() {
+          _isUploadingMedia = false;
+          _uploadProgress = 0.0;
+        });
+
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload: ${state.message}'),
+              backgroundColor: SemanticColors.error,
+            ),
+          );
+        }
+      }
+    });
   }
 
   void _navigateToGroupInfo(BuildContext context) {
@@ -232,10 +300,25 @@ class _GroupChatPageState extends State<GroupChatPage> {
                 ),
                 BlocBuilder<GroupBloc, GroupState>(
                   builder: (context, state) {
-                    final isLoading = state is GroupMessageSending;
-                    return GroupMessageInput(
-                      onSend: (text) => _handleSendMessage(context, text),
-                      isLoading: isLoading,
+                    final isLoading = state is GroupMessageSending || _isUploadingMedia;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Upload progress indicator
+                        if (_isUploadingMedia)
+                          LinearProgressIndicator(
+                            value: _uploadProgress,
+                            backgroundColor: GrayColors.gray300,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              GuardynColors.guardyn500,
+                            ),
+                          ),
+                        GroupMessageInput(
+                          onSend: (text) => _handleSendMessage(context, text),
+                          onMediaSelected: _handleMediaSelected,
+                          isLoading: isLoading,
+                        ),
+                      ],
                     );
                   },
                 ),

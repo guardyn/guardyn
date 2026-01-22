@@ -11,6 +11,8 @@ class GroupModel extends Group {
     super.updatedAt,
     required super.memberCount,
     super.lastMessage,
+    super.iconMediaId,
+    super.description,
   });
 
   /// Create from domain entity
@@ -24,6 +26,8 @@ class GroupModel extends Group {
       updatedAt: entity.updatedAt,
       memberCount: entity.memberCount,
       lastMessage: entity.lastMessage,
+      iconMediaId: entity.iconMediaId,
+      description: entity.description,
     );
   }
 
@@ -46,6 +50,8 @@ class GroupModel extends Group {
           ? GroupMessageModel.fromJson(
               json['last_message'] as Map<String, dynamic>)
           : null,
+      iconMediaId: json['icon_media_id'] as String?,
+      description: json['description'] as String?,
     );
   }
 
@@ -63,6 +69,8 @@ class GroupModel extends Group {
       'last_message': lastMessage != null
           ? GroupMessageModel.fromEntity(lastMessage!).toJson()
           : null,
+      'icon_media_id': iconMediaId,
+      'description': description,
     };
   }
 }
@@ -75,6 +83,8 @@ class GroupMemberModel extends GroupMember {
     required super.deviceId,
     required super.role,
     required super.joinedAt,
+    super.avatarMediaId,
+    super.displayName,
   });
 
   factory GroupMemberModel.fromEntity(GroupMember entity) {
@@ -84,6 +94,8 @@ class GroupMemberModel extends GroupMember {
       deviceId: entity.deviceId,
       role: entity.role,
       joinedAt: entity.joinedAt,
+      avatarMediaId: entity.avatarMediaId,
+      displayName: entity.displayName,
     );
   }
 
@@ -97,6 +109,8 @@ class GroupMemberModel extends GroupMember {
         orElse: () => GroupRole.member,
       ),
       joinedAt: DateTime.parse(json['joined_at'] as String),
+      avatarMediaId: json['avatar_media_id'] as String?,
+      displayName: json['display_name'] as String?,
     );
   }
 
@@ -107,6 +121,8 @@ class GroupMemberModel extends GroupMember {
       'device_id': deviceId,
       'role': role.name,
       'joined_at': joinedAt.toIso8601String(),
+      'avatar_media_id': avatarMediaId,
+      'display_name': displayName,
     };
   }
 }

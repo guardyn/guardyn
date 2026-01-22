@@ -108,12 +108,18 @@ class GroupRemoteDatasource {
                 joinedAt: m.hasJoinedAt()
                     ? _timestampFromProto(m.joinedAt)
                     : DateTime.now(),
+                // Note: avatarMediaId and displayName will be available after proto regeneration
+                // avatarMediaId: m.avatarMediaId.isNotEmpty ? m.avatarMediaId : null,
+                // displayName: m.displayName.isNotEmpty ? m.displayName : null,
               ))
           .toList(),
       createdAt: groupInfo.hasCreatedAt()
           ? _timestampFromProto(groupInfo.createdAt)
           : DateTime.now(),
       memberCount: groupInfo.memberCount,
+      // Note: iconMediaId and description will be available after proto regeneration
+      // iconMediaId: groupInfo.iconMediaId.isNotEmpty ? groupInfo.iconMediaId : null,
+      // description: groupInfo.description.isNotEmpty ? groupInfo.description : null,
     );
   }
 

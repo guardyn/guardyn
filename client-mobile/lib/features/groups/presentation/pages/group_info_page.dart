@@ -8,11 +8,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
+import '../../../media/presentation/pages/media_gallery_page.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
 import '../bloc/group_state.dart';
 import '../widgets/add_member_dialog.dart';
+import '../widgets/group_icon_avatar.dart';
 import '../widgets/member_options_sheet.dart';
 
 /// Page displaying group details, members, and settings
@@ -272,42 +274,26 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
   Widget _buildGroupHeader(BuildContext context, Group group) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAdmin = _currentUserId != null && group.isAdmin(_currentUserId!);
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.space6),
       child: Column(
         children: [
-          // Group Avatar with gradient
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  GuardynColors.guardyn400,
-                  GuardynColors.guardyn600,
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: GuardynColors.guardyn500.withValues(alpha: 0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+          // Group Avatar with media support
+          GroupIconAvatar(
+            group: group,
+            size: 100,
+            canEdit: isAdmin,
+            onIconUpdated: (mediaId) {
+              // TODO: Call UpdateGroup RPC with new iconMediaId
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Group icon updated'),
+                  backgroundColor: GuardynColors.guardyn500,
                 ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                style: AppTypography.headlineLarge.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.space4),
 
@@ -526,20 +512,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                     color: GrayColors.gray400,
                   ),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Coming soon',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                        backgroundColor: GrayColors.gray800,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                      ),
+                    MediaGalleryPage.show(
+                      context,
+                      conversationId: group.groupId,
+                      title: group.name,
                     );
                   },
                 ),

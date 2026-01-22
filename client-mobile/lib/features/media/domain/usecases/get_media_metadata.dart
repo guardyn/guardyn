@@ -1,7 +1,9 @@
+import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/entities/media_entity.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
 
 /// Use case for getting media metadata
+@injectable
 class GetMediaMetadata {
   final MediaRepository repository;
 

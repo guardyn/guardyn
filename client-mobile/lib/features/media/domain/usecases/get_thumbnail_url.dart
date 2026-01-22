@@ -1,6 +1,8 @@
+import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
 
 /// Use case for getting thumbnail URL
+@injectable
 class GetThumbnailUrl {
   final MediaRepository repository;
 
