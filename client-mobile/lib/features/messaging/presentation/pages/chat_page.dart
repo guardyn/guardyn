@@ -5,6 +5,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/conversation_utils.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../presence/presentation/bloc/presence_bloc.dart';
 import '../../../presence/presentation/bloc/presence_event.dart';
 import '../../../presence/presentation/bloc/presence_state.dart';
@@ -257,8 +260,17 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark
+          ? ChatColors.darkBackground
+          : ChatColors.lightBackground,
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: isDark ? Colors.white : GrayColors.gray900,
         title: Row(
           children: [
             // Online indicator dot
@@ -274,12 +286,18 @@ class _ChatPageState extends State<ChatPage> {
                 return const OnlineIndicator(size: 10);
               },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.conversationUserName),
+                  Text(
+                    widget.conversationUserName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : GrayColors.gray900,
+                    ),
+                  ),
                   StreamBuilder<PresenceState>(
                     stream: _presenceBloc.stream,
                     initialData: _presenceBloc.state,
@@ -378,7 +396,7 @@ class _ChatPageState extends State<ChatPage> {
               },
               builder: (context, state) {
                 if (state is MessageLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const MessageShimmerList();
                 }
 
                 if (state is MessageError) {
@@ -389,22 +407,24 @@ class _ChatPageState extends State<ChatPage> {
                         Icon(
                           Icons.error_outline,
                           size: 64,
-                          color: Theme.of(context).colorScheme.error,
+                          color: SemanticColors.error,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.space4),
                         Text(
                           state.message,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
+                          style: TextStyle(color: SemanticColors.error),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.space4),
                         ElevatedButton(
                           onPressed: () {
                             // Reload messages and reconnect WebSocket
                             _initializeChat();
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GuardynColors.guardyn500,
+                            foregroundColor: Colors.white,
+                          ),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -419,14 +439,30 @@ class _ChatPageState extends State<ChatPage> {
 
                   if (messages.isEmpty) {
                     return Center(
-                      child: Text(
-                        'No messages yet.\nSend a message to start the conversation!',
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                        textAlign: TextAlign.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_outlined,
+                            size: 64,
+                            color: GrayColors.gray400,
+                          ),
+                          const SizedBox(height: AppSpacing.space4),
+                          Text(
+                            'No messages yet',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? GrayColors.gray400 : GrayColors.gray600,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.space2),
+                          Text(
+                            'Send a message to start the conversation!',
+                            style: TextStyle(color: GrayColors.gray500),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     );
                   }

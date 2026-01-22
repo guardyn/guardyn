@@ -67,6 +67,7 @@ dependencies:
   # Theme & Preferences
   shared_preferences: ^2.2.2
   google_fonts: ^6.2.1
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_shadows.dart';
+import '../../../../shared/theme/app_spacing.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSend;
@@ -90,71 +95,101 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3,
+        vertical: AppSpacing.space2,
       ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            // Text input field
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: TextField(
-                  controller: _controller,
-                  enabled: widget.enabled,
-                  decoration: InputDecoration(
-                    hintText: 'Type a message...',
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+      decoration: BoxDecoration(
+        color: isDark
+            ? GrayColors.gray900.withOpacity(0.8)
+            : Colors.white.withOpacity(0.8),
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? GrayColors.gray800.withOpacity(0.5)
+                : GrayColors.gray200.withOpacity(0.5),
+          ),
+        ),
+      ),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: SafeArea(
+            child: Row(
+              children: [
+                // Text input field
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? GrayColors.gray800.withOpacity(0.6)
+                          : GrayColors.gray100,
+                      borderRadius: BorderRadius.circular(AppRadius.xl2),
+                      border: Border.all(
+                        color: isDark
+                            ? GrayColors.gray700.withOpacity(0.5)
+                            : GrayColors.gray200,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _controller,
+                      enabled: widget.enabled,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : GrayColors.gray900,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        hintStyle: TextStyle(color: GrayColors.gray500),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space4,
+                          vertical: AppSpacing.space3,
+                        ),
+                      ),
+                      maxLines: null,
+                      textCapitalization: TextCapitalization.sentences,
+                      onSubmitted: widget.enabled && _hasText ? (_) => _handleSend() : null,
                     ),
                   ),
-                  maxLines: null,
-                  textCapitalization: TextCapitalization.sentences,
-                  onSubmitted: widget.enabled && _hasText ? (_) => _handleSend() : null,
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Send button
-            Material(
-              color: _hasText && widget.enabled
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(24),
-              child: InkWell(
-                onTap: _hasText && widget.enabled ? _handleSend : null,
-                borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.send,
+                const SizedBox(width: AppSpacing.space2),
+                // Send button with neumorphic style
+                Container(
+                  decoration: BoxDecoration(
                     color: _hasText && widget.enabled
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        ? GuardynColors.guardyn500
+                        : (isDark ? GrayColors.gray800 : GrayColors.gray200),
+                    shape: BoxShape.circle,
+                    boxShadow: _hasText && widget.enabled
+                        ? AppShadows.sm
+                        : null,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _hasText && widget.enabled ? _handleSend : null,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.send_rounded,
+                          color: _hasText && widget.enabled
+                              ? Colors.white
+                              : GrayColors.gray500,
+                          size: 22,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
