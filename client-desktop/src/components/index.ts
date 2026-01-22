@@ -6,8 +6,8 @@
 
 // Core UI
 export { default as IncomingCall } from './IncomingCall';
+export { ProfileSection, type ProfileSectionProps, type UserProfile } from './ProfileSection';
 export { default as Sidebar } from './Sidebar';
-export { ProfileSection, type UserProfile, type ProfileSectionProps } from './ProfileSection';
 
 // Error Handling
 export {

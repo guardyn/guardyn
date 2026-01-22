@@ -8,9 +8,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { stat } from '@tauri-apps/plugin-fs';
 import { Component, createEffect, createSignal, Show } from 'solid-js';
+import { uploadMedia } from '../api/media';
 import { MediaPicker, UploadProgress, type UploadItem } from './media';
 import { Avatar, Button, TextInput } from './shared';
-import { uploadMedia } from '../api/media';
 
 // =============================================================================
 // TYPES

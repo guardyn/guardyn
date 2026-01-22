@@ -4,8 +4,8 @@
  * User profile page with avatar, display name, and bio editing.
  */
 
-import { invoke } from '@tauri-apps/api/core';
 import { useNavigate } from '@solidjs/router';
+import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, onMount, Show } from 'solid-js';
 import { ProfileSection, type UserProfile } from '../components';
 
