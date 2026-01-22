@@ -110,8 +110,17 @@ void main() {
     testWidgets('shows avatar for received messages', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tReceivedMessage));
 
-      // Avatar should be present for received messages
-      expect(find.byType(CircleAvatar), findsOneWidget);
+      // Avatar should be present for received messages (Container with circle shape)
+      // Find Container with circle decoration (new design system implementation)
+      final containers = tester.widgetList<Container>(find.byType(Container));
+      final hasCircleAvatar = containers.any((container) {
+        if (container.decoration is BoxDecoration) {
+          final decoration = container.decoration as BoxDecoration;
+          return decoration.shape == BoxShape.circle;
+        }
+        return false;
+      });
+      expect(hasCircleAvatar, isTrue);
     });
 
     testWidgets('has bubble with rounded corners', (tester) async {

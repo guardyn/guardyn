@@ -3,6 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/theme/app_typography.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
@@ -120,20 +124,38 @@ class _GroupChatPageState extends State<GroupChatPage> {
             }
           },
           child: Scaffold(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? ChatColors.darkBackground
+                : ChatColors.lightBackground,
             appBar: AppBar(
+              elevation: 0,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? GrayColors.gray900.withOpacity(0.9)
+                  : Colors.white.withOpacity(0.9),
+              surfaceTintColor: Colors.transparent,
+              foregroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : GrayColors.gray900,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.groupName),
+                  Text(
+                    widget.groupName,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : GrayColors.gray900,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   BlocBuilder<GroupBloc, GroupState>(
                     builder: (context, state) {
                       if (state is GroupMessagesLoaded) {
                         return Text(
                           'Group chat',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.white70),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: GrayColors.gray500,
+                          ),
                         );
                       }
                       return const SizedBox.shrink();
@@ -143,7 +165,12 @@ class _GroupChatPageState extends State<GroupChatPage> {
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.group),
+                  icon: Icon(
+                    Icons.group,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : GrayColors.gray700,
+                  ),
                   onPressed: () {
                     _navigateToGroupInfo(context);
                   },
@@ -162,14 +189,14 @@ class _GroupChatPageState extends State<GroupChatPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(state.message),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SemanticColors.error,
                           ),
                         );
                       }
                     },
                     builder: (context, state) {
                       if (state is GroupLoading && state.messages.isEmpty) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const MessageShimmerList(itemCount: 8);
                       }
 
                       final messages = state is GroupMessagesLoaded
@@ -181,34 +208,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
                                   : <dynamic>[];
 
                       if (messages.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No messages yet',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Start the conversation!',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                        return _buildEmptyState(context);
                       }
 
                       return ListView.builder(
@@ -216,8 +216,8 @@ class _GroupChatPageState extends State<GroupChatPage> {
                         reverse: true,
                         itemCount: messages.length,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 12,
+                          horizontal: AppSpacing.space2,
+                          vertical: AppSpacing.space3,
                         ),
                         itemBuilder: (context, index) {
                           final message = messages[index];
@@ -242,6 +242,40 @@ class _GroupChatPageState extends State<GroupChatPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space6),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: GrayColors.gray400,
+            ),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              'No messages yet',
+              style: AppTypography.headlineSmall.copyWith(
+                color: isDark ? GrayColors.gray300 : GrayColors.gray600,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space2),
+            Text(
+              'Start the conversation!',
+              style: AppTypography.bodyMedium.copyWith(
+                color: GrayColors.gray500,
+              ),
+            ),
+          ],
         ),
       ),
     );
