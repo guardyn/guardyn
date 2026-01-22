@@ -19,6 +19,7 @@ x-rust-service: &rust-service
     RUST_LOG: debug
     RUST_BACKTRACE: 1
     JWT_SECRET: development-secret-change-in-production
+    SCYLLA_CONSISTENCY: one
 
 services:
   # ═══════════════════════════════════════════════════════════════
