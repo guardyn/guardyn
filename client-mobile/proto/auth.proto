@@ -42,6 +42,9 @@ service AuthService {
   // Get user profile by user ID (internal service-to-service)
   rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
 
+  // Update user profile (avatar, display name, bio)
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+
   // Delete user account and all associated data
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
 
@@ -128,6 +131,9 @@ message UserProfile {
   string email = 3;
   common.Timestamp created_at = 4;
   common.Timestamp last_seen = 5;
+  string avatar_media_id = 6;  // Reference to media in MediaService
+  string display_name = 7;     // Optional display name
+  string bio = 8;              // Optional bio text
 }
 
 message DeviceInfo {
@@ -306,6 +312,8 @@ message UserSearchResult {
   string user_id = 1;
   string username = 2;
   common.Timestamp created_at = 3;
+  string avatar_media_id = 4;  // Reference to avatar in MediaService
+  string display_name = 5;     // Optional display name
 }
 
 // ============================================================================
@@ -319,6 +327,24 @@ message GetUserProfileRequest {
 message GetUserProfileResponse {
   oneof result {
     UserProfile success = 1; // Reuse existing UserProfile message
+    common.ErrorResponse error = 2;
+  }
+}
+
+// ============================================================================
+// Update Profile
+// ============================================================================
+
+message UpdateProfileRequest {
+  string access_token = 1;     // Authentication
+  string avatar_media_id = 2;  // Optional: new avatar media ID from MediaService
+  string display_name = 3;     // Optional: new display name
+  string bio = 4;              // Optional: new bio
+}
+
+message UpdateProfileResponse {
+  oneof result {
+    UserProfile profile = 1;
     common.ErrorResponse error = 2;
   }
 }

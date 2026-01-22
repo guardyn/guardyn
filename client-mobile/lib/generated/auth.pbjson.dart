@@ -254,6 +254,9 @@ const UserProfile$json = {
       '6': '.guardyn.common.Timestamp',
       '10': 'lastSeen'
     },
+    {'1': 'avatar_media_id', '3': 6, '4': 1, '5': 9, '10': 'avatarMediaId'},
+    {'1': 'display_name', '3': 7, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'bio', '3': 8, '4': 1, '5': 9, '10': 'bio'},
   ],
 };
 
@@ -262,7 +265,9 @@ final $typed_data.Uint8List userProfileDescriptor = $convert.base64Decode(
     'CgtVc2VyUHJvZmlsZRIXCgd1c2VyX2lkGAEgASgJUgZ1c2VySWQSGgoIdXNlcm5hbWUYAiABKA'
     'lSCHVzZXJuYW1lEhQKBWVtYWlsGAMgASgJUgVlbWFpbBI4CgpjcmVhdGVkX2F0GAQgASgLMhku'
     'Z3VhcmR5bi5jb21tb24uVGltZXN0YW1wUgljcmVhdGVkQXQSNgoJbGFzdF9zZWVuGAUgASgLMh'
-    'kuZ3VhcmR5bi5jb21tb24uVGltZXN0YW1wUghsYXN0U2Vlbg==');
+    'kuZ3VhcmR5bi5jb21tb24uVGltZXN0YW1wUghsYXN0U2VlbhImCg9hdmF0YXJfbWVkaWFfaWQY'
+    'BiABKAlSDWF2YXRhck1lZGlhSWQSIQoMZGlzcGxheV9uYW1lGAcgASgJUgtkaXNwbGF5TmFtZR'
+    'IQCgNiaW8YCCABKAlSA2Jpbw==');
 
 @$core.Deprecated('Use deviceInfoDescriptor instead')
 const DeviceInfo$json = {
@@ -867,6 +872,8 @@ const UserSearchResult$json = {
       '6': '.guardyn.common.Timestamp',
       '10': 'createdAt'
     },
+    {'1': 'avatar_media_id', '3': 4, '4': 1, '5': 9, '10': 'avatarMediaId'},
+    {'1': 'display_name', '3': 5, '4': 1, '5': 9, '10': 'displayName'},
   ],
 };
 
@@ -874,7 +881,8 @@ const UserSearchResult$json = {
 final $typed_data.Uint8List userSearchResultDescriptor = $convert.base64Decode(
     'ChBVc2VyU2VhcmNoUmVzdWx0EhcKB3VzZXJfaWQYASABKAlSBnVzZXJJZBIaCgh1c2VybmFtZR'
     'gCIAEoCVIIdXNlcm5hbWUSOAoKY3JlYXRlZF9hdBgDIAEoCzIZLmd1YXJkeW4uY29tbW9uLlRp'
-    'bWVzdGFtcFIJY3JlYXRlZEF0');
+    'bWVzdGFtcFIJY3JlYXRlZEF0EiYKD2F2YXRhcl9tZWRpYV9pZBgEIAEoCVINYXZhdGFyTWVkaW'
+    'FJZBIhCgxkaXNwbGF5X25hbWUYBSABKAlSC2Rpc3BsYXlOYW1l');
 
 @$core.Deprecated('Use getUserProfileRequestDescriptor instead')
 const GetUserProfileRequest$json = {
@@ -922,6 +930,57 @@ final $typed_data.Uint8List getUserProfileResponseDescriptor = $convert.base64De
     'ChZHZXRVc2VyUHJvZmlsZVJlc3BvbnNlEjUKB3N1Y2Nlc3MYASABKAsyGS5ndWFyZHluLmF1dG'
     'guVXNlclByb2ZpbGVIAFIHc3VjY2VzcxI1CgVlcnJvchgCIAEoCzIdLmd1YXJkeW4uY29tbW9u'
     'LkVycm9yUmVzcG9uc2VIAFIFZXJyb3JCCAoGcmVzdWx0');
+
+@$core.Deprecated('Use updateProfileRequestDescriptor instead')
+const UpdateProfileRequest$json = {
+  '1': 'UpdateProfileRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'avatar_media_id', '3': 2, '4': 1, '5': 9, '10': 'avatarMediaId'},
+    {'1': 'display_name', '3': 3, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'bio', '3': 4, '4': 1, '5': 9, '10': 'bio'},
+  ],
+};
+
+/// Descriptor for `UpdateProfileRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateProfileRequestDescriptor = $convert.base64Decode(
+    'ChRVcGRhdGVQcm9maWxlUmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2'
+    'VuEiYKD2F2YXRhcl9tZWRpYV9pZBgCIAEoCVINYXZhdGFyTWVkaWFJZBIhCgxkaXNwbGF5X25h'
+    'bWUYAyABKAlSC2Rpc3BsYXlOYW1lEhAKA2JpbxgEIAEoCVIDYmlv');
+
+@$core.Deprecated('Use updateProfileResponseDescriptor instead')
+const UpdateProfileResponse$json = {
+  '1': 'UpdateProfileResponse',
+  '2': [
+    {
+      '1': 'profile',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.UserProfile',
+      '9': 0,
+      '10': 'profile'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `UpdateProfileResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateProfileResponseDescriptor = $convert.base64Decode(
+    'ChVVcGRhdGVQcm9maWxlUmVzcG9uc2USNQoHcHJvZmlsZRgBIAEoCzIZLmd1YXJkeW4uYXV0aC'
+    '5Vc2VyUHJvZmlsZUgAUgdwcm9maWxlEjUKBWVycm9yGAIgASgLMh0uZ3VhcmR5bi5jb21tb24u'
+    'RXJyb3JSZXNwb25zZUgAUgVlcnJvckIICgZyZXN1bHQ=');
 
 @$core.Deprecated('Use healthRequestDescriptor instead')
 const HealthRequest$json = {

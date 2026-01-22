@@ -32,6 +32,27 @@ abstract class AuthRepository {
 
   /// Check if user is authenticated (has valid access token)
   Future<bool> isAuthenticated();
+
+  /// Update user profile (avatar, display name, bio)
+  ///
+  /// All parameters are optional:
+  /// - [avatarMediaId]: New avatar media ID (null = no change, empty = remove)
+  /// - [displayName]: New display name (null = no change, empty = remove)
+  /// - [bio]: New bio text (null = no change, empty = remove)
+  ///
+  /// Returns the updated [User] entity
+  /// Throws [AuthException] on failure
+  Future<User> updateProfile({
+    String? avatarMediaId,
+    String? displayName,
+    String? bio,
+  });
+
+  /// Get user profile by user ID
+  ///
+  /// Returns [User] entity with profile information
+  /// Throws [AuthException] on failure
+  Future<User> getUserProfile(String userId);
 }
 
 /// Authentication-related exceptions

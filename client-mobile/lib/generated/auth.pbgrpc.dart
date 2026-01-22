@@ -121,6 +121,14 @@ class AuthServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getUserProfile, request, options: options);
   }
 
+  /// Update user profile (avatar, display name, bio)
+  $grpc.ResponseFuture<$0.UpdateProfileResponse> updateProfile(
+    $0.UpdateProfileRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateProfile, request, options: options);
+  }
+
   /// Delete user account and all associated data
   $grpc.ResponseFuture<$0.DeleteAccountResponse> deleteAccount(
     $0.DeleteAccountRequest request, {
@@ -193,6 +201,11 @@ class AuthServiceClient extends $grpc.Client {
           '/guardyn.auth.AuthService/GetUserProfile',
           ($0.GetUserProfileRequest value) => value.writeToBuffer(),
           $0.GetUserProfileResponse.fromBuffer);
+  static final _$updateProfile =
+      $grpc.ClientMethod<$0.UpdateProfileRequest, $0.UpdateProfileResponse>(
+          '/guardyn.auth.AuthService/UpdateProfile',
+          ($0.UpdateProfileRequest value) => value.writeToBuffer(),
+          $0.UpdateProfileResponse.fromBuffer);
   static final _$deleteAccount =
       $grpc.ClientMethod<$0.DeleteAccountRequest, $0.DeleteAccountResponse>(
           '/guardyn.auth.AuthService/DeleteAccount',
@@ -302,6 +315,15 @@ abstract class AuthServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.GetUserProfileRequest.fromBuffer(value),
         ($0.GetUserProfileResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.UpdateProfileRequest, $0.UpdateProfileResponse>(
+            'UpdateProfile',
+            updateProfile_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.UpdateProfileRequest.fromBuffer(value),
+            ($0.UpdateProfileResponse value) => value.writeToBuffer()));
     $addMethod(
         $grpc.ServiceMethod<$0.DeleteAccountRequest, $0.DeleteAccountResponse>(
             'DeleteAccount',
@@ -414,6 +436,15 @@ abstract class AuthServiceBase extends $grpc.Service {
 
   $async.Future<$0.GetUserProfileResponse> getUserProfile(
       $grpc.ServiceCall call, $0.GetUserProfileRequest request);
+
+  $async.Future<$0.UpdateProfileResponse> updateProfile_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.UpdateProfileRequest> $request) async {
+    return updateProfile($call, await $request);
+  }
+
+  $async.Future<$0.UpdateProfileResponse> updateProfile(
+      $grpc.ServiceCall call, $0.UpdateProfileRequest request);
 
   $async.Future<$0.DeleteAccountResponse> deleteAccount_Pre(
       $grpc.ServiceCall $call,

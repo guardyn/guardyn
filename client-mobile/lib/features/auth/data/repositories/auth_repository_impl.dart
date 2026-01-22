@@ -178,4 +178,78 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> isAuthenticated() async {
     return await secureStorage.isAuthenticated();
   }
+
+  @override
+  Future<User> updateProfile({
+    String? avatarMediaId,
+    String? displayName,
+    String? bio,
+  }) async {
+    try {
+      final accessToken = await secureStorage.getAccessToken();
+
+      if (accessToken == null) {
+        throw AuthException('Not authenticated');
+      }
+
+      // Call backend to update profile
+      final response = await remoteDatasource.updateProfile(
+        accessToken: accessToken,
+        avatarMediaId: avatarMediaId,
+        displayName: displayName,
+        bio: bio,
+      );
+
+      // Update local storage with new profile data
+      final username = await secureStorage.getUsername();
+      final deviceId = await secureStorage.getDeviceId();
+
+      logger.i('Profile updated successfully');
+
+      return User(
+        userId: response.userId,
+        username: username ?? response.username,
+        deviceId: deviceId ?? '',
+        avatarMediaId: response.avatarMediaId,
+        displayName: response.displayName,
+        bio: response.bio,
+        createdAt: response.createdAt,
+      );
+    } catch (e) {
+      logger.e('Profile update failed: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<User> getUserProfile(String userId) async {
+    try {
+      final accessToken = await secureStorage.getAccessToken();
+
+      if (accessToken == null) {
+        throw AuthException('Not authenticated');
+      }
+
+      // Call backend to get user profile
+      final response = await remoteDatasource.getUserProfile(
+        accessToken: accessToken,
+        userId: userId,
+      );
+
+      final deviceId = await secureStorage.getDeviceId();
+
+      return User(
+        userId: response.userId,
+        username: response.username,
+        deviceId: deviceId ?? '',
+        avatarMediaId: response.avatarMediaId,
+        displayName: response.displayName,
+        bio: response.bio,
+        createdAt: response.createdAt,
+      );
+    } catch (e) {
+      logger.e('Get user profile failed: $e');
+      rethrow;
+    }
+  }
 }

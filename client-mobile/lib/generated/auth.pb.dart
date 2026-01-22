@@ -716,6 +716,9 @@ class UserProfile extends $pb.GeneratedMessage {
     $core.String? email,
     $1.Timestamp? createdAt,
     $1.Timestamp? lastSeen,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
+    $core.String? bio,
   }) {
     final result = create();
     if (userId != null) result.userId = userId;
@@ -723,6 +726,9 @@ class UserProfile extends $pb.GeneratedMessage {
     if (email != null) result.email = email;
     if (createdAt != null) result.createdAt = createdAt;
     if (lastSeen != null) result.lastSeen = lastSeen;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
+    if (bio != null) result.bio = bio;
     return result;
   }
 
@@ -746,6 +752,9 @@ class UserProfile extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.create)
     ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'lastSeen',
         subBuilder: $1.Timestamp.create)
+    ..aOS(6, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(7, _omitFieldNames ? '' : 'displayName')
+    ..aOS(8, _omitFieldNames ? '' : 'bio')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -815,6 +824,33 @@ class UserProfile extends $pb.GeneratedMessage {
   void clearLastSeen() => $_clearField(5);
   @$pb.TagNumber(5)
   $1.Timestamp ensureLastSeen() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get avatarMediaId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set avatarMediaId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAvatarMediaId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAvatarMediaId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get displayName => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set displayName($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasDisplayName() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDisplayName() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get bio => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set bio($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasBio() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearBio() => $_clearField(8);
 }
 
 class DeviceInfo extends $pb.GeneratedMessage {
@@ -2759,11 +2795,15 @@ class UserSearchResult extends $pb.GeneratedMessage {
     $core.String? userId,
     $core.String? username,
     $1.Timestamp? createdAt,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
   }) {
     final result = create();
     if (userId != null) result.userId = userId;
     if (username != null) result.username = username;
     if (createdAt != null) result.createdAt = createdAt;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
     return result;
   }
 
@@ -2784,6 +2824,8 @@ class UserSearchResult extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'username')
     ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $1.Timestamp.create)
+    ..aOS(4, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(5, _omitFieldNames ? '' : 'displayName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2833,6 +2875,24 @@ class UserSearchResult extends $pb.GeneratedMessage {
   void clearCreatedAt() => $_clearField(3);
   @$pb.TagNumber(3)
   $1.Timestamp ensureCreatedAt() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.String get avatarMediaId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set avatarMediaId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAvatarMediaId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAvatarMediaId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get displayName => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set displayName($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDisplayName() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDisplayName() => $_clearField(5);
 }
 
 class GetUserProfileRequest extends $pb.GeneratedMessage {
@@ -2967,6 +3027,186 @@ class GetUserProfileResponse extends $pb.GeneratedMessage {
   void clearSuccess() => $_clearField(1);
   @$pb.TagNumber(1)
   UserProfile ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class UpdateProfileRequest extends $pb.GeneratedMessage {
+  factory UpdateProfileRequest({
+    $core.String? accessToken,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
+    $core.String? bio,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
+    if (bio != null) result.bio = bio;
+    return result;
+  }
+
+  UpdateProfileRequest._();
+
+  factory UpdateProfileRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateProfileRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateProfileRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(3, _omitFieldNames ? '' : 'displayName')
+    ..aOS(4, _omitFieldNames ? '' : 'bio')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileRequest copyWith(void Function(UpdateProfileRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdateProfileRequest))
+          as UpdateProfileRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileRequest create() => UpdateProfileRequest._();
+  @$core.override
+  UpdateProfileRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateProfileRequest>(create);
+  static UpdateProfileRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get avatarMediaId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set avatarMediaId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAvatarMediaId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAvatarMediaId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get displayName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set displayName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDisplayName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDisplayName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get bio => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set bio($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBio() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBio() => $_clearField(4);
+}
+
+enum UpdateProfileResponse_Result { profile, error, notSet }
+
+class UpdateProfileResponse extends $pb.GeneratedMessage {
+  factory UpdateProfileResponse({
+    UserProfile? profile,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (profile != null) result.profile = profile;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  UpdateProfileResponse._();
+
+  factory UpdateProfileResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateProfileResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, UpdateProfileResponse_Result>
+      _UpdateProfileResponse_ResultByTag = {
+    1: UpdateProfileResponse_Result.profile,
+    2: UpdateProfileResponse_Result.error,
+    0: UpdateProfileResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateProfileResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<UserProfile>(1, _omitFieldNames ? '' : 'profile',
+        subBuilder: UserProfile.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileResponse copyWith(
+          void Function(UpdateProfileResponse) updates) =>
+      super.copyWith((message) => updates(message as UpdateProfileResponse))
+          as UpdateProfileResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileResponse create() => UpdateProfileResponse._();
+  @$core.override
+  UpdateProfileResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateProfileResponse>(create);
+  static UpdateProfileResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  UpdateProfileResponse_Result whichResult() =>
+      _UpdateProfileResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  UserProfile get profile => $_getN(0);
+  @$pb.TagNumber(1)
+  set profile(UserProfile value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProfile() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfile() => $_clearField(1);
+  @$pb.TagNumber(1)
+  UserProfile ensureProfile() => $_ensure(0);
 
   @$pb.TagNumber(2)
   $1.ErrorResponse get error => $_getN(1);

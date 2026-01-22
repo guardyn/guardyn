@@ -4,8 +4,10 @@ import 'package:guardyn_client/features/auth/domain/repositories/auth_repository
 import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/update_profile.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
 import 'package:logger/logger.dart';
 
 /// BLoC for authentication state management
@@ -15,6 +17,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogoutUser logoutUser;
   final AuthRepository authRepository;
   final CryptoService cryptoService;
+  final UpdateProfile? updateProfile;
+  final UploadMedia? uploadMedia;
   final Logger logger = Logger();
 
   AuthBloc({
@@ -23,12 +27,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.logoutUser,
     required this.authRepository,
     required this.cryptoService,
+    this.updateProfile,
+    this.uploadMedia,
   }) : super(AuthInitial()) {
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthDeleteAccountRequested>(_onDeleteAccountRequested);
     on<AuthCheckStatus>(_onCheckStatus);
+    on<AuthUpdateProfileRequested>(_onUpdateProfileRequested);
+    on<AuthUploadAvatarRequested>(_onUploadAvatarRequested);
   }
 
   /// Trigger background key replenishment after successful auth
@@ -167,6 +175,115 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       logger.e('Error checking auth status: $e');
       emit(AuthUnauthenticated());
+    }
+  }
+
+  /// Handle profile update request
+  Future<void> _onUpdateProfileRequested(
+    AuthUpdateProfileRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    // Get current user from state
+    final currentState = state;
+    if (currentState is! AuthAuthenticated) {
+      emit(const AuthError('Must be authenticated to update profile'));
+      return;
+    }
+
+    final currentUser = currentState.user;
+    emit(AuthProfileUpdating(currentUser));
+
+    try {
+      if (updateProfile != null) {
+        // Use the UpdateProfile use case if available
+        final updatedUser = await updateProfile!(
+          avatarMediaId: event.removeAvatar ? '' : event.avatarMediaId,
+          displayName: event.displayName,
+          bio: event.bio,
+        );
+        logger.i('Profile updated successfully');
+        emit(AuthProfileUpdated(updatedUser));
+        emit(AuthAuthenticated(updatedUser));
+      } else {
+        // Fallback: update locally only
+        final updatedUser = currentUser.copyWith(
+          avatarMediaId: event.avatarMediaId,
+          displayName: event.displayName,
+          bio: event.bio,
+          clearAvatar: event.removeAvatar,
+        );
+        logger.i('Profile updated locally (no server sync)');
+        emit(AuthProfileUpdated(updatedUser));
+        emit(AuthAuthenticated(updatedUser));
+      }
+    } on AuthException catch (e) {
+      logger.e('Profile update failed: ${e.message}');
+      emit(AuthError(e.message));
+      emit(AuthAuthenticated(currentUser));
+    } catch (e) {
+      logger.e('Unexpected error during profile update: $e');
+      emit(AuthError('Profile update failed: $e'));
+      emit(AuthAuthenticated(currentUser));
+    }
+  }
+
+  /// Handle avatar upload and update
+  Future<void> _onUploadAvatarRequested(
+    AuthUploadAvatarRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    // Get current user from state
+    final currentState = state;
+    if (currentState is! AuthAuthenticated) {
+      emit(const AuthError('Must be authenticated to upload avatar'));
+      return;
+    }
+
+    final currentUser = currentState.user;
+    emit(AuthProfileUpdating(currentUser, uploadProgress: 0.0));
+
+    try {
+      if (uploadMedia == null) {
+        throw AuthException('Media upload not available');
+      }
+
+      // Upload the avatar image
+      final mediaEntity = await uploadMedia!(
+        filePath: event.filePath,
+        onProgress: (progress) {
+          // We can't emit here directly due to async gaps
+          // The UI should listen to MediaBloc for progress
+          logger.d('Avatar upload progress: ${(progress * 100).toInt()}%');
+        },
+      );
+
+      logger.i('Avatar uploaded: ${mediaEntity.id}');
+
+      // Now update the profile with the new avatar
+      if (updateProfile != null) {
+        final updatedUser = await updateProfile!(
+          avatarMediaId: mediaEntity.id,
+        );
+        emit(AuthProfileUpdated(updatedUser));
+        emit(AuthAuthenticated(updatedUser));
+      } else {
+        // Fallback: update locally
+        final updatedUser = currentUser.copyWith(
+          avatarMediaId: mediaEntity.id,
+        );
+        emit(AuthProfileUpdated(updatedUser));
+        emit(AuthAuthenticated(updatedUser));
+      }
+
+      logger.i('Avatar updated successfully');
+    } on AuthException catch (e) {
+      logger.e('Avatar upload failed: ${e.message}');
+      emit(AuthError(e.message));
+      emit(AuthAuthenticated(currentUser));
+    } catch (e) {
+      logger.e('Unexpected error during avatar upload: $e');
+      emit(AuthError('Avatar upload failed: $e'));
+      emit(AuthAuthenticated(currentUser));
     }
   }
 }
