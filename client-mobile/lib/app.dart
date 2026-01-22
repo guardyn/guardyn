@@ -20,6 +20,7 @@ import 'package:guardyn_client/features/groups/data/datasources/group_remote_dat
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
@@ -99,6 +100,7 @@ class GuardynApp extends StatelessWidget {
     final addGroupMember = AddGroupMember(groupRepository);
     final removeGroupMember = RemoveGroupMember(groupRepository);
     final leaveGroup = LeaveGroup(groupRepository);
+    final deleteGroup = DeleteGroup(groupRepository);
 
     return MultiBlocProvider(
       providers: [
@@ -135,6 +137,7 @@ class GuardynApp extends StatelessWidget {
             addGroupMember: addGroupMember,
             removeGroupMember: removeGroupMember,
             leaveGroup: leaveGroup,
+            deleteGroup: deleteGroup,
           ),
         ),
       ],
