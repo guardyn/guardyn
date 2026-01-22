@@ -1,6 +1,7 @@
 import 'package:grpc/grpc.dart';
 import 'package:guardyn_client/core/constants/config.dart';
 import 'package:guardyn_client/generated/auth.pbgrpc.dart';
+import 'package:guardyn_client/generated/media.pbgrpc.dart';
 import 'package:guardyn_client/generated/messaging.pbgrpc.dart';
 import 'package:guardyn_client/generated/presence.pbgrpc.dart';
 
@@ -12,10 +13,12 @@ class GrpcClients {
   late ClientChannel _authChannel;
   late ClientChannel _messagingChannel;
   late ClientChannel _presenceChannel;
+  late ClientChannel _mediaChannel;
 
   late AuthServiceClient authClient;
   late MessagingServiceClient messagingClient;
   late PresenceServiceClient presenceClient;
+  late MediaServiceClient mediaClient;
 
   bool _initialized = false;
 
@@ -62,11 +65,16 @@ class GrpcClients {
       AppConfig.presenceHost,
       AppConfig.presencePort,
     );
+    _mediaChannel = _createChannel(
+      AppConfig.mediaHost,
+      AppConfig.mediaPort,
+    );
 
     // Create service clients
     authClient = AuthServiceClient(_authChannel);
     messagingClient = MessagingServiceClient(_messagingChannel);
     presenceClient = PresenceServiceClient(_presenceChannel);
+    mediaClient = MediaServiceClient(_mediaChannel);
 
     _initialized = true;
   }
@@ -77,6 +85,7 @@ class GrpcClients {
       _authChannel.shutdown(),
       _messagingChannel.shutdown(),
       _presenceChannel.shutdown(),
+      _mediaChannel.shutdown(),
     ]);
     _initialized = false;
   }

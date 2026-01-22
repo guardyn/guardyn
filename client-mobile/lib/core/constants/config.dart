@@ -44,6 +44,9 @@ class AppConfig {
   static String get presenceHost => authHost; // Same logic as authHost
   static const int presencePort = 50053;
 
+  static String get mediaHost => authHost; // Same logic as authHost
+  static const int mediaPort = 50054;
+
   // WebSocket configuration
   static String get websocketHost => authHost; // Same logic as gRPC hosts
   static const int websocketPort = 8081;
