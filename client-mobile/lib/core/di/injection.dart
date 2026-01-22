@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
+import 'package:guardyn_client/core/services/user_provider.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 // Auth feature imports
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -58,6 +59,11 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   // Register core services
   getIt.registerLazySingleton<SecureStorage>(() => SecureStorage());
+
+  // Register user provider for current user access
+  getIt.registerLazySingleton<UserProvider>(
+    () => UserProvider(getIt<SecureStorage>()),
+  );
 
   // Register crypto service for E2EE
   final cryptoService = CryptoService();
@@ -292,13 +298,12 @@ void _registerCallsDependencies() {
   );
 
   // Repository
-  // Note: currentUserId should come from auth state in production
   getIt.registerLazySingleton<CallRepository>(
     () => CallRepositoryImpl(
       webrtcDataSource: getIt<WebRTCDataSource>(),
       signalingDataSource: getIt<SignalingDataSource>(),
       logger: callLogger,
-      currentUserId: 'temp-user-id', // TODO: Get from auth state
+      userProvider: getIt<UserProvider>(),
     ),
   );
 

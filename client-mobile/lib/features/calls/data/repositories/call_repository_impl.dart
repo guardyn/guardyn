@@ -11,6 +11,7 @@ import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/error/failures.dart';
+import '../../../../core/services/user_provider.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/call_repository.dart';
 import '../datasources/datasources.dart';
@@ -22,8 +23,8 @@ class CallRepositoryImpl implements CallRepository {
   final Logger _logger;
   final Uuid _uuid;
 
-  /// Current user ID
-  final String _currentUserId;
+  /// User provider for getting current user ID
+  final UserProvider _userProvider;
 
   /// Active call state
   Call? _activeCall;
@@ -46,15 +47,18 @@ class CallRepositoryImpl implements CallRepository {
     required WebRTCDataSource webrtcDataSource,
     required SignalingDataSource signalingDataSource,
     required Logger logger,
-    required String currentUserId,
+    required UserProvider userProvider,
     Uuid? uuid,
   })  : _webrtcDataSource = webrtcDataSource,
         _signalingDataSource = signalingDataSource,
         _logger = logger,
-        _currentUserId = currentUserId,
+        _userProvider = userProvider,
         _uuid = uuid ?? const Uuid() {
     _setupSubscriptions();
   }
+
+  /// Gets the current user ID from the user provider
+  String get _currentUserId => _userProvider.currentUserIdSync;
 
   void _setupSubscriptions() {
     // Subscribe to WebRTC events
