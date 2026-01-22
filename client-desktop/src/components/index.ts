@@ -59,3 +59,6 @@ export * from './chat';
 
 // Shared Components
 export * from './shared';
+
+// Media Components
+export * from './media';
