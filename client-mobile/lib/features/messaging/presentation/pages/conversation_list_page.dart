@@ -115,9 +115,10 @@ class _ConversationListPageState extends State<ConversationListPage> {
           ),
           IconButton(
             icon: Icon(
-              Icons.more_vert,
+              Icons.settings,
               color: isDark ? GrayColors.gray400 : GrayColors.gray600,
             ),
+            tooltip: 'Settings',
             onPressed: () {
               Navigator.pushNamed(context, '/settings');
             },
