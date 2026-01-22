@@ -137,6 +137,8 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
                           vertical: AppSpacing.space3,
                         ),
                       ),
+                      keyboardType: TextInputType.text,
+                      enableIMEPersonalizedLearning: true,
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: 4,
                       minLines: 1,

@@ -45,8 +45,32 @@ import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc
 import 'package:guardyn_client/shared/theme/app_theme.dart';
 import 'package:guardyn_client/shared/theme/theme_bloc.dart';
 
-class GuardynApp extends StatelessWidget {
+/// Main application widget with system theme observer
+class GuardynApp extends StatefulWidget {
   const GuardynApp({super.key});
+
+  @override
+  State<GuardynApp> createState() => _GuardynAppState();
+}
+
+class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    // Force rebuild when system brightness changes
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {

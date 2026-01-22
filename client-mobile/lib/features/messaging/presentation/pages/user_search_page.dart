@@ -30,10 +30,21 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
+    final trimmedQuery = query.trim();
+    
+    if (trimmedQuery.isEmpty) {
       setState(() {
         _searchResults = [];
         _errorMessage = null;
+      });
+      return;
+    }
+
+    // Client-side validation for minimum query length
+    if (trimmedQuery.length < 2) {
+      setState(() {
+        _searchResults = [];
+        _errorMessage = 'Please enter at least 2 characters to search';
       });
       return;
     }
@@ -49,7 +60,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
       if (authState is! AuthAuthenticated) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Not authenticated';
+          _errorMessage = 'Please log in to search for users';
         });
         return;
       }
@@ -61,7 +72,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
       if (accessToken == null) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'No access token found';
+          _errorMessage = 'Session expired. Please log in again';
         });
         return;
       }
@@ -70,7 +81,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
       final datasource = getIt<AuthRemoteDatasource>();
       final List<UserSearchResult> results = await datasource.searchUsers(
         accessToken: accessToken,
-        query: query,
+        query: trimmedQuery,
         limit: 50,
       );
 
@@ -81,9 +92,33 @@ class _UserSearchPageState extends State<UserSearchPage> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Search failed: ${e.toString()}';
+        _errorMessage = _getUserFriendlyErrorMessage(e);
       });
     }
+  }
+
+  /// Converts technical error messages to user-friendly messages
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    
+    if (errorString.contains('invalid') && errorString.contains('token')) {
+      return 'Session expired. Please log in again';
+    }
+    if (errorString.contains('unauthorized') || errorString.contains('unauthenticated')) {
+      return 'Please log in to search for users';
+    }
+    if (errorString.contains('network') || errorString.contains('connection')) {
+      return 'Network error. Please check your connection';
+    }
+    if (errorString.contains('timeout')) {
+      return 'Request timed out. Please try again';
+    }
+    if (errorString.contains('not found')) {
+      return 'Service unavailable. Please try again later';
+    }
+    
+    // Generic fallback - don't expose technical details
+    return 'Something went wrong. Please try again';
   }
 
   void _openChat(UserSearchResult user) {
@@ -115,6 +150,8 @@ class _UserSearchPageState extends State<UserSearchPage> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
+              keyboardType: TextInputType.text,
+              enableIMEPersonalizedLearning: true,
               decoration: InputDecoration(
                 hintText: 'Search by username...',
                 prefixIcon: const Icon(Icons.search),

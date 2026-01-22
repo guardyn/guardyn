@@ -150,6 +150,8 @@ class _MessageInputState extends State<MessageInput> {
                         ),
                       ),
                       maxLines: null,
+                      keyboardType: TextInputType.text,
+                      enableIMEPersonalizedLearning: true,
                       textCapitalization: TextCapitalization.sentences,
                       onSubmitted: widget.enabled && _hasText ? (_) => _handleSend() : null,
                     ),
