@@ -200,25 +200,54 @@ class PresenceRepositoryImpl implements PresenceRepository {
 
   @override
   Stream<PresenceInfo> subscribeToPresence(List<String> userIds) async* {
-    try {
-      // Get access token
-      final accessToken = await secureStorage.getAccessToken();
-      if (accessToken == null) {
-        return;
-      }
+    int retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = Duration(seconds: 2);
 
-      final stream = remoteDatasource.subscribe(
-        accessToken: accessToken,
-        userIds: userIds,
-      );
+    while (retryCount <= maxRetries) {
+      try {
+        // Get access token
+        final accessToken = await secureStorage.getAccessToken();
+        if (accessToken == null) {
+          _logger.w('No access token for presence subscription');
+          return;
+        }
 
-      await for (final update in stream) {
-        final presenceInfo = update.toEntity();
-        _presenceCache[presenceInfo.userId] = presenceInfo;
-        yield presenceInfo;
+        final stream = remoteDatasource.subscribe(
+          accessToken: accessToken,
+          userIds: userIds,
+        );
+
+        await for (final update in stream) {
+          final presenceInfo = update.toEntity();
+          _presenceCache[presenceInfo.userId] = presenceInfo;
+          yield presenceInfo;
+          // Reset retry count on successful data
+          retryCount = 0;
+        }
+        // Stream ended normally
+        break;
+      } on GrpcError catch (e) {
+        _logger.w('gRPC error subscribing to presence (attempt ${retryCount + 1}): ${e.message}');
+        // Don't retry on auth errors
+        if (e.code == StatusCode.unauthenticated || e.code == StatusCode.permissionDenied) {
+          break;
+        }
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          await Future<void>.delayed(retryDelay * retryCount);
+        }
+      } catch (e) {
+        _logger.e('Error subscribing to presence (attempt ${retryCount + 1}): $e');
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          await Future<void>.delayed(retryDelay * retryCount);
+        }
       }
-    } catch (e) {
-      _logger.e('Error subscribing to presence: $e');
+    }
+
+    if (retryCount > maxRetries) {
+      _logger.w('Presence subscription failed after $maxRetries retries');
     }
   }
 

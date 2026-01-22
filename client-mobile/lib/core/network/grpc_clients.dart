@@ -19,17 +19,28 @@ class GrpcClients {
 
   bool _initialized = false;
 
-  /// Create gRPC channel for native platforms
+  /// Create gRPC channel for native platforms with keepalive settings
+  /// Keepalive prevents "Connection is being forcefully terminated" errors
   ClientChannel _createChannel(String host, int port) {
     return ClientChannel(
       host,
       port: port,
-      options: const ChannelOptions(
-        credentials: ChannelCredentials.insecure(),
+      options: ChannelOptions(
+        credentials: const ChannelCredentials.insecure(),
         // Connection timeout for initial connection
-        connectionTimeout: Duration(seconds: 10),
+        connectionTimeout: const Duration(seconds: 10),
         // Idle timeout to close unused connections
-        idleTimeout: Duration(minutes: 5),
+        idleTimeout: const Duration(minutes: 5),
+        // Keepalive settings to prevent connection drops
+        // Send keepalive pings every 30 seconds when there's no activity
+        keepAlive: const ClientKeepAliveOptions(
+          // Send ping after 30 seconds of inactivity
+          pingInterval: Duration(seconds: 30),
+          // Wait 20 seconds for ping response
+          timeout: Duration(seconds: 20),
+          // Send keepalive even without active calls
+          permitWithoutCalls: true,
+        ),
       ),
     );
   }

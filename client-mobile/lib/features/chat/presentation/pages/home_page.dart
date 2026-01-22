@@ -7,6 +7,7 @@ import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/features/auth/presentation/pages/settings_page.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_list_page.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
@@ -81,7 +82,20 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Guardyn'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
             onPressed: () {
               _authBloc.add(AuthLogoutRequested());
             },
@@ -155,6 +169,25 @@ class _HomePageState extends State<HomePage> {
               },
               icon: const Icon(Icons.group),
               label: const Text('Open Groups'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.settings),
+              label: const Text('Settings'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
