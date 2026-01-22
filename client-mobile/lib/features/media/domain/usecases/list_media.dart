@@ -1,6 +1,6 @@
-import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/entities/media_entity.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
+import 'package:injectable/injectable.dart';
 
 /// Use case for listing media in a conversation
 @injectable

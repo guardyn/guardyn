@@ -26,6 +26,19 @@ import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart'
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
+// Media feature imports
+import 'package:guardyn_client/features/media/data/datasources/media_local_datasource.dart';
+import 'package:guardyn_client/features/media/data/datasources/media_remote_datasource.dart';
+import 'package:guardyn_client/features/media/data/repositories/media_repository_impl.dart';
+import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
+import 'package:guardyn_client/features/media/domain/usecases/delete_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/get_media_metadata.dart';
+import 'package:guardyn_client/features/media/domain/usecases/get_thumbnail_url.dart';
+import 'package:guardyn_client/features/media/domain/usecases/list_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/manage_media_cache.dart';
+import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
+import 'package:guardyn_client/features/media/presentation/bloc/media_bloc.dart';
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
@@ -50,19 +63,6 @@ import 'package:guardyn_client/features/presence/domain/usecases/send_heartbeat.
 import 'package:guardyn_client/features/presence/domain/usecases/send_typing_indicator.dart';
 import 'package:guardyn_client/features/presence/domain/usecases/update_my_status.dart';
 import 'package:guardyn_client/features/presence/presentation/bloc/presence_bloc.dart';
-// Media feature imports
-import 'package:guardyn_client/features/media/data/datasources/media_local_datasource.dart';
-import 'package:guardyn_client/features/media/data/datasources/media_remote_datasource.dart';
-import 'package:guardyn_client/features/media/data/repositories/media_repository_impl.dart';
-import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
-import 'package:guardyn_client/features/media/domain/usecases/delete_media.dart';
-import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
-import 'package:guardyn_client/features/media/domain/usecases/get_media_metadata.dart';
-import 'package:guardyn_client/features/media/domain/usecases/get_thumbnail_url.dart';
-import 'package:guardyn_client/features/media/domain/usecases/list_media.dart';
-import 'package:guardyn_client/features/media/domain/usecases/manage_media_cache.dart';
-import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
-import 'package:guardyn_client/features/media/presentation/bloc/media_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 import 'package:logger/logger.dart';

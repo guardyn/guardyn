@@ -1,5 +1,5 @@
-import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
+import 'package:injectable/injectable.dart';
 
 /// Use case for deleting media
 @injectable

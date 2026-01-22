@@ -66,6 +66,18 @@ fn main() {
             commands::messaging::get_conversations,
             commands::messaging::get_messages,
             commands::messaging::mark_as_read,
+            // Media commands
+            commands::media::get_media_upload_url,
+            commands::media::upload_media_file,
+            commands::media::get_media_download_url,
+            commands::media::download_media_file,
+            commands::media::get_media_metadata,
+            commands::media::delete_media,
+            commands::media::generate_thumbnail,
+            commands::media::list_media,
+            commands::media::get_media_cache_dir,
+            commands::media::clear_media_cache,
+            commands::media::get_cached_media_path,
             // Call commands
             commands::calls::initiate_call,
             commands::calls::accept_call,

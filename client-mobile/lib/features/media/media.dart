@@ -1,5 +1,5 @@
 /// Media feature barrel exports
-library media;
+library;
 
 export 'data/datasources/media_local_datasource.dart';
 // Data layer - datasources

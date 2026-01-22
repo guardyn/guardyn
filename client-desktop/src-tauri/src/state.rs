@@ -4,7 +4,7 @@
 
 use crate::commands::settings::UserSettings;
 use crate::grpc::{GrpcClient, GrpcConfig};
-use crate::services::{AuthClient, MessagingClient, CallsClient};
+use crate::services::{AuthClient, CallsClient, MediaClient, MessagingClient};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -15,6 +15,7 @@ pub struct AppState {
     auth_client: Arc<AuthClient>,
     messaging_client: Arc<MessagingClient>,
     calls_client: Arc<CallsClient>,
+    media_client: Arc<MediaClient>,
 }
 
 struct AppStateInner {
@@ -39,6 +40,7 @@ impl AppState {
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
             calls_client: Arc::new(CallsClient::new(Arc::clone(&grpc))),
+            media_client: Arc::new(MediaClient::new(Arc::clone(&grpc))),
             grpc,
         }
     }
@@ -61,6 +63,11 @@ impl AppState {
     /// Get the calls client
     pub fn calls(&self) -> &Arc<CallsClient> {
         &self.calls_client
+    }
+
+    /// Get the media client
+    pub fn media(&self) -> &Arc<MediaClient> {
+        &self.media_client
     }
 
     /// Check if user is authenticated
@@ -128,6 +135,7 @@ impl Clone for AppState {
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
             calls_client: Arc::new(CallsClient::new(Arc::clone(&grpc))),
+            media_client: Arc::new(MediaClient::new(Arc::clone(&grpc))),
             grpc,
         }
     }

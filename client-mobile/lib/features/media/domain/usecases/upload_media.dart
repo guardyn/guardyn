@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-import 'package:injectable/injectable.dart';
 import 'package:guardyn_client/features/media/domain/entities/media_entity.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
+import 'package:injectable/injectable.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 

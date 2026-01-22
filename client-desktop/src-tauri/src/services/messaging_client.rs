@@ -325,6 +325,8 @@ impl MessagingClient {
             group_name,
             member_user_ids,
             mls_group_state,
+            description: String::new(),
+            icon_media_id: String::new(),
         };
 
         let mut client = self.client().await?;
