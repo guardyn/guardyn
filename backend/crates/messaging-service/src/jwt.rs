@@ -32,22 +32,22 @@ pub fn validate_token(token: &str, secret: &str) -> Result<Claims> {
     }
 
     let validation = Validation::new(Algorithm::HS256);
-    
+
     let token_data = decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &validation,
     )?;
-    
+
     // Check if token is expired
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_secs() as i64;
-    
+
     if token_data.claims.exp < now {
         bail!("Token expired");
     }
-    
+
     Ok(token_data.claims)
 }
 
@@ -64,12 +64,12 @@ fn get_jwt_secret() -> String {
 pub fn validate_access_token(token: &str) -> Result<Claims> {
     let secret = get_jwt_secret();
     let claims = validate_token(token, &secret)?;
-    
+
     // Verify it's an access token (or allow tokens without type for backwards compatibility)
     if claims.token_type.as_deref() == Some("refresh") {
         bail!("Refresh tokens cannot be used for API access");
     }
-    
+
     Ok(claims)
 }
 
@@ -83,7 +83,7 @@ pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String
             if claims.token_type.as_deref() != Some("access") {
                 return Err(Status::unauthenticated("Invalid token type"));
             }
-            
+
             Ok((claims.sub, claims.device_id, claims.username))
         }
         Err(e) => {

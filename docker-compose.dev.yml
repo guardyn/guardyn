@@ -18,6 +18,7 @@ x-rust-service: &rust-service
   environment: &rust-env
     RUST_LOG: debug
     RUST_BACKTRACE: 1
+    JWT_SECRET: development-secret-change-in-production
 
 services:
   # ═══════════════════════════════════════════════════════════════
