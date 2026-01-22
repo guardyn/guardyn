@@ -117,9 +117,11 @@ describe('Register Page', () => {
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith('register', {
-        username: 'newuser',
-        password: 'password123456',
-        displayName: 'New User',
+        request: {
+          username: 'newuser',
+          password: 'password123456',
+          displayName: 'New User',
+        },
       });
     });
   });
@@ -244,9 +246,11 @@ describe('Register Page', () => {
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith('register', {
-        username: 'newuser',
-        password: 'password123456',
-        displayName: undefined,
+        request: {
+          username: 'newuser',
+          password: 'password123456',
+          displayName: undefined,
+        },
       });
     });
   });

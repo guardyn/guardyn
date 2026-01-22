@@ -36,18 +36,18 @@ describe('PasswordStrength', () => {
   });
 
   it('shows "Strong" for good passwords', () => {
-    // Strong = 4 requirements: 8+ chars, uppercase, lowercase, number (no special)
+    // Strong = 4 requirements: 12+ chars, uppercase, lowercase, number (no special)
     render(() => (
-      <PasswordStrength password="Abcd1234" />
+      <PasswordStrength password="Abcd12345678" />
     ));
 
     expect(screen.getByText('Strong')).toBeInTheDocument();
   });
 
   it('shows "Excellent" for very strong passwords', () => {
-    // Excellent = all 5 requirements: 8+ chars, uppercase, lowercase, number, special
+    // Excellent = all 5 requirements: 12+ chars, uppercase, lowercase, number, special
     render(() => (
-      <PasswordStrength password="Abcd1234!" />
+      <PasswordStrength password="Abcd12345678!" />
     ));
 
     expect(screen.getByText('Excellent')).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('PasswordStrength', () => {
       <PasswordStrength password="test" showRequirements />
     ));
 
-    expect(screen.getByText('At least 8 characters')).toBeInTheDocument();
+    expect(screen.getByText('At least 12 characters')).toBeInTheDocument();
     expect(screen.getByText('Contains uppercase letter')).toBeInTheDocument();
     expect(screen.getByText('Contains lowercase letter')).toBeInTheDocument();
     expect(screen.getByText('Contains a number')).toBeInTheDocument();
@@ -80,7 +80,7 @@ describe('PasswordStrength', () => {
       <PasswordStrength password="test" showRequirements={false} />
     ));
 
-    expect(screen.queryByText('At least 8 characters')).not.toBeInTheDocument();
+    expect(screen.queryByText('At least 12 characters')).not.toBeInTheDocument();
   });
 
   it('does not show requirements for empty password even with showRequirements', () => {
@@ -89,6 +89,6 @@ describe('PasswordStrength', () => {
     ));
 
     // Requirements should only show when password.length > 0
-    expect(screen.queryByText('At least 8 characters')).not.toBeInTheDocument();
+    expect(screen.queryByText('At least 12 characters')).not.toBeInTheDocument();
   });
 });
