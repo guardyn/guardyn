@@ -96,6 +96,13 @@ async fn stream_messages(
                         is_deleted: false,
                         media_id: "".to_string(),
                         x3dh_prekey: "".to_string(), // TODO: Fetch from ScyllaDB with message content
+                        // Phase 2 fields
+                        thread_reference: None,
+                        forward_info: None,
+                        edit_version: 0,
+                        last_edited_at: None,
+                        voice_metadata: None,
+                        reaction_summaries: Vec::new(),
                     };
 
                     // Send to client
@@ -194,6 +201,13 @@ async fn poll_nats_messages(
             is_deleted: false,
             media_id: "".to_string(),
             x3dh_prekey: envelope.x3dh_prekey.clone().unwrap_or_default(),
+            // Phase 2 fields
+            thread_reference: None,
+            forward_info: None,
+            edit_version: 0,
+            last_edited_at: None,
+            voice_metadata: None,
+            reaction_summaries: Vec::new(),
         };
 
         // Send message to client

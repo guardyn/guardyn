@@ -162,6 +162,13 @@ async fn stream_messages_e2ee(
                         is_deleted: false,
                         media_id: "".to_string(),
                         x3dh_prekey: stored_msg.x3dh_prekey.unwrap_or_default(),
+                        // Phase 2 fields
+                        thread_reference: None,
+                        forward_info: None,
+                        edit_version: 0,
+                        last_edited_at: None,
+                        voice_metadata: None,
+                        reaction_summaries: Vec::new(),
                     };
 
                     // Send decrypted message to client
@@ -279,6 +286,13 @@ async fn stream_messages_e2ee(
                         is_deleted: false,
                         media_id: "".to_string(),
                         x3dh_prekey: envelope.x3dh_prekey.clone().unwrap_or_default(),
+                        // Phase 2 fields
+                        thread_reference: None,
+                        forward_info: None,
+                        edit_version: 0,
+                        last_edited_at: None,
+                        voice_metadata: None,
+                        reaction_summaries: Vec::new(),
                     };
 
                     if tx.send(Ok(message)).await.is_err() {

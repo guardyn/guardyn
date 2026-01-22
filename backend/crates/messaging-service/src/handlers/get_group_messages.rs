@@ -163,6 +163,13 @@ pub async fn get_group_messages(
                 }),
                 media_id: String::new(), // Not stored in current schema
                 is_deleted: false, // New schema doesn't support soft delete
+                // Phase 2 fields (not yet stored in DB)
+                thread_reference: None,
+                forward_info: None,
+                edit_version: 0,
+                last_edited_at: None,
+                voice_metadata: None,
+                reaction_summaries: Vec::new(),
             }
         })
         .collect();

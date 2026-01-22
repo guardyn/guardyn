@@ -51,6 +51,28 @@ pub fn validate_token(token: &str, secret: &str) -> Result<Claims> {
     Ok(token_data.claims)
 }
 
+/// Get JWT secret from environment
+fn get_jwt_secret() -> String {
+    std::env::var("JWT_SECRET")
+        .or_else(|_| std::env::var("GUARDYN_JWT_SECRET"))
+        .unwrap_or_else(|_| "development-secret-change-in-production".to_string())
+}
+
+/// Validate access token and return claims
+///
+/// Uses JWT_SECRET or GUARDYN_JWT_SECRET from environment, or default for dev
+pub fn validate_access_token(token: &str) -> Result<Claims> {
+    let secret = get_jwt_secret();
+    let claims = validate_token(token, &secret)?;
+    
+    // Verify it's an access token (or allow tokens without type for backwards compatibility)
+    if claims.token_type.as_deref() == Some("refresh") {
+        bail!("Refresh tokens cannot be used for API access");
+    }
+    
+    Ok(claims)
+}
+
 /// Validate token and extract user_id + device_id + username
 ///
 /// Returns (user_id, device_id, username) or gRPC Status error

@@ -72,48 +72,32 @@ class _ThemeButton extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space4,
-          vertical: AppSpacing.space2,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected
-                  ? GuardynColors.guardyn600
-                  : colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: AppSpacing.space2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected
-                    ? GuardynColors.guardyn600
-                    : colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+      child: Tooltip(
+        message: label,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(AppSpacing.space2),
+          decoration: BoxDecoration(
+            color: isSelected ? colorScheme.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            icon,
+            size: 22,
+            color: isSelected
+                ? GuardynColors.guardyn600
+                : colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );

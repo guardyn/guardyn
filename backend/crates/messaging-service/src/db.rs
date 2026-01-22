@@ -21,7 +21,7 @@ pub struct DatabaseClient {
 
 impl DatabaseClient {
     /// Initialize database connections
-    /// 
+    ///
     /// Environment variables:
     /// - SCYLLA_CONSISTENCY: "one", "local_one", "local_quorum" (default), "quorum", "all"
     /// - SCYLLA_REPLICATION_FACTOR: integer (default: 3 for production, use 1 for local dev)
@@ -43,7 +43,7 @@ impl DatabaseClient {
             "all" => Consistency::All,
             "local_quorum" | _ => Consistency::LocalQuorum,
         };
-        
+
         tracing::info!("ScyllaDB consistency level: {:?}", consistency);
 
         // Connect to ScyllaDB
@@ -64,7 +64,7 @@ impl DatabaseClient {
     }
 
     /// Initialize ScyllaDB keyspace and tables
-    /// 
+    ///
     /// Uses SCYLLA_REPLICATION_FACTOR env var (default: 3)
     /// For local development with single node, set SCYLLA_REPLICATION_FACTOR=1
     async fn init_scylla_schema(session: &Session) -> Result<()> {
@@ -73,9 +73,9 @@ impl DatabaseClient {
             .unwrap_or_else(|_| "3".to_string())
             .parse()
             .unwrap_or(3);
-        
+
         tracing::info!("ScyllaDB replication factor: {}", replication_factor);
-        
+
         // Create keyspace if not exists
         let keyspace_query = format!(
             "CREATE KEYSPACE IF NOT EXISTS guardyn 
@@ -817,6 +817,13 @@ impl DatabaseClient {
                     media_id: String::new(),
                     is_deleted,
                     x3dh_prekey,
+                    // Phase 2 fields (not yet stored in DB)
+                    thread_reference: None,
+                    forward_info: None,
+                    edit_version: 0,
+                    last_edited_at: None,
+                    voice_metadata: None,
+                    reaction_summaries: Vec::new(),
                 };
 
                 // Update or create conversation
@@ -1094,6 +1101,13 @@ impl DatabaseClient {
                     media_id: String::new(),
                     is_deleted: false,
                     x3dh_prekey: String::new(),
+                    // Phase 2 fields (not yet stored in DB)
+                    thread_reference: None,
+                    forward_info: None,
+                    edit_version: 0,
+                    last_edited_at: None,
+                    voice_metadata: None,
+                    reaction_summaries: Vec::new(),
                 };
 
                 let conversation = crate::proto::messaging::Conversation {
@@ -1716,7 +1730,7 @@ impl DatabaseClient {
         message_id: &str,
         _conversation_id: &str,
         _is_group: bool,
-    ) -> Result<Vec<proto::messaging::Reaction>> {
+    ) -> Result<Vec<crate::proto::messaging::Reaction>> {
         let message_uuid = uuid::Uuid::parse_str(message_id)
             .context("Invalid message_id UUID")?;
 
@@ -1744,12 +1758,12 @@ impl DatabaseClient {
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
-                reactions.push(proto::messaging::Reaction {
+                reactions.push(crate::proto::messaging::Reaction {
                     reaction_id: reaction_id.to_string(),
                     message_id: message_id.to_string(),
                     user_id,
                     emoji,
-                    created_at: Some(proto::common::Timestamp {
+                    created_at: Some(crate::proto::common::Timestamp {
                         seconds: created_at / 1000,
                         nanos: ((created_at % 1000) * 1_000_000) as i32,
                     }),
@@ -1800,7 +1814,7 @@ impl DatabaseClient {
         &self,
         conversation_id: &str,
         _is_group: bool,
-    ) -> Result<Vec<proto::messaging::ReadReceipt>> {
+    ) -> Result<Vec<crate::proto::messaging::ReadReceipt>> {
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
             .context("Invalid conversation_id UUID")?;
 
@@ -1824,11 +1838,11 @@ impl DatabaseClient {
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
-                receipts.push(proto::messaging::ReadReceipt {
+                receipts.push(crate::proto::messaging::ReadReceipt {
                     conversation_id: conversation_id.to_string(),
                     user_id,
                     last_read_message_id: last_read_message_id.to_string(),
-                    timestamp: Some(proto::common::Timestamp {
+                    timestamp: Some(crate::proto::common::Timestamp {
                         seconds: timestamp / 1000,
                         nanos: ((timestamp % 1000) * 1_000_000) as i32,
                     }),
@@ -1903,11 +1917,19 @@ impl DatabaseClient {
         );
         let rows = self.scylla_query(&version_query, (conversation_uuid, message_uuid)).await?;
         
-        let current_version: i32 = rows.rows
-            .and_then(|r| r.into_iter().next())
-            .and_then(|row| row.columns[0].as_ref())
-            .and_then(|v| v.as_int())
-            .unwrap_or(0);
+        let current_version: i32 = if let Some(rows) = rows.rows {
+            if let Some(row) = rows.into_iter().next() {
+                if let Some(Some(cql_value)) = row.columns.into_iter().next() {
+                    cql_value.as_int().unwrap_or(0)
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } else {
+            0
+        };
 
         let new_version = current_version + 1;
 
@@ -1970,7 +1992,7 @@ impl DatabaseClient {
                     sender_user_id,
                     sender_username: String::new(), // Would need additional lookup
                     message_type,
-                    server_timestamp: Some(proto::common::Timestamp {
+                    server_timestamp: Some(crate::proto::common::Timestamp {
                         seconds: server_timestamp / 1000,
                         nanos: ((server_timestamp % 1000) * 1_000_000) as i32,
                     }),
@@ -1993,7 +2015,7 @@ impl DatabaseClient {
         encrypted_content: &[u8],
         message_type: i32,
         client_message_id: &str,
-        forward_info: &proto::messaging::ForwardInfo,
+        forward_info: &crate::proto::messaging::ForwardInfo,
     ) -> Result<()> {
         let message_uuid = uuid::Uuid::parse_str(message_id)?;
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
@@ -2033,7 +2055,7 @@ impl DatabaseClient {
         encrypted_content: &[u8],
         message_type: i32,
         _client_message_id: &str,
-        forward_info: &proto::messaging::ForwardInfo,
+        forward_info: &crate::proto::messaging::ForwardInfo,
     ) -> Result<()> {
         let group_uuid = uuid::Uuid::parse_str(group_id)?;
         let now = chrono::Utc::now();
@@ -2072,7 +2094,7 @@ impl DatabaseClient {
     pub async fn fetch_messages_for_search(
         &self,
         params: &crate::handlers::SearchParams,
-    ) -> Result<(Vec<proto::messaging::SearchResult>, Option<String>, usize)> {
+    ) -> Result<(Vec<crate::proto::messaging::SearchResult>, Option<String>, usize)> {
         // Build query based on parameters
         let mut results = Vec::new();
         let mut total_count = 0usize;
@@ -2112,13 +2134,13 @@ impl DatabaseClient {
                         .and_then(|v| v.as_int())
                         .unwrap_or(0);
 
-                    results.push(proto::messaging::SearchResult {
+                    results.push(crate::proto::messaging::SearchResult {
                         message_id: message_id.to_string(),
                         conversation_id: conv_id.clone(),
                         is_group: params.is_group,
                         sender_user_id: sender,
                         encrypted_content: content,
-                        server_timestamp: Some(proto::common::Timestamp {
+                        server_timestamp: Some(crate::proto::common::Timestamp {
                             seconds: timestamp / 1000,
                             nanos: ((timestamp % 1000) * 1_000_000) as i32,
                         }),
@@ -2165,13 +2187,13 @@ impl DatabaseClient {
                                         .and_then(|v| v.as_int())
                                         .unwrap_or(0);
 
-                                    results.push(proto::messaging::SearchResult {
+                                    results.push(crate::proto::messaging::SearchResult {
                                         message_id: message_id.to_string(),
                                         conversation_id: conv_uuid.to_string(),
                                         is_group: false,
                                         sender_user_id: sender,
                                         encrypted_content: content,
-                                        server_timestamp: Some(proto::common::Timestamp {
+                                        server_timestamp: Some(crate::proto::common::Timestamp {
                                             seconds: timestamp / 1000,
                                             nanos: ((timestamp % 1000) * 1_000_000) as i32,
                                         }),
@@ -2254,7 +2276,7 @@ impl DatabaseClient {
         &self,
         conversation_id: &str,
         _is_group: bool,
-    ) -> Result<proto::messaging::DisappearingConfig> {
+    ) -> Result<crate::proto::messaging::DisappearingConfig> {
         let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
 
         let rows = self.scylla_query(
@@ -2276,11 +2298,11 @@ impl DatabaseClient {
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
-                return Ok(proto::messaging::DisappearingConfig {
+                return Ok(crate::proto::messaging::DisappearingConfig {
                     conversation_id: conversation_id.to_string(),
                     ttl_seconds: ttl,
                     set_by_user_id: set_by,
-                    updated_at: Some(proto::common::Timestamp {
+                    updated_at: Some(crate::proto::common::Timestamp {
                         seconds: updated_at / 1000,
                         nanos: ((updated_at % 1000) * 1_000_000) as i32,
                     }),
@@ -2289,7 +2311,7 @@ impl DatabaseClient {
         }
 
         // Return default config (disabled)
-        Ok(proto::messaging::DisappearingConfig {
+        Ok(crate::proto::messaging::DisappearingConfig {
             conversation_id: conversation_id.to_string(),
             ttl_seconds: 0,
             set_by_user_id: String::new(),
@@ -2303,6 +2325,6 @@ pub struct MessageMetadata {
     pub sender_user_id: String,
     pub sender_username: String,
     pub message_type: i32,
-    pub server_timestamp: Option<proto::common::Timestamp>,
+    pub server_timestamp: Option<crate::proto::common::Timestamp>,
     pub forward_count: i32,
 }

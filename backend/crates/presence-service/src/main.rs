@@ -177,7 +177,7 @@ async fn main() -> Result<()> {
 
     // Load configuration from environment
     let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
+        .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
 
     let tikv_pd_endpoints = std::env::var("TIKV_PD_ENDPOINTS")
         .or_else(|_| std::env::var("GUARDYN_DATABASE__TIKV_PD_ENDPOINTS"))

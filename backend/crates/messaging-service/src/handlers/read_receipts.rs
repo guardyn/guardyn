@@ -5,13 +5,13 @@
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
-use proto::messaging::{
+use crate::proto::messaging::{
     SendReadReceiptRequest, SendReadReceiptResponse, SendReadReceiptSuccess,
     GetReadReceiptsRequest, GetReadReceiptsResponse, GetReadReceiptsSuccess,
     ReadReceipt,
     send_read_receipt_response, get_read_receipts_response,
 };
-use proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
+use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};

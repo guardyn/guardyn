@@ -56,6 +56,22 @@ use proto::messaging::{
     GetGroupByIdRequest, GetGroupByIdResponse,
     LeaveGroupRequest, LeaveGroupResponse,
     HealthRequest,
+    // Phase 2: Reactions
+    AddReactionRequest, AddReactionResponse,
+    RemoveReactionRequest, RemoveReactionResponse,
+    GetReactionsRequest, GetReactionsResponse,
+    // Phase 2: Read Receipts
+    SendReadReceiptRequest, SendReadReceiptResponse,
+    GetReadReceiptsRequest, GetReadReceiptsResponse,
+    // Phase 2: Forward/Reply
+    ForwardMessageRequest, ForwardMessageResponse,
+    // Phase 2: Edit
+    EditMessageRequest, EditMessageResponse,
+    // Phase 2: Search
+    SearchMessagesRequest, SearchMessagesResponse,
+    // Phase 2: Disappearing Messages
+    SetDisappearingMessagesRequest, SetDisappearingMessagesResponse,
+    GetDisappearingConfigRequest, GetDisappearingConfigResponse,
 };
 use proto::common::HealthStatus;
 
@@ -264,6 +280,100 @@ impl MessagingService for MessagingServiceImpl {
             components,
         }))
     }
+
+    // ========================================================================
+    // Phase 2: Message Reactions
+    // ========================================================================
+
+    async fn add_reaction(
+        &self,
+        request: Request<AddReactionRequest>,
+    ) -> Result<Response<AddReactionResponse>, Status> {
+        handlers::add_reaction(self.db.clone(), request).await
+    }
+
+    async fn remove_reaction(
+        &self,
+        request: Request<RemoveReactionRequest>,
+    ) -> Result<Response<RemoveReactionResponse>, Status> {
+        handlers::remove_reaction(self.db.clone(), request).await
+    }
+
+    async fn get_reactions(
+        &self,
+        request: Request<GetReactionsRequest>,
+    ) -> Result<Response<GetReactionsResponse>, Status> {
+        handlers::get_reactions(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Enhanced Read Receipts
+    // ========================================================================
+
+    async fn send_read_receipt(
+        &self,
+        request: Request<SendReadReceiptRequest>,
+    ) -> Result<Response<SendReadReceiptResponse>, Status> {
+        handlers::send_read_receipt(self.db.clone(), request).await
+    }
+
+    async fn get_read_receipts(
+        &self,
+        request: Request<GetReadReceiptsRequest>,
+    ) -> Result<Response<GetReadReceiptsResponse>, Status> {
+        handlers::get_read_receipts(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Reply/Quote/Forward
+    // ========================================================================
+
+    async fn forward_message(
+        &self,
+        request: Request<ForwardMessageRequest>,
+    ) -> Result<Response<ForwardMessageResponse>, Status> {
+        handlers::forward_message(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Message Edit
+    // ========================================================================
+
+    async fn edit_message(
+        &self,
+        request: Request<EditMessageRequest>,
+    ) -> Result<Response<EditMessageResponse>, Status> {
+        handlers::edit_message(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Message Search
+    // ========================================================================
+
+    async fn search_messages(
+        &self,
+        request: Request<SearchMessagesRequest>,
+    ) -> Result<Response<SearchMessagesResponse>, Status> {
+        handlers::search_messages(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Disappearing Messages
+    // ========================================================================
+
+    async fn set_disappearing_messages(
+        &self,
+        request: Request<SetDisappearingMessagesRequest>,
+    ) -> Result<Response<SetDisappearingMessagesResponse>, Status> {
+        handlers::set_disappearing_messages(self.db.clone(), request).await
+    }
+
+    async fn get_disappearing_config(
+        &self,
+        request: Request<GetDisappearingConfigRequest>,
+    ) -> Result<Response<GetDisappearingConfigResponse>, Status> {
+        handlers::get_disappearing_config(self.db.clone(), request).await
+    }
 }
 
 #[tokio::main]
@@ -276,7 +386,7 @@ async fn main() -> Result<()> {
         Some(config.observability.otlp_endpoint.as_str())
     };
     let _tracing_guard = observability::init_tracing(
-        &config.service_name, 
+        &config.service_name,
         &config.observability.log_level,
         otlp_endpoint,
     );
@@ -325,7 +435,7 @@ async fn main() -> Result<()> {
             .unwrap_or(8081);
 
         let jwt_secret = std::env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
+            .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
 
         let ws_config = websocket::server::WebSocketServerConfig {
             port: ws_port,

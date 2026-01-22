@@ -5,13 +5,13 @@
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
-use proto::messaging::{
+use crate::proto::messaging::{
     SetDisappearingMessagesRequest, SetDisappearingMessagesResponse, SetDisappearingMessagesSuccess,
     GetDisappearingConfigRequest, GetDisappearingConfigResponse, GetDisappearingConfigSuccess,
     DisappearingConfig,
     set_disappearing_messages_response, get_disappearing_config_response,
 };
-use proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
+use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};

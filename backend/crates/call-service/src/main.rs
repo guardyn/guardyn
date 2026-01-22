@@ -92,7 +92,7 @@ fn load_config() -> Result<Config> {
             .collect(),
         nats_url: std::env::var("NATS_URL")
             .unwrap_or_else(|_| "nats://nats.messaging.svc.cluster.local:4222".to_string()),
-        jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret".to_string()),
+        jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "development-secret-change-in-production".to_string()),
         ice_servers,
     })
 }

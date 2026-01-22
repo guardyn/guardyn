@@ -598,7 +598,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                   ),
                   trailing: Switch(
                     value: _notificationsEnabled,
-                    activeColor: GuardynColors.guardyn500,
+                    activeThumbColor: GuardynColors.guardyn500,
                     onChanged: _toggleNotifications,
                   ),
                 ),

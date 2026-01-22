@@ -86,6 +86,13 @@ pub async fn get_messages(
             is_deleted: m.is_deleted,
             media_id: String::new(), // TODO: Implement media references
             x3dh_prekey: m.x3dh_prekey.unwrap_or_default(), // Return stored X3DH prekey
+            // Phase 2 fields (not yet stored in DB)
+            thread_reference: None,
+            forward_info: None,
+            edit_version: 0,
+            last_edited_at: None,
+            voice_metadata: None,
+            reaction_summaries: Vec::new(),
         })
         .collect();
 

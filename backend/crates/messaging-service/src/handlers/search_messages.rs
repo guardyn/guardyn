@@ -6,12 +6,12 @@
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
-use proto::messaging::{
+use crate::proto::messaging::{
     SearchMessagesRequest, SearchMessagesResponse, SearchMessagesSuccess,
     SearchResult, MessageType,
     search_messages_response,
 };
-use proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
+use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};
@@ -74,11 +74,12 @@ pub async fn search_messages(
                 "Search results retrieved successfully"
             );
             
+            let has_more = next_cursor.is_some();
             Ok(Response::new(SearchMessagesResponse {
                 result: Some(search_messages_response::Result::Success(SearchMessagesSuccess {
                     results,
                     next_cursor: next_cursor.unwrap_or_default(),
-                    has_more: next_cursor.is_some(),
+                    has_more,
                     total_count: total_count as i32,
                 })),
             }))
