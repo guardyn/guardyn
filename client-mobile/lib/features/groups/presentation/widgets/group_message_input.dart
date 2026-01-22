@@ -5,15 +5,18 @@ import 'package:flutter/material.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
+import '../../../media/presentation/widgets/media_picker_sheet.dart';
 
 /// Widget for inputting group messages with glassmorphism styling
 class GroupMessageInput extends StatefulWidget {
   final void Function(String text) onSend;
+  final void Function(MediaPickerResult result)? onMediaSelected;
   final bool isLoading;
 
   const GroupMessageInput({
     super.key,
     required this.onSend,
+    this.onMediaSelected,
     this.isLoading = false,
   });
 
@@ -51,6 +54,17 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
 
     widget.onSend(text);
     _controller.clear();
+  }
+
+  void _handleAttach() {
+    if (widget.isLoading || widget.onMediaSelected == null) return;
+
+    MediaPickerSheet.show(
+      context,
+      onMediaSelected: (result) {
+        widget.onMediaSelected?.call(result);
+      },
+    );
   }
 
   @override
@@ -92,16 +106,14 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.attach_file, size: 20),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Attachments coming soon'),
-                          backgroundColor: GrayColors.gray800,
-                        ),
-                      );
-                    },
-                    color: GrayColors.gray500,
+                    onPressed: widget.onMediaSelected != null && !widget.isLoading
+                        ? _handleAttach
+                        : null,
+                    color: widget.onMediaSelected != null
+                        ? (isDark ? GrayColors.gray400 : GrayColors.gray600)
+                        : GrayColors.gray500,
                     padding: EdgeInsets.zero,
+                    tooltip: 'Attach media',
                   ),
                 ),
 

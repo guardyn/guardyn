@@ -6,16 +6,19 @@ import 'package:flutter/material.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_shadows.dart';
 import '../../../../shared/theme/app_spacing.dart';
+import '../../../media/presentation/widgets/media_picker_sheet.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSend;
   final Function(bool)? onTypingChanged;
+  final Function(MediaPickerResult)? onMediaSelected;
   final bool enabled;
 
   const MessageInput({
     super.key,
     required this.onSend,
     this.onTypingChanged,
+    this.onMediaSelected,
     this.enabled = true,
   });
 
@@ -93,6 +96,17 @@ class _MessageInputState extends State<MessageInput> {
     }
   }
 
+  void _handleAttach() {
+    if (!widget.enabled || widget.onMediaSelected == null) return;
+
+    MediaPickerSheet.show(
+      context,
+      onMediaSelected: (result) {
+        widget.onMediaSelected?.call(result);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -120,6 +134,18 @@ class _MessageInputState extends State<MessageInput> {
           child: SafeArea(
             child: Row(
               children: [
+                // Attachment button
+                if (widget.onMediaSelected != null)
+                  IconButton(
+                    onPressed: widget.enabled ? _handleAttach : null,
+                    icon: Icon(
+                      Icons.attach_file_rounded,
+                      color: widget.enabled
+                          ? (isDark ? GrayColors.gray400 : GrayColors.gray600)
+                          : GrayColors.gray500,
+                    ),
+                    tooltip: 'Attach media',
+                  ),
                 // Text input field
                 Expanded(
                   child: Container(
