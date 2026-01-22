@@ -45,16 +45,8 @@ export type {
 
 // Media types
 export type {
-    MediaMetadata,
-    MediaType,
-    UploadStatus,
-    UploadUrlResult,
-    DownloadUrlResult,
-    ThumbnailResult,
-    MediaListResult,
-    GetUploadUrlParams,
-    UploadMediaFileParams,
-    GenerateThumbnailParams,
-    ListMediaParams,
+    DownloadUrlResult, GenerateThumbnailParams, GetUploadUrlParams, ListMediaParams, MediaListResult, MediaMetadata,
+    MediaType, ThumbnailResult, UploadMediaFileParams, UploadStatus,
+    UploadUrlResult
 } from './media';
 

@@ -5,28 +5,28 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DownloadUrlResult, MediaListResult, MediaMetadata, ThumbnailResult, UploadUrlResult } from './media';
 import {
-  clearMediaCache,
-  deleteMedia,
-  downloadMedia,
-  downloadMediaFile,
-  formatDuration,
-  formatFileSize,
-  generateThumbnail,
-  getCachedMediaPath,
-  getDownloadUrl,
-  getFileExtension,
-  getMediaCacheDir,
-  getMediaMetadata,
-  getThumbnailUrl,
-  getUploadUrl,
-  isPreviewable,
-  listMedia,
-  mediaTypeFromMime,
-  uploadMedia,
-  uploadMediaFile,
+    clearMediaCache,
+    deleteMedia,
+    downloadMedia,
+    downloadMediaFile,
+    formatDuration,
+    formatFileSize,
+    generateThumbnail,
+    getCachedMediaPath,
+    getDownloadUrl,
+    getFileExtension,
+    getMediaCacheDir,
+    getMediaMetadata,
+    getThumbnailUrl,
+    getUploadUrl,
+    isPreviewable,
+    listMedia,
+    mediaTypeFromMime,
+    uploadMedia,
+    uploadMediaFile,
 } from './media';
-import type { MediaMetadata, UploadUrlResult, DownloadUrlResult, ThumbnailResult, MediaListResult } from './media';
 
 // Mock Tauri invoke
 const mockInvoke = vi.fn();
