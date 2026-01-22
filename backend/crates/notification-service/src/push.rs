@@ -167,10 +167,7 @@ impl PushService {
             );
             Ok(true)
         } else {
-            warn!(
-                "FCM notification failed: {:?}",
-                fcm_response.results
-            );
+            warn!("FCM notification failed: {:?}", fcm_response.results);
             Ok(false)
         }
     }
@@ -220,8 +217,18 @@ impl PushService {
             .header("authorization", format!("bearer {}", jwt))
             .header("apns-topic", &apns_config.bundle_id)
             .header("apns-push-type", "alert")
-            .header("apns-priority", if matches!(payload.priority, PushPriority::High) { "10" } else { "5" })
-            .header("apns-expiration", (chrono::Utc::now().timestamp() + payload.ttl_seconds as i64).to_string())
+            .header(
+                "apns-priority",
+                if matches!(payload.priority, PushPriority::High) {
+                    "10"
+                } else {
+                    "5"
+                },
+            )
+            .header(
+                "apns-expiration",
+                (chrono::Utc::now().timestamp() + payload.ttl_seconds as i64).to_string(),
+            )
             .json(&apns_payload)
             .send()
             .await

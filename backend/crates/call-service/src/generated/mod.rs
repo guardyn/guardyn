@@ -6,6 +6,6 @@ pub mod guardyn {
     }
     
     pub mod common {
-        include!("common.rs");
+        include!("guardyn.common.rs");
     }
 }

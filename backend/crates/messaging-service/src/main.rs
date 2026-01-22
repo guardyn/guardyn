@@ -54,6 +54,7 @@ use proto::messaging::{
     GetGroupMessagesRequest, GetGroupMessagesResponse,
     GetGroupsRequest, GetGroupsResponse,
     GetGroupByIdRequest, GetGroupByIdResponse,
+    UpdateGroupRequest, UpdateGroupResponse,
     LeaveGroupRequest, LeaveGroupResponse,
     HealthRequest,
     // Phase 2: Reactions
@@ -204,6 +205,13 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<GetGroupByIdRequest>,
     ) -> Result<Response<GetGroupByIdResponse>, Status> {
         handlers::get_group_by_id(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn update_group(
+        &self,
+        request: Request<UpdateGroupRequest>,
+    ) -> Result<Response<UpdateGroupResponse>, Status> {
+        handlers::update_group(request.into_inner(), self.db.clone()).await
     }
 
     async fn leave_group(

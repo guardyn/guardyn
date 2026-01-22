@@ -135,6 +135,15 @@ pub struct UserProfile {
     pub created_at: ::core::option::Option<super::common::Timestamp>,
     #[prost(message, optional, tag = "5")]
     pub last_seen: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to media in MediaService
+    #[prost(string, tag = "6")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "7")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional bio text
+    #[prost(string, tag = "8")]
+    pub bio: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeviceInfo {
@@ -422,6 +431,12 @@ pub struct UserSearchResult {
     pub username: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub created_at: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to avatar in MediaService
+    #[prost(string, tag = "4")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "5")]
+    pub display_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserProfileRequest {
@@ -441,6 +456,36 @@ pub mod get_user_profile_response {
         /// Reuse existing UserProfile message
         #[prost(message, tag = "1")]
         Success(super::UserProfile),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateProfileRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Optional: new avatar media ID from MediaService
+    #[prost(string, tag = "2")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional: new display name
+    #[prost(string, tag = "3")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional: new bio
+    #[prost(string, tag = "4")]
+    pub bio: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateProfileResponse {
+    #[prost(oneof = "update_profile_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<update_profile_response::Result>,
+}
+/// Nested message and enum types in `UpdateProfileResponse`.
+pub mod update_profile_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Profile(super::UserProfile),
         #[prost(message, tag = "2")]
         Error(super::super::common::ErrorResponse),
     }
@@ -842,6 +887,31 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetUserProfile"));
             self.inner.unary(req, path, codec).await
         }
+        /// Update user profile (avatar, display name, bio)
+        pub async fn update_profile(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateProfileRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateProfileResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/UpdateProfile",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "UpdateProfile"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Delete user account and all associated data
         pub async fn delete_account(
             &mut self,
@@ -987,6 +1057,14 @@ pub mod auth_service_server {
             request: tonic::Request<super::GetUserProfileRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetUserProfileResponse>,
+            tonic::Status,
+        >;
+        /// Update user profile (avatar, display name, bio)
+        async fn update_profile(
+            &self,
+            request: tonic::Request<super::UpdateProfileRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateProfileResponse>,
             tonic::Status,
         >;
         /// Delete user account and all associated data
@@ -1562,6 +1640,51 @@ pub mod auth_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetUserProfileSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/UpdateProfile" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateProfileSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::UpdateProfileRequest>
+                    for UpdateProfileSvc<T> {
+                        type Response = super::UpdateProfileResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateProfileRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::update_profile(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateProfileSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

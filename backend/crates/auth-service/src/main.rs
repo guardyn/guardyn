@@ -16,7 +16,7 @@ use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
 use anyhow::Result;
 
-// Import generated protobuf code
+// Import generated protobuf code - pub to make available to handlers
 pub mod proto {
     pub mod common {
         include!("generated/guardyn.common.rs");
@@ -39,6 +39,7 @@ use proto::auth::{
     GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
     SearchUsersRequest, SearchUsersResponse,
     GetUserProfileRequest, GetUserProfileResponse,
+    UpdateProfileRequest, UpdateProfileResponse,
     DeleteAccountRequest, DeleteAccountResponse,
     HealthRequest,
 };
@@ -143,6 +144,20 @@ impl AuthService for AuthServiceImpl {
         let response = handlers::get_user_profile::handle_get_user_profile(
             request.into_inner(),
             self.db.clone(),
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn update_profile(
+        &self,
+        request: Request<UpdateProfileRequest>,
+    ) -> Result<Response<UpdateProfileResponse>, Status> {
+        let db = std::sync::Arc::new(self.db.clone());
+        let response = handlers::update_profile::update_profile(
+            request.into_inner(),
+            db,
+            &self.jwt_secret,
         )
         .await;
         Ok(Response::new(response))

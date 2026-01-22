@@ -73,11 +73,13 @@ pub async fn handle_search_users(
                 .into_iter()
                 .map(|user| UserSearchResult {
                     user_id: user.user_id,
-                    username: user.username,
+                    username: user.username.clone(),
                     created_at: Some(Timestamp {
                         seconds: user.created_at,
                         nanos: 0,
                     }),
+                    avatar_media_id: user.avatar_media_id.unwrap_or_default(),
+                    display_name: user.display_name.unwrap_or_default(),
                 })
                 .collect();
 

@@ -51,6 +51,9 @@ service MessagingService {
   // Get group details by ID
   rpc GetGroupById(GetGroupByIdRequest) returns (GetGroupByIdResponse);
 
+  // Update group (name, icon, description)
+  rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse);
+
   // Leave a group
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse);
 
@@ -400,6 +403,10 @@ message CreateGroupRequest {
 
   // MLS group state (encrypted with OpenMLS)
   bytes mls_group_state = 4;
+
+  // Optional: group icon and description
+  string icon_media_id = 5;      // Reference to media in MediaService
+  string description = 6;        // Optional group description
 }
 
 message CreateGroupResponse {
@@ -573,6 +580,8 @@ message GroupInfo {
   common.Timestamp created_at = 5;
   int32 member_count = 6;
   GroupMessage last_message = 7; // Optional: for preview
+  string icon_media_id = 8;      // Reference to media in MediaService
+  string description = 9;        // Optional group description
 }
 
 message GroupMemberInfo {
@@ -581,6 +590,8 @@ message GroupMemberInfo {
   string device_id = 3;
   string role = 4; // "owner", "admin", "member"
   common.Timestamp joined_at = 5;
+  string avatar_media_id = 6;    // Reference to avatar in MediaService
+  string display_name = 7;       // Optional display name
 }
 
 // ============================================================================
@@ -600,6 +611,29 @@ message GetGroupByIdResponse {
 }
 
 message GetGroupByIdSuccess {
+  GroupInfo group = 1;
+}
+
+// ============================================================================
+// Update Group
+// ============================================================================
+
+message UpdateGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string name = 3;               // Optional: new group name
+  string icon_media_id = 4;      // Optional: new icon media ID from MediaService
+  string description = 5;        // Optional: new group description
+}
+
+message UpdateGroupResponse {
+  oneof result {
+    UpdateGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateGroupSuccess {
   GroupInfo group = 1;
 }
 

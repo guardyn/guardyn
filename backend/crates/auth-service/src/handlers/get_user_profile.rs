@@ -55,6 +55,9 @@ pub async fn handle_get_user_profile(
                         seconds: user.last_seen,
                         nanos: 0,
                     }),
+                    avatar_media_id: user.avatar_media_id.unwrap_or_default(),
+                    display_name: user.display_name.unwrap_or_default(),
+                    bio: user.bio.unwrap_or_default(),
                 })),
             }
         }

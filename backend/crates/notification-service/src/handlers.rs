@@ -54,6 +54,7 @@ pub async fn register_device(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2, // Unauthorized
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -67,6 +68,7 @@ pub async fn register_device(
                 crate::generated::guardyn::common::ErrorResponse {
                     code: 1, // InvalidRequest
                     message: "Device ID and push token are required".to_string(),
+                    details: std::collections::HashMap::new(),
                 },
             )),
         };
@@ -104,6 +106,7 @@ pub async fn register_device(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4, // InternalError
                         message: "Failed to register device".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }
@@ -125,6 +128,7 @@ pub async fn unregister_device(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -144,6 +148,7 @@ pub async fn unregister_device(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to unregister device".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }
@@ -165,6 +170,7 @@ pub async fn update_push_token(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -187,6 +193,7 @@ pub async fn update_push_token(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to update push token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }
@@ -208,6 +215,7 @@ pub async fn get_notification_settings(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -248,6 +256,7 @@ pub async fn get_notification_settings(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to get notification settings".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }
@@ -269,6 +278,7 @@ pub async fn update_notification_settings(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -298,6 +308,7 @@ pub async fn update_notification_settings(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 1,
                         message: "Settings are required".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -317,6 +328,7 @@ pub async fn update_notification_settings(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to update notification settings".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }
@@ -338,6 +350,7 @@ pub async fn mute_conversation(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -348,13 +361,17 @@ pub async fn mute_conversation(
     let muted_until = match MuteDuration::try_from(request.duration) {
         Ok(MuteDuration::Unmute) => {
             // Unmute the conversation
-            if let Err(e) = db.unmute_conversation(&user_id, &request.conversation_id).await {
+            if let Err(e) = db
+                .unmute_conversation(&user_id, &request.conversation_id)
+                .await
+            {
                 warn!("Failed to unmute conversation: {}", e);
                 return MuteConversationResponse {
                     result: Some(mute_conversation_response::Result::Error(
                         crate::generated::guardyn::common::ErrorResponse {
                             code: 4,
                             message: "Failed to unmute conversation".to_string(),
+                            details: std::collections::HashMap::new(),
                         },
                     )),
                 };
@@ -379,6 +396,7 @@ pub async fn mute_conversation(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 1,
                         message: "Invalid mute duration".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -386,16 +404,23 @@ pub async fn mute_conversation(
     };
 
     match db
-        .mute_conversation(&user_id, &request.conversation_id, request.is_group, muted_until)
+        .mute_conversation(
+            &user_id,
+            &request.conversation_id,
+            request.is_group,
+            muted_until,
+        )
         .await
     {
         Ok(()) => MuteConversationResponse {
             result: Some(mute_conversation_response::Result::Success(
                 MuteConversationSuccess {
                     muted: true,
-                    muted_until: muted_until.map(|t| crate::generated::guardyn::common::Timestamp {
-                        seconds: t.timestamp(),
-                        nanos: 0,
+                    muted_until: muted_until.map(|t| {
+                        crate::generated::guardyn::common::Timestamp {
+                            seconds: t.timestamp(),
+                            nanos: 0,
+                        }
                     }),
                 },
             )),
@@ -407,6 +432,7 @@ pub async fn mute_conversation(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to mute conversation".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }
@@ -429,6 +455,7 @@ pub async fn send_test_notification(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -445,6 +472,7 @@ pub async fn send_test_notification(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to get user devices".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             };
@@ -467,6 +495,7 @@ pub async fn send_test_notification(
                 crate::generated::guardyn::common::ErrorResponse {
                     code: 3, // NotFound
                     message: "No devices found".to_string(),
+                    details: std::collections::HashMap::new(),
                 },
             )),
         };
@@ -516,6 +545,7 @@ pub async fn send_test_notification(
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 4,
                         message: "Failed to send test notifications".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }

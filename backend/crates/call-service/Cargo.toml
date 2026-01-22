@@ -26,6 +26,7 @@ chrono = "0.4"
 jsonwebtoken = "9.3"
 dashmap = "6.0"
 parking_lot = "0.12"
+tracing-subscriber.workspace = true
 
 [build-dependencies]
 tonic-build.workspace = true

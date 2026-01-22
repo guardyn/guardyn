@@ -65,6 +65,8 @@ pub async fn get_groups(
                     seconds: m.joined_at,
                     nanos: 0,
                 }),
+                avatar_media_id: String::new(), // TODO: Fetch from auth service
+                display_name: String::new(),    // TODO: Fetch from auth service
             })
             .collect();
 
@@ -79,6 +81,8 @@ pub async fn get_groups(
             }),
             member_count: members.len() as i32,
             last_message: None, // TODO: Fetch last message from ScyllaDB
+            icon_media_id: group.icon_media_id.unwrap_or_default(),
+            description: group.description.unwrap_or_default(),
         });
     }
 

@@ -187,6 +187,7 @@ impl CallService for CallServiceImpl {
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }));
@@ -214,6 +215,7 @@ impl CallService for CallServiceImpl {
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }));
@@ -305,6 +307,7 @@ impl CallService for CallServiceImpl {
                     crate::generated::guardyn::common::ErrorResponse {
                         code: 2,
                         message: "Invalid or expired token".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }));
@@ -338,6 +341,7 @@ impl CallService for CallServiceImpl {
                         crate::generated::guardyn::common::ErrorResponse {
                             code: 2,
                             message: "Invalid or expired token".to_string(),
+                            details: std::collections::HashMap::new(),
                         },
                     )),
                 }));
@@ -354,6 +358,7 @@ impl CallService for CallServiceImpl {
                         crate::generated::guardyn::common::ErrorResponse {
                             code: 3,
                             message: "Call not found".to_string(),
+                            details: std::collections::HashMap::new(),
                         },
                     )),
                 }));
@@ -376,10 +381,22 @@ impl CallService for CallServiceImpl {
         &self,
         _request: Request<HealthRequest>,
     ) -> Result<Response<crate::generated::guardyn::common::HealthStatus>, Status> {
+        use crate::generated::guardyn::common::{health_status::Status as HealthStatusEnum, Timestamp};
+        
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
         Ok(Response::new(
             crate::generated::guardyn::common::HealthStatus {
-                status: "healthy".to_string(),
+                status: HealthStatusEnum::Healthy as i32,
                 version: env!("CARGO_PKG_VERSION").to_string(),
+                timestamp: Some(Timestamp {
+                    seconds: now,
+                    nanos: 0,
+                }),
+                components: std::collections::HashMap::new(),
             },
         ))
     }

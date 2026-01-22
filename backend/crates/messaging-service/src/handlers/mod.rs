@@ -17,6 +17,7 @@ pub mod send_group_message_mls;
 pub mod get_group_messages;
 pub mod get_groups;
 pub mod get_group_by_id;
+pub mod update_group;
 pub mod leave_group;
 
 // Phase 2: New feature handlers
@@ -45,6 +46,7 @@ pub use send_group_message_mls::send_group_message_mls;
 pub use get_group_messages::get_group_messages;
 pub use get_groups::get_groups;
 pub use get_group_by_id::get_group_by_id;
+pub use update_group::update_group;
 pub use leave_group::leave_group;
 
 // Phase 2: Re-exports

@@ -1176,6 +1176,35 @@ impl DatabaseClient {
         }
     }
 
+    /// Update group info (name, icon, description)
+    pub async fn update_group_info(
+        &self,
+        group_id: &str,
+        name: &str,
+        icon_media_id: Option<&str>,
+        description: Option<&str>,
+    ) -> Result<()> {
+        let key = format!("/groups/{}", group_id);
+        let value = self.tikv.get(key.clone().into_bytes()).await?;
+
+        match value {
+            Some(bytes) => {
+                let mut group: GroupMetadata = serde_json::from_slice(&bytes)?;
+                group.group_name = name.to_string();
+                group.icon_media_id = icon_media_id.map(String::from);
+                group.description = description.map(String::from);
+                
+                let updated_value = serde_json::to_vec(&group)?;
+                self.tikv.put(key.into_bytes(), updated_value).await?;
+                tracing::info!("Updated group {} info", group_id);
+                Ok(())
+            }
+            None => {
+                anyhow::bail!("Group not found: {}", group_id);
+            }
+        }
+    }
+
     /// Add group member
     pub async fn add_group_member(&self, member: &GroupMember) -> Result<()> {
         let key = format!("/groups/{}/members/{}", member.group_id, member.user_id);

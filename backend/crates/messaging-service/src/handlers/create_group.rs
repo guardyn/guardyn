@@ -64,6 +64,8 @@ pub async fn create_group(
         created_at: timestamp,
         mls_group_id: request.mls_group_state.clone(),
         mls_epoch: 0, // Initial epoch
+        icon_media_id: if request.icon_media_id.is_empty() { None } else { Some(request.icon_media_id.clone()) },
+        description: if request.description.is_empty() { None } else { Some(request.description.clone()) },
     };
 
     // Store group in TiKV

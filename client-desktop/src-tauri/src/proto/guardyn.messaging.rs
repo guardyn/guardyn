@@ -383,6 +383,14 @@ pub struct CreateGroupRequest {
     /// MLS group state (encrypted with OpenMLS)
     #[prost(bytes = "vec", tag = "4")]
     pub mls_group_state: ::prost::alloc::vec::Vec<u8>,
+    /// Optional: group icon and description
+    ///
+    /// Reference to media in MediaService
+    #[prost(string, tag = "5")]
+    pub icon_media_id: ::prost::alloc::string::String,
+    /// Optional group description
+    #[prost(string, tag = "6")]
+    pub description: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateGroupResponse {
@@ -657,6 +665,12 @@ pub struct GroupInfo {
     /// Optional: for preview
     #[prost(message, optional, tag = "7")]
     pub last_message: ::core::option::Option<GroupMessage>,
+    /// Reference to media in MediaService
+    #[prost(string, tag = "8")]
+    pub icon_media_id: ::prost::alloc::string::String,
+    /// Optional group description
+    #[prost(string, tag = "9")]
+    pub description: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GroupMemberInfo {
@@ -671,6 +685,12 @@ pub struct GroupMemberInfo {
     pub role: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "5")]
     pub joined_at: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to avatar in MediaService
+    #[prost(string, tag = "6")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "7")]
+    pub display_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetGroupByIdRequest {
@@ -696,6 +716,42 @@ pub mod get_group_by_id_response {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetGroupByIdSuccess {
+    #[prost(message, optional, tag = "1")]
+    pub group: ::core::option::Option<GroupInfo>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateGroupRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub group_id: ::prost::alloc::string::String,
+    /// Optional: new group name
+    #[prost(string, tag = "3")]
+    pub name: ::prost::alloc::string::String,
+    /// Optional: new icon media ID from MediaService
+    #[prost(string, tag = "4")]
+    pub icon_media_id: ::prost::alloc::string::String,
+    /// Optional: new group description
+    #[prost(string, tag = "5")]
+    pub description: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateGroupResponse {
+    #[prost(oneof = "update_group_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<update_group_response::Result>,
+}
+/// Nested message and enum types in `UpdateGroupResponse`.
+pub mod update_group_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::UpdateGroupSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateGroupSuccess {
     #[prost(message, optional, tag = "1")]
     pub group: ::core::option::Option<GroupInfo>,
 }
@@ -1803,6 +1859,33 @@ pub mod messaging_service_client {
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new("guardyn.messaging.MessagingService", "GetGroupById"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Update group (name, icon, description)
+        pub async fn update_group(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateGroupRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateGroupResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/UpdateGroup",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.messaging.MessagingService", "UpdateGroup"),
                 );
             self.inner.unary(req, path, codec).await
         }

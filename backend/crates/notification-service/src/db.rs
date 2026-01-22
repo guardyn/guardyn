@@ -239,8 +239,26 @@ impl NotificationDb {
         let mut devices = Vec::new();
         if let Some(rows) = result.rows {
             for row in rows {
-                let (user_id, device_id, push_token, platform, device_name, app_version, os_version, registered_at, updated_at): (
-                    String, String, String, i32, String, String, String, i64, i64,
+                let (
+                    user_id,
+                    device_id,
+                    push_token,
+                    platform,
+                    device_name,
+                    app_version,
+                    os_version,
+                    registered_at,
+                    updated_at,
+                ): (
+                    String,
+                    String,
+                    String,
+                    i32,
+                    String,
+                    String,
+                    String,
+                    i64,
+                    i64,
                 ) = row.into_typed().context("Failed to parse device row")?;
 
                 devices.push(DeviceRegistration {
@@ -251,7 +269,8 @@ impl NotificationDb {
                     device_name,
                     app_version,
                     os_version,
-                    registered_at: DateTime::from_timestamp_millis(registered_at).unwrap_or_default(),
+                    registered_at: DateTime::from_timestamp_millis(registered_at)
+                        .unwrap_or_default(),
                     updated_at: DateTime::from_timestamp_millis(updated_at).unwrap_or_default(),
                 });
             }
@@ -261,7 +280,10 @@ impl NotificationDb {
     }
 
     /// Get notification settings for a user
-    pub async fn get_notification_settings(&self, user_id: &str) -> Result<StoredNotificationSettings> {
+    pub async fn get_notification_settings(
+        &self,
+        user_id: &str,
+    ) -> Result<StoredNotificationSettings> {
         let result = self
             .session
             .query_unpaged(
@@ -295,9 +317,20 @@ impl NotificationDb {
                     notify_calls,
                     notify_group_messages,
                 ): (
-                    Option<bool>, Option<bool>, Option<bool>, Option<bool>, Option<bool>,
-                    Option<bool>, Option<i32>, Option<i32>, Option<String>,
-                    Option<bool>, Option<bool>, Option<bool>, Option<bool>, Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<i32>,
+                    Option<i32>,
+                    Option<String>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
+                    Option<bool>,
                 ) = row.into_typed().context("Failed to parse settings row")?;
 
                 return Ok(StoredNotificationSettings {
@@ -419,7 +452,11 @@ impl NotificationDb {
     }
 
     /// Check if a conversation is muted
-    pub async fn is_conversation_muted(&self, user_id: &str, conversation_id: &str) -> Result<bool> {
+    pub async fn is_conversation_muted(
+        &self,
+        user_id: &str,
+        conversation_id: &str,
+    ) -> Result<bool> {
         let result = self
             .session
             .query_unpaged(
@@ -431,8 +468,9 @@ impl NotificationDb {
 
         if let Some(rows) = result.rows {
             if let Some(row) = rows.into_iter().next() {
-                let (muted_until,): (Option<i64>,) = row.into_typed().context("Failed to parse row")?;
-                
+                let (muted_until,): (Option<i64>,) =
+                    row.into_typed().context("Failed to parse row")?;
+
                 // Check if still muted
                 if let Some(until) = muted_until {
                     let until_dt = DateTime::from_timestamp_millis(until).unwrap_or_default();

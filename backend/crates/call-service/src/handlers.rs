@@ -35,6 +35,7 @@ fn error_response(code: i32, message: &str) -> crate::generated::guardyn::common
     crate::generated::guardyn::common::ErrorResponse {
         code,
         message: message.to_string(),
+        details: std::collections::HashMap::new(),
     }
 }
 
@@ -328,31 +329,35 @@ pub async fn end_call(
             warn!("Failed to update call: {}", e);
         }
 
+        // Collect participant IDs first to avoid borrow issues
+        let participant_ids: Vec<String> = session.participants.keys().cloned().collect();
+
         // Add to call history for all participants
-        for (participant_id, _) in session.participants {
+        for participant_id in &participant_ids {
+            let other_user_id = if session.is_group_call {
+                None
+            } else {
+                Some(if participant_id == &session.initiator_id {
+                    // Find the other participant
+                    participant_ids
+                        .iter()
+                        .find(|&k| k != participant_id)
+                        .cloned()
+                        .unwrap_or_default()
+                } else {
+                    session.initiator_id.clone()
+                })
+            };
+
             let entry = UserCallHistoryEntry {
                 user_id: participant_id.clone(),
                 call_id: request.call_id.clone(),
                 call_type: session.call_type,
                 is_group_call: session.is_group_call,
                 group_id: session.group_id.clone(),
-                other_user_id: if session.is_group_call {
-                    None
-                } else {
-                    Some(if participant_id == session.initiator_id {
-                        // Find the other participant
-                        session
-                            .participants
-                            .keys()
-                            .find(|&k| k != &participant_id)
-                            .cloned()
-                            .unwrap_or_default()
-                    } else {
-                        session.initiator_id.clone()
-                    })
-                },
+                other_user_id,
                 other_user_name: None,
-                is_outgoing: participant_id == session.initiator_id,
+                is_outgoing: participant_id == &session.initiator_id,
                 end_reason: request.reason,
                 started_at: session.started_at.unwrap_or(session.created_at),
                 duration_seconds: duration,

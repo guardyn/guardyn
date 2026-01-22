@@ -135,6 +135,15 @@ pub struct UserProfile {
     pub created_at: ::core::option::Option<super::common::Timestamp>,
     #[prost(message, optional, tag = "5")]
     pub last_seen: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to media in MediaService
+    #[prost(string, tag = "6")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "7")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional bio text
+    #[prost(string, tag = "8")]
+    pub bio: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeviceInfo {
@@ -422,6 +431,12 @@ pub struct UserSearchResult {
     pub username: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub created_at: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to avatar in MediaService
+    #[prost(string, tag = "4")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "5")]
+    pub display_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserProfileRequest {
@@ -441,6 +456,36 @@ pub mod get_user_profile_response {
         /// Reuse existing UserProfile message
         #[prost(message, tag = "1")]
         Success(super::UserProfile),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateProfileRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Optional: new avatar media ID from MediaService
+    #[prost(string, tag = "2")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional: new display name
+    #[prost(string, tag = "3")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional: new bio
+    #[prost(string, tag = "4")]
+    pub bio: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateProfileResponse {
+    #[prost(oneof = "update_profile_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<update_profile_response::Result>,
+}
+/// Nested message and enum types in `UpdateProfileResponse`.
+pub mod update_profile_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Profile(super::UserProfile),
         #[prost(message, tag = "2")]
         Error(super::super::common::ErrorResponse),
     }
@@ -840,6 +885,31 @@ pub mod auth_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetUserProfile"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Update user profile (avatar, display name, bio)
+        pub async fn update_profile(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateProfileRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateProfileResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/UpdateProfile",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "UpdateProfile"));
             self.inner.unary(req, path, codec).await
         }
         /// Delete user account and all associated data

@@ -20,6 +20,9 @@ pub struct UserProfile {
     pub password_hash: String,
     pub created_at: i64,
     pub last_seen: i64,
+    pub avatar_media_id: Option<String>,  // Reference to media in MediaService
+    pub display_name: Option<String>,     // Optional display name
+    pub bio: Option<String>,              // Optional bio text
 }
 
 /// Device information
@@ -127,6 +130,39 @@ impl DatabaseClient {
 
         let profile: UserProfile = serde_json::from_slice(&profile_data)?;
         Ok(Some(profile))
+    }
+
+    /// Update user profile fields (avatar, display_name, bio)
+    pub async fn update_user_profile(
+        &self,
+        user_id: &str,
+        avatar_media_id: Option<String>,
+        display_name: Option<String>,
+        bio: Option<String>,
+    ) -> Result<UserProfile> {
+        // Get existing profile
+        let profile_key = format!("/users/{}/profile", user_id).into_bytes();
+        let profile_data = self.client.get(profile_key.clone()).await?
+            .ok_or_else(|| anyhow::anyhow!("User not found"))?;
+        
+        let mut profile: UserProfile = serde_json::from_slice(&profile_data)?;
+        
+        // Update fields if provided
+        if avatar_media_id.is_some() {
+            profile.avatar_media_id = avatar_media_id;
+        }
+        if display_name.is_some() {
+            profile.display_name = display_name;
+        }
+        if bio.is_some() {
+            profile.bio = bio;
+        }
+        
+        // Save updated profile
+        let profile_value = serde_json::to_vec(&profile)?;
+        self.client.put(profile_key, profile_value).await?;
+        
+        Ok(profile)
     }
 
     /// Search users by username prefix
