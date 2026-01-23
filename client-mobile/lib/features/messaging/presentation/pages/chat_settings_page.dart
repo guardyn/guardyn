@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/injection.dart';
 import '../../data/datasources/notification_remote_datasource.dart';
 import '../../domain/usecases/mute_conversation.dart';
+import 'search_messages_page.dart';
 
 /// Chat Settings Page for 1-on-1 conversations
 /// Allows users to view contact info, manage notifications,
@@ -165,11 +166,21 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           leading: const Icon(Icons.search),
           title: const Text('Search in Conversation'),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            // TODO: Implement search
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Coming soon')));
+          onTap: () async {
+            final navigator = Navigator.of(context);
+            final messageId = await navigator.push<String>(
+              MaterialPageRoute(
+                builder: (_) => SearchMessagesPage(
+                  conversationId: widget.conversationId ?? '',
+                  conversationUserName: widget.username,
+                ),
+              ),
+            );
+
+            if (messageId != null && mounted) {
+              // Return to chat page with message ID to scroll to
+              navigator.pop({'scrollToMessageId': messageId});
+            }
           },
         ),
 
