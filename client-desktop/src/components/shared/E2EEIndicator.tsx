@@ -6,7 +6,7 @@
  * that their messages are protected by end-to-end encryption.
  */
 
-import { Component, Show, JSX } from 'solid-js';
+import { Component, JSX, Show } from 'solid-js';
 
 // =============================================================================
 // TYPES

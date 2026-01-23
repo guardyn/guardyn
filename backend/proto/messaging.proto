@@ -39,6 +39,9 @@ service MessagingService {
   // Remove member from group
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberResponse);
 
+  // Change a member's role in a group (owner only)
+  rpc ChangeMemberRole(ChangeMemberRoleRequest) returns (ChangeMemberRoleResponse);
+
   // Send group message
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageResponse);
 
@@ -481,6 +484,25 @@ message RemoveGroupMemberResponse {
 
 message RemoveGroupMemberSuccess {
   bool removed = 1;
+}
+
+message ChangeMemberRoleRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string target_user_id = 3;
+  string new_role = 4; // "admin" or "member"
+}
+
+message ChangeMemberRoleResponse {
+  oneof result {
+    ChangeMemberRoleSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ChangeMemberRoleSuccess {
+  bool changed = 1;
+  string new_role = 2;
 }
 
 message SendGroupMessageRequest {
