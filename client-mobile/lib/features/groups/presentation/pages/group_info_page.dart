@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
+import '../../../../shared/widgets/e2ee_indicator.dart';
 import '../../../media/presentation/pages/media_gallery_page.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
@@ -314,6 +315,21 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             style: AppTypography.headlineSmall.copyWith(
               color: isDark ? Colors.white : GrayColors.gray900,
               fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space2),
+
+          // MLS Encryption Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: SemanticColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const E2EEIndicator(
+              status: E2EEStatus.mlsEncrypted,
+              showLabel: true,
+              size: 14,
             ),
           ),
           const SizedBox(height: AppSpacing.space2),

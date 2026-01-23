@@ -7,6 +7,7 @@
 export { Avatar, type AvatarProps, type AvatarSize } from './Avatar';
 export { Badge, type BadgeProps, type BadgeSize, type BadgeVariant } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
+export { default as E2EEIndicator, E2EEIndicatorSvg, type E2EEIndicatorProps, type E2EEStatus } from './E2EEIndicator';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { LazyImage } from './LazyImage';
 export {

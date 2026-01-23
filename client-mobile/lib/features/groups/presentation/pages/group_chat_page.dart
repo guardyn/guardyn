@@ -6,6 +6,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/theme/app_typography.dart';
+import '../../../../shared/widgets/e2ee_indicator.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../media/presentation/bloc/media_bloc.dart';
 import '../../../media/presentation/bloc/media_event.dart';
@@ -233,6 +234,15 @@ class _GroupChatPageState extends State<GroupChatPage> {
                 ],
               ),
               actions: [
+                // E2EE indicator showing MLS encryption
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: E2EEIndicator(
+                    status: E2EEStatus.mlsEncrypted,
+                    showLabel: false,
+                    size: 20,
+                  ),
+                ),
                 IconButton(
                   icon: Icon(
                     Icons.group,
