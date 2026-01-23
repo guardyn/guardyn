@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:guardyn_client/features/messaging/domain/entities/message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_state.dart';
 import 'package:guardyn_client/features/messaging/presentation/pages/search_messages_page.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockMessageBloc extends Mock implements MessageBloc {}
 

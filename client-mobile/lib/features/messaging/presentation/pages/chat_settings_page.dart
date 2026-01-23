@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/di/injection.dart';
 import '../../data/datasources/notification_remote_datasource.dart';
 import '../../domain/usecases/mute_conversation.dart';
+import 'media_gallery_page.dart';
 import 'search_messages_page.dart';
 
 /// Chat Settings Page for 1-on-1 conversations
@@ -154,10 +155,15 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           title: const Text('Media, Links, and Docs'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            // TODO: Navigate to media gallery
-            ScaffoldMessenger.of(
+            Navigator.push(
               context,
-            ).showSnackBar(const SnackBar(content: Text('Coming soon')));
+              MaterialPageRoute(
+                builder: (_) => MediaGalleryPage(
+                  conversationId: widget.conversationId ?? '',
+                  conversationUserName: widget.username,
+                ),
+              ),
+            );
           },
         ),
 
