@@ -1288,6 +1288,125 @@ pub struct GetDisappearingConfigSuccess {
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct HealthRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockUserRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// User ID to block
+    #[prost(string, tag = "2")]
+    pub blocked_user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockUserResponse {
+    #[prost(oneof = "block_user_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<block_user_response::Result>,
+}
+/// Nested message and enum types in `BlockUserResponse`.
+pub mod block_user_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::BlockUserSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockUserSuccess {
+    #[prost(string, tag = "1")]
+    pub blocked_user_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub blocked_at: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnblockUserRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// User ID to unblock
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnblockUserResponse {
+    #[prost(oneof = "unblock_user_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<unblock_user_response::Result>,
+}
+/// Nested message and enum types in `UnblockUserResponse`.
+pub mod unblock_user_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::UnblockUserSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnblockUserSuccess {
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlockedUsersRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlockedUsersResponse {
+    #[prost(oneof = "get_blocked_users_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<get_blocked_users_response::Result>,
+}
+/// Nested message and enum types in `GetBlockedUsersResponse`.
+pub mod get_blocked_users_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::GetBlockedUsersSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBlockedUsersSuccess {
+    #[prost(message, repeated, tag = "1")]
+    pub blocked_users: ::prost::alloc::vec::Vec<BlockedUser>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BlockedUser {
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub username: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "3")]
+    pub blocked_at: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteConversationRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub conversation_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteConversationResponse {
+    #[prost(oneof = "delete_conversation_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<delete_conversation_response::Result>,
+}
+/// Nested message and enum types in `DeleteConversationResponse`.
+pub mod delete_conversation_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::DeleteConversationSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteConversationSuccess {
+    #[prost(string, tag = "1")]
+    pub conversation_id: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum MessageType {
@@ -2230,6 +2349,120 @@ pub mod messaging_service_client {
                     GrpcMethod::new(
                         "guardyn.messaging.MessagingService",
                         "GetDisappearingConfig",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Block a user from messaging you
+        pub async fn block_user(
+            &mut self,
+            request: impl tonic::IntoRequest<super::BlockUserRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::BlockUserResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/BlockUser",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.messaging.MessagingService", "BlockUser"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Unblock a previously blocked user
+        pub async fn unblock_user(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UnblockUserRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UnblockUserResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/UnblockUser",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.messaging.MessagingService", "UnblockUser"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Get list of blocked users
+        pub async fn get_blocked_users(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetBlockedUsersRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBlockedUsersResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/GetBlockedUsers",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "guardyn.messaging.MessagingService",
+                        "GetBlockedUsers",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Delete a conversation (removes from user's list, keeps for other party)
+        pub async fn delete_conversation(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteConversationRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteConversationResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/DeleteConversation",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "guardyn.messaging.MessagingService",
+                        "DeleteConversation",
                     ),
                 );
             self.inner.unary(req, path, codec).await
