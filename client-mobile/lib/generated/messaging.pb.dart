@@ -3227,6 +3227,257 @@ class RemoveGroupMemberSuccess extends $pb.GeneratedMessage {
   void clearRemoved() => $_clearField(1);
 }
 
+class ChangeMemberRoleRequest extends $pb.GeneratedMessage {
+  factory ChangeMemberRoleRequest({
+    $core.String? accessToken,
+    $core.String? groupId,
+    $core.String? targetUserId,
+    $core.String? newRole,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (groupId != null) result.groupId = groupId;
+    if (targetUserId != null) result.targetUserId = targetUserId;
+    if (newRole != null) result.newRole = newRole;
+    return result;
+  }
+
+  ChangeMemberRoleRequest._();
+
+  factory ChangeMemberRoleRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ChangeMemberRoleRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChangeMemberRoleRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..aOS(3, _omitFieldNames ? '' : 'targetUserId')
+    ..aOS(4, _omitFieldNames ? '' : 'newRole')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChangeMemberRoleRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChangeMemberRoleRequest copyWith(
+          void Function(ChangeMemberRoleRequest) updates) =>
+      super.copyWith((message) => updates(message as ChangeMemberRoleRequest))
+          as ChangeMemberRoleRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ChangeMemberRoleRequest create() => ChangeMemberRoleRequest._();
+  @$core.override
+  ChangeMemberRoleRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ChangeMemberRoleRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChangeMemberRoleRequest>(create);
+  static ChangeMemberRoleRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get targetUserId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set targetUserId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTargetUserId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTargetUserId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get newRole => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set newRole($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNewRole() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNewRole() => $_clearField(4);
+}
+
+enum ChangeMemberRoleResponse_Result { success, error, notSet }
+
+class ChangeMemberRoleResponse extends $pb.GeneratedMessage {
+  factory ChangeMemberRoleResponse({
+    ChangeMemberRoleSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  ChangeMemberRoleResponse._();
+
+  factory ChangeMemberRoleResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ChangeMemberRoleResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, ChangeMemberRoleResponse_Result>
+      _ChangeMemberRoleResponse_ResultByTag = {
+    1: ChangeMemberRoleResponse_Result.success,
+    2: ChangeMemberRoleResponse_Result.error,
+    0: ChangeMemberRoleResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChangeMemberRoleResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<ChangeMemberRoleSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: ChangeMemberRoleSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChangeMemberRoleResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChangeMemberRoleResponse copyWith(
+          void Function(ChangeMemberRoleResponse) updates) =>
+      super.copyWith((message) => updates(message as ChangeMemberRoleResponse))
+          as ChangeMemberRoleResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ChangeMemberRoleResponse create() => ChangeMemberRoleResponse._();
+  @$core.override
+  ChangeMemberRoleResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ChangeMemberRoleResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChangeMemberRoleResponse>(create);
+  static ChangeMemberRoleResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  ChangeMemberRoleResponse_Result whichResult() =>
+      _ChangeMemberRoleResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  ChangeMemberRoleSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(ChangeMemberRoleSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ChangeMemberRoleSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class ChangeMemberRoleSuccess extends $pb.GeneratedMessage {
+  factory ChangeMemberRoleSuccess({
+    $core.bool? changed,
+    $core.String? newRole,
+  }) {
+    final result = create();
+    if (changed != null) result.changed = changed;
+    if (newRole != null) result.newRole = newRole;
+    return result;
+  }
+
+  ChangeMemberRoleSuccess._();
+
+  factory ChangeMemberRoleSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ChangeMemberRoleSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChangeMemberRoleSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'changed')
+    ..aOS(2, _omitFieldNames ? '' : 'newRole')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChangeMemberRoleSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChangeMemberRoleSuccess copyWith(
+          void Function(ChangeMemberRoleSuccess) updates) =>
+      super.copyWith((message) => updates(message as ChangeMemberRoleSuccess))
+          as ChangeMemberRoleSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ChangeMemberRoleSuccess create() => ChangeMemberRoleSuccess._();
+  @$core.override
+  ChangeMemberRoleSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ChangeMemberRoleSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChangeMemberRoleSuccess>(create);
+  static ChangeMemberRoleSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get changed => $_getBF(0);
+  @$pb.TagNumber(1)
+  set changed($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasChanged() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearChanged() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get newRole => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set newRole($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNewRole() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNewRole() => $_clearField(2);
+}
+
 class SendGroupMessageRequest extends $pb.GeneratedMessage {
   factory SendGroupMessageRequest({
     $core.String? accessToken,

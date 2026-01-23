@@ -50,6 +50,7 @@ use proto::messaging::{
     CreateGroupRequest, CreateGroupResponse,
     AddGroupMemberRequest, AddGroupMemberResponse,
     RemoveGroupMemberRequest, RemoveGroupMemberResponse,
+    ChangeMemberRoleRequest, ChangeMemberRoleResponse,
     SendGroupMessageRequest, SendGroupMessageResponse,
     GetGroupMessagesRequest, GetGroupMessagesResponse,
     GetGroupsRequest, GetGroupsResponse,
@@ -183,6 +184,13 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<RemoveGroupMemberRequest>,
     ) -> Result<Response<RemoveGroupMemberResponse>, Status> {
         handlers::remove_group_member(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn change_member_role(
+        &self,
+        request: Request<ChangeMemberRoleRequest>,
+    ) -> Result<Response<ChangeMemberRoleResponse>, Status> {
+        handlers::change_member_role(request.into_inner(), self.db.clone()).await
     }
 
     async fn send_group_message(

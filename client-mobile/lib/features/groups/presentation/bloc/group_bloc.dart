@@ -7,6 +7,7 @@ import '../../../../core/di/injection.dart';
 import '../../../messaging/data/datasources/websocket_datasource.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/usecases/add_group_member.dart';
+import '../../domain/usecases/change_member_role.dart';
 import '../../domain/usecases/create_group.dart';
 import '../../domain/usecases/delete_group.dart';
 import '../../domain/usecases/get_group_by_id.dart';
@@ -33,6 +34,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final LeaveGroup leaveGroup;
   final UpdateGroup updateGroup;
   final SendGroupTypingIndicator sendGroupTypingIndicator;
+  final ChangeMemberRole changeMemberRole;
 
   Timer? _pollingTimer;
   String? _activeGroupId;
@@ -60,6 +62,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     required this.leaveGroup,
     required this.updateGroup,
     required this.sendGroupTypingIndicator,
+    required this.changeMemberRole,
   }) : super(const GroupInitial()) {
     on<GroupLoadAll>(_onLoadAll);
     on<GroupCreate>(_onCreateGroup);
@@ -82,6 +85,8 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     // Typing indicator events
     on<GroupSendTypingIndicator>(_onSendTypingIndicator);
     on<GroupTypingReceived>(_onTypingReceived);
+    // Admin management events
+    on<GroupChangeMemberRole>(_onChangeMemberRole);
   }
 
   Future<void> _onLoadAll(
@@ -576,6 +581,27 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   /// Get list of typing usernames for a group
   List<String> getTypingUsernames(String groupId) {
     return _typingUsers[groupId]?.values.toList() ?? [];
+  }
+
+  /// Handle changing a member's role (owner only)
+  Future<void> _onChangeMemberRole(
+    GroupChangeMemberRole event,
+    Emitter<GroupState> emit,
+  ) async {
+    final result = await changeMemberRole(ChangeMemberRoleParams(
+      groupId: event.groupId,
+      targetUserId: event.targetUserId,
+      newRole: event.newRole,
+    ));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message)),
+      (_) => emit(GroupMemberRoleChanged(
+        groupId: event.groupId,
+        targetUserId: event.targetUserId,
+        newRole: event.newRole,
+      )),
+    );
   }
 
   @override

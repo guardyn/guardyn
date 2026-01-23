@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/features/groups/domain/entities/group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/change_member_role.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
@@ -42,6 +43,8 @@ class MockUpdateGroup extends Mock implements UpdateGroup {}
 
 class MockSendGroupTypingIndicator extends Mock implements SendGroupTypingIndicator {}
 
+class MockChangeMemberRole extends Mock implements ChangeMemberRole {}
+
 // Fake classes for argument matchers
 class FakeCreateGroupParams extends Fake implements CreateGroupParams {}
 
@@ -61,6 +64,8 @@ class FakeUpdateGroupParams extends Fake implements UpdateGroupParams {}
 
 class FakeSendGroupTypingIndicatorParams extends Fake implements SendGroupTypingIndicatorParams {}
 
+class FakeChangeMemberRoleParams extends Fake implements ChangeMemberRoleParams {}
+
 void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
@@ -74,6 +79,7 @@ void main() {
   late MockLeaveGroup mockLeaveGroup;
   late MockUpdateGroup mockUpdateGroup;
   late MockSendGroupTypingIndicator mockSendGroupTypingIndicator;
+  late MockChangeMemberRole mockChangeMemberRole;
 
   // Test data
   const tGroupId = 'group-001';
@@ -123,6 +129,7 @@ void main() {
     registerFallbackValue(FakeDeleteGroupParams());
     registerFallbackValue(FakeUpdateGroupParams());
     registerFallbackValue(FakeSendGroupTypingIndicatorParams());
+    registerFallbackValue(FakeChangeMemberRoleParams());
   });
 
   setUp(() {
@@ -137,6 +144,7 @@ void main() {
     mockLeaveGroup = MockLeaveGroup();
     mockUpdateGroup = MockUpdateGroup();
     mockSendGroupTypingIndicator = MockSendGroupTypingIndicator();
+    mockChangeMemberRole = MockChangeMemberRole();
     
     // Setup default mock behavior for leaveGroup
     when(() => mockLeaveGroup.call(any()))
@@ -153,6 +161,10 @@ void main() {
     // Setup default mock behavior for sendGroupTypingIndicator
     when(() => mockSendGroupTypingIndicator.call(any()))
         .thenAnswer((_) async => const Right<Failure, bool>(true));
+    
+    // Setup default mock behavior for changeMemberRole
+    when(() => mockChangeMemberRole.call(any()))
+        .thenAnswer((_) async => const Right<Failure, void>(null));
 
     bloc = GroupBloc(
       createGroup: mockCreateGroup,
@@ -166,6 +178,7 @@ void main() {
       leaveGroup: mockLeaveGroup,
       updateGroup: mockUpdateGroup,
       sendGroupTypingIndicator: mockSendGroupTypingIndicator,
+      changeMemberRole: mockChangeMemberRole,
     );
   });
 

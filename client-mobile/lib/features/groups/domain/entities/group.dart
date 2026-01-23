@@ -26,8 +26,25 @@ class Group extends Equatable {
     this.description,
   });
 
+  /// Check if user is the owner of the group (creator)
+  bool isOwner(String userId) => creatorUserId == userId;
+
   /// Check if user is the creator/admin of the group
-  bool isAdmin(String userId) => creatorUserId == userId;
+  /// Returns true if user is owner or has admin role
+  bool isAdmin(String userId) {
+    if (creatorUserId == userId) return true;
+    final member = members.firstWhere(
+      (m) => m.userId == userId,
+      orElse: () => GroupMember(
+        userId: '',
+        username: '',
+        deviceId: '',
+        role: GroupRole.member,
+        joinedAt: DateTime.now(),
+      ),
+    );
+    return member.role == GroupRole.admin || member.role == GroupRole.owner;
+  }
 
   /// Check if user is a member of the group
   bool isMember(String userId) => members.any((m) => m.userId == userId);

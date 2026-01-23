@@ -487,6 +487,40 @@ pub struct RemoveGroupMemberSuccess {
     pub removed: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ChangeMemberRoleRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub group_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub target_user_id: ::prost::alloc::string::String,
+    /// "admin" or "member"
+    #[prost(string, tag = "4")]
+    pub new_role: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ChangeMemberRoleResponse {
+    #[prost(oneof = "change_member_role_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<change_member_role_response::Result>,
+}
+/// Nested message and enum types in `ChangeMemberRoleResponse`.
+pub mod change_member_role_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::ChangeMemberRoleSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ChangeMemberRoleSuccess {
+    #[prost(bool, tag = "1")]
+    pub changed: bool,
+    #[prost(string, tag = "2")]
+    pub new_role: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SendGroupMessageRequest {
     #[prost(string, tag = "1")]
     pub access_token: ::prost::alloc::string::String,
@@ -1867,6 +1901,36 @@ pub mod messaging_service_client {
                     GrpcMethod::new(
                         "guardyn.messaging.MessagingService",
                         "RemoveGroupMember",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Change a member's role in a group (owner only)
+        pub async fn change_member_role(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ChangeMemberRoleRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ChangeMemberRoleResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/ChangeMemberRole",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "guardyn.messaging.MessagingService",
+                        "ChangeMemberRole",
                     ),
                 );
             self.inner.unary(req, path, codec).await

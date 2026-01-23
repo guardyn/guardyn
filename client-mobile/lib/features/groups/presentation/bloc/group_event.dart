@@ -233,3 +233,19 @@ class GroupTypingReceived extends GroupEvent {
   List<Object?> get props => [groupId, userId, username, isTyping];
 }
 
+/// Change a member's role in the group
+/// Only group owner can perform this action
+class GroupChangeMemberRole extends GroupEvent {
+  final String groupId;
+  final String targetUserId;
+  final String newRole;
+
+  const GroupChangeMemberRole({
+    required this.groupId,
+    required this.targetUserId,
+    required this.newRole,
+  });
+
+  @override
+  List<Object?> get props => [groupId, targetUserId, newRole];
+}

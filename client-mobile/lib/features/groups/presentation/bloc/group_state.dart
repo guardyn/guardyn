@@ -173,6 +173,22 @@ class GroupTypingUsersUpdated extends GroupState {
   List<Object?> get props => [groupId, typingUsernames, messages];
 }
 
+/// Member role changed successfully
+class GroupMemberRoleChanged extends GroupState {
+  final String groupId;
+  final String targetUserId;
+  final String newRole;
+
+  const GroupMemberRoleChanged({
+    required this.groupId,
+    required this.targetUserId,
+    required this.newRole,
+  });
+
+  @override
+  List<Object?> get props => [groupId, targetUserId, newRole];
+}
+
 /// Error state
 class GroupError extends GroupState {
   final String message;

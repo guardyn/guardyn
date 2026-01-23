@@ -403,4 +403,26 @@ class GroupRemoteDatasource {
 
     return response.success.sent;
   }
+
+  /// Change a member's role in the group
+  /// Only group owner can perform this action
+  Future<void> changeMemberRole({
+    required String accessToken,
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+  }) async {
+    final request = proto.ChangeMemberRoleRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+      targetUserId: targetUserId,
+      newRole: newRole,
+    );
+
+    final response = await _messagingClient.changeMemberRole(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+  }
 }

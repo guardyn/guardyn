@@ -695,6 +695,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           member: member,
           groupId: widget.groupId,
           isAdmin: _currentUserId != null && group.isAdmin(_currentUserId!),
+          isOwner: _currentUserId != null && group.isOwner(_currentUserId!),
         ),
       ),
     );

@@ -451,4 +451,31 @@ class GroupRepositoryImpl implements GroupRepository {
       return Left(UnknownFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> changeMemberRole({
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+  }) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      await _remoteDatasource.changeMemberRole(
+        accessToken: accessToken,
+        groupId: groupId,
+        targetUserId: targetUserId,
+        newRole: newRole,
+      );
+
+      return const Right(null);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to change member role'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
 }

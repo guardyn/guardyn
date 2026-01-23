@@ -115,6 +115,14 @@ class MessagingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$removeGroupMember, request, options: options);
   }
 
+  /// Change a member's role in a group (owner only)
+  $grpc.ResponseFuture<$0.ChangeMemberRoleResponse> changeMemberRole(
+    $0.ChangeMemberRoleRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$changeMemberRole, request, options: options);
+  }
+
   /// Send group message
   $grpc.ResponseFuture<$0.SendGroupMessageResponse> sendGroupMessage(
     $0.SendGroupMessageRequest request, {
@@ -345,6 +353,11 @@ class MessagingServiceClient extends $grpc.Client {
       '/guardyn.messaging.MessagingService/RemoveGroupMember',
       ($0.RemoveGroupMemberRequest value) => value.writeToBuffer(),
       $0.RemoveGroupMemberResponse.fromBuffer);
+  static final _$changeMemberRole = $grpc.ClientMethod<
+          $0.ChangeMemberRoleRequest, $0.ChangeMemberRoleResponse>(
+      '/guardyn.messaging.MessagingService/ChangeMemberRole',
+      ($0.ChangeMemberRoleRequest value) => value.writeToBuffer(),
+      $0.ChangeMemberRoleResponse.fromBuffer);
   static final _$sendGroupMessage = $grpc.ClientMethod<
           $0.SendGroupMessageRequest, $0.SendGroupMessageResponse>(
       '/guardyn.messaging.MessagingService/SendGroupMessage',
@@ -549,6 +562,15 @@ abstract class MessagingServiceBase extends $grpc.Service {
         ($core.List<$core.int> value) =>
             $0.RemoveGroupMemberRequest.fromBuffer(value),
         ($0.RemoveGroupMemberResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ChangeMemberRoleRequest,
+            $0.ChangeMemberRoleResponse>(
+        'ChangeMemberRole',
+        changeMemberRole_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ChangeMemberRoleRequest.fromBuffer(value),
+        ($0.ChangeMemberRoleResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.SendGroupMessageRequest,
             $0.SendGroupMessageResponse>(
         'SendGroupMessage',
@@ -823,6 +845,15 @@ abstract class MessagingServiceBase extends $grpc.Service {
 
   $async.Future<$0.RemoveGroupMemberResponse> removeGroupMember(
       $grpc.ServiceCall call, $0.RemoveGroupMemberRequest request);
+
+  $async.Future<$0.ChangeMemberRoleResponse> changeMemberRole_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ChangeMemberRoleRequest> $request) async {
+    return changeMemberRole($call, await $request);
+  }
+
+  $async.Future<$0.ChangeMemberRoleResponse> changeMemberRole(
+      $grpc.ServiceCall call, $0.ChangeMemberRoleRequest request);
 
   $async.Future<$0.SendGroupMessageResponse> sendGroupMessage_Pre(
       $grpc.ServiceCall $call,

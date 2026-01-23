@@ -1065,6 +1065,72 @@ final $typed_data.Uint8List removeGroupMemberSuccessDescriptor =
     $convert.base64Decode(
         'ChhSZW1vdmVHcm91cE1lbWJlclN1Y2Nlc3MSGAoHcmVtb3ZlZBgBIAEoCFIHcmVtb3ZlZA==');
 
+@$core.Deprecated('Use changeMemberRoleRequestDescriptor instead')
+const ChangeMemberRoleRequest$json = {
+  '1': 'ChangeMemberRoleRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'group_id', '3': 2, '4': 1, '5': 9, '10': 'groupId'},
+    {'1': 'target_user_id', '3': 3, '4': 1, '5': 9, '10': 'targetUserId'},
+    {'1': 'new_role', '3': 4, '4': 1, '5': 9, '10': 'newRole'},
+  ],
+};
+
+/// Descriptor for `ChangeMemberRoleRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List changeMemberRoleRequestDescriptor = $convert.base64Decode(
+    'ChdDaGFuZ2VNZW1iZXJSb2xlUmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1'
+    'Rva2VuEhkKCGdyb3VwX2lkGAIgASgJUgdncm91cElkEiQKDnRhcmdldF91c2VyX2lkGAMgASgJ'
+    'Ugx0YXJnZXRVc2VySWQSGQoIbmV3X3JvbGUYBCABKAlSB25ld1JvbGU=');
+
+@$core.Deprecated('Use changeMemberRoleResponseDescriptor instead')
+const ChangeMemberRoleResponse$json = {
+  '1': 'ChangeMemberRoleResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.ChangeMemberRoleSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `ChangeMemberRoleResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List changeMemberRoleResponseDescriptor = $convert.base64Decode(
+    'ChhDaGFuZ2VNZW1iZXJSb2xlUmVzcG9uc2USRgoHc3VjY2VzcxgBIAEoCzIqLmd1YXJkeW4ubW'
+    'Vzc2FnaW5nLkNoYW5nZU1lbWJlclJvbGVTdWNjZXNzSABSB3N1Y2Nlc3MSNQoFZXJyb3IYAiAB'
+    'KAsyHS5ndWFyZHluLmNvbW1vbi5FcnJvclJlc3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use changeMemberRoleSuccessDescriptor instead')
+const ChangeMemberRoleSuccess$json = {
+  '1': 'ChangeMemberRoleSuccess',
+  '2': [
+    {'1': 'changed', '3': 1, '4': 1, '5': 8, '10': 'changed'},
+    {'1': 'new_role', '3': 2, '4': 1, '5': 9, '10': 'newRole'},
+  ],
+};
+
+/// Descriptor for `ChangeMemberRoleSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List changeMemberRoleSuccessDescriptor =
+    $convert.base64Decode(
+        'ChdDaGFuZ2VNZW1iZXJSb2xlU3VjY2VzcxIYCgdjaGFuZ2VkGAEgASgIUgdjaGFuZ2VkEhkKCG'
+        '5ld19yb2xlGAIgASgJUgduZXdSb2xl');
+
 @$core.Deprecated('Use sendGroupMessageRequestDescriptor instead')
 const SendGroupMessageRequest$json = {
   '1': 'SendGroupMessageRequest',

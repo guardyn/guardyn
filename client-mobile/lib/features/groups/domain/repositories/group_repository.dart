@@ -67,4 +67,14 @@ abstract class GroupRepository {
     required String groupId,
     required bool isTyping,
   });
+
+  /// Change a member's role in the group
+  /// Only group owner can change roles
+  /// [targetUserId] - the user whose role will be changed
+  /// [newRole] - the new role to assign (Admin, Member)
+  Future<Either<Failure, void>> changeMemberRole({
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+  });
 }

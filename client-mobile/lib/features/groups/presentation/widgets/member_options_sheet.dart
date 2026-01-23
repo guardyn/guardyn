@@ -11,12 +11,14 @@ class MemberOptionsSheet extends StatelessWidget {
   final GroupMember member;
   final String groupId;
   final bool isAdmin;
+  final bool isOwner;
 
   const MemberOptionsSheet({
     super.key,
     required this.member,
     required this.groupId,
     required this.isAdmin,
+    this.isOwner = false,
   });
 
   @override
@@ -28,6 +30,18 @@ class MemberOptionsSheet extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${member.username} removed from group'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (state is GroupMemberRoleChanged) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.newRole.toLowerCase() == 'admin'
+                    ? '${member.username} is now an admin'
+                    : '${member.username} is no longer an admin',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -115,31 +129,21 @@ class MemberOptionsSheet extends StatelessWidget {
               if (isAdmin) ...[
                 const Divider(),
 
-                // Make admin / Remove admin
-                if (member.role != GroupRole.admin)
-                  ListTile(
-                    leading: const Icon(Icons.star, color: Colors.amber),
-                    title: const Text('Make Admin'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Admin management coming soon')),
-                      );
-                    },
-                  )
-                else
-                  ListTile(
-                    leading: const Icon(Icons.star_border),
-                    title: const Text('Remove Admin'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Admin management coming soon')),
-                      );
-                    },
-                  ),
+                // Make admin / Remove admin (only owner can change roles)
+                if (isOwner && member.role != GroupRole.owner) ...[
+                  if (member.role != GroupRole.admin)
+                    ListTile(
+                      leading: const Icon(Icons.star, color: Colors.amber),
+                      title: const Text('Make Admin'),
+                      onTap: () => _confirmChangeRole(context, 'Admin'),
+                    )
+                  else
+                    ListTile(
+                      leading: const Icon(Icons.star_border),
+                      title: const Text('Remove Admin'),
+                      onTap: () => _confirmChangeRole(context, 'Member'),
+                    ),
+                ],
 
                 // Remove from group
                 ListTile(
@@ -180,6 +184,43 @@ class MemberOptionsSheet extends StatelessWidget {
                   ));
             },
             child: const Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmChangeRole(BuildContext context, String newRole) {
+    final isPromoting = newRole.toLowerCase() == 'admin';
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isPromoting ? 'Make Admin?' : 'Remove Admin?'),
+        content: Text(
+          isPromoting
+              ? 'Are you sure you want to make ${member.username} an admin? Admins can edit group info and remove members.'
+              : 'Are you sure you want to remove admin privileges from ${member.username}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext); // Close dialog
+              context.read<GroupBloc>().add(GroupChangeMemberRole(
+                    groupId: groupId,
+                    targetUserId: member.userId,
+                    newRole: newRole,
+                  ));
+            },
+            child: Text(
+              isPromoting ? 'Make Admin' : 'Remove Admin',
+              style: TextStyle(
+                color: isPromoting ? Colors.amber[700] : Colors.orange,
+              ),
+            ),
           ),
         ],
       ),

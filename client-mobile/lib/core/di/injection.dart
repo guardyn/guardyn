@@ -18,6 +18,7 @@ import 'package:guardyn_client/features/groups/data/datasources/group_remote_dat
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/change_member_role.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
@@ -314,6 +315,10 @@ void _registerGroupsDependencies() {
     () => SendGroupTypingIndicator(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<ChangeMemberRole>(
+    () => ChangeMemberRole(getIt<GroupRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<GroupBloc>(
     () => GroupBloc(
@@ -328,6 +333,7 @@ void _registerGroupsDependencies() {
       leaveGroup: getIt<LeaveGroup>(),
       updateGroup: getIt<UpdateGroup>(),
       sendGroupTypingIndicator: getIt<SendGroupTypingIndicator>(),
+      changeMemberRole: getIt<ChangeMemberRole>(),
     ),
   );
 }

@@ -1238,6 +1238,34 @@ impl DatabaseClient {
         Ok(())
     }
 
+    /// Change member role (admin or member)
+    pub async fn change_member_role(
+        &self,
+        group_id: &str,
+        user_id: &str,
+        new_role: &GroupRole,
+    ) -> Result<()> {
+        let key = format!("/groups/{}/members/{}", group_id, user_id);
+
+        // Get existing member
+        let existing = self.tikv.get(key.clone().into_bytes()).await?;
+        if let Some(value) = existing {
+            let mut member: GroupMember = serde_json::from_slice(&value)?;
+            member.role = new_role.clone();
+            let new_value = serde_json::to_vec(&member)?;
+            self.tikv.put(key.into_bytes(), new_value).await?;
+            tracing::info!(
+                "Changed member {} role to {:?} in group {}",
+                user_id,
+                new_role,
+                group_id
+            );
+            Ok(())
+        } else {
+            anyhow::bail!("Member {} not found in group {}", user_id, group_id);
+        }
+    }
+
     /// Get group members
     pub async fn get_group_members(&self, group_id: &str) -> Result<Vec<GroupMember>> {
         let prefix = format!("/groups/{}/members/", group_id);
