@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
@@ -93,6 +94,14 @@ Future<void> configureDependencies() async {
   final grpcClients = GrpcClients();
   await grpcClients.initialize();
   getIt.registerSingleton<GrpcClients>(grpcClients);
+
+  // Register TokenManager for automatic token refresh
+  final tokenManager = TokenManager(
+    getIt<SecureStorage>(),
+    getIt<GrpcClients>(),
+  );
+  await tokenManager.initialize();
+  getIt.registerSingleton<TokenManager>(tokenManager);
 
   // Register auth feature dependencies
   _registerAuthDependencies();
@@ -395,7 +404,7 @@ void _registerMediaDependencies() {
     () => MediaRemoteDatasource(
       getIt<GrpcClients>(),
       getIt<http.Client>(),
-      getIt<SecureStorage>(),
+      getIt<TokenManager>(),
     ),
   );
 

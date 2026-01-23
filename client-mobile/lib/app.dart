@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
@@ -80,6 +81,7 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
     final grpcClients = getIt<GrpcClients>();
     final secureStorage = getIt<SecureStorage>();
     final cryptoService = getIt<CryptoService>();
+    final tokenManager = getIt<TokenManager>();
 
     // Auth dependencies
     final remoteDatasource = AuthRemoteDatasource(grpcClients, cryptoService);
@@ -87,6 +89,7 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
       remoteDatasource: remoteDatasource,
       secureStorage: secureStorage,
       cryptoService: cryptoService,
+      tokenManager: tokenManager,
     );
 
     final registerUser = RegisterUser(authRepository);

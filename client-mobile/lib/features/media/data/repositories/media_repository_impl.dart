@@ -41,6 +41,7 @@ class MediaRepositoryImpl implements MediaRepository {
       expiresAt: DateTime.fromMillisecondsSinceEpoch(
         response.expiresAt.toInt() * 1000,
       ),
+      headers: response.headers,
     );
   }
 

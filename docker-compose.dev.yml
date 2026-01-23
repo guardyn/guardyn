@@ -273,6 +273,10 @@ services:
       GUARDYN_PORT: "50054"
       # S3/MinIO configuration (MediaConfig::from_env() uses these)
       S3_ENDPOINT: http://minio:9000
+      # Public endpoint for presigned URLs - use 10.0.2.2 for Android emulator
+      # This is the special IP that Android emulator uses to reach host machine
+      # The presigned URL signature MUST match the actual host the client connects to
+      S3_PUBLIC_ENDPOINT: http://10.0.2.2:9000
       S3_ACCESS_KEY: guardyn
       S3_SECRET_KEY: guardyn-dev-secret
       S3_BUCKET_NAME: guardyn-media

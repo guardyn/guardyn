@@ -1,3 +1,4 @@
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -10,12 +11,14 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDatasource remoteDatasource;
   final SecureStorage secureStorage;
   final CryptoService cryptoService;
+  final TokenManager tokenManager;
   final Logger logger = Logger();
 
   AuthRepositoryImpl({
     required this.remoteDatasource,
     required this.secureStorage,
     required this.cryptoService,
+    required this.tokenManager,
   });
 
   @override
@@ -31,9 +34,9 @@ class AuthRepositoryImpl implements AuthRepository {
         deviceName: deviceName,
       );
 
-      // Store tokens and user info
+      // Store tokens via TokenManager and user info via SecureStorage
       await Future.wait([
-        secureStorage.saveTokens(
+        tokenManager.saveTokens(
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
         ),
@@ -70,9 +73,9 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
 
-      // Store tokens and user info
+      // Store tokens via TokenManager and user info via SecureStorage
       await Future.wait([
-        secureStorage.saveTokens(
+        tokenManager.saveTokens(
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
         ),
@@ -97,7 +100,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
-      final accessToken = await secureStorage.getAccessToken();
+      final accessToken = tokenManager.currentAccessToken;
 
       if (accessToken != null) {
         try {
@@ -115,6 +118,8 @@ class AuthRepositoryImpl implements AuthRepository {
         }
       }
 
+      // Clear tokens via TokenManager
+      await tokenManager.clearTokens();
       // Clear all local data
       await secureStorage.clearAll();
       // Clear all crypto state (X3DH keys and sessions)
@@ -124,6 +129,7 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (e) {
       logger.e('Logout failed: $e');
       // Still clear local data even if backend call fails
+      await tokenManager.clearTokens();
       await secureStorage.clearAll();
       await cryptoService.clearAll();
       rethrow;
@@ -133,7 +139,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> deleteAccount({required String password}) async {
     try {
-      final accessToken = await secureStorage.getAccessToken();
+      final accessToken = tokenManager.currentAccessToken;
 
       if (accessToken == null) {
         throw AuthException('Not authenticated');

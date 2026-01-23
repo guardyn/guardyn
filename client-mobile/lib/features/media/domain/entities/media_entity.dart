@@ -328,14 +328,21 @@ class UploadUrlResult extends Equatable {
   /// URL expiration time
   final DateTime expiresAt;
 
+  /// Headers required for upload (includes Content-Type used in signature)
+  final Map<String, String> headers;
+
   const UploadUrlResult({
     required this.mediaId,
     required this.presignedUrl,
     required this.expiresAt,
+    this.headers = const {},
   });
 
+  /// Get Content-Type header if present
+  String? get contentType => headers['Content-Type'];
+
   @override
-  List<Object?> get props => [mediaId, presignedUrl, expiresAt];
+  List<Object?> get props => [mediaId, presignedUrl, expiresAt, headers];
 
   /// Check if the URL is still valid
   bool get isValid => DateTime.now().isBefore(expiresAt);

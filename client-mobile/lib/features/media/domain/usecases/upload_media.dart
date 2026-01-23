@@ -134,10 +134,13 @@ class UploadMedia {
     );
 
     // Step 2: Upload to presigned URL
+    // Use Content-Type from server headers to ensure signature match
+    // The presigned URL is signed with specific Content-Type, so we must use exactly that
+    final uploadMimeType = uploadUrl.contentType ?? mimeType;
     await repository.uploadToPresignedUrl(
       presignedUrl: uploadUrl.presignedUrl,
       data: data,
-      mimeType: mimeType,
+      mimeType: uploadMimeType,
       onProgress: onProgress,
     );
 

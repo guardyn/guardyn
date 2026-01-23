@@ -300,6 +300,34 @@ void main() {
       final remaining = result.timeUntilExpiration;
       expect(remaining.inMinutes, closeTo(30, 1));
     });
+
+    test('contentType returns Content-Type from headers', () {
+      final result = UploadUrlResult(
+        mediaId: 'media-123',
+        presignedUrl: 'https://example.com/upload',
+        expiresAt: DateTime.now().add(const Duration(hours: 1)),
+        headers: {'Content-Type': 'image/jpeg'},
+      );
+      expect(result.contentType, 'image/jpeg');
+    });
+
+    test('contentType returns null when no headers', () {
+      final result = UploadUrlResult(
+        mediaId: 'media-123',
+        presignedUrl: 'https://example.com/upload',
+        expiresAt: DateTime.now().add(const Duration(hours: 1)),
+      );
+      expect(result.contentType, isNull);
+    });
+
+    test('headers defaults to empty map', () {
+      final result = UploadUrlResult(
+        mediaId: 'media-123',
+        presignedUrl: 'https://example.com/upload',
+        expiresAt: DateTime.now().add(const Duration(hours: 1)),
+      );
+      expect(result.headers, isEmpty);
+    });
   });
 
   group('DownloadUrlResult', () {

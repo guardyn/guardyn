@@ -2,9 +2,8 @@ import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
-import 'package:guardyn_client/core/constants/config.dart';
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
-import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
 import 'package:guardyn_client/generated/media.pb.dart' as pb;
 import 'package:guardyn_client/generated/media.pbgrpc.dart';
@@ -15,28 +14,13 @@ import 'package:logger/logger.dart';
 class MediaRemoteDatasource {
   final GrpcClients grpcClients;
   final http.Client httpClient;
-  final SecureStorage secureStorage;
+  final TokenManager tokenManager;
   final Logger logger = Logger();
 
-  MediaRemoteDatasource(this.grpcClients, this.httpClient, this.secureStorage);
+  MediaRemoteDatasource(this.grpcClients, this.httpClient, this.tokenManager);
 
   /// Get the media service client
   MediaServiceClient get _mediaClient => grpcClients.mediaClient;
-
-  /// Get CallOptions with authorization header
-  Future<CallOptions> _getAuthOptions({Duration? timeout}) async {
-    final accessToken = await secureStorage.getAccessToken();
-    if (accessToken == null) {
-      throw MediaException(
-        'No access token available',
-        code: 'UNAUTHENTICATED',
-      );
-    }
-    return CallOptions(
-      metadata: {'authorization': 'Bearer $accessToken'},
-      timeout: timeout ?? const Duration(seconds: 15),
-    );
-  }
 
   /// Get presigned upload URL from server
   ///
@@ -58,11 +42,9 @@ class MediaRemoteDatasource {
         request.conversationId = conversationId;
       }
 
-      // Add timeout and auth to prevent hanging if media service is unavailable
-      final options = await _getAuthOptions();
-      final response = await _mediaClient.getUploadUrl(
-        request,
-        options: options,
+      // Use executeWithAuth for automatic token refresh on 401
+      final response = await tokenManager.executeWithAuth(
+        (options) => _mediaClient.getUploadUrl(request, options: options),
       );
 
       if (response.hasError()) {
@@ -74,6 +56,9 @@ class MediaRemoteDatasource {
 
       logger.d('Got upload URL for file: $filename, mediaId: ${response.mediaId}');
       return response;
+    } on TokenException catch (e) {
+      logger.e('Token error getting upload URL: ${e.message}');
+      throw MediaException(e.message, code: 'UNAUTHENTICATED');
     } on GrpcError catch (e) {
       logger.e('gRPC error getting upload URL: ${e.message}');
       throw MediaException(
@@ -105,14 +90,13 @@ class MediaRemoteDatasource {
     void Function(double progress)? onProgress,
   }) async {
     try {
-      // Transform internal Docker URL to client-accessible URL
-      final transformedUrl = AppConfig.transformPresignedUrl(presignedUrl);
-      final uri = Uri.parse(transformedUrl);
+      // The presigned URL from backend already contains the correct host
+      // (S3_PUBLIC_ENDPOINT is set to 10.0.2.2:9000 for Android emulator)
+      final uri = Uri.parse(presignedUrl);
 
-      logger.d('Original URL: $presignedUrl');
-      logger.d('Transformed URL: $transformedUrl');
+      logger.d('Uploading to presigned URL: $presignedUrl');
 
-      // Create multipart request for progress tracking if needed
+      // Create request for upload
       final request = http.Request('PUT', uri);
       request.headers['Content-Type'] = mimeType;
 
@@ -158,10 +142,9 @@ class MediaRemoteDatasource {
     try {
       final request = pb.GetDownloadUrlRequest()..mediaId = mediaId;
 
-      final options = await _getAuthOptions();
-      final response = await _mediaClient.getDownloadUrl(
-        request,
-        options: options,
+      // Use executeWithAuth for automatic token refresh on 401
+      final response = await tokenManager.executeWithAuth(
+        (options) => _mediaClient.getDownloadUrl(request, options: options),
       );
 
       if (response.hasError()) {
@@ -173,6 +156,9 @@ class MediaRemoteDatasource {
 
       logger.d('Got download URL for mediaId: $mediaId');
       return response;
+    } on TokenException catch (e) {
+      logger.e('Token error getting download URL: ${e.message}');
+      throw MediaException(e.message, code: 'UNAUTHENTICATED');
     } on GrpcError catch (e) {
       logger.e('gRPC error getting download URL: ${e.message}');
       throw MediaException(
@@ -199,9 +185,13 @@ class MediaRemoteDatasource {
     void Function(double progress)? onProgress,
   }) async {
     try {
+      // The presigned URL from backend already contains the correct host
+      // (S3_PUBLIC_ENDPOINT is set to 10.0.2.2:9000 for Android emulator)
       final uri = Uri.parse(presignedUrl);
-      final request = http.Request('GET', uri);
 
+      logger.d('Downloading from presigned URL: $presignedUrl');
+
+      final request = http.Request('GET', uri);
       final streamedResponse = await httpClient.send(request);
 
       if (streamedResponse.statusCode != 200) {
@@ -246,11 +236,10 @@ class MediaRemoteDatasource {
   }) async {
     try {
       final request = pb.GetMediaMetadataRequest()..mediaId = mediaId;
-      final options = await _getAuthOptions();
 
-      final response = await _mediaClient.getMediaMetadata(
-        request,
-        options: options,
+      // Use executeWithAuth for automatic token refresh on 401
+      final response = await tokenManager.executeWithAuth(
+        (options) => _mediaClient.getMediaMetadata(request, options: options),
       );
 
       if (response.hasError()) {
@@ -262,6 +251,9 @@ class MediaRemoteDatasource {
 
       logger.d('Got metadata for mediaId: $mediaId');
       return response;
+    } on TokenException catch (e) {
+      logger.e('Token error getting metadata: ${e.message}');
+      throw MediaException(e.message, code: 'UNAUTHENTICATED');
     } on GrpcError catch (e) {
       logger.e('gRPC error getting metadata: ${e.message}');
       throw MediaException(
@@ -298,10 +290,9 @@ class MediaRemoteDatasource {
         request.cursor = cursor;
       }
 
-      final options = await _getAuthOptions();
-      final response = await _mediaClient.listMedia(
-        request,
-        options: options,
+      // Use executeWithAuth for automatic token refresh on 401
+      final response = await tokenManager.executeWithAuth(
+        (options) => _mediaClient.listMedia(request, options: options),
       );
 
       if (response.hasError()) {
@@ -313,6 +304,9 @@ class MediaRemoteDatasource {
 
       logger.d('Listed ${response.items.length} media items for conversation: $conversationId');
       return response;
+    } on TokenException catch (e) {
+      logger.e('Token error listing media: ${e.message}');
+      throw MediaException(e.message, code: 'UNAUTHENTICATED');
     } on GrpcError catch (e) {
       logger.e('gRPC error listing media: ${e.message}');
       throw MediaException(
@@ -335,11 +329,10 @@ class MediaRemoteDatasource {
   }) async {
     try {
       final request = pb.DeleteMediaRequest()..mediaId = mediaId;
-      final options = await _getAuthOptions();
 
-      final response = await _mediaClient.deleteMedia(
-        request,
-        options: options,
+      // Use executeWithAuth for automatic token refresh on 401
+      final response = await tokenManager.executeWithAuth(
+        (options) => _mediaClient.deleteMedia(request, options: options),
       );
 
       if (response.hasError()) {
@@ -350,6 +343,9 @@ class MediaRemoteDatasource {
       }
 
       logger.i('Deleted media: $mediaId');
+    } on TokenException catch (e) {
+      logger.e('Token error deleting media: ${e.message}');
+      throw MediaException(e.message, code: 'UNAUTHENTICATED');
     } on GrpcError catch (e) {
       logger.e('gRPC error deleting media: ${e.message}');
       throw MediaException(
@@ -383,12 +379,10 @@ class MediaRemoteDatasource {
         request.maxHeight = maxHeight;
       }
 
-      final options = await _getAuthOptions(
+      // Use executeWithAuth for automatic token refresh on 401
+      final response = await tokenManager.executeWithAuth(
+        (options) => _mediaClient.generateThumbnail(request, options: options),
         timeout: const Duration(seconds: 30),
-      );
-      final response = await _mediaClient.generateThumbnail(
-        request,
-        options: options,
       );
 
       if (response.hasError()) {
@@ -400,6 +394,9 @@ class MediaRemoteDatasource {
 
       logger.d('Generated thumbnail for mediaId: $mediaId');
       return response;
+    } on TokenException catch (e) {
+      logger.e('Token error generating thumbnail: ${e.message}');
+      throw MediaException(e.message, code: 'UNAUTHENTICATED');
     } on GrpcError catch (e) {
       logger.e('gRPC error generating thumbnail: ${e.message}');
       throw MediaException(
