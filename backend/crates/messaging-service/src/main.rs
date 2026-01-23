@@ -73,6 +73,12 @@ use proto::messaging::{
     // Phase 2: Disappearing Messages
     SetDisappearingMessagesRequest, SetDisappearingMessagesResponse,
     GetDisappearingConfigRequest, GetDisappearingConfigResponse,
+    // Phase 3: Block User
+    BlockUserRequest, BlockUserResponse,
+    UnblockUserRequest, UnblockUserResponse,
+    GetBlockedUsersRequest, GetBlockedUsersResponse,
+    // Phase 3: Delete Conversation
+    DeleteConversationRequest, DeleteConversationResponse,
 };
 use proto::common::HealthStatus;
 
@@ -381,6 +387,42 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<GetDisappearingConfigRequest>,
     ) -> Result<Response<GetDisappearingConfigResponse>, Status> {
         handlers::get_disappearing_config(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 3: User Blocking
+    // ========================================================================
+
+    async fn block_user(
+        &self,
+        request: Request<BlockUserRequest>,
+    ) -> Result<Response<BlockUserResponse>, Status> {
+        handlers::block_user(self.db.clone(), request).await
+    }
+
+    async fn unblock_user(
+        &self,
+        request: Request<UnblockUserRequest>,
+    ) -> Result<Response<UnblockUserResponse>, Status> {
+        handlers::unblock_user(self.db.clone(), request).await
+    }
+
+    async fn get_blocked_users(
+        &self,
+        request: Request<GetBlockedUsersRequest>,
+    ) -> Result<Response<GetBlockedUsersResponse>, Status> {
+        handlers::get_blocked_users(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 3: Delete Conversation
+    // ========================================================================
+
+    async fn delete_conversation(
+        &self,
+        request: Request<DeleteConversationRequest>,
+    ) -> Result<Response<DeleteConversationResponse>, Status> {
+        handlers::delete_conversation(self.db.clone(), request).await
     }
 }
 

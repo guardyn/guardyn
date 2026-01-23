@@ -48,8 +48,10 @@ import 'package:guardyn_client/features/messaging/data/datasources/websocket_dat
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/notification_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/block_user.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/delete_conversation.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
@@ -202,6 +204,36 @@ void _registerMessagingDependencies() {
 
   getIt.registerLazySingleton<GetUserDisplayName>(
     () => GetUserDisplayName(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  // Block/Unblock user use cases
+  getIt.registerLazySingleton<BlockUser>(
+    () => BlockUser(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<UnblockUser>(
+    () => UnblockUser(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<GetBlockedUsers>(
+    () => GetBlockedUsers(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  // Delete conversation use case
+  getIt.registerLazySingleton<DeleteConversation>(
+    () => DeleteConversation(
       grpcClients: getIt<GrpcClients>(),
       secureStorage: getIt<SecureStorage>(),
     ),

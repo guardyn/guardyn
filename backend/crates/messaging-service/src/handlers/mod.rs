@@ -28,6 +28,10 @@ pub mod edit_message;
 pub mod search_messages;
 pub mod disappearing_messages;
 
+// Phase 3: User blocking and conversation deletion
+pub mod block_user;
+pub mod delete_conversation;
+
 pub use send_message::send_message;
 pub use send_message_e2ee::send_message_e2ee;
 pub use get_messages::get_messages;
@@ -56,4 +60,8 @@ pub use forward_message::forward_message;
 pub use edit_message::edit_message;
 pub use search_messages::{search_messages, SearchParams};
 pub use disappearing_messages::{set_disappearing_messages, get_disappearing_config};
+
+// Phase 3: Re-exports
+pub use block_user::{block_user, unblock_user, get_blocked_users};
+pub use delete_conversation::delete_conversation;
 

@@ -226,6 +226,23 @@ impl DatabaseClient {
             .await
             .context("Failed to create disappearing_config table")?;
 
+        // ========================================================================
+        // Phase 3: Blocked users table
+        // ========================================================================
+        session
+            .query_unpaged(
+                "CREATE TABLE IF NOT EXISTS guardyn.blocked_users (
+                    user_id TEXT,
+                    blocked_user_id TEXT,
+                    blocked_username TEXT,
+                    blocked_at BIGINT,
+                    PRIMARY KEY (user_id, blocked_user_id)
+                )",
+                &[],
+            )
+            .await
+            .context("Failed to create blocked_users table")?;
+
         // Add Phase 2 columns to existing messages table (migration)
         let _ = session
             .query_unpaged(
@@ -2356,4 +2373,122 @@ pub struct MessageMetadata {
     pub message_type: i32,
     pub server_timestamp: Option<crate::proto::common::Timestamp>,
     pub forward_count: i32,
+}
+
+// ============================================================================
+// Phase 3: Blocked Users Methods
+// ============================================================================
+
+impl DatabaseClient {
+    /// Block a user
+    pub async fn block_user(
+        &self,
+        user_id: &str,
+        blocked_user_id: &str,
+        blocked_username: &str,
+    ) -> Result<i64> {
+        let blocked_at = chrono::Utc::now().timestamp_millis();
+
+        self.scylla_query(
+            "INSERT INTO guardyn.blocked_users (user_id, blocked_user_id, blocked_username, blocked_at) 
+             VALUES (?, ?, ?, ?)",
+            (user_id, blocked_user_id, blocked_username, blocked_at),
+        ).await?;
+
+        tracing::info!(
+            user_id = %user_id,
+            blocked_user_id = %blocked_user_id,
+            "User blocked successfully"
+        );
+
+        Ok(blocked_at)
+    }
+
+    /// Unblock a user
+    pub async fn unblock_user(&self, user_id: &str, blocked_user_id: &str) -> Result<()> {
+        self.scylla_query(
+            "DELETE FROM guardyn.blocked_users WHERE user_id = ? AND blocked_user_id = ?",
+            (user_id, blocked_user_id),
+        ).await?;
+
+        tracing::info!(
+            user_id = %user_id,
+            unblocked_user_id = %blocked_user_id,
+            "User unblocked successfully"
+        );
+
+        Ok(())
+    }
+
+    /// Check if a user is blocked
+    pub async fn is_user_blocked(&self, user_id: &str, potential_blocked_id: &str) -> Result<bool> {
+        let rows = self.scylla_query(
+            "SELECT blocked_user_id FROM guardyn.blocked_users 
+             WHERE user_id = ? AND blocked_user_id = ?",
+            (user_id, potential_blocked_id),
+        ).await?;
+
+        Ok(rows.rows.map_or(false, |r| !r.is_empty()))
+    }
+
+    /// Get all blocked users for a user
+    pub async fn get_blocked_users(&self, user_id: &str) -> Result<Vec<crate::proto::messaging::BlockedUser>> {
+        let rows = self.scylla_query(
+            "SELECT blocked_user_id, blocked_username, blocked_at 
+             FROM guardyn.blocked_users WHERE user_id = ?",
+            (user_id,),
+        ).await?;
+
+        let mut blocked_users = Vec::new();
+
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                let blocked_user_id: String = row.columns[0].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let blocked_username: String = row.columns[1].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let blocked_at: i64 = row.columns[2].as_ref()
+                    .and_then(|v| v.as_bigint())
+                    .unwrap_or(0);
+
+                blocked_users.push(crate::proto::messaging::BlockedUser {
+                    user_id: blocked_user_id,
+                    username: blocked_username,
+                    blocked_at: Some(crate::proto::common::Timestamp {
+                        seconds: blocked_at / 1000,
+                        nanos: ((blocked_at % 1000) * 1_000_000) as i32,
+                    }),
+                });
+            }
+        }
+
+        Ok(blocked_users)
+    }
+
+    /// Delete a conversation for a user (soft delete - only removes from user's view)
+    pub async fn delete_conversation(&self, user_id: &str, conversation_id: &str) -> Result<()> {
+        let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
+
+        // Delete the conversation from user's conversation list
+        // We use ALLOW FILTERING since we need to delete by user_id and conversation_id
+        // but conversation_id is not part of the clustering key
+        self.scylla_query(
+            "DELETE FROM guardyn.conversations 
+             WHERE user_id = ? AND conversation_id = ?
+             ALLOW FILTERING",
+            (user_id, conv_uuid),
+        ).await?;
+
+        tracing::info!(
+            user_id = %user_id,
+            conversation_id = %conversation_id,
+            "Conversation deleted for user"
+        );
+
+        Ok(())
+    }
 }

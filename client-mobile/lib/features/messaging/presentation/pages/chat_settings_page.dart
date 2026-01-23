@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../data/datasources/notification_remote_datasource.dart';
+import '../../domain/usecases/block_user.dart';
+import '../../domain/usecases/delete_conversation.dart';
 import '../../domain/usecases/mute_conversation.dart';
 import 'media_gallery_page.dart';
 import 'search_messages_page.dart';
@@ -28,12 +30,18 @@ class ChatSettingsPage extends StatefulWidget {
 class _ChatSettingsPageState extends State<ChatSettingsPage> {
   bool _isMuted = false;
   bool _isMuteLoading = false;
+  bool _isBlockLoading = false;
+  bool _isDeleteLoading = false;
   late MuteConversation _muteConversation;
+  late BlockUser _blockUser;
+  late DeleteConversation _deleteConversation;
 
   @override
   void initState() {
     super.initState();
     _muteConversation = getIt<MuteConversation>();
+    _blockUser = getIt<BlockUser>();
+    _deleteConversation = getIt<DeleteConversation>();
   }
 
   Future<void> _toggleMute(bool muted) async {
@@ -209,12 +217,17 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
       children: [
         // Block User
         ListTile(
-          leading: const Icon(Icons.block, color: Colors.orange),
+          leading: _isBlockLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.block, color: Colors.orange),
           title: const Text('Block User'),
           subtitle: const Text('Stop receiving messages from this user'),
-          onTap: () {
-            _confirmBlockUser(context);
-          },
+          enabled: !_isBlockLoading,
+          onTap: _isBlockLoading ? null : () => _confirmBlockUser(context),
         ),
 
         // Clear Chat History
@@ -229,12 +242,19 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
 
         // Delete Conversation
         ListTile(
-          leading: const Icon(Icons.delete_forever, color: Colors.red),
+          leading: _isDeleteLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.delete_forever, color: Colors.red),
           title: const Text('Delete Conversation'),
           subtitle: const Text('Remove this conversation completely'),
-          onTap: () {
-            _confirmDeleteConversation(context);
-          },
+          enabled: !_isDeleteLoading,
+          onTap: _isDeleteLoading
+              ? null
+              : () => _confirmDeleteConversation(context),
         ),
       ],
     );
@@ -280,17 +300,39 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // TODO: Implement block user API call
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('User blocked')));
+              await _performBlockUser();
             },
             child: const Text('Block', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _performBlockUser() async {
+    setState(() => _isBlockLoading = true);
+
+    final result = await _blockUser(widget.userId);
+
+    if (!mounted) return;
+
+    setState(() => _isBlockLoading = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${failure.message}')));
+      },
+      (_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${widget.username} blocked')));
+        // Return to conversation list
+        Navigator.of(context).pop({'userBlocked': true});
+      },
     );
   }
 
@@ -323,6 +365,13 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   }
 
   void _confirmDeleteConversation(BuildContext context) {
+    if (widget.conversationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot delete: conversation not found')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -336,18 +385,41 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // TODO: Implement delete conversation API call
-              Navigator.pop(context); // Return to conversation list
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Conversation deleted')),
-              );
+              await _performDeleteConversation();
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _performDeleteConversation() async {
+    if (widget.conversationId == null) return;
+
+    setState(() => _isDeleteLoading = true);
+
+    final result = await _deleteConversation(widget.conversationId!);
+
+    if (!mounted) return;
+
+    setState(() => _isDeleteLoading = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${failure.message}')));
+      },
+      (_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Conversation deleted')));
+        // Return to conversation list
+        Navigator.of(context).pop({'conversationDeleted': true});
+      },
     );
   }
 }

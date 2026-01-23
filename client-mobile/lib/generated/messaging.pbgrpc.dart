@@ -147,6 +147,14 @@ class MessagingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$getGroupById, request, options: options);
   }
 
+  /// Update group (name, icon, description)
+  $grpc.ResponseFuture<$0.UpdateGroupResponse> updateGroup(
+    $0.UpdateGroupRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateGroup, request, options: options);
+  }
+
   /// Leave a group
   $grpc.ResponseFuture<$0.LeaveGroupResponse> leaveGroup(
     $0.LeaveGroupRequest request, {
@@ -161,6 +169,120 @@ class MessagingServiceClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createUnaryCall(_$clearChat, request, options: options);
+  }
+
+  /// Add reaction to a message
+  $grpc.ResponseFuture<$0.AddReactionResponse> addReaction(
+    $0.AddReactionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$addReaction, request, options: options);
+  }
+
+  /// Remove reaction from a message
+  $grpc.ResponseFuture<$0.RemoveReactionResponse> removeReaction(
+    $0.RemoveReactionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$removeReaction, request, options: options);
+  }
+
+  /// Get all reactions for a message
+  $grpc.ResponseFuture<$0.GetReactionsResponse> getReactions(
+    $0.GetReactionsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getReactions, request, options: options);
+  }
+
+  /// Send read receipt for a conversation
+  $grpc.ResponseFuture<$0.SendReadReceiptResponse> sendReadReceipt(
+    $0.SendReadReceiptRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$sendReadReceipt, request, options: options);
+  }
+
+  /// Get read receipts for a conversation (who read what)
+  $grpc.ResponseFuture<$0.GetReadReceiptsResponse> getReadReceipts(
+    $0.GetReadReceiptsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getReadReceipts, request, options: options);
+  }
+
+  /// Forward a message to another conversation
+  $grpc.ResponseFuture<$0.ForwardMessageResponse> forwardMessage(
+    $0.ForwardMessageRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$forwardMessage, request, options: options);
+  }
+
+  /// Edit a previously sent message
+  $grpc.ResponseFuture<$0.EditMessageResponse> editMessage(
+    $0.EditMessageRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$editMessage, request, options: options);
+  }
+
+  /// Search messages (returns encrypted content for client-side search)
+  $grpc.ResponseFuture<$0.SearchMessagesResponse> searchMessages(
+    $0.SearchMessagesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$searchMessages, request, options: options);
+  }
+
+  /// Set disappearing messages config for a conversation
+  $grpc.ResponseFuture<$0.SetDisappearingMessagesResponse>
+      setDisappearingMessages(
+    $0.SetDisappearingMessagesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$setDisappearingMessages, request,
+        options: options);
+  }
+
+  /// Get disappearing messages config
+  $grpc.ResponseFuture<$0.GetDisappearingConfigResponse> getDisappearingConfig(
+    $0.GetDisappearingConfigRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getDisappearingConfig, request, options: options);
+  }
+
+  /// Block a user from messaging you
+  $grpc.ResponseFuture<$0.BlockUserResponse> blockUser(
+    $0.BlockUserRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$blockUser, request, options: options);
+  }
+
+  /// Unblock a previously blocked user
+  $grpc.ResponseFuture<$0.UnblockUserResponse> unblockUser(
+    $0.UnblockUserRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$unblockUser, request, options: options);
+  }
+
+  /// Get list of blocked users
+  $grpc.ResponseFuture<$0.GetBlockedUsersResponse> getBlockedUsers(
+    $0.GetBlockedUsersRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getBlockedUsers, request, options: options);
+  }
+
+  /// Delete a conversation (removes from user's list, keeps for other party)
+  $grpc.ResponseFuture<$0.DeleteConversationResponse> deleteConversation(
+    $0.DeleteConversationRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteConversation, request, options: options);
   }
 
   /// Health check
@@ -243,6 +365,11 @@ class MessagingServiceClient extends $grpc.Client {
           '/guardyn.messaging.MessagingService/GetGroupById',
           ($0.GetGroupByIdRequest value) => value.writeToBuffer(),
           $0.GetGroupByIdResponse.fromBuffer);
+  static final _$updateGroup =
+      $grpc.ClientMethod<$0.UpdateGroupRequest, $0.UpdateGroupResponse>(
+          '/guardyn.messaging.MessagingService/UpdateGroup',
+          ($0.UpdateGroupRequest value) => value.writeToBuffer(),
+          $0.UpdateGroupResponse.fromBuffer);
   static final _$leaveGroup =
       $grpc.ClientMethod<$0.LeaveGroupRequest, $0.LeaveGroupResponse>(
           '/guardyn.messaging.MessagingService/LeaveGroup',
@@ -253,6 +380,77 @@ class MessagingServiceClient extends $grpc.Client {
           '/guardyn.messaging.MessagingService/ClearChat',
           ($0.ClearChatRequest value) => value.writeToBuffer(),
           $0.ClearChatResponse.fromBuffer);
+  static final _$addReaction =
+      $grpc.ClientMethod<$0.AddReactionRequest, $0.AddReactionResponse>(
+          '/guardyn.messaging.MessagingService/AddReaction',
+          ($0.AddReactionRequest value) => value.writeToBuffer(),
+          $0.AddReactionResponse.fromBuffer);
+  static final _$removeReaction =
+      $grpc.ClientMethod<$0.RemoveReactionRequest, $0.RemoveReactionResponse>(
+          '/guardyn.messaging.MessagingService/RemoveReaction',
+          ($0.RemoveReactionRequest value) => value.writeToBuffer(),
+          $0.RemoveReactionResponse.fromBuffer);
+  static final _$getReactions =
+      $grpc.ClientMethod<$0.GetReactionsRequest, $0.GetReactionsResponse>(
+          '/guardyn.messaging.MessagingService/GetReactions',
+          ($0.GetReactionsRequest value) => value.writeToBuffer(),
+          $0.GetReactionsResponse.fromBuffer);
+  static final _$sendReadReceipt =
+      $grpc.ClientMethod<$0.SendReadReceiptRequest, $0.SendReadReceiptResponse>(
+          '/guardyn.messaging.MessagingService/SendReadReceipt',
+          ($0.SendReadReceiptRequest value) => value.writeToBuffer(),
+          $0.SendReadReceiptResponse.fromBuffer);
+  static final _$getReadReceipts =
+      $grpc.ClientMethod<$0.GetReadReceiptsRequest, $0.GetReadReceiptsResponse>(
+          '/guardyn.messaging.MessagingService/GetReadReceipts',
+          ($0.GetReadReceiptsRequest value) => value.writeToBuffer(),
+          $0.GetReadReceiptsResponse.fromBuffer);
+  static final _$forwardMessage =
+      $grpc.ClientMethod<$0.ForwardMessageRequest, $0.ForwardMessageResponse>(
+          '/guardyn.messaging.MessagingService/ForwardMessage',
+          ($0.ForwardMessageRequest value) => value.writeToBuffer(),
+          $0.ForwardMessageResponse.fromBuffer);
+  static final _$editMessage =
+      $grpc.ClientMethod<$0.EditMessageRequest, $0.EditMessageResponse>(
+          '/guardyn.messaging.MessagingService/EditMessage',
+          ($0.EditMessageRequest value) => value.writeToBuffer(),
+          $0.EditMessageResponse.fromBuffer);
+  static final _$searchMessages =
+      $grpc.ClientMethod<$0.SearchMessagesRequest, $0.SearchMessagesResponse>(
+          '/guardyn.messaging.MessagingService/SearchMessages',
+          ($0.SearchMessagesRequest value) => value.writeToBuffer(),
+          $0.SearchMessagesResponse.fromBuffer);
+  static final _$setDisappearingMessages = $grpc.ClientMethod<
+          $0.SetDisappearingMessagesRequest,
+          $0.SetDisappearingMessagesResponse>(
+      '/guardyn.messaging.MessagingService/SetDisappearingMessages',
+      ($0.SetDisappearingMessagesRequest value) => value.writeToBuffer(),
+      $0.SetDisappearingMessagesResponse.fromBuffer);
+  static final _$getDisappearingConfig = $grpc.ClientMethod<
+          $0.GetDisappearingConfigRequest, $0.GetDisappearingConfigResponse>(
+      '/guardyn.messaging.MessagingService/GetDisappearingConfig',
+      ($0.GetDisappearingConfigRequest value) => value.writeToBuffer(),
+      $0.GetDisappearingConfigResponse.fromBuffer);
+  static final _$blockUser =
+      $grpc.ClientMethod<$0.BlockUserRequest, $0.BlockUserResponse>(
+          '/guardyn.messaging.MessagingService/BlockUser',
+          ($0.BlockUserRequest value) => value.writeToBuffer(),
+          $0.BlockUserResponse.fromBuffer);
+  static final _$unblockUser =
+      $grpc.ClientMethod<$0.UnblockUserRequest, $0.UnblockUserResponse>(
+          '/guardyn.messaging.MessagingService/UnblockUser',
+          ($0.UnblockUserRequest value) => value.writeToBuffer(),
+          $0.UnblockUserResponse.fromBuffer);
+  static final _$getBlockedUsers =
+      $grpc.ClientMethod<$0.GetBlockedUsersRequest, $0.GetBlockedUsersResponse>(
+          '/guardyn.messaging.MessagingService/GetBlockedUsers',
+          ($0.GetBlockedUsersRequest value) => value.writeToBuffer(),
+          $0.GetBlockedUsersResponse.fromBuffer);
+  static final _$deleteConversation = $grpc.ClientMethod<
+          $0.DeleteConversationRequest, $0.DeleteConversationResponse>(
+      '/guardyn.messaging.MessagingService/DeleteConversation',
+      ($0.DeleteConversationRequest value) => value.writeToBuffer(),
+      $0.DeleteConversationResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.messaging.MessagingService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -385,6 +583,15 @@ abstract class MessagingServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.GetGroupByIdRequest.fromBuffer(value),
             ($0.GetGroupByIdResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.UpdateGroupRequest, $0.UpdateGroupResponse>(
+            'UpdateGroup',
+            updateGroup_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.UpdateGroupRequest.fromBuffer(value),
+            ($0.UpdateGroupResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.LeaveGroupRequest, $0.LeaveGroupResponse>(
         'LeaveGroup',
         leaveGroup_Pre,
@@ -399,6 +606,130 @@ abstract class MessagingServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.ClearChatRequest.fromBuffer(value),
         ($0.ClearChatResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.AddReactionRequest, $0.AddReactionResponse>(
+            'AddReaction',
+            addReaction_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.AddReactionRequest.fromBuffer(value),
+            ($0.AddReactionResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RemoveReactionRequest,
+            $0.RemoveReactionResponse>(
+        'RemoveReaction',
+        removeReaction_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.RemoveReactionRequest.fromBuffer(value),
+        ($0.RemoveReactionResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.GetReactionsRequest, $0.GetReactionsResponse>(
+            'GetReactions',
+            getReactions_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.GetReactionsRequest.fromBuffer(value),
+            ($0.GetReactionsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SendReadReceiptRequest,
+            $0.SendReadReceiptResponse>(
+        'SendReadReceipt',
+        sendReadReceipt_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SendReadReceiptRequest.fromBuffer(value),
+        ($0.SendReadReceiptResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetReadReceiptsRequest,
+            $0.GetReadReceiptsResponse>(
+        'GetReadReceipts',
+        getReadReceipts_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetReadReceiptsRequest.fromBuffer(value),
+        ($0.GetReadReceiptsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ForwardMessageRequest,
+            $0.ForwardMessageResponse>(
+        'ForwardMessage',
+        forwardMessage_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ForwardMessageRequest.fromBuffer(value),
+        ($0.ForwardMessageResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.EditMessageRequest, $0.EditMessageResponse>(
+            'EditMessage',
+            editMessage_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.EditMessageRequest.fromBuffer(value),
+            ($0.EditMessageResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SearchMessagesRequest,
+            $0.SearchMessagesResponse>(
+        'SearchMessages',
+        searchMessages_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SearchMessagesRequest.fromBuffer(value),
+        ($0.SearchMessagesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetDisappearingMessagesRequest,
+            $0.SetDisappearingMessagesResponse>(
+        'SetDisappearingMessages',
+        setDisappearingMessages_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SetDisappearingMessagesRequest.fromBuffer(value),
+        ($0.SetDisappearingMessagesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetDisappearingConfigRequest,
+            $0.GetDisappearingConfigResponse>(
+        'GetDisappearingConfig',
+        getDisappearingConfig_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetDisappearingConfigRequest.fromBuffer(value),
+        ($0.GetDisappearingConfigResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.BlockUserRequest, $0.BlockUserResponse>(
+        'BlockUser',
+        blockUser_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.BlockUserRequest.fromBuffer(value),
+        ($0.BlockUserResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.UnblockUserRequest, $0.UnblockUserResponse>(
+            'UnblockUser',
+            unblockUser_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.UnblockUserRequest.fromBuffer(value),
+            ($0.UnblockUserResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetBlockedUsersRequest,
+            $0.GetBlockedUsersResponse>(
+        'GetBlockedUsers',
+        getBlockedUsers_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.GetBlockedUsersRequest.fromBuffer(value),
+        ($0.GetBlockedUsersResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeleteConversationRequest,
+            $0.DeleteConversationResponse>(
+        'DeleteConversation',
+        deleteConversation_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.DeleteConversationRequest.fromBuffer(value),
+        ($0.DeleteConversationResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -528,6 +859,14 @@ abstract class MessagingServiceBase extends $grpc.Service {
   $async.Future<$0.GetGroupByIdResponse> getGroupById(
       $grpc.ServiceCall call, $0.GetGroupByIdRequest request);
 
+  $async.Future<$0.UpdateGroupResponse> updateGroup_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.UpdateGroupRequest> $request) async {
+    return updateGroup($call, await $request);
+  }
+
+  $async.Future<$0.UpdateGroupResponse> updateGroup(
+      $grpc.ServiceCall call, $0.UpdateGroupRequest request);
+
   $async.Future<$0.LeaveGroupResponse> leaveGroup_Pre($grpc.ServiceCall $call,
       $async.Future<$0.LeaveGroupRequest> $request) async {
     return leaveGroup($call, await $request);
@@ -543,6 +882,128 @@ abstract class MessagingServiceBase extends $grpc.Service {
 
   $async.Future<$0.ClearChatResponse> clearChat(
       $grpc.ServiceCall call, $0.ClearChatRequest request);
+
+  $async.Future<$0.AddReactionResponse> addReaction_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.AddReactionRequest> $request) async {
+    return addReaction($call, await $request);
+  }
+
+  $async.Future<$0.AddReactionResponse> addReaction(
+      $grpc.ServiceCall call, $0.AddReactionRequest request);
+
+  $async.Future<$0.RemoveReactionResponse> removeReaction_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RemoveReactionRequest> $request) async {
+    return removeReaction($call, await $request);
+  }
+
+  $async.Future<$0.RemoveReactionResponse> removeReaction(
+      $grpc.ServiceCall call, $0.RemoveReactionRequest request);
+
+  $async.Future<$0.GetReactionsResponse> getReactions_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetReactionsRequest> $request) async {
+    return getReactions($call, await $request);
+  }
+
+  $async.Future<$0.GetReactionsResponse> getReactions(
+      $grpc.ServiceCall call, $0.GetReactionsRequest request);
+
+  $async.Future<$0.SendReadReceiptResponse> sendReadReceipt_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SendReadReceiptRequest> $request) async {
+    return sendReadReceipt($call, await $request);
+  }
+
+  $async.Future<$0.SendReadReceiptResponse> sendReadReceipt(
+      $grpc.ServiceCall call, $0.SendReadReceiptRequest request);
+
+  $async.Future<$0.GetReadReceiptsResponse> getReadReceipts_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetReadReceiptsRequest> $request) async {
+    return getReadReceipts($call, await $request);
+  }
+
+  $async.Future<$0.GetReadReceiptsResponse> getReadReceipts(
+      $grpc.ServiceCall call, $0.GetReadReceiptsRequest request);
+
+  $async.Future<$0.ForwardMessageResponse> forwardMessage_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ForwardMessageRequest> $request) async {
+    return forwardMessage($call, await $request);
+  }
+
+  $async.Future<$0.ForwardMessageResponse> forwardMessage(
+      $grpc.ServiceCall call, $0.ForwardMessageRequest request);
+
+  $async.Future<$0.EditMessageResponse> editMessage_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.EditMessageRequest> $request) async {
+    return editMessage($call, await $request);
+  }
+
+  $async.Future<$0.EditMessageResponse> editMessage(
+      $grpc.ServiceCall call, $0.EditMessageRequest request);
+
+  $async.Future<$0.SearchMessagesResponse> searchMessages_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SearchMessagesRequest> $request) async {
+    return searchMessages($call, await $request);
+  }
+
+  $async.Future<$0.SearchMessagesResponse> searchMessages(
+      $grpc.ServiceCall call, $0.SearchMessagesRequest request);
+
+  $async.Future<$0.SetDisappearingMessagesResponse> setDisappearingMessages_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SetDisappearingMessagesRequest> $request) async {
+    return setDisappearingMessages($call, await $request);
+  }
+
+  $async.Future<$0.SetDisappearingMessagesResponse> setDisappearingMessages(
+      $grpc.ServiceCall call, $0.SetDisappearingMessagesRequest request);
+
+  $async.Future<$0.GetDisappearingConfigResponse> getDisappearingConfig_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetDisappearingConfigRequest> $request) async {
+    return getDisappearingConfig($call, await $request);
+  }
+
+  $async.Future<$0.GetDisappearingConfigResponse> getDisappearingConfig(
+      $grpc.ServiceCall call, $0.GetDisappearingConfigRequest request);
+
+  $async.Future<$0.BlockUserResponse> blockUser_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.BlockUserRequest> $request) async {
+    return blockUser($call, await $request);
+  }
+
+  $async.Future<$0.BlockUserResponse> blockUser(
+      $grpc.ServiceCall call, $0.BlockUserRequest request);
+
+  $async.Future<$0.UnblockUserResponse> unblockUser_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.UnblockUserRequest> $request) async {
+    return unblockUser($call, await $request);
+  }
+
+  $async.Future<$0.UnblockUserResponse> unblockUser(
+      $grpc.ServiceCall call, $0.UnblockUserRequest request);
+
+  $async.Future<$0.GetBlockedUsersResponse> getBlockedUsers_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.GetBlockedUsersRequest> $request) async {
+    return getBlockedUsers($call, await $request);
+  }
+
+  $async.Future<$0.GetBlockedUsersResponse> getBlockedUsers(
+      $grpc.ServiceCall call, $0.GetBlockedUsersRequest request);
+
+  $async.Future<$0.DeleteConversationResponse> deleteConversation_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DeleteConversationRequest> $request) async {
+    return deleteConversation($call, await $request);
+  }
+
+  $async.Future<$0.DeleteConversationResponse> deleteConversation(
+      $grpc.ServiceCall call, $0.DeleteConversationRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {

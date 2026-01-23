@@ -114,6 +114,26 @@ service MessagingService {
   // Get disappearing messages config
   rpc GetDisappearingConfig(GetDisappearingConfigRequest) returns (GetDisappearingConfigResponse);
 
+  // ========================================================================
+  // Phase 3: User Blocking
+  // ========================================================================
+
+  // Block a user from messaging you
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+
+  // Unblock a previously blocked user
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+
+  // Get list of blocked users
+  rpc GetBlockedUsers(GetBlockedUsersRequest) returns (GetBlockedUsersResponse);
+
+  // ========================================================================
+  // Phase 3: Delete Conversation
+  // ========================================================================
+
+  // Delete a conversation (removes from user's list, keeps for other party)
+  rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -967,3 +987,81 @@ message GetDisappearingConfigSuccess {
 // ============================================================================
 
 message HealthRequest {}
+
+// ============================================================================
+// User Blocking (Phase 3)
+// ============================================================================
+
+message BlockUserRequest {
+  string access_token = 1;
+  string blocked_user_id = 2;          // User ID to block
+}
+
+message BlockUserResponse {
+  oneof result {
+    BlockUserSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message BlockUserSuccess {
+  string blocked_user_id = 1;
+  common.Timestamp blocked_at = 2;
+}
+
+message UnblockUserRequest {
+  string access_token = 1;
+  string user_id = 2;                   // User ID to unblock
+}
+
+message UnblockUserResponse {
+  oneof result {
+    UnblockUserSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UnblockUserSuccess {
+  string user_id = 1;
+}
+
+message GetBlockedUsersRequest {
+  string access_token = 1;
+}
+
+message GetBlockedUsersResponse {
+  oneof result {
+    GetBlockedUsersSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetBlockedUsersSuccess {
+  repeated BlockedUser blocked_users = 1;
+}
+
+message BlockedUser {
+  string user_id = 1;
+  string username = 2;
+  common.Timestamp blocked_at = 3;
+}
+
+// ============================================================================
+// Delete Conversation (Phase 3)
+// ============================================================================
+
+message DeleteConversationRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+}
+
+message DeleteConversationResponse {
+  oneof result {
+    DeleteConversationSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteConversationSuccess {
+  string conversation_id = 1;
+}
