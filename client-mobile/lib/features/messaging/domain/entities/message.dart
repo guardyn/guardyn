@@ -14,6 +14,7 @@ class Message extends Equatable {
   final DateTime timestamp;
   final DeliveryStatus deliveryStatus;
   final String? currentUserId; // For determining if message is sent by current user
+  final String senderUsername; // Display name of the sender
 
   const Message({
     required this.messageId,
@@ -28,10 +29,55 @@ class Message extends Equatable {
     required this.timestamp,
     required this.deliveryStatus,
     this.currentUserId,
+    this.senderUsername = '',
   });
 
   /// Check if this message was sent by the current user
   bool get isSentByMe => currentUserId != null && senderUserId == currentUserId;
+
+  /// Get display name for sender (username or fallback to truncated userId)
+  String get senderDisplayName {
+    if (senderUsername.isNotEmpty) {
+      return senderUsername;
+    }
+    // Fallback to userId (show first 8 chars)
+    return senderUserId.length > 8 
+        ? senderUserId.substring(0, 8) 
+        : senderUserId;
+  }
+
+  /// Create a copy with updated fields
+  Message copyWith({
+    String? messageId,
+    String? conversationId,
+    String? senderUserId,
+    String? senderDeviceId,
+    String? recipientUserId,
+    String? recipientDeviceId,
+    MessageType? messageType,
+    String? textContent,
+    Map<String, String>? metadata,
+    DateTime? timestamp,
+    DeliveryStatus? deliveryStatus,
+    String? currentUserId,
+    String? senderUsername,
+  }) {
+    return Message(
+      messageId: messageId ?? this.messageId,
+      conversationId: conversationId ?? this.conversationId,
+      senderUserId: senderUserId ?? this.senderUserId,
+      senderDeviceId: senderDeviceId ?? this.senderDeviceId,
+      recipientUserId: recipientUserId ?? this.recipientUserId,
+      recipientDeviceId: recipientDeviceId ?? this.recipientDeviceId,
+      messageType: messageType ?? this.messageType,
+      textContent: textContent ?? this.textContent,
+      metadata: metadata ?? this.metadata,
+      timestamp: timestamp ?? this.timestamp,
+      deliveryStatus: deliveryStatus ?? this.deliveryStatus,
+      currentUserId: currentUserId ?? this.currentUserId,
+      senderUsername: senderUsername ?? this.senderUsername,
+    );
+  }
 
   /// Format timestamp for display
   String get displayTime {
@@ -68,6 +114,7 @@ class Message extends Equatable {
         timestamp,
         deliveryStatus,
         currentUserId,
+        senderUsername,
       ];
 }
 

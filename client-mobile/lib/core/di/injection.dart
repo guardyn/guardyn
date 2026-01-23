@@ -56,6 +56,7 @@ import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.d
 import 'package:guardyn_client/features/messaging/domain/usecases/mute_conversation.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
 // Presence feature imports
 import 'package:guardyn_client/features/presence/data/datasources/presence_remote_datasource.dart';
@@ -197,6 +198,13 @@ void _registerMessagingDependencies() {
 
   getIt.registerLazySingleton<MuteConversation>(
     () => MuteConversation(getIt<MuteConversationRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetUserDisplayName>(
+    () => GetUserDisplayName(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
   );
 
   // Presentation layer - BLoC
