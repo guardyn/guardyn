@@ -85,16 +85,25 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   void _saveProfile() {
-    if (!_formKey.currentState!.validate()) return;
+    debugPrint('🔵 ProfileEditPage._saveProfile() called');
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('🔵 Form validation failed');
+      return;
+    }
     if (!_hasChanges) {
+      debugPrint('🔵 No changes, popping');
       Navigator.pop(context);
       return;
     }
 
+    debugPrint(
+      '🔵 _hasChanges=$_hasChanges, _newAvatarPath=$_newAvatarPath, _removeAvatar=$_removeAvatar',
+    );
     setState(() => _isSaving = true);
 
     final authBloc = context.read<AuthBloc>();
 
+    debugPrint('🔵 Sending AuthUpdateProfileRequested event');
     // Send a single event with all changes including the avatar path
     // The bloc will handle upload and profile update sequentially
     authBloc.add(AuthUpdateProfileRequested(
@@ -107,6 +116,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       removeAvatar: _removeAvatar,
       newAvatarPath: _newAvatarPath,
     ));
+    debugPrint('🔵 AuthUpdateProfileRequested event sent');
   }
 
   @override

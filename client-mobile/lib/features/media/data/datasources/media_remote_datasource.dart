@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
+import 'package:guardyn_client/core/constants/config.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
+import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
 import 'package:guardyn_client/generated/media.pb.dart' as pb;
 import 'package:guardyn_client/generated/media.pbgrpc.dart';
@@ -13,12 +15,28 @@ import 'package:logger/logger.dart';
 class MediaRemoteDatasource {
   final GrpcClients grpcClients;
   final http.Client httpClient;
+  final SecureStorage secureStorage;
   final Logger logger = Logger();
 
-  MediaRemoteDatasource(this.grpcClients, this.httpClient);
+  MediaRemoteDatasource(this.grpcClients, this.httpClient, this.secureStorage);
 
   /// Get the media service client
   MediaServiceClient get _mediaClient => grpcClients.mediaClient;
+
+  /// Get CallOptions with authorization header
+  Future<CallOptions> _getAuthOptions({Duration? timeout}) async {
+    final accessToken = await secureStorage.getAccessToken();
+    if (accessToken == null) {
+      throw MediaException(
+        'No access token available',
+        code: 'UNAUTHENTICATED',
+      );
+    }
+    return CallOptions(
+      metadata: {'authorization': 'Bearer $accessToken'},
+      timeout: timeout ?? const Duration(seconds: 15),
+    );
+  }
 
   /// Get presigned upload URL from server
   ///
@@ -40,10 +58,11 @@ class MediaRemoteDatasource {
         request.conversationId = conversationId;
       }
 
-      // Add timeout to prevent hanging if media service is unavailable
+      // Add timeout and auth to prevent hanging if media service is unavailable
+      final options = await _getAuthOptions();
       final response = await _mediaClient.getUploadUrl(
         request,
-        options: CallOptions(timeout: const Duration(seconds: 15)),
+        options: options,
       );
 
       if (response.hasError()) {
@@ -86,7 +105,12 @@ class MediaRemoteDatasource {
     void Function(double progress)? onProgress,
   }) async {
     try {
-      final uri = Uri.parse(presignedUrl);
+      // Transform internal Docker URL to client-accessible URL
+      final transformedUrl = AppConfig.transformPresignedUrl(presignedUrl);
+      final uri = Uri.parse(transformedUrl);
+
+      logger.d('Original URL: $presignedUrl');
+      logger.d('Transformed URL: $transformedUrl');
 
       // Create multipart request for progress tracking if needed
       final request = http.Request('PUT', uri);
@@ -134,9 +158,10 @@ class MediaRemoteDatasource {
     try {
       final request = pb.GetDownloadUrlRequest()..mediaId = mediaId;
 
+      final options = await _getAuthOptions();
       final response = await _mediaClient.getDownloadUrl(
         request,
-        options: CallOptions(timeout: const Duration(seconds: 15)),
+        options: options,
       );
 
       if (response.hasError()) {
@@ -221,10 +246,11 @@ class MediaRemoteDatasource {
   }) async {
     try {
       final request = pb.GetMediaMetadataRequest()..mediaId = mediaId;
+      final options = await _getAuthOptions();
 
       final response = await _mediaClient.getMediaMetadata(
         request,
-        options: CallOptions(timeout: const Duration(seconds: 15)),
+        options: options,
       );
 
       if (response.hasError()) {
@@ -272,9 +298,10 @@ class MediaRemoteDatasource {
         request.cursor = cursor;
       }
 
+      final options = await _getAuthOptions();
       final response = await _mediaClient.listMedia(
         request,
-        options: CallOptions(timeout: const Duration(seconds: 15)),
+        options: options,
       );
 
       if (response.hasError()) {
@@ -308,10 +335,11 @@ class MediaRemoteDatasource {
   }) async {
     try {
       final request = pb.DeleteMediaRequest()..mediaId = mediaId;
+      final options = await _getAuthOptions();
 
       final response = await _mediaClient.deleteMedia(
         request,
-        options: CallOptions(timeout: const Duration(seconds: 15)),
+        options: options,
       );
 
       if (response.hasError()) {
@@ -355,9 +383,12 @@ class MediaRemoteDatasource {
         request.maxHeight = maxHeight;
       }
 
+      final options = await _getAuthOptions(
+        timeout: const Duration(seconds: 30),
+      );
       final response = await _mediaClient.generateThumbnail(
         request,
-        options: CallOptions(timeout: const Duration(seconds: 30)),
+        options: options,
       );
 
       if (response.hasError()) {

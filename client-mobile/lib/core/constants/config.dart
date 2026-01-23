@@ -47,6 +47,28 @@ class AppConfig {
   static String get mediaHost => authHost; // Same logic as authHost
   static const int mediaPort = 50054;
 
+  // S3/MinIO configuration for file uploads
+  static String get minioHost => authHost; // Same logic as gRPC hosts
+  static const int minioPort = 9000;
+
+  /// Transform internal Docker presigned URLs to client-accessible URLs
+  /// The backend generates URLs with 'minio:9000' which is internal to Docker.
+  /// This method replaces the internal host with the client-accessible host.
+  static String transformPresignedUrl(String presignedUrl) {
+    final uri = Uri.parse(presignedUrl);
+
+    // Replace internal Docker hostnames with client-accessible host
+    if (uri.host == 'minio' ||
+        uri.host == 'localhost' ||
+        uri.host == '127.0.0.1') {
+      final newUri = uri.replace(host: minioHost, port: minioPort);
+      return newUri.toString();
+    }
+
+    // Return as-is if already using correct host
+    return presignedUrl;
+  }
+
   // WebSocket configuration
   static String get websocketHost => authHost; // Same logic as gRPC hosts
   static const int websocketPort = 8081;

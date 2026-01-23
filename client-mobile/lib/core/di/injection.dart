@@ -395,6 +395,7 @@ void _registerMediaDependencies() {
     () => MediaRemoteDatasource(
       getIt<GrpcClients>(),
       getIt<http.Client>(),
+      getIt<SecureStorage>(),
     ),
   );
 
