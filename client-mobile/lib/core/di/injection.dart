@@ -264,6 +264,7 @@ void _registerGroupsDependencies() {
     () => GroupRepositoryImpl(
       getIt<GroupRemoteDatasource>(),
       getIt<SecureStorage>(),
+      getIt<GetUserDisplayName>(),
     ),
   );
 

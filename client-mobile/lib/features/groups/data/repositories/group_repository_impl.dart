@@ -6,6 +6,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../messaging/domain/usecases/get_user_display_name.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../datasources/group_remote_datasource.dart';
@@ -16,11 +17,16 @@ import '../models/group_model.dart';
 class GroupRepositoryImpl implements GroupRepository {
   final GroupRemoteDatasource _remoteDatasource;
   final SecureStorage _secureStorage;
+  final GetUserDisplayName _getUserDisplayName;
 
   // Local cache for groups (in-memory)
   final Map<String, GroupModel> _groupCache = {};
 
-  GroupRepositoryImpl(this._remoteDatasource, this._secureStorage);
+  GroupRepositoryImpl(
+    this._remoteDatasource,
+    this._secureStorage,
+    this._getUserDisplayName,
+  );
 
   Future<String?> _getAccessToken() async {
     return await _secureStorage.getAccessToken();
@@ -53,15 +59,23 @@ class GroupRepositoryImpl implements GroupRepository {
         memberUserIds: memberUserIds,
       );
 
+      // Resolve creator's username
+      final creatorId = currentUserId ?? '';
+      final creatorUsernameResult = await _getUserDisplayName(creatorId);
+      final creatorUsername = creatorUsernameResult.fold(
+        (_) => creatorId,
+        (name) => name,
+      );
+
       // Update group with creator info
       final updatedGroup = GroupModel(
         groupId: group.groupId,
         name: group.name,
-        creatorUserId: currentUserId ?? '',
+        creatorUserId: creatorId,
         members: [
           GroupMemberModel(
-            userId: currentUserId ?? '',
-            username: '', // Will be fetched from user cache
+            userId: creatorId,
+            username: creatorUsername,
             deviceId: await _getCurrentDeviceId() ?? '',
             role: GroupRole.admin,
             joinedAt: group.createdAt,
@@ -251,10 +265,17 @@ class GroupRepositoryImpl implements GroupRepository {
       // Update local cache if group exists
       final cachedGroup = _groupCache[groupId];
       if (cachedGroup != null && result) {
+        // Resolve username from cache or fetch from server
+        final usernameResult = await _getUserDisplayName(memberUserId);
+        final username = usernameResult.fold(
+          (_) => memberUserId,
+          (name) => name,
+        );
+        
         final updatedMembers = List<GroupMember>.from(cachedGroup.members)
           ..add(GroupMemberModel(
             userId: memberUserId,
-            username: memberUserId, // TODO: Fetch username
+            username: username,
             deviceId: memberDeviceId,
             role: GroupRole.member,
             joinedAt: DateTime.now(),
