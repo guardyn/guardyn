@@ -60,4 +60,11 @@ abstract class GroupRepository {
     String? iconMediaId,
     String? description,
   });
+
+  /// Send typing indicator to a group
+  /// Notifies other group members that the user is typing
+  Future<Either<Failure, bool>> sendTypingIndicator({
+    required String groupId,
+    required bool isTyping,
+  });
 }

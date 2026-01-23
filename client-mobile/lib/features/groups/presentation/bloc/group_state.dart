@@ -157,6 +157,22 @@ class GroupUpdated extends GroupState {
   List<Object?> get props => [group];
 }
 
+/// Typing users updated in a group
+class GroupTypingUsersUpdated extends GroupState {
+  final String groupId;
+  final List<String> typingUsernames;
+  final List<GroupMessage> messages;
+
+  const GroupTypingUsersUpdated({
+    required this.groupId,
+    required this.typingUsernames,
+    this.messages = const [],
+  });
+
+  @override
+  List<Object?> get props => [groupId, typingUsernames, messages];
+}
+
 /// Error state
 class GroupError extends GroupState {
   final String message;

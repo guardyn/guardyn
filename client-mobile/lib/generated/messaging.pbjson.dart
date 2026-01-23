@@ -801,6 +801,7 @@ const TypingIndicatorRequest$json = {
     {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
     {'1': 'recipient_user_id', '3': 2, '4': 1, '5': 9, '10': 'recipientUserId'},
     {'1': 'is_typing', '3': 3, '4': 1, '5': 8, '10': 'isTyping'},
+    {'1': 'group_id', '3': 4, '4': 1, '5': 9, '10': 'groupId'},
   ],
 };
 
@@ -808,7 +809,7 @@ const TypingIndicatorRequest$json = {
 final $typed_data.Uint8List typingIndicatorRequestDescriptor = $convert.base64Decode(
     'ChZUeXBpbmdJbmRpY2F0b3JSZXF1ZXN0EiEKDGFjY2Vzc190b2tlbhgBIAEoCVILYWNjZXNzVG'
     '9rZW4SKgoRcmVjaXBpZW50X3VzZXJfaWQYAiABKAlSD3JlY2lwaWVudFVzZXJJZBIbCglpc190'
-    'eXBpbmcYAyABKAhSCGlzVHlwaW5n');
+    'eXBpbmcYAyABKAhSCGlzVHlwaW5nEhkKCGdyb3VwX2lkGAQgASgJUgdncm91cElk');
 
 @$core.Deprecated('Use typingIndicatorResponseDescriptor instead')
 const TypingIndicatorResponse$json = {

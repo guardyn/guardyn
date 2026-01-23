@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -11,12 +12,14 @@ import '../../../media/presentation/widgets/media_picker_sheet.dart';
 class GroupMessageInput extends StatefulWidget {
   final void Function(String text) onSend;
   final void Function(MediaPickerResult result)? onMediaSelected;
+  final void Function(bool isTyping)? onTypingChanged;
   final bool isLoading;
 
   const GroupMessageInput({
     super.key,
     required this.onSend,
     this.onMediaSelected,
+    this.onTypingChanged,
     this.isLoading = false,
   });
 
@@ -27,6 +30,8 @@ class GroupMessageInput extends StatefulWidget {
 class _GroupMessageInputState extends State<GroupMessageInput> {
   final _controller = TextEditingController();
   bool _hasText = false;
+  bool _isTyping = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
@@ -37,6 +42,11 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
   @override
   void dispose() {
     _controller.removeListener(_onTextChanged);
+    _typingTimer?.cancel();
+    // Send stopped typing on dispose
+    if (_isTyping) {
+      widget.onTypingChanged?.call(false);
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -46,11 +56,38 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
     if (hasText != _hasText) {
       setState(() => _hasText = hasText);
     }
+    
+    // Handle typing indicator
+    if (hasText && !_isTyping) {
+      _isTyping = true;
+      widget.onTypingChanged?.call(true);
+    }
+    
+    // Reset the typing timer
+    _typingTimer?.cancel();
+    if (hasText) {
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        if (_isTyping) {
+          _isTyping = false;
+          widget.onTypingChanged?.call(false);
+        }
+      });
+    } else if (_isTyping) {
+      _isTyping = false;
+      widget.onTypingChanged?.call(false);
+    }
   }
 
   void _handleSend() {
     final text = _controller.text.trim();
     if (text.isEmpty || widget.isLoading) return;
+
+    // Stop typing indicator when sending
+    _typingTimer?.cancel();
+    if (_isTyping) {
+      _isTyping = false;
+      widget.onTypingChanged?.call(false);
+    }
 
     widget.onSend(text);
     _controller.clear();

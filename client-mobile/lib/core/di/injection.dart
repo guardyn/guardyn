@@ -26,6 +26,7 @@ import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_typing_indicator.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 // Media feature imports
@@ -309,6 +310,10 @@ void _registerGroupsDependencies() {
     () => UpdateGroup(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<SendGroupTypingIndicator>(
+    () => SendGroupTypingIndicator(getIt<GroupRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<GroupBloc>(
     () => GroupBloc(
@@ -322,6 +327,7 @@ void _registerGroupsDependencies() {
       removeGroupMember: getIt<RemoveGroupMember>(),
       leaveGroup: getIt<LeaveGroup>(),
       updateGroup: getIt<UpdateGroup>(),
+      sendGroupTypingIndicator: getIt<SendGroupTypingIndicator>(),
     ),
   );
 }

@@ -17,6 +17,7 @@ import '../bloc/group_event.dart';
 import '../bloc/group_state.dart';
 import '../widgets/group_message_bubble.dart';
 import '../widgets/group_message_input.dart';
+import '../widgets/group_typing_indicator.dart';
 import 'group_info_page.dart';
 
 /// Page for group chat messages
@@ -301,9 +302,17 @@ class _GroupChatPageState extends State<GroupChatPage> {
                 BlocBuilder<GroupBloc, GroupState>(
                   builder: (context, state) {
                     final isLoading = state is GroupMessageSending || _isUploadingMedia;
+                    
+                    // Get typing usernames from state
+                    final typingUsernames = state is GroupTypingUsersUpdated
+                        ? state.typingUsernames
+                        : _groupBloc.getTypingUsernames(widget.groupId);
+                    
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Typing indicator
+                        GroupTypingIndicator(typingUsernames: typingUsernames),
                         // Upload progress indicator
                         if (_isUploadingMedia)
                           LinearProgressIndicator(
@@ -317,6 +326,14 @@ class _GroupChatPageState extends State<GroupChatPage> {
                           onSend: (text) => _handleSendMessage(context, text),
                           onMediaSelected: _handleMediaSelected,
                           isLoading: isLoading,
+                          onTypingChanged: (isTyping) {
+                            context.read<GroupBloc>().add(
+                              GroupSendTypingIndicator(
+                                groupId: widget.groupId,
+                                isTyping: isTyping,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     );

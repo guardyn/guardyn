@@ -12,6 +12,7 @@ import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_typing_indicator.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_event.dart';
@@ -39,6 +40,8 @@ class MockLeaveGroup extends Mock implements LeaveGroup {}
 
 class MockUpdateGroup extends Mock implements UpdateGroup {}
 
+class MockSendGroupTypingIndicator extends Mock implements SendGroupTypingIndicator {}
+
 // Fake classes for argument matchers
 class FakeCreateGroupParams extends Fake implements CreateGroupParams {}
 
@@ -56,6 +59,8 @@ class FakeDeleteGroupParams extends Fake implements DeleteGroupParams {}
 
 class FakeUpdateGroupParams extends Fake implements UpdateGroupParams {}
 
+class FakeSendGroupTypingIndicatorParams extends Fake implements SendGroupTypingIndicatorParams {}
+
 void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
@@ -67,8 +72,8 @@ void main() {
   late MockAddGroupMember mockAddGroupMember;
   late MockRemoveGroupMember mockRemoveGroupMember;
   late MockLeaveGroup mockLeaveGroup;
-
   late MockUpdateGroup mockUpdateGroup;
+  late MockSendGroupTypingIndicator mockSendGroupTypingIndicator;
 
   // Test data
   const tGroupId = 'group-001';
@@ -117,6 +122,7 @@ void main() {
     registerFallbackValue(FakeLeaveGroupParams());
     registerFallbackValue(FakeDeleteGroupParams());
     registerFallbackValue(FakeUpdateGroupParams());
+    registerFallbackValue(FakeSendGroupTypingIndicatorParams());
   });
 
   setUp(() {
@@ -130,6 +136,7 @@ void main() {
     mockRemoveGroupMember = MockRemoveGroupMember();
     mockLeaveGroup = MockLeaveGroup();
     mockUpdateGroup = MockUpdateGroup();
+    mockSendGroupTypingIndicator = MockSendGroupTypingIndicator();
     
     // Setup default mock behavior for leaveGroup
     when(() => mockLeaveGroup.call(any()))
@@ -142,6 +149,10 @@ void main() {
     // Setup default mock behavior for getGroups
     when(() => mockGetGroups())
         .thenAnswer((_) async => const Right<Failure, List<Group>>([]));
+    
+    // Setup default mock behavior for sendGroupTypingIndicator
+    when(() => mockSendGroupTypingIndicator.call(any()))
+        .thenAnswer((_) async => const Right<Failure, bool>(true));
 
     bloc = GroupBloc(
       createGroup: mockCreateGroup,
@@ -154,6 +165,7 @@ void main() {
       removeGroupMember: mockRemoveGroupMember,
       leaveGroup: mockLeaveGroup,
       updateGroup: mockUpdateGroup,
+      sendGroupTypingIndicator: mockSendGroupTypingIndicator,
     );
   });
 
@@ -546,5 +558,110 @@ void main() {
         GroupUpdated(group: tUpdatedGroup),
       ],
     );
+  });
+
+  group('GroupTypingIndicator', () {
+    const tTypingGroupId = 'group-001';
+
+    blocTest<GroupBloc, GroupState>(
+      'sends typing indicator via use case when GroupSendTypingIndicator is added',
+      build: () {
+        when(() => mockSendGroupTypingIndicator(any()))
+            .thenAnswer((_) async => const Right(true));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupSendTypingIndicator(
+        groupId: tTypingGroupId,
+        isTyping: true,
+      )),
+      verify: (_) {
+        verify(() => mockSendGroupTypingIndicator(any())).called(1);
+      },
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits GroupTypingUsersUpdated when GroupTypingReceived is added with isTyping=true',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const GroupTypingReceived(
+        groupId: tTypingGroupId,
+        userId: 'user-456',
+        username: 'Bob',
+        isTyping: true,
+      )),
+      expect: () => [
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob'],
+          messages: [],
+        ),
+      ],
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits GroupTypingUsersUpdated with empty list when user stops typing',
+      build: () => bloc,
+      act: (bloc) {
+        // First add typing, then remove
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-456',
+          username: 'Bob',
+          isTyping: true,
+        ));
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-456',
+          username: 'Bob',
+          isTyping: false,
+        ));
+      },
+      expect: () => [
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob'],
+          messages: [],
+        ),
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: [],
+          messages: [],
+        ),
+      ],
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'handles multiple users typing simultaneously',
+      build: () => bloc,
+      act: (bloc) {
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-456',
+          username: 'Bob',
+          isTyping: true,
+        ));
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-789',
+          username: 'Charlie',
+          isTyping: true,
+        ));
+      },
+      expect: () => [
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob'],
+          messages: [],
+        ),
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob', 'Charlie'],
+          messages: [],
+        ),
+      ],
+    );
+
+    test('getTypingUsernames returns empty list for unknown group', () {
+      expect(bloc.getTypingUsernames('unknown-group'), isEmpty);
+    });
   });
 }

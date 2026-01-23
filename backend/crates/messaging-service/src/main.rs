@@ -158,9 +158,10 @@ impl MessagingService for MessagingServiceImpl {
 
     async fn send_typing_indicator(
         &self,
-        _request: Request<TypingIndicatorRequest>,
+        request: Request<TypingIndicatorRequest>,
     ) -> Result<Response<TypingIndicatorResponse>, Status> {
-        Err(Status::unimplemented("SendTypingIndicator not yet implemented"))
+        handlers::send_typing_indicator(request.into_inner(), self.db.clone(), self.nats.clone())
+            .await
     }
 
     async fn create_group(

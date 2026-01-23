@@ -31,6 +31,7 @@ pub mod disappearing_messages;
 // Phase 3: User blocking and conversation deletion
 pub mod block_user;
 pub mod delete_conversation;
+pub mod typing_indicator;
 
 pub use send_message::send_message;
 pub use send_message_e2ee::send_message_e2ee;
@@ -64,4 +65,5 @@ pub use disappearing_messages::{set_disappearing_messages, get_disappearing_conf
 // Phase 3: Re-exports
 pub use block_user::{block_user, unblock_user, get_blocked_users};
 pub use delete_conversation::delete_conversation;
+pub use typing_indicator::send_typing_indicator;
 

@@ -397,8 +397,9 @@ message ClearChatSuccess {
 
 message TypingIndicatorRequest {
   string access_token = 1;
-  string recipient_user_id = 2;
+  string recipient_user_id = 2;  // For 1-on-1 chats
   bool is_typing = 3; // true = started typing, false = stopped typing
+  string group_id = 4;           // For group chats (if set, recipient_user_id is ignored)
 }
 
 message TypingIndicatorResponse {

@@ -2227,11 +2227,13 @@ class TypingIndicatorRequest extends $pb.GeneratedMessage {
     $core.String? accessToken,
     $core.String? recipientUserId,
     $core.bool? isTyping,
+    $core.String? groupId,
   }) {
     final result = create();
     if (accessToken != null) result.accessToken = accessToken;
     if (recipientUserId != null) result.recipientUserId = recipientUserId;
     if (isTyping != null) result.isTyping = isTyping;
+    if (groupId != null) result.groupId = groupId;
     return result;
   }
 
@@ -2252,6 +2254,7 @@ class TypingIndicatorRequest extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'accessToken')
     ..aOS(2, _omitFieldNames ? '' : 'recipientUserId')
     ..aOB(3, _omitFieldNames ? '' : 'isTyping')
+    ..aOS(4, _omitFieldNames ? '' : 'groupId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2300,6 +2303,15 @@ class TypingIndicatorRequest extends $pb.GeneratedMessage {
   $core.bool hasIsTyping() => $_has(2);
   @$pb.TagNumber(3)
   void clearIsTyping() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get groupId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set groupId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasGroupId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearGroupId() => $_clearField(4);
 }
 
 enum TypingIndicatorResponse_Result { success, error, notSet }

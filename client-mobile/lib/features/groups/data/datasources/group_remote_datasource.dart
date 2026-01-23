@@ -382,4 +382,25 @@ class GroupRemoteDatasource {
       currentUserId: currentUserId,
     );
   }
+
+  /// Send typing indicator to a group
+  Future<bool> sendTypingIndicator({
+    required String accessToken,
+    required String groupId,
+    required bool isTyping,
+  }) async {
+    final request = proto.TypingIndicatorRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+      isTyping: isTyping,
+    );
+
+    final response = await _messagingClient.sendTypingIndicator(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.sent;
+  }
 }

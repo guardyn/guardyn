@@ -426,4 +426,29 @@ class GroupRepositoryImpl implements GroupRepository {
       return Left(UnknownFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, bool>> sendTypingIndicator({
+    required String groupId,
+    required bool isTyping,
+  }) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final result = await _remoteDatasource.sendTypingIndicator(
+        accessToken: accessToken,
+        groupId: groupId,
+        isTyping: isTyping,
+      );
+
+      return Right(result);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to send typing indicator'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
 }

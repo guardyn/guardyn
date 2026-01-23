@@ -345,11 +345,15 @@ pub struct ClearChatSuccess {
 pub struct TypingIndicatorRequest {
     #[prost(string, tag = "1")]
     pub access_token: ::prost::alloc::string::String,
+    /// For 1-on-1 chats
     #[prost(string, tag = "2")]
     pub recipient_user_id: ::prost::alloc::string::String,
     /// true = started typing, false = stopped typing
     #[prost(bool, tag = "3")]
     pub is_typing: bool,
+    /// For group chats (if set, recipient_user_id is ignored)
+    #[prost(string, tag = "4")]
+    pub group_id: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TypingIndicatorResponse {

@@ -201,3 +201,35 @@ class GroupUpdate extends GroupEvent {
   List<Object?> get props => [groupId, name, iconMediaId, description];
 }
 
+/// Send typing indicator to a group
+class GroupSendTypingIndicator extends GroupEvent {
+  final String groupId;
+  final bool isTyping;
+
+  const GroupSendTypingIndicator({
+    required this.groupId,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object?> get props => [groupId, isTyping];
+}
+
+/// Received typing indicator from another user in the group
+class GroupTypingReceived extends GroupEvent {
+  final String groupId;
+  final String userId;
+  final String username;
+  final bool isTyping;
+
+  const GroupTypingReceived({
+    required this.groupId,
+    required this.userId,
+    required this.username,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object?> get props => [groupId, userId, username, isTyping];
+}
+

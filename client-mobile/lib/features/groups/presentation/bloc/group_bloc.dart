@@ -15,6 +15,7 @@ import '../../domain/usecases/get_groups.dart';
 import '../../domain/usecases/leave_group.dart';
 import '../../domain/usecases/remove_group_member.dart';
 import '../../domain/usecases/send_group_message.dart';
+import '../../domain/usecases/send_group_typing_indicator.dart';
 import '../../domain/usecases/update_group.dart';
 import 'group_event.dart';
 import 'group_state.dart';
@@ -31,6 +32,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final RemoveGroupMember removeGroupMember;
   final LeaveGroup leaveGroup;
   final UpdateGroup updateGroup;
+  final SendGroupTypingIndicator sendGroupTypingIndicator;
 
   Timer? _pollingTimer;
   String? _activeGroupId;
@@ -40,6 +42,11 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   StreamSubscription<dynamic>? _wsMessageSubscription;
   StreamSubscription<dynamic>? _wsStateSubscription;
   bool _useWebSocket = true;
+  
+  /// Track typing users: groupId -> {userId -> username}
+  final Map<String, Map<String, String>> _typingUsers = {};
+  /// Timers to auto-clear typing after 5 seconds
+  final Map<String, Map<String, Timer>> _typingTimers = {};
 
   GroupBloc({
     required this.createGroup,
@@ -52,6 +59,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     required this.removeGroupMember,
     required this.leaveGroup,
     required this.updateGroup,
+    required this.sendGroupTypingIndicator,
   }) : super(const GroupInitial()) {
     on<GroupLoadAll>(_onLoadAll);
     on<GroupCreate>(_onCreateGroup);
@@ -71,6 +79,9 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     on<GroupConnectWebSocket>(_onConnectWebSocket);
     on<GroupDisconnectWebSocket>(_onDisconnectWebSocket);
     on<GroupSubscribeWebSocket>(_onSubscribeWebSocket);
+    // Typing indicator events
+    on<GroupSendTypingIndicator>(_onSendTypingIndicator);
+    on<GroupTypingReceived>(_onTypingReceived);
   }
 
   Future<void> _onLoadAll(
@@ -498,12 +509,87 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     }
   }
 
+  /// Send typing indicator to a group
+  Future<void> _onSendTypingIndicator(
+    GroupSendTypingIndicator event,
+    Emitter<GroupState> emit,
+  ) async {
+    // Fire and forget - we don't need to wait for response or change state
+    await sendGroupTypingIndicator(SendGroupTypingIndicatorParams(
+      groupId: event.groupId,
+      isTyping: event.isTyping,
+    ));
+  }
+
+  /// Handle received typing indicator from another user
+  Future<void> _onTypingReceived(
+    GroupTypingReceived event,
+    Emitter<GroupState> emit,
+  ) async {
+    final groupId = event.groupId;
+    final userId = event.userId;
+    final username = event.username;
+    final isTyping = event.isTyping;
+
+    // Initialize maps if needed
+    _typingUsers[groupId] ??= {};
+    _typingTimers[groupId] ??= {};
+
+    // Cancel existing timer for this user
+    _typingTimers[groupId]![userId]?.cancel();
+
+    if (isTyping) {
+      // Add user to typing list
+      _typingUsers[groupId]![userId] = username;
+
+      // Set timer to auto-remove after 5 seconds
+      _typingTimers[groupId]![userId] = Timer(
+        const Duration(seconds: 5),
+        () {
+          add(GroupTypingReceived(
+            groupId: groupId,
+            userId: userId,
+            username: username,
+            isTyping: false,
+          ));
+        },
+      );
+    } else {
+      // Remove user from typing list
+      _typingUsers[groupId]!.remove(userId);
+      _typingTimers[groupId]!.remove(userId);
+    }
+
+    // Get current messages for the state
+    final currentMessages = state is GroupMessagesLoaded
+        ? (state as GroupMessagesLoaded).messages
+        : <GroupMessage>[];
+
+    // Emit updated typing users state
+    emit(GroupTypingUsersUpdated(
+      groupId: groupId,
+      typingUsernames: _typingUsers[groupId]!.values.toList(),
+      messages: currentMessages,
+    ));
+  }
+
+  /// Get list of typing usernames for a group
+  List<String> getTypingUsernames(String groupId) {
+    return _typingUsers[groupId]?.values.toList() ?? [];
+  }
+
   @override
   Future<void> close() {
     _pollingTimer?.cancel();
     _wsMessageSubscription?.cancel();
     _wsStateSubscription?.cancel();
     _webSocketDatasource?.disconnect();
+    // Cancel all typing timers
+    for (final timersMap in _typingTimers.values) {
+      for (final timer in timersMap.values) {
+        timer.cancel();
+      }
+    }
     return super.close();
   }
 }
