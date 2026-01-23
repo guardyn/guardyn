@@ -248,12 +248,15 @@ class AuthRemoteDatasource {
     String? avatarMediaId,
     String? displayName,
     String? bio,
+    bool clearAvatar = false,
   }) async {
     try {
       final request = UpdateProfileRequest()..accessToken = accessToken;
 
-      // Only set fields that are provided
-      if (avatarMediaId != null) {
+      // Handle avatar: clearAvatar takes precedence
+      if (clearAvatar) {
+        request.clearAvatar = true;
+      } else if (avatarMediaId != null) {
         request.avatarMediaId = avatarMediaId;
       }
       if (displayName != null) {

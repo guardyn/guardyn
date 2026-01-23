@@ -138,12 +138,6 @@ class UploadMedia {
     // The presigned URL is signed with specific Content-Type, so we must use exactly that
     final uploadMimeType = uploadUrl.contentType ?? mimeType;
     
-    // Debug logging for signature mismatch issues
-    print('🔵 UploadMedia: headers from server: ${uploadUrl.headers}');
-    print('🔵 UploadMedia: contentType from server: ${uploadUrl.contentType}');
-    print('🔵 UploadMedia: local mimeType: $mimeType');
-    print('🔵 UploadMedia: using uploadMimeType: $uploadMimeType');
-    
     await repository.uploadToPresignedUrl(
       presignedUrl: uploadUrl.presignedUrl,
       data: data,

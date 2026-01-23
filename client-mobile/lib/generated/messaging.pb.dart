@@ -4018,6 +4018,8 @@ class GroupInfo extends $pb.GeneratedMessage {
     $1.Timestamp? createdAt,
     $core.int? memberCount,
     GroupMessage? lastMessage,
+    $core.String? iconMediaId,
+    $core.String? description,
   }) {
     final result = create();
     if (groupId != null) result.groupId = groupId;
@@ -4027,6 +4029,8 @@ class GroupInfo extends $pb.GeneratedMessage {
     if (createdAt != null) result.createdAt = createdAt;
     if (memberCount != null) result.memberCount = memberCount;
     if (lastMessage != null) result.lastMessage = lastMessage;
+    if (iconMediaId != null) result.iconMediaId = iconMediaId;
+    if (description != null) result.description = description;
     return result;
   }
 
@@ -4054,6 +4058,8 @@ class GroupInfo extends $pb.GeneratedMessage {
     ..aI(6, _omitFieldNames ? '' : 'memberCount')
     ..aOM<GroupMessage>(7, _omitFieldNames ? '' : 'lastMessage',
         subBuilder: GroupMessage.create)
+    ..aOS(8, _omitFieldNames ? '' : 'iconMediaId')
+    ..aOS(9, _omitFieldNames ? '' : 'description')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4134,6 +4140,24 @@ class GroupInfo extends $pb.GeneratedMessage {
   void clearLastMessage() => $_clearField(7);
   @$pb.TagNumber(7)
   GroupMessage ensureLastMessage() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  $core.String get iconMediaId => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set iconMediaId($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasIconMediaId() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearIconMediaId() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get description => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set description($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasDescription() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDescription() => $_clearField(9);
 }
 
 class GroupMemberInfo extends $pb.GeneratedMessage {
@@ -4143,6 +4167,8 @@ class GroupMemberInfo extends $pb.GeneratedMessage {
     $core.String? deviceId,
     $core.String? role,
     $1.Timestamp? joinedAt,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
   }) {
     final result = create();
     if (userId != null) result.userId = userId;
@@ -4150,6 +4176,8 @@ class GroupMemberInfo extends $pb.GeneratedMessage {
     if (deviceId != null) result.deviceId = deviceId;
     if (role != null) result.role = role;
     if (joinedAt != null) result.joinedAt = joinedAt;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
     return result;
   }
 
@@ -4173,6 +4201,8 @@ class GroupMemberInfo extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'role')
     ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'joinedAt',
         subBuilder: $1.Timestamp.create)
+    ..aOS(6, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(7, _omitFieldNames ? '' : 'displayName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4240,6 +4270,24 @@ class GroupMemberInfo extends $pb.GeneratedMessage {
   void clearJoinedAt() => $_clearField(5);
   @$pb.TagNumber(5)
   $1.Timestamp ensureJoinedAt() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get avatarMediaId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set avatarMediaId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAvatarMediaId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAvatarMediaId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get displayName => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set displayName($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasDisplayName() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDisplayName() => $_clearField(7);
 }
 
 class GetGroupByIdRequest extends $pb.GeneratedMessage {

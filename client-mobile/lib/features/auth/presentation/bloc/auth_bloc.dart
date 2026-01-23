@@ -215,9 +215,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (updateProfile != null) {
         // Use the UpdateProfile use case if available
         final updatedUser = await updateProfile!(
-          avatarMediaId: event.removeAvatar ? '' : avatarMediaId,
+          avatarMediaId: event.removeAvatar ? null : avatarMediaId,
           displayName: event.displayName,
           bio: event.bio,
+          clearAvatar: event.removeAvatar,
         );
         logger.i('Profile updated successfully');
         emit(AuthProfileUpdated(updatedUser));

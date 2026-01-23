@@ -9,15 +9,17 @@ class UpdateProfile {
 
   /// Update user profile
   ///
-  /// - [avatarMediaId]: New avatar media ID (null = no change, empty = remove)
+  /// - [avatarMediaId]: New avatar media ID (null = no change)
   /// - [displayName]: New display name (null = no change, empty = remove)
   /// - [bio]: New bio text (null = no change, empty = remove)
+  /// - [clearAvatar]: If true, remove the current avatar
   ///
   /// Returns the updated [User] entity
   Future<User> call({
     String? avatarMediaId,
     String? displayName,
     String? bio,
+    bool clearAvatar = false,
   }) async {
     // Validate display name if provided
     if (displayName != null && displayName.isNotEmpty) {
@@ -41,6 +43,7 @@ class UpdateProfile {
       avatarMediaId: avatarMediaId,
       displayName: displayName,
       bio: bio,
+      clearAvatar: clearAvatar,
     );
   }
 }

@@ -39,6 +39,7 @@ abstract class AuthRepository {
   /// - [avatarMediaId]: New avatar media ID (null = no change, empty = remove)
   /// - [displayName]: New display name (null = no change, empty = remove)
   /// - [bio]: New bio text (null = no change, empty = remove)
+  /// - [clearAvatar]: If true, remove the current avatar
   ///
   /// Returns the updated [User] entity
   /// Throws [AuthException] on failure
@@ -46,6 +47,7 @@ abstract class AuthRepository {
     String? avatarMediaId,
     String? displayName,
     String? bio,
+    bool clearAvatar = false,
   });
 
   /// Get user profile by user ID

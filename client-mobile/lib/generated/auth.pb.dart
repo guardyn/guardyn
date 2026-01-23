@@ -3046,12 +3046,14 @@ class UpdateProfileRequest extends $pb.GeneratedMessage {
     $core.String? avatarMediaId,
     $core.String? displayName,
     $core.String? bio,
+    $core.bool? clearAvatar,
   }) {
     final result = create();
     if (accessToken != null) result.accessToken = accessToken;
     if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
     if (displayName != null) result.displayName = displayName;
     if (bio != null) result.bio = bio;
+    if (clearAvatar != null) result.clearAvatar = clearAvatar;
     return result;
   }
 
@@ -3072,6 +3074,7 @@ class UpdateProfileRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'avatarMediaId')
     ..aOS(3, _omitFieldNames ? '' : 'displayName')
     ..aOS(4, _omitFieldNames ? '' : 'bio')
+    ..aOB(5, _omitFieldNames ? '' : 'clearAvatar')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3128,6 +3131,15 @@ class UpdateProfileRequest extends $pb.GeneratedMessage {
   $core.bool hasBio() => $_has(3);
   @$pb.TagNumber(4)
   void clearBio() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get clearAvatar => $_getBF(4);
+  @$pb.TagNumber(5)
+  set clearAvatar($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClearAvatar() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClearAvatar() => $_clearField(5);
 }
 
 enum UpdateProfileResponse_Result { profile, error, notSet }

@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/profile_edit_page.dart';
+import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
 import 'package:guardyn_client/features/media/presentation/widgets/avatar_widget.dart';
 import 'package:guardyn_client/shared/widgets/theme_switcher.dart';
 
@@ -21,6 +23,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _hasNavigated = false;
   bool _showedDeleteMessage = false;
   bool _isDeleting = false;
+  String? _avatarUrl;
+  String? _currentAvatarMediaId;
 
   late final AuthBloc _authBloc;
   StreamSubscription<AuthState>? _authSubscription;
@@ -296,9 +300,27 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   String? _getAvatarUrl(String mediaId) {
-    // TODO: Implement proper URL generation via MediaService
-    // For now, return null to fall back to initials
-    return null;
+    // Check if we need to load a new URL
+    if (_currentAvatarMediaId != mediaId) {
+      _currentAvatarMediaId = mediaId;
+      _avatarUrl = null;
+      _loadAvatarUrl(mediaId);
+    }
+    return _avatarUrl;
+  }
+
+  Future<void> _loadAvatarUrl(String mediaId) async {
+    try {
+      final downloadMedia = GetIt.I<DownloadMedia>();
+      final result = await downloadMedia.getUrl(mediaId: mediaId);
+      if (mounted && _currentAvatarMediaId == mediaId) {
+        setState(() {
+          _avatarUrl = result.presignedUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load avatar URL: $e');
+    }
   }
 
   Widget _buildSectionHeader(String title, {Color? color}) {

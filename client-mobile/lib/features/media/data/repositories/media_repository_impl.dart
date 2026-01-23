@@ -35,9 +35,8 @@ class MediaRepositoryImpl implements MediaRepository {
       conversationId: conversationId,
     );
 
-    // Convert PbMap to regular Map and log for debugging
+    // Convert PbMap to regular Map
     final headersMap = Map<String, String>.from(response.headers);
-    logger.d('getUploadUrl headers from server: $headersMap');
 
     return UploadUrlResult(
       mediaId: response.mediaId,

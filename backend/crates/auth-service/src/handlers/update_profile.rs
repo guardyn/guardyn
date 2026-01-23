@@ -83,7 +83,10 @@ pub async fn update_profile(
     };
 
     // Update fields if provided (empty string means no change)
-    let new_avatar = if request.avatar_media_id.is_empty() {
+    // clear_avatar = true means explicitly remove avatar
+    let new_avatar = if request.clear_avatar {
+        None
+    } else if request.avatar_media_id.is_empty() {
         user.avatar_media_id.clone()
     } else {
         Some(request.avatar_media_id.clone())

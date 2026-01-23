@@ -190,6 +190,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? avatarMediaId,
     String? displayName,
     String? bio,
+    bool clearAvatar = false,
   }) async {
     try {
       final accessToken = await secureStorage.getAccessToken();
@@ -204,6 +205,7 @@ class AuthRepositoryImpl implements AuthRepository {
         avatarMediaId: avatarMediaId,
         displayName: displayName,
         bio: bio,
+        clearAvatar: clearAvatar,
       );
 
       // Update local storage with new profile data

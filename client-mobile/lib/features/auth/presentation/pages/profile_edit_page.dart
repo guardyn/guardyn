@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:guardyn_client/features/auth/domain/entities/user.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
 import 'package:guardyn_client/features/media/presentation/widgets/avatar_widget.dart';
 import 'package:guardyn_client/features/media/presentation/widgets/media_picker_sheet.dart';
 
@@ -29,6 +31,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   bool _removeAvatar = false;
   bool _hasChanges = false;
   bool _isSaving = false;
+  String? _avatarUrl;
+  bool _isLoadingAvatar = false;
 
   @override
   void initState() {
@@ -40,6 +44,37 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     _displayNameController.addListener(_onFieldChanged);
     _bioController.addListener(_onFieldChanged);
+
+    // Load avatar URL if user has avatar
+    if (widget.user.avatarMediaId != null) {
+      _loadAvatarUrl(widget.user.avatarMediaId!);
+    }
+  }
+
+  Future<void> _loadAvatarUrl(String mediaId) async {
+    if (_isLoadingAvatar) return;
+
+    setState(() {
+      _isLoadingAvatar = true;
+    });
+
+    try {
+      final downloadMedia = GetIt.I<DownloadMedia>();
+      final result = await downloadMedia.getUrl(mediaId: mediaId);
+      if (mounted) {
+        setState(() {
+          _avatarUrl = result.presignedUrl;
+          _isLoadingAvatar = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load avatar URL: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingAvatar = false;
+        });
+      }
+    }
   }
 
   @override
@@ -331,8 +366,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   String? _getAvatarUrl(String mediaId) {
-    // TODO: Implement proper URL generation via MediaService
-    // For now, return null to fall back to initials
-    return null;
+    // Return cached avatar URL if available
+    return _avatarUrl;
   }
 }

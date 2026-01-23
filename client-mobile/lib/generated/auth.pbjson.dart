@@ -939,6 +939,7 @@ const UpdateProfileRequest$json = {
     {'1': 'avatar_media_id', '3': 2, '4': 1, '5': 9, '10': 'avatarMediaId'},
     {'1': 'display_name', '3': 3, '4': 1, '5': 9, '10': 'displayName'},
     {'1': 'bio', '3': 4, '4': 1, '5': 9, '10': 'bio'},
+    {'1': 'clear_avatar', '3': 5, '4': 1, '5': 8, '10': 'clearAvatar'},
   ],
 };
 
@@ -946,7 +947,8 @@ const UpdateProfileRequest$json = {
 final $typed_data.Uint8List updateProfileRequestDescriptor = $convert.base64Decode(
     'ChRVcGRhdGVQcm9maWxlUmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2'
     'VuEiYKD2F2YXRhcl9tZWRpYV9pZBgCIAEoCVINYXZhdGFyTWVkaWFJZBIhCgxkaXNwbGF5X25h'
-    'bWUYAyABKAlSC2Rpc3BsYXlOYW1lEhAKA2JpbxgEIAEoCVIDYmlv');
+    'bWUYAyABKAlSC2Rpc3BsYXlOYW1lEhAKA2JpbxgEIAEoCVIDYmlvEiEKDGNsZWFyX2F2YXRhch'
+    'gFIAEoCFILY2xlYXJBdmF0YXI=');
 
 @$core.Deprecated('Use updateProfileResponseDescriptor instead')
 const UpdateProfileResponse$json = {

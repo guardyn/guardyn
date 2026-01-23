@@ -340,6 +340,7 @@ message UpdateProfileRequest {
   string avatar_media_id = 2;  // Optional: new avatar media ID from MediaService
   string display_name = 3;     // Optional: new display name
   string bio = 4;              // Optional: new bio
+  bool clear_avatar = 5;       // If true, remove current avatar
 }
 
 message UpdateProfileResponse {

@@ -1348,6 +1348,8 @@ const GroupInfo$json = {
       '6': '.guardyn.messaging.GroupMessage',
       '10': 'lastMessage'
     },
+    {'1': 'icon_media_id', '3': 8, '4': 1, '5': 9, '10': 'iconMediaId'},
+    {'1': 'description', '3': 9, '4': 1, '5': 9, '10': 'description'},
   ],
 };
 
@@ -1358,7 +1360,9 @@ final $typed_data.Uint8List groupInfoDescriptor = $convert.base64Decode(
     'IAMoCzIiLmd1YXJkeW4ubWVzc2FnaW5nLkdyb3VwTWVtYmVySW5mb1IHbWVtYmVycxI4Cgpjcm'
     'VhdGVkX2F0GAUgASgLMhkuZ3VhcmR5bi5jb21tb24uVGltZXN0YW1wUgljcmVhdGVkQXQSIQoM'
     'bWVtYmVyX2NvdW50GAYgASgFUgttZW1iZXJDb3VudBJCCgxsYXN0X21lc3NhZ2UYByABKAsyHy'
-    '5ndWFyZHluLm1lc3NhZ2luZy5Hcm91cE1lc3NhZ2VSC2xhc3RNZXNzYWdl');
+    '5ndWFyZHluLm1lc3NhZ2luZy5Hcm91cE1lc3NhZ2VSC2xhc3RNZXNzYWdlEiIKDWljb25fbWVk'
+    'aWFfaWQYCCABKAlSC2ljb25NZWRpYUlkEiAKC2Rlc2NyaXB0aW9uGAkgASgJUgtkZXNjcmlwdG'
+    'lvbg==');
 
 @$core.Deprecated('Use groupMemberInfoDescriptor instead')
 const GroupMemberInfo$json = {
@@ -1376,6 +1380,8 @@ const GroupMemberInfo$json = {
       '6': '.guardyn.common.Timestamp',
       '10': 'joinedAt'
     },
+    {'1': 'avatar_media_id', '3': 6, '4': 1, '5': 9, '10': 'avatarMediaId'},
+    {'1': 'display_name', '3': 7, '4': 1, '5': 9, '10': 'displayName'},
   ],
 };
 
@@ -1384,7 +1390,8 @@ final $typed_data.Uint8List groupMemberInfoDescriptor = $convert.base64Decode(
     'Cg9Hcm91cE1lbWJlckluZm8SFwoHdXNlcl9pZBgBIAEoCVIGdXNlcklkEhoKCHVzZXJuYW1lGA'
     'IgASgJUgh1c2VybmFtZRIbCglkZXZpY2VfaWQYAyABKAlSCGRldmljZUlkEhIKBHJvbGUYBCAB'
     'KAlSBHJvbGUSNgoJam9pbmVkX2F0GAUgASgLMhkuZ3VhcmR5bi5jb21tb24uVGltZXN0YW1wUg'
-    'hqb2luZWRBdA==');
+    'hqb2luZWRBdBImCg9hdmF0YXJfbWVkaWFfaWQYBiABKAlSDWF2YXRhck1lZGlhSWQSIQoMZGlz'
+    'cGxheV9uYW1lGAcgASgJUgtkaXNwbGF5TmFtZQ==');
 
 @$core.Deprecated('Use getGroupByIdRequestDescriptor instead')
 const GetGroupByIdRequest$json = {
