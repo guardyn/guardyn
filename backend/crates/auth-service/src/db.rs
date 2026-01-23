@@ -139,6 +139,7 @@ impl DatabaseClient {
         avatar_media_id: Option<String>,
         display_name: Option<String>,
         bio: Option<String>,
+        clear_avatar: bool,
     ) -> Result<UserProfile> {
         // Get existing profile
         let profile_key = format!("/users/{}/profile", user_id).into_bytes();
@@ -148,7 +149,10 @@ impl DatabaseClient {
         let mut profile: UserProfile = serde_json::from_slice(&profile_data)?;
         
         // Update fields if provided
-        if avatar_media_id.is_some() {
+        // clear_avatar explicitly removes the avatar
+        if clear_avatar {
+            profile.avatar_media_id = None;
+        } else if avatar_media_id.is_some() {
             profile.avatar_media_id = avatar_media_id;
         }
         if display_name.is_some() {

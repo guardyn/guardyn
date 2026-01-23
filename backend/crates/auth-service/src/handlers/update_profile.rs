@@ -111,6 +111,7 @@ pub async fn update_profile(
             new_avatar.clone(),
             new_display_name.clone(),
             new_bio.clone(),
+            request.clear_avatar,
         )
         .await
     {
