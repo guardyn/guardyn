@@ -52,11 +52,11 @@ import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dar
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mute_conversation.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
-import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
 // Presence feature imports
 import 'package:guardyn_client/features/presence/data/datasources/presence_remote_datasource.dart';

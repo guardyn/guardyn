@@ -1,9 +1,9 @@
 import 'package:dartz/dartz.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/grpc_clients.dart';
 import '../../../../core/storage/secure_storage.dart';
-import '../../../../core/di/injection.dart';
 import '../../../../generated/auth.pb.dart';
 
 /// Use case for getting a user's display name
