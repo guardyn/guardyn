@@ -40,7 +40,11 @@ class MediaRemoteDatasource {
         request.conversationId = conversationId;
       }
 
-      final response = await _mediaClient.getUploadUrl(request);
+      // Add timeout to prevent hanging if media service is unavailable
+      final response = await _mediaClient.getUploadUrl(
+        request,
+        options: CallOptions(timeout: const Duration(seconds: 15)),
+      );
 
       if (response.hasError()) {
         throw MediaException(
@@ -130,7 +134,10 @@ class MediaRemoteDatasource {
     try {
       final request = pb.GetDownloadUrlRequest()..mediaId = mediaId;
 
-      final response = await _mediaClient.getDownloadUrl(request);
+      final response = await _mediaClient.getDownloadUrl(
+        request,
+        options: CallOptions(timeout: const Duration(seconds: 15)),
+      );
 
       if (response.hasError()) {
         throw MediaException(
@@ -215,7 +222,10 @@ class MediaRemoteDatasource {
     try {
       final request = pb.GetMediaMetadataRequest()..mediaId = mediaId;
 
-      final response = await _mediaClient.getMediaMetadata(request);
+      final response = await _mediaClient.getMediaMetadata(
+        request,
+        options: CallOptions(timeout: const Duration(seconds: 15)),
+      );
 
       if (response.hasError()) {
         throw MediaException(
@@ -262,7 +272,10 @@ class MediaRemoteDatasource {
         request.cursor = cursor;
       }
 
-      final response = await _mediaClient.listMedia(request);
+      final response = await _mediaClient.listMedia(
+        request,
+        options: CallOptions(timeout: const Duration(seconds: 15)),
+      );
 
       if (response.hasError()) {
         throw MediaException(
@@ -296,7 +309,10 @@ class MediaRemoteDatasource {
     try {
       final request = pb.DeleteMediaRequest()..mediaId = mediaId;
 
-      final response = await _mediaClient.deleteMedia(request);
+      final response = await _mediaClient.deleteMedia(
+        request,
+        options: CallOptions(timeout: const Duration(seconds: 15)),
+      );
 
       if (response.hasError()) {
         throw MediaException(
@@ -339,7 +355,10 @@ class MediaRemoteDatasource {
         request.maxHeight = maxHeight;
       }
 
-      final response = await _mediaClient.generateThumbnail(request);
+      final response = await _mediaClient.generateThumbnail(
+        request,
+        options: CallOptions(timeout: const Duration(seconds: 30)),
+      );
 
       if (response.hasError()) {
         throw MediaException(

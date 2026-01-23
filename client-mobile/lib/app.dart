@@ -10,6 +10,7 @@ import 'package:guardyn_client/features/auth/data/repositories/auth_repository_i
 import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/update_profile.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/login_page.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/registration_page.dart';
@@ -31,6 +32,7 @@ import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart
 import 'package:guardyn_client/features/groups/presentation/pages/group_chat_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_create_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_list_page.dart';
+import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
@@ -90,6 +92,10 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
     final registerUser = RegisterUser(authRepository);
     final loginUser = LoginUser(authRepository);
     final logoutUser = LogoutUser(authRepository);
+    final updateProfile = UpdateProfile(authRepository);
+
+    // Get UploadMedia from DI (already registered in injection.dart)
+    final uploadMedia = getIt<UploadMedia>();
 
     // Messaging dependencies
     final messageRemoteDatasource = MessageRemoteDatasource(grpcClients);
@@ -138,6 +144,8 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
             logoutUser: logoutUser,
             authRepository: authRepository,
             cryptoService: cryptoService,
+            updateProfile: updateProfile,
+            uploadMedia: uploadMedia,
           ),
         ),
         BlocProvider(

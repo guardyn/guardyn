@@ -95,12 +95,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     final authBloc = context.read<AuthBloc>();
 
-    // If there's a new avatar, upload it first
-    if (_newAvatarPath != null) {
-      authBloc.add(AuthUploadAvatarRequested(filePath: _newAvatarPath!));
-    }
-
-    // Update profile fields
+    // Send a single event with all changes including the avatar path
+    // The bloc will handle upload and profile update sequentially
     authBloc.add(AuthUpdateProfileRequested(
       displayName: _displayNameController.text.trim().isEmpty
           ? null
@@ -109,6 +105,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           ? null
           : _bioController.text.trim(),
       removeAvatar: _removeAvatar,
+      newAvatarPath: _newAvatarPath,
     ));
   }
 

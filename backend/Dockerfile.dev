@@ -1,7 +1,7 @@
 # Guardyn Backend Development Dockerfile
 # Supports hot reload with cargo-watch
 
-FROM rust:1.85-bookworm
+FROM rust:1.88-bookworm
 
 # Install development dependencies
 RUN apt-get update && apt-get install -y \

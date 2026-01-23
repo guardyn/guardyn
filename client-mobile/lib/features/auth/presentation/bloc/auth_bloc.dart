@@ -194,10 +194,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthProfileUpdating(currentUser));
 
     try {
+      String? avatarMediaId = event.avatarMediaId;
+
+      // If there's a new avatar to upload, do it first
+      if (event.newAvatarPath != null && uploadMedia != null) {
+        logger.i('Uploading new avatar from: ${event.newAvatarPath}');
+        emit(AuthProfileUpdating(currentUser, uploadProgress: 0.0));
+
+        final mediaEntity = await uploadMedia!(
+          filePath: event.newAvatarPath!,
+          onProgress: (progress) {
+            logger.d('Avatar upload progress: ${(progress * 100).toInt()}%');
+          },
+        );
+
+        avatarMediaId = mediaEntity.id;
+        logger.i('Avatar uploaded successfully: $avatarMediaId');
+      }
+
       if (updateProfile != null) {
         // Use the UpdateProfile use case if available
         final updatedUser = await updateProfile!(
-          avatarMediaId: event.removeAvatar ? '' : event.avatarMediaId,
+          avatarMediaId: event.removeAvatar ? '' : avatarMediaId,
           displayName: event.displayName,
           bio: event.bio,
         );
@@ -207,7 +225,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } else {
         // Fallback: update locally only
         final updatedUser = currentUser.copyWith(
-          avatarMediaId: event.avatarMediaId,
+          avatarMediaId: avatarMediaId,
           displayName: event.displayName,
           bio: event.bio,
           clearAvatar: event.removeAvatar,

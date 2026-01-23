@@ -62,15 +62,19 @@ class AuthUpdateProfileRequested extends AuthEvent {
   /// Whether to remove the current avatar
   final bool removeAvatar;
 
+  /// Local file path to new avatar image to upload (handled before profile update)
+  final String? newAvatarPath;
+
   AuthUpdateProfileRequested({
     this.avatarMediaId,
     this.displayName,
     this.bio,
     this.removeAvatar = false,
+    this.newAvatarPath,
   });
 
   @override
-  List<Object?> get props => [avatarMediaId, displayName, bio, removeAvatar];
+  List<Object?> get props => [avatarMediaId, displayName, bio, removeAvatar, newAvatarPath];
 }
 
 /// Event to upload a new avatar image
