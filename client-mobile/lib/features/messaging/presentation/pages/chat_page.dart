@@ -8,6 +8,10 @@ import '../../../../core/utils/conversation_utils.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../calls/domain/entities/entities.dart';
+import '../../../calls/presentation/bloc/call_bloc.dart';
+import '../../../calls/presentation/bloc/call_event.dart';
+import '../../../calls/presentation/pages/call_page.dart';
 import '../../../media/presentation/bloc/media_bloc.dart';
 import '../../../media/presentation/bloc/media_event.dart';
 import '../../../media/presentation/bloc/media_state.dart';
@@ -197,6 +201,23 @@ class _ChatPageState extends State<ChatPage> {
           userId: widget.conversationUserId,
           username: widget.conversationUserName,
           conversationId: _conversationId,
+        ),
+      ),
+    );
+  }
+
+  /// Initiate a voice or video call with the conversation partner
+  void _initiateCall(CallType type) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (context) => getIt<CallBloc>()
+            ..add(InitiateCallEvent(
+              userId: widget.conversationUserId,
+              userName: widget.conversationUserName,
+              type: type,
+            )),
+          child: const CallPage(),
         ),
       ),
     );
@@ -410,15 +431,13 @@ class _ChatPageState extends State<ChatPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.videocam),
-            onPressed: () {
-              // TODO: Implement video call
-            },
+            onPressed: () => _initiateCall(CallType.video),
+            tooltip: 'Video call',
           ),
           IconButton(
             icon: const Icon(Icons.call),
-            onPressed: () {
-              // TODO: Implement voice call
-            },
+            onPressed: () => _initiateCall(CallType.voice),
+            tooltip: 'Voice call',
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
