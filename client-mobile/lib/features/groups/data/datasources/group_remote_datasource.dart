@@ -169,16 +169,22 @@ class GroupRemoteDatasource {
     required String groupId,
     required String textContent,
     required String currentUserId,
+    Map<String, String>? metadata,
     proto.MessageType messageType = proto.MessageType.TEXT,
   }) async {
     final clientMessageId = _uuid.v4();
     final clientTimestamp = DateTime.now();
 
+    // Determine message type based on metadata
+    final actualMessageType = metadata != null && metadata['media_id'] != null
+        ? proto.MessageType.IMAGE  // Use IMAGE for media messages
+        : messageType;
+
     final request = proto.SendGroupMessageRequest(
       accessToken: accessToken,
       groupId: groupId,
       encryptedContent: utf8.encode(textContent),
-      messageType: messageType,
+      messageType: actualMessageType,
       clientMessageId: clientMessageId,
       clientTimestamp: _createTimestamp(clientTimestamp),
     );

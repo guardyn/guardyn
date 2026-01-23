@@ -59,10 +59,24 @@ class MessageRepositoryImpl implements MessageRepository {
         return const Left(AuthFailure('User not authenticated'));
       }
 
+      // For media messages with empty textContent, use JSON with media metadata as content
+      // This ensures encrypted_content is never empty for the backend
+      String contentToEncrypt = textContent;
+      if (textContent.isEmpty && metadata != null && metadata['media_id'] != null) {
+        contentToEncrypt = json.encode({
+          'type': 'media',
+          'media_id': metadata['media_id'],
+          'media_type': metadata['media_type'] ?? 'image',
+          'filename': metadata['filename'] ?? '',
+          'mime_type': metadata['mime_type'] ?? '',
+        });
+        _logger.i('Created media message content: $contentToEncrypt');
+      }
+
       // E2EE: Encrypt message content with Double Ratchet
       // This also returns X3DH prekey data if this is the first message
       final (encryptedContent, x3dhPrekey) = await _encryptMessageWithPrekey(
-        plaintext: textContent,
+        plaintext: contentToEncrypt,
         recipientUserId: recipientUserId,
         recipientDeviceId: recipientDeviceId,
         currentUserId: currentUserId,

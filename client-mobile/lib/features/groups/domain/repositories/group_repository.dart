@@ -22,6 +22,7 @@ abstract class GroupRepository {
     required String groupId,
     required String textContent,
     GroupMessageType messageType = GroupMessageType.text,
+    Map<String, String>? metadata,
   });
 
   /// Get group message history

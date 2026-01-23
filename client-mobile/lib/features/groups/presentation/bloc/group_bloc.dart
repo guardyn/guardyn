@@ -161,6 +161,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     final result = await sendGroupMessage(SendGroupMessageParams(
       groupId: event.groupId,
       textContent: event.textContent,
+      metadata: event.metadata,
     ));
 
     result.fold(

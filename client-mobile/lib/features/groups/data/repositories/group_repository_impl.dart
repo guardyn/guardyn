@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dartz/dartz.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
@@ -139,6 +141,7 @@ class GroupRepositoryImpl implements GroupRepository {
     required String groupId,
     required String textContent,
     GroupMessageType messageType = GroupMessageType.text,
+    Map<String, String>? metadata,
   }) async {
     try {
       final accessToken = await _getAccessToken();
@@ -154,11 +157,24 @@ class GroupRepositoryImpl implements GroupRepository {
       final currentDeviceId = await _getCurrentDeviceId();
       final username = await _secureStorage.getUsername();
 
+      // For media messages with empty textContent, create JSON with media metadata
+      String contentToSend = textContent;
+      if (textContent.isEmpty && metadata != null && metadata['media_id'] != null) {
+        contentToSend = json.encode({
+          'type': 'media',
+          'media_id': metadata['media_id'],
+          'media_type': metadata['media_type'] ?? 'image',
+          'filename': metadata['filename'] ?? '',
+          'mime_type': metadata['mime_type'] ?? '',
+        });
+      }
+
       final message = await _remoteDatasource.sendGroupMessage(
         accessToken: accessToken,
         groupId: groupId,
-        textContent: textContent,
+        textContent: contentToSend,
         currentUserId: currentUserId,
+        metadata: metadata,
       );
 
       // Return message with complete user info
