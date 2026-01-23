@@ -86,10 +86,38 @@ class AuthRepositoryImpl implements AuthRepository {
 
       logger.i('User logged in and tokens stored: ${response.userId}');
 
+      // Extract profile data from login response
+      String? avatarMediaId;
+      String? displayName;
+      String? bio;
+      DateTime? createdAt;
+
+      if (response.hasProfile()) {
+        final profile = response.profile;
+        avatarMediaId =
+            profile.hasAvatarMediaId() && profile.avatarMediaId.isNotEmpty
+            ? profile.avatarMediaId
+            : null;
+        displayName = profile.hasDisplayName() && profile.displayName.isNotEmpty
+            ? profile.displayName
+            : null;
+        bio = profile.hasBio() && profile.bio.isNotEmpty ? profile.bio : null;
+        createdAt = profile.hasCreatedAt()
+            ? DateTime.fromMillisecondsSinceEpoch(
+                profile.createdAt.seconds.toInt() * 1000,
+                isUtc: true,
+              ).toLocal()
+            : null;
+      }
+
       return User(
         userId: response.userId,
         username: username,
         deviceId: response.deviceId,
+        avatarMediaId: avatarMediaId,
+        displayName: displayName,
+        bio: bio,
+        createdAt: createdAt,
       );
     } catch (e) {
       logger.e('Login failed: $e');
