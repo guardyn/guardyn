@@ -47,6 +47,9 @@ class AppConfig {
   static String get mediaHost => authHost; // Same logic as authHost
   static const int mediaPort = 50054;
 
+  static String get notificationHost => authHost; // Same logic as authHost
+  static const int notificationPort = 50055;
+
   // S3/MinIO configuration for file uploads
   static String get minioHost => authHost; // Same logic as gRPC hosts
   static const int minioPort = 9000;

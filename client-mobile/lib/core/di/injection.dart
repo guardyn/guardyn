@@ -43,14 +43,17 @@ import 'package:guardyn_client/features/media/presentation/bloc/media_bloc.dart'
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
+import 'package:guardyn_client/features/messaging/data/datasources/notification_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/websocket_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
+import 'package:guardyn_client/features/messaging/data/repositories/notification_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/mute_conversation.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
@@ -178,6 +181,22 @@ void _registerMessagingDependencies() {
 
   getIt.registerLazySingleton<DeleteMessage>(
     () => DeleteMessage(getIt<MessageRepository>()),
+  );
+
+  // Notification-related dependencies for messaging
+  getIt.registerLazySingleton<NotificationRemoteDatasource>(
+    () => NotificationRemoteDatasource(getIt<GrpcClients>()),
+  );
+
+  getIt.registerLazySingleton<MuteConversationRepository>(
+    () => NotificationRepositoryImpl(
+      getIt<NotificationRemoteDatasource>(),
+      getIt<SecureStorage>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<MuteConversation>(
+    () => MuteConversation(getIt<MuteConversationRepository>()),
   );
 
   // Presentation layer - BLoC

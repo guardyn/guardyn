@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/di/injection.dart';
+import '../../data/datasources/notification_remote_datasource.dart';
+import '../../domain/usecases/mute_conversation.dart';
+
 /// Chat Settings Page for 1-on-1 conversations
 /// Allows users to view contact info, manage notifications,
 /// and perform actions like blocking or clearing chat history.
-class ChatSettingsPage extends StatelessWidget {
+class ChatSettingsPage extends StatefulWidget {
   final String userId;
   final String username;
   final String? conversationId;
@@ -14,6 +18,60 @@ class ChatSettingsPage extends StatelessWidget {
     required this.username,
     this.conversationId,
   });
+
+  @override
+  State<ChatSettingsPage> createState() => _ChatSettingsPageState();
+}
+
+class _ChatSettingsPageState extends State<ChatSettingsPage> {
+  bool _isMuted = false;
+  bool _isMuteLoading = false;
+  late MuteConversation _muteConversation;
+
+  @override
+  void initState() {
+    super.initState();
+    _muteConversation = getIt<MuteConversation>();
+  }
+
+  Future<void> _toggleMute(bool muted) async {
+    if (widget.conversationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot mute: conversation not found')),
+      );
+      return;
+    }
+
+    setState(() => _isMuteLoading = true);
+
+    final result = await _muteConversation(MuteConversationParams(
+      conversationId: widget.conversationId!,
+      isGroup: false,
+      duration: muted ? MuteDuration.forever : MuteDuration.unmute,
+    ));
+
+    setState(() => _isMuteLoading = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${failure.message}')),
+        );
+      },
+      (muteResult) {
+        setState(() => _isMuted = muteResult.muted);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              muteResult.muted
+                  ? 'Notifications muted'
+                  : 'Notifications enabled',
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +104,7 @@ class ChatSettingsPage extends StatelessWidget {
             radius: 50,
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
             child: Text(
-              username.isNotEmpty ? username[0].toUpperCase() : '?',
+              widget.username.isNotEmpty ? widget.username[0].toUpperCase() : '?',
               style: TextStyle(
                 fontSize: 40,
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -56,12 +114,12 @@ class ChatSettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Username
-          Text(username, style: Theme.of(context).textTheme.headlineSmall),
+          Text(widget.username, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 4),
 
           // User ID (for debugging/verification)
           Text(
-            'ID: ${userId.length > 12 ? '${userId.substring(0, 12)}...' : userId}',
+            'ID: ${widget.userId.length > 12 ? '${widget.userId.substring(0, 12)}...' : widget.userId}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.outline,
             ),
@@ -76,16 +134,17 @@ class ChatSettingsPage extends StatelessWidget {
       children: [
         // Mute Notifications
         SwitchListTile(
-          secondary: const Icon(Icons.notifications_off),
+          secondary: _isMuteLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.notifications_off),
           title: const Text('Mute Notifications'),
           subtitle: const Text('Stop receiving notifications from this chat'),
-          value: false, // TODO: Get from settings
-          onChanged: (value) {
-            // TODO: Implement mute
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Coming soon')));
-          },
+          value: _isMuted,
+          onChanged: _isMuteLoading ? null : _toggleMute,
         ),
 
         // Media, Links, Docs
@@ -196,7 +255,7 @@ class ChatSettingsPage extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Block User?'),
         content: Text(
-          'Block $username? You will no longer receive messages from them.',
+          'Block ${widget.username}? You will no longer receive messages from them.',
         ),
         actions: [
           TextButton(

@@ -3,6 +3,7 @@ import 'package:guardyn_client/core/constants/config.dart';
 import 'package:guardyn_client/generated/auth.pbgrpc.dart';
 import 'package:guardyn_client/generated/media.pbgrpc.dart';
 import 'package:guardyn_client/generated/messaging.pbgrpc.dart';
+import 'package:guardyn_client/generated/notifications.pbgrpc.dart';
 import 'package:guardyn_client/generated/presence.pbgrpc.dart';
 
 /// Manages gRPC client connections to backend services
@@ -14,11 +15,13 @@ class GrpcClients {
   late ClientChannel _messagingChannel;
   late ClientChannel _presenceChannel;
   late ClientChannel _mediaChannel;
+  late ClientChannel _notificationChannel;
 
   late AuthServiceClient authClient;
   late MessagingServiceClient messagingClient;
   late PresenceServiceClient presenceClient;
   late MediaServiceClient mediaClient;
+  late NotificationServiceClient notificationClient;
 
   bool _initialized = false;
 
@@ -69,12 +72,17 @@ class GrpcClients {
       AppConfig.mediaHost,
       AppConfig.mediaPort,
     );
+    _notificationChannel = _createChannel(
+      AppConfig.notificationHost,
+      AppConfig.notificationPort,
+    );
 
     // Create service clients
     authClient = AuthServiceClient(_authChannel);
     messagingClient = MessagingServiceClient(_messagingChannel);
     presenceClient = PresenceServiceClient(_presenceChannel);
     mediaClient = MediaServiceClient(_mediaChannel);
+    notificationClient = NotificationServiceClient(_notificationChannel);
 
     _initialized = true;
   }
@@ -86,6 +94,7 @@ class GrpcClients {
       _messagingChannel.shutdown(),
       _presenceChannel.shutdown(),
       _mediaChannel.shutdown(),
+      _notificationChannel.shutdown(),
     ]);
     _initialized = false;
   }
