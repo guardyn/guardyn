@@ -182,3 +182,22 @@ class GroupSubscribeWebSocket extends GroupEvent {
   @override
   List<Object?> get props => [groupId];
 }
+
+/// Update group information (name, icon, description)
+class GroupUpdate extends GroupEvent {
+  final String groupId;
+  final String? name;
+  final String? iconMediaId;
+  final String? description;
+
+  const GroupUpdate({
+    required this.groupId,
+    this.name,
+    this.iconMediaId,
+    this.description,
+  });
+
+  @override
+  List<Object?> get props => [groupId, name, iconMediaId, description];
+}
+

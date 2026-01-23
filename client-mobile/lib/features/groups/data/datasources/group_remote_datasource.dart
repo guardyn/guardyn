@@ -79,6 +79,39 @@ class GroupRemoteDatasource {
     return response.success.left;
   }
 
+  /// Update group information (name, icon, description)
+  /// Only group owner and admins can perform this action
+  Future<GroupModel> updateGroup({
+    required String accessToken,
+    required String groupId,
+    String? name,
+    String? iconMediaId,
+    String? description,
+  }) async {
+    final request = proto.UpdateGroupRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+    );
+
+    if (name != null && name.isNotEmpty) {
+      request.name = name;
+    }
+    if (iconMediaId != null && iconMediaId.isNotEmpty) {
+      request.iconMediaId = iconMediaId;
+    }
+    if (description != null && description.isNotEmpty) {
+      request.description = description;
+    }
+
+    final response = await _messagingClient.updateGroup(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return _groupInfoToModel(response.success.group);
+  }
+
   /// Delete a group (admin only)
   /// Note: This is a placeholder - DeleteGroup RPC is not yet implemented in backend
   Future<bool> deleteGroup({
@@ -92,6 +125,7 @@ class GroupRemoteDatasource {
       'Group deletion is not yet supported by the server. Please contact support.',
     );
   }
+
 
   /// Convert GroupInfo proto to GroupModel
   GroupModel _groupInfoToModel(proto.GroupInfo groupInfo) {

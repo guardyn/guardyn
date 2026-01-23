@@ -51,4 +51,13 @@ abstract class GroupRepository {
 
   /// Delete a group (admin only)
   Future<Either<Failure, bool>> deleteGroup(String groupId);
+
+  /// Update group information (name, icon, description)
+  /// Only group owner and admins can perform this action
+  Future<Either<Failure, Group>> updateGroup({
+    required String groupId,
+    String? name,
+    String? iconMediaId,
+    String? description,
+  });
 }

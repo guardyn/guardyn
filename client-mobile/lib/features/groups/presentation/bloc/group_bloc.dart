@@ -15,6 +15,7 @@ import '../../domain/usecases/get_groups.dart';
 import '../../domain/usecases/leave_group.dart';
 import '../../domain/usecases/remove_group_member.dart';
 import '../../domain/usecases/send_group_message.dart';
+import '../../domain/usecases/update_group.dart';
 import 'group_event.dart';
 import 'group_state.dart';
 
@@ -29,6 +30,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final AddGroupMember addGroupMember;
   final RemoveGroupMember removeGroupMember;
   final LeaveGroup leaveGroup;
+  final UpdateGroup updateGroup;
 
   Timer? _pollingTimer;
   String? _activeGroupId;
@@ -49,10 +51,12 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     required this.addGroupMember,
     required this.removeGroupMember,
     required this.leaveGroup,
+    required this.updateGroup,
   }) : super(const GroupInitial()) {
     on<GroupLoadAll>(_onLoadAll);
     on<GroupCreate>(_onCreateGroup);
     on<GroupDelete>(_onDeleteGroup);
+    on<GroupUpdate>(_onUpdateGroup);
     on<GroupLoadDetails>(_onLoadDetails);
     on<GroupLoadMessages>(_onLoadMessages);
     on<GroupSendMessage>(_onSendMessage);
@@ -120,6 +124,25 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     result.fold(
       (failure) => emit(GroupError(failure.message)),
       (group) => emit(GroupDetailsLoaded(group: group)),
+    );
+  }
+
+  Future<void> _onUpdateGroup(
+    GroupUpdate event,
+    Emitter<GroupState> emit,
+  ) async {
+    emit(const GroupLoading());
+
+    final result = await updateGroup(UpdateGroupParams(
+      groupId: event.groupId,
+      name: event.name,
+      iconMediaId: event.iconMediaId,
+      description: event.description,
+    ));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message)),
+      (group) => emit(GroupUpdated(group: group)),
     );
   }
 

@@ -373,4 +373,36 @@ class GroupRepositoryImpl implements GroupRepository {
       return Left(UnknownFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Group>> updateGroup({
+    required String groupId,
+    String? name,
+    String? iconMediaId,
+    String? description,
+  }) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final group = await _remoteDatasource.updateGroup(
+        accessToken: accessToken,
+        groupId: groupId,
+        name: name,
+        iconMediaId: iconMediaId,
+        description: description,
+      );
+
+      // Update cache
+      _groupCache[group.groupId] = group;
+
+      return Right(group);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to update group'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
 }

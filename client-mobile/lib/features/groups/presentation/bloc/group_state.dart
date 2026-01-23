@@ -147,6 +147,16 @@ class GroupDetailsLoaded extends GroupState {
   List<Object?> get props => [group];
 }
 
+/// Group updated successfully
+class GroupUpdated extends GroupState {
+  final Group group;
+
+  const GroupUpdated({required this.group});
+
+  @override
+  List<Object?> get props => [group];
+}
+
 /// Error state
 class GroupError extends GroupState {
   final String message;

@@ -26,6 +26,7 @@ import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 // Media feature imports
 import 'package:guardyn_client/features/media/data/datasources/media_local_datasource.dart';
@@ -303,6 +304,10 @@ void _registerGroupsDependencies() {
     () => DeleteGroup(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<UpdateGroup>(
+    () => UpdateGroup(getIt<GroupRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<GroupBloc>(
     () => GroupBloc(
@@ -315,6 +320,7 @@ void _registerGroupsDependencies() {
       addGroupMember: getIt<AddGroupMember>(),
       removeGroupMember: getIt<RemoveGroupMember>(),
       leaveGroup: getIt<LeaveGroup>(),
+      updateGroup: getIt<UpdateGroup>(),
     ),
   );
 }

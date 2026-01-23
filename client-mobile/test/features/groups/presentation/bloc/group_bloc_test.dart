@@ -12,6 +12,7 @@ import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_event.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_state.dart';
@@ -36,6 +37,8 @@ class MockRemoveGroupMember extends Mock implements RemoveGroupMember {}
 
 class MockLeaveGroup extends Mock implements LeaveGroup {}
 
+class MockUpdateGroup extends Mock implements UpdateGroup {}
+
 // Fake classes for argument matchers
 class FakeCreateGroupParams extends Fake implements CreateGroupParams {}
 
@@ -51,6 +54,8 @@ class FakeLeaveGroupParams extends Fake implements LeaveGroupParams {}
 
 class FakeDeleteGroupParams extends Fake implements DeleteGroupParams {}
 
+class FakeUpdateGroupParams extends Fake implements UpdateGroupParams {}
+
 void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
@@ -62,6 +67,8 @@ void main() {
   late MockAddGroupMember mockAddGroupMember;
   late MockRemoveGroupMember mockRemoveGroupMember;
   late MockLeaveGroup mockLeaveGroup;
+
+  late MockUpdateGroup mockUpdateGroup;
 
   // Test data
   const tGroupId = 'group-001';
@@ -109,6 +116,7 @@ void main() {
     registerFallbackValue(FakeRemoveGroupMemberParams());
     registerFallbackValue(FakeLeaveGroupParams());
     registerFallbackValue(FakeDeleteGroupParams());
+    registerFallbackValue(FakeUpdateGroupParams());
   });
 
   setUp(() {
@@ -121,6 +129,7 @@ void main() {
     mockAddGroupMember = MockAddGroupMember();
     mockRemoveGroupMember = MockRemoveGroupMember();
     mockLeaveGroup = MockLeaveGroup();
+    mockUpdateGroup = MockUpdateGroup();
     
     // Setup default mock behavior for leaveGroup
     when(() => mockLeaveGroup.call(any()))
@@ -144,6 +153,7 @@ void main() {
       addGroupMember: mockAddGroupMember,
       removeGroupMember: mockRemoveGroupMember,
       leaveGroup: mockLeaveGroup,
+      updateGroup: mockUpdateGroup,
     );
   });
 
@@ -470,6 +480,71 @@ void main() {
         bloc.add(GroupMessageReceived(tMessage));
       },
       expect: () => [], // No state change expected for duplicate
+    );
+  });
+
+  group('GroupUpdate', () {
+    final tUpdatedGroup = Group(
+      groupId: tGroupId,
+      name: 'Updated Group Name',
+      creatorUserId: tCreatorUserId,
+      members: const [],
+      createdAt: DateTime(2025, 11, 29),
+      memberCount: 3,
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits [GroupLoading, GroupUpdated] when UpdateGroup succeeds',
+      build: () {
+        when(() => mockUpdateGroup(any()))
+            .thenAnswer((_) async => Right(tUpdatedGroup));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupUpdate(
+        groupId: tGroupId,
+        name: 'Updated Group Name',
+      )),
+      expect: () => [
+        const GroupLoading(),
+        GroupUpdated(group: tUpdatedGroup),
+      ],
+      verify: (_) {
+        verify(() => mockUpdateGroup(any())).called(1);
+      },
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits [GroupLoading, GroupError] when UpdateGroup fails',
+      build: () {
+        when(() => mockUpdateGroup(any()))
+            .thenAnswer((_) async => const Left(ServerFailure('Permission denied')));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupUpdate(
+        groupId: tGroupId,
+        name: 'Updated Group Name',
+      )),
+      expect: () => [
+        const GroupLoading(),
+        const GroupError('Permission denied'),
+      ],
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits [GroupLoading, GroupUpdated] when updating icon',
+      build: () {
+        when(() => mockUpdateGroup(any()))
+            .thenAnswer((_) async => Right(tUpdatedGroup));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupUpdate(
+        groupId: tGroupId,
+        iconMediaId: 'new-icon-media-id',
+      )),
+      expect: () => [
+        const GroupLoading(),
+        GroupUpdated(group: tUpdatedGroup),
+      ],
     );
   });
 }

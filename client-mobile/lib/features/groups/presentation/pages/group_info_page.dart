@@ -116,6 +116,13 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         } else if (state is GroupMemberAdded || state is GroupMemberRemoved) {
           // Reload group details after member changes
           _loadGroupDetails();
+        } else if (state is GroupUpdated) {
+          // Group was updated (name, icon, description changed)
+          setState(() {
+            _group = state.group;
+            _isLoading = false;
+            _errorMessage = null;
+          });
         }
       },
       child: Scaffold(
@@ -286,10 +293,14 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
             size: 100,
             canEdit: isAdmin,
             onIconUpdated: (mediaId) {
-              // TODO: Call UpdateGroup RPC with new iconMediaId
+              // Call UpdateGroup RPC with new iconMediaId
+              context.read<GroupBloc>().add(GroupUpdate(
+                groupId: widget.groupId,
+                iconMediaId: mediaId,
+              ));
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Group icon updated'),
+                  content: const Text('Group icon updated'),
                   backgroundColor: GuardynColors.guardyn500,
                 ),
               );
