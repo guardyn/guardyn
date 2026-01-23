@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../messaging/presentation/pages/chat_page.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
 import '../bloc/group_state.dart';
+import '../pages/user_profile_page.dart';
 
 /// Bottom sheet showing options for a group member (remove, make admin, etc.)
 class MemberOptionsSheet extends StatelessWidget {
@@ -104,25 +106,14 @@ class MemberOptionsSheet extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.person),
                 title: const Text('View Profile'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile view coming soon')),
-                  );
-                },
+                onTap: () => _openProfile(context),
               ),
 
               // Message privately
               ListTile(
                 leading: const Icon(Icons.message),
                 title: const Text('Message'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Direct message feature coming soon')),
-                  );
-                },
+                onTap: () => _startDirectMessage(context),
               ),
 
               // Admin options
@@ -157,6 +148,53 @@ class MemberOptionsSheet extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openProfile(BuildContext context) {
+    final navigator = Navigator.of(context);
+    navigator.pop(); // Close bottom sheet
+    navigator
+        .push(
+          MaterialPageRoute(
+            builder: (context) => UserProfilePage(
+              userId: member.userId,
+              username: member.username,
+              role: member.role.name,
+            ),
+          ),
+        )
+        .then((result) {
+          // If user tapped "Send Message" from profile page
+          if (result == 'start_dm') {
+            navigator.push(
+              MaterialPageRoute(
+                builder: (context) => ChatPage(
+                  conversationUserId: member.userId,
+                  conversationUserName: member.username,
+                  deviceId: '', // Will be determined by backend
+                ),
+              ),
+            );
+          }
+        });
+  }
+
+  void _startDirectMessage(BuildContext context) {
+    Navigator.pop(context); // Close bottom sheet
+    _navigateToDM(context);
+  }
+
+  void _navigateToDM(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          conversationUserId: member.userId,
+          conversationUserName: member.username,
+          deviceId: '', // Will be determined by backend
         ),
       ),
     );
