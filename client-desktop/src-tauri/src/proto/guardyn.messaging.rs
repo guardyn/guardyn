@@ -821,6 +821,35 @@ pub struct LeaveGroupSuccess {
     pub left: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteGroupRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub group_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteGroupResponse {
+    #[prost(oneof = "delete_group_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<delete_group_response::Result>,
+}
+/// Nested message and enum types in `DeleteGroupResponse`.
+pub mod delete_group_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::DeleteGroupSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteGroupSuccess {
+    #[prost(bool, tag = "1")]
+    pub deleted: bool,
+    #[prost(string, tag = "2")]
+    pub group_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Reaction {
     /// Server-generated UUID
     #[prost(string, tag = "1")]
@@ -2100,6 +2129,33 @@ pub mod messaging_service_client {
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new("guardyn.messaging.MessagingService", "LeaveGroup"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Delete a group (owner only)
+        pub async fn delete_group(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteGroupRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteGroupResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.messaging.MessagingService/DeleteGroup",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("guardyn.messaging.MessagingService", "DeleteGroup"),
                 );
             self.inner.unary(req, path, codec).await
         }

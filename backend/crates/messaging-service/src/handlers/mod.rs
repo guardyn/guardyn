@@ -19,6 +19,7 @@ pub mod get_groups;
 pub mod get_group_by_id;
 pub mod update_group;
 pub mod leave_group;
+pub mod delete_group;
 
 // Phase 2: New feature handlers
 pub mod reactions;
@@ -56,6 +57,7 @@ pub use get_groups::get_groups;
 pub use get_group_by_id::get_group_by_id;
 pub use update_group::update_group;
 pub use leave_group::leave_group;
+pub use delete_group::delete_group;
 
 // Phase 2: Re-exports
 pub use reactions::{add_reaction, remove_reaction, get_reactions};

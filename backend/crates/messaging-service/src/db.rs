@@ -2519,4 +2519,56 @@ impl DatabaseClient {
 
         Ok(())
     }
+
+    // =========================================================================
+    // Group Deletion Methods
+    // =========================================================================
+
+    /// Delete a group (metadata only)
+    pub async fn delete_group(&self, group_id: &str) -> Result<()> {
+        let key = format!("/groups/{}", group_id);
+        self.tikv.delete(key.into_bytes()).await?;
+        tracing::info!("Deleted group metadata: {}", group_id);
+        Ok(())
+    }
+
+    /// Delete all members from a group
+    pub async fn delete_all_group_members(&self, group_id: &str) -> Result<()> {
+        let prefix = format!("/groups/{}/members/", group_id);
+        let keys = self.tikv.scan(prefix.clone().into_bytes().., 1000).await?;
+
+        let mut deleted_count = 0;
+        for kv_pair in keys {
+            let key_bytes: Vec<u8> = kv_pair.0.into();
+            self.tikv.delete(key_bytes).await?;
+            deleted_count += 1;
+        }
+
+        tracing::info!(
+            "Deleted {} members from group {}",
+            deleted_count,
+            group_id
+        );
+        Ok(())
+    }
+
+    /// Delete all messages from a group
+    pub async fn delete_all_group_messages(&self, group_id: &str) -> Result<()> {
+        let prefix = format!("/group_messages/{}/", group_id);
+        let keys = self.tikv.scan(prefix.clone().into_bytes().., 10000).await?;
+
+        let mut deleted_count = 0;
+        for kv_pair in keys {
+            let key_bytes: Vec<u8> = kv_pair.0.into();
+            self.tikv.delete(key_bytes).await?;
+            deleted_count += 1;
+        }
+
+        tracing::info!(
+            "Deleted {} messages from group {}",
+            deleted_count,
+            group_id
+        );
+        Ok(())
+    }
 }

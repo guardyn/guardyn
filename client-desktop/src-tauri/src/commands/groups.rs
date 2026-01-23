@@ -267,3 +267,25 @@ pub async fn update_group(
         }
     }
 }
+
+/// Delete a group (owner only)
+/// Permanently deletes the group, all members, and all messages
+#[tauri::command]
+pub async fn delete_group(group_id: String, state: State<'_, AppState>) -> Result<bool, String> {
+    if !state.is_authenticated() {
+        return Err("Not authenticated".to_string());
+    }
+
+    tracing::debug!("Deleting group: {}", group_id);
+
+    match state.messaging().delete_group(group_id).await {
+        Ok(deleted) => {
+            tracing::info!("Group deleted: {}", deleted);
+            Ok(deleted)
+        }
+        Err(e) => {
+            tracing::error!("Failed to delete group: {:?}", e);
+            Err(format!("Failed to delete group: {}", e))
+        }
+    }
+}

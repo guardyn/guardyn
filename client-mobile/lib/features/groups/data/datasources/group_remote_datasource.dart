@@ -112,18 +112,24 @@ class GroupRemoteDatasource {
     return _groupInfoToModel(response.success.group);
   }
 
-  /// Delete a group (admin only)
-  /// Note: This is a placeholder - DeleteGroup RPC is not yet implemented in backend
+  /// Delete a group (owner only)
+  /// Permanently deletes the group, all members, and all messages
   Future<bool> deleteGroup({
     required String accessToken,
     required String groupId,
   }) async {
-    // TODO: Implement when backend supports DeleteGroup RPC
-    // For now, throw an error indicating the feature is not yet available
-    throw GrpcError.custom(
-      12, // UNIMPLEMENTED status code
-      'Group deletion is not yet supported by the server. Please contact support.',
+    final request = proto.DeleteGroupRequest(
+      accessToken: accessToken,
+      groupId: groupId,
     );
+
+    final response = await _messagingClient.deleteGroup(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return true;
   }
 
 

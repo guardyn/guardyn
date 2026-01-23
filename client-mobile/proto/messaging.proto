@@ -60,6 +60,9 @@ service MessagingService {
   // Leave a group
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse);
 
+  // Delete a group (owner only)
+  rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse);
+
   // Clear all messages in a conversation (local delete for current user)
   rpc ClearChat(ClearChatRequest) returns (ClearChatResponse);
 
@@ -698,6 +701,27 @@ message LeaveGroupResponse {
 
 message LeaveGroupSuccess {
   bool left = 1;
+}
+
+// ============================================================================
+// Delete Group (Owner Only)
+// ============================================================================
+
+message DeleteGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+}
+
+message DeleteGroupResponse {
+  oneof result {
+    DeleteGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteGroupSuccess {
+  bool deleted = 1;
+  string group_id = 2;
 }
 
 // ============================================================================

@@ -171,6 +171,14 @@ class MessagingServiceClient extends $grpc.Client {
     return $createUnaryCall(_$leaveGroup, request, options: options);
   }
 
+  /// Delete a group (owner only)
+  $grpc.ResponseFuture<$0.DeleteGroupResponse> deleteGroup(
+    $0.DeleteGroupRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteGroup, request, options: options);
+  }
+
   /// Clear all messages in a conversation (local delete for current user)
   $grpc.ResponseFuture<$0.ClearChatResponse> clearChat(
     $0.ClearChatRequest request, {
@@ -388,6 +396,11 @@ class MessagingServiceClient extends $grpc.Client {
           '/guardyn.messaging.MessagingService/LeaveGroup',
           ($0.LeaveGroupRequest value) => value.writeToBuffer(),
           $0.LeaveGroupResponse.fromBuffer);
+  static final _$deleteGroup =
+      $grpc.ClientMethod<$0.DeleteGroupRequest, $0.DeleteGroupResponse>(
+          '/guardyn.messaging.MessagingService/DeleteGroup',
+          ($0.DeleteGroupRequest value) => value.writeToBuffer(),
+          $0.DeleteGroupResponse.fromBuffer);
   static final _$clearChat =
       $grpc.ClientMethod<$0.ClearChatRequest, $0.ClearChatResponse>(
           '/guardyn.messaging.MessagingService/ClearChat',
@@ -621,6 +634,15 @@ abstract class MessagingServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.LeaveGroupRequest.fromBuffer(value),
         ($0.LeaveGroupResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.DeleteGroupRequest, $0.DeleteGroupResponse>(
+            'DeleteGroup',
+            deleteGroup_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.DeleteGroupRequest.fromBuffer(value),
+            ($0.DeleteGroupResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.ClearChatRequest, $0.ClearChatResponse>(
         'ClearChat',
         clearChat_Pre,
@@ -905,6 +927,14 @@ abstract class MessagingServiceBase extends $grpc.Service {
 
   $async.Future<$0.LeaveGroupResponse> leaveGroup(
       $grpc.ServiceCall call, $0.LeaveGroupRequest request);
+
+  $async.Future<$0.DeleteGroupResponse> deleteGroup_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.DeleteGroupRequest> $request) async {
+    return deleteGroup($call, await $request);
+  }
+
+  $async.Future<$0.DeleteGroupResponse> deleteGroup(
+      $grpc.ServiceCall call, $0.DeleteGroupRequest request);
 
   $async.Future<$0.ClearChatResponse> clearChat_Pre($grpc.ServiceCall $call,
       $async.Future<$0.ClearChatRequest> $request) async {

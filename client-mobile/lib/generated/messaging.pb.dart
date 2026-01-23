@@ -5570,6 +5570,230 @@ class LeaveGroupSuccess extends $pb.GeneratedMessage {
   void clearLeft() => $_clearField(1);
 }
 
+class DeleteGroupRequest extends $pb.GeneratedMessage {
+  factory DeleteGroupRequest({
+    $core.String? accessToken,
+    $core.String? groupId,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (groupId != null) result.groupId = groupId;
+    return result;
+  }
+
+  DeleteGroupRequest._();
+
+  factory DeleteGroupRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteGroupRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteGroupRequest',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteGroupRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteGroupRequest copyWith(void Function(DeleteGroupRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteGroupRequest))
+          as DeleteGroupRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteGroupRequest create() => DeleteGroupRequest._();
+  @$core.override
+  DeleteGroupRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteGroupRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteGroupRequest>(create);
+  static DeleteGroupRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => $_clearField(2);
+}
+
+enum DeleteGroupResponse_Result { success, error, notSet }
+
+class DeleteGroupResponse extends $pb.GeneratedMessage {
+  factory DeleteGroupResponse({
+    DeleteGroupSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  DeleteGroupResponse._();
+
+  factory DeleteGroupResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteGroupResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, DeleteGroupResponse_Result>
+      _DeleteGroupResponse_ResultByTag = {
+    1: DeleteGroupResponse_Result.success,
+    2: DeleteGroupResponse_Result.error,
+    0: DeleteGroupResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteGroupResponse',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<DeleteGroupSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: DeleteGroupSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteGroupResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteGroupResponse copyWith(void Function(DeleteGroupResponse) updates) =>
+      super.copyWith((message) => updates(message as DeleteGroupResponse))
+          as DeleteGroupResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteGroupResponse create() => DeleteGroupResponse._();
+  @$core.override
+  DeleteGroupResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteGroupResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteGroupResponse>(create);
+  static DeleteGroupResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  DeleteGroupResponse_Result whichResult() =>
+      _DeleteGroupResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  DeleteGroupSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(DeleteGroupSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  DeleteGroupSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class DeleteGroupSuccess extends $pb.GeneratedMessage {
+  factory DeleteGroupSuccess({
+    $core.bool? deleted,
+    $core.String? groupId,
+  }) {
+    final result = create();
+    if (deleted != null) result.deleted = deleted;
+    if (groupId != null) result.groupId = groupId;
+    return result;
+  }
+
+  DeleteGroupSuccess._();
+
+  factory DeleteGroupSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteGroupSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteGroupSuccess',
+      package:
+          const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.messaging'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'deleted')
+    ..aOS(2, _omitFieldNames ? '' : 'groupId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteGroupSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteGroupSuccess copyWith(void Function(DeleteGroupSuccess) updates) =>
+      super.copyWith((message) => updates(message as DeleteGroupSuccess))
+          as DeleteGroupSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteGroupSuccess create() => DeleteGroupSuccess._();
+  @$core.override
+  DeleteGroupSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteGroupSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteGroupSuccess>(create);
+  static DeleteGroupSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get deleted => $_getBF(0);
+  @$pb.TagNumber(1)
+  set deleted($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeleted() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeleted() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get groupId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set groupId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGroupId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGroupId() => $_clearField(2);
+}
+
 class Reaction extends $pb.GeneratedMessage {
   factory Reaction({
     $core.String? reactionId,

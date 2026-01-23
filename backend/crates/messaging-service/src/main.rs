@@ -57,6 +57,7 @@ use proto::messaging::{
     GetGroupByIdRequest, GetGroupByIdResponse,
     UpdateGroupRequest, UpdateGroupResponse,
     LeaveGroupRequest, LeaveGroupResponse,
+    DeleteGroupRequest, DeleteGroupResponse,
     HealthRequest,
     // Phase 2: Reactions
     AddReactionRequest, AddReactionResponse,
@@ -234,6 +235,13 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<LeaveGroupRequest>,
     ) -> Result<Response<LeaveGroupResponse>, Status> {
         handlers::leave_group(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn delete_group(
+        &self,
+        request: Request<DeleteGroupRequest>,
+    ) -> Result<Response<DeleteGroupResponse>, Status> {
+        handlers::delete_group(request.into_inner(), self.db.clone()).await
     }
 
     async fn clear_chat(

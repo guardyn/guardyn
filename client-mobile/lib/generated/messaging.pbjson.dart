@@ -1814,6 +1814,68 @@ const LeaveGroupSuccess$json = {
 final $typed_data.Uint8List leaveGroupSuccessDescriptor = $convert
     .base64Decode('ChFMZWF2ZUdyb3VwU3VjY2VzcxISCgRsZWZ0GAEgASgIUgRsZWZ0');
 
+@$core.Deprecated('Use deleteGroupRequestDescriptor instead')
+const DeleteGroupRequest$json = {
+  '1': 'DeleteGroupRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'group_id', '3': 2, '4': 1, '5': 9, '10': 'groupId'},
+  ],
+};
+
+/// Descriptor for `DeleteGroupRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteGroupRequestDescriptor = $convert.base64Decode(
+    'ChJEZWxldGVHcm91cFJlcXVlc3QSIQoMYWNjZXNzX3Rva2VuGAEgASgJUgthY2Nlc3NUb2tlbh'
+    'IZCghncm91cF9pZBgCIAEoCVIHZ3JvdXBJZA==');
+
+@$core.Deprecated('Use deleteGroupResponseDescriptor instead')
+const DeleteGroupResponse$json = {
+  '1': 'DeleteGroupResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.messaging.DeleteGroupSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `DeleteGroupResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteGroupResponseDescriptor = $convert.base64Decode(
+    'ChNEZWxldGVHcm91cFJlc3BvbnNlEkEKB3N1Y2Nlc3MYASABKAsyJS5ndWFyZHluLm1lc3NhZ2'
+    'luZy5EZWxldGVHcm91cFN1Y2Nlc3NIAFIHc3VjY2VzcxI1CgVlcnJvchgCIAEoCzIdLmd1YXJk'
+    'eW4uY29tbW9uLkVycm9yUmVzcG9uc2VIAFIFZXJyb3JCCAoGcmVzdWx0');
+
+@$core.Deprecated('Use deleteGroupSuccessDescriptor instead')
+const DeleteGroupSuccess$json = {
+  '1': 'DeleteGroupSuccess',
+  '2': [
+    {'1': 'deleted', '3': 1, '4': 1, '5': 8, '10': 'deleted'},
+    {'1': 'group_id', '3': 2, '4': 1, '5': 9, '10': 'groupId'},
+  ],
+};
+
+/// Descriptor for `DeleteGroupSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteGroupSuccessDescriptor = $convert.base64Decode(
+    'ChJEZWxldGVHcm91cFN1Y2Nlc3MSGAoHZGVsZXRlZBgBIAEoCFIHZGVsZXRlZBIZCghncm91cF'
+    '9pZBgCIAEoCVIHZ3JvdXBJZA==');
+
 @$core.Deprecated('Use reactionDescriptor instead')
 const Reaction$json = {
   '1': 'Reaction',

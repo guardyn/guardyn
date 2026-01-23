@@ -74,6 +74,7 @@ fn main() {
             commands::groups::remove_group_member,
             commands::groups::leave_group,
             commands::groups::update_group,
+            commands::groups::delete_group,
             // Media commands
             commands::media::get_media_upload_url,
             commands::media::upload_media_file,

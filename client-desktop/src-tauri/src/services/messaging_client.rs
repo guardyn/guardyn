@@ -5,7 +5,7 @@
 use crate::grpc::{GrpcClient, GrpcError};
 use crate::proto::messaging::{
     messaging_service_client::MessagingServiceClient, AddReactionRequest, ChangeMemberRoleRequest,
-    CreateGroupRequest, DeleteMessageRequest, GetConversationsRequest, GetGroupByIdRequest,
+    CreateGroupRequest, DeleteGroupRequest, DeleteMessageRequest, GetConversationsRequest, GetGroupByIdRequest,
     GetGroupMessagesRequest, GetGroupsRequest, GetMessagesRequest, LeaveGroupRequest,
     MarkAsReadRequest, RemoveGroupMemberRequest, SendGroupMessageRequest,
     SendMessageRequest, TypingIndicatorRequest, UpdateGroupRequest,
@@ -796,6 +796,37 @@ impl MessagingClient {
                 })
             }
             Some(crate::proto::messaging::update_group_response::Result::Error(error)) => {
+                Err(GrpcError::RequestFailed(error.message))
+            }
+            None => Err(GrpcError::RequestFailed("Empty response".to_string())),
+        }
+    }
+
+    /// Delete a group (owner only)
+    pub async fn delete_group(&self, group_id: String) -> Result<bool, GrpcError> {
+        debug!("Deleting group {}", group_id);
+
+        let request = DeleteGroupRequest {
+            access_token: self.grpc.get_auth_token().unwrap_or_default(),
+            group_id,
+        };
+
+        let mut client = self.client().await?;
+        let request = self.with_auth(Request::new(request))?;
+
+        let response = client
+            .delete_group(request)
+            .await
+            .map_err(|e| GrpcError::RequestFailed(e.to_string()))?;
+
+        let result = response.into_inner();
+
+        match result.result {
+            Some(crate::proto::messaging::delete_group_response::Result::Success(_)) => {
+                info!("Group deleted successfully");
+                Ok(true)
+            }
+            Some(crate::proto::messaging::delete_group_response::Result::Error(error)) => {
                 Err(GrpcError::RequestFailed(error.message))
             }
             None => Err(GrpcError::RequestFailed("Empty response".to_string())),
