@@ -35,13 +35,17 @@ class MediaRepositoryImpl implements MediaRepository {
       conversationId: conversationId,
     );
 
+    // Convert PbMap to regular Map and log for debugging
+    final headersMap = Map<String, String>.from(response.headers);
+    logger.d('getUploadUrl headers from server: $headersMap');
+
     return UploadUrlResult(
       mediaId: response.mediaId,
       presignedUrl: response.uploadUrl,
       expiresAt: DateTime.fromMillisecondsSinceEpoch(
         response.expiresAt.toInt() * 1000,
       ),
-      headers: response.headers,
+      headers: headersMap,
     );
   }
 

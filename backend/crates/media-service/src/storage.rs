@@ -18,14 +18,13 @@ use std::time::Duration;
 /// Storage client for S3/MinIO operations
 #[derive(Clone)]
 pub struct StorageClient {
+    /// Client for internal operations (using internal endpoint)
     client: S3Client,
+    /// Client for generating presigned URLs (using public endpoint)
+    /// This is needed because presigned URL signature includes the host header
+    presign_client: S3Client,
     bucket: String,
     presigned_expiry: Duration,
-    /// Internal S3 endpoint (e.g., http://minio:9000)
-    internal_endpoint: String,
-    /// Public S3 endpoint for presigned URLs (e.g., http://localhost:9000)
-    /// If None, presigned URLs use the internal endpoint
-    public_endpoint: Option<String>,
 }
 
 impl StorageClient {
@@ -39,21 +38,42 @@ impl StorageClient {
             "guardyn-media",
         );
 
+        // Client for internal operations (backend-to-minio communication)
         let s3_config = S3ConfigBuilder::new()
             .region(Region::new(config.s3_region.clone()))
             .endpoint_url(&config.s3_endpoint)
-            .credentials_provider(credentials)
+            .credentials_provider(credentials.clone())
             .force_path_style(true) // Required for MinIO
             .build();
 
         let client = S3Client::from_conf(s3_config);
 
+        // Client for presigned URL generation (uses public endpoint)
+        // This is necessary because presigned URL signature includes the host header,
+        // so we need to sign with the same host that clients will use
+        let presign_endpoint = config.s3_public_endpoint.as_ref()
+            .unwrap_or(&config.s3_endpoint);
+        
+        let presign_config = S3ConfigBuilder::new()
+            .region(Region::new(config.s3_region.clone()))
+            .endpoint_url(presign_endpoint)
+            .credentials_provider(credentials)
+            .force_path_style(true)
+            .build();
+
+        let presign_client = S3Client::from_conf(presign_config);
+
+        tracing::info!(
+            internal_endpoint = %config.s3_endpoint,
+            presign_endpoint = %presign_endpoint,
+            "Storage client initialized with separate presign client"
+        );
+
         Ok(Self {
             client,
+            presign_client,
             bucket: config.bucket_name.clone(),
             presigned_expiry: Duration::from_secs(config.presigned_url_expiry_seconds),
-            internal_endpoint: config.s3_endpoint.clone(),
-            public_endpoint: config.s3_public_endpoint.clone(),
         })
     }
 
@@ -220,6 +240,7 @@ impl StorageClient {
     }
 
     /// Generate a pre-signed URL for upload
+    /// Uses presign_client which is configured with public endpoint
     pub async fn generate_upload_url(
         &self,
         key: &str,
@@ -232,8 +253,10 @@ impl StorageClient {
             .build()
             .map_err(|e| anyhow!("Failed to build presigning config: {}", e))?;
 
+        // Use presign_client which is configured with public endpoint
+        // This ensures the host header in the signature matches what clients will send
         let presigned = self
-            .client
+            .presign_client
             .put_object()
             .bucket(&self.bucket)
             .key(key)
@@ -242,11 +265,11 @@ impl StorageClient {
             .await
             .map_err(|e| anyhow!("Failed to generate upload URL: {}", e))?;
 
-        let url = presigned.uri().to_string();
-        Ok(self.rewrite_presigned_url(&url))
+        Ok(presigned.uri().to_string())
     }
 
     /// Generate a pre-signed URL for download
+    /// Uses presign_client which is configured with public endpoint
     pub async fn generate_download_url(
         &self,
         key: &str,
@@ -258,8 +281,9 @@ impl StorageClient {
             .build()
             .map_err(|e| anyhow!("Failed to build presigning config: {}", e))?;
 
+        // Use presign_client which is configured with public endpoint
         let presigned = self
-            .client
+            .presign_client
             .get_object()
             .bucket(&self.bucket)
             .key(key)
@@ -267,26 +291,7 @@ impl StorageClient {
             .await
             .map_err(|e| anyhow!("Failed to generate download URL: {}", e))?;
 
-        let url = presigned.uri().to_string();
-        Ok(self.rewrite_presigned_url(&url))
-    }
-
-    /// Rewrite presigned URL to use public endpoint if configured
-    /// 
-    /// This is necessary because:
-    /// - Internal operations use Docker network hostname (e.g., http://minio:9000)
-    /// - Clients need public hostname (e.g., http://localhost:9000 or http://10.0.2.2:9000)
-    /// 
-    /// The signature remains valid because MinIO validates the path and query params,
-    /// not the host header (when using path-style URLs).
-    fn rewrite_presigned_url(&self, url: &str) -> String {
-        if let Some(ref public_endpoint) = self.public_endpoint {
-            // Replace internal endpoint with public endpoint
-            // e.g., http://minio:9000/bucket/key?sig=... -> http://localhost:9000/bucket/key?sig=...
-            url.replace(&self.internal_endpoint, public_endpoint)
-        } else {
-            url.to_string()
-        }
+        Ok(presigned.uri().to_string())
     }
 
     /// Copy a file within storage (for thumbnails, etc.)
