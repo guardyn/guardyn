@@ -66,6 +66,14 @@ fn main() {
             commands::messaging::get_conversations,
             commands::messaging::get_messages,
             commands::messaging::mark_as_read,
+            // Group commands
+            commands::groups::get_groups,
+            commands::groups::get_group,
+            commands::groups::get_group_members,
+            commands::groups::update_member_role,
+            commands::groups::remove_group_member,
+            commands::groups::leave_group,
+            commands::groups::update_group,
             // Media commands
             commands::media::get_media_upload_url,
             commands::media::upload_media_file,
