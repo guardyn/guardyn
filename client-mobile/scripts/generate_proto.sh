@@ -34,9 +34,17 @@ fi
 echo "Using protoc: $PROTOC"
 echo "Using protoc-gen-dart from: $(which protoc-gen-dart)"
 
-# Clean output directory
+# Clean output directory (preserve rust/ subdirectory for flutter_rust_bridge)
+if [ -d "$OUTPUT_DIR/rust" ]; then
+    # Move rust dir temporarily
+    mv "$OUTPUT_DIR/rust" /tmp/guardyn_rust_generated_backup
+fi
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
+# Restore rust dir
+if [ -d /tmp/guardyn_rust_generated_backup ]; then
+    mv /tmp/guardyn_rust_generated_backup "$OUTPUT_DIR/rust"
+fi
 
 # Generate Dart code
 echo "Generating Dart gRPC code..."

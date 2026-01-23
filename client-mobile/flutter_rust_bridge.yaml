@@ -1,0 +1,18 @@
+# Flutter Rust Bridge configuration for Guardyn
+# See: https://cjycode.com/flutter_rust_bridge/
+
+rust_input: crate::ffi
+dart_output: lib/generated/rust/
+
+# Rust crate configuration
+rust_root: ../backend/crates/crypto
+
+# Additional options
+full_dep: true
+dart_enums_style: true
+
+# Dependency check (set to false to skip)
+deps_check: false
+
+# Disable auto upgrade
+auto_upgrade_dependency: false

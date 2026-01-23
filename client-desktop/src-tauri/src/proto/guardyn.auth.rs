@@ -474,6 +474,9 @@ pub struct UpdateProfileRequest {
     /// Optional: new bio
     #[prost(string, tag = "4")]
     pub bio: ::prost::alloc::string::String,
+    /// If true, remove current avatar
+    #[prost(bool, tag = "5")]
+    pub clear_avatar: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateProfileResponse {
