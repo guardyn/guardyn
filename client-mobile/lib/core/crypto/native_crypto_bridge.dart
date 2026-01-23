@@ -257,31 +257,29 @@ class CryptoBridgeFactory {
   }
 
   static CryptoBridge _createBridge() {
-    // Create native Rust implementation
-    final nativeBridge = native_bridge.createNativeCryptoBridge();
-    if (nativeBridge != null) {
-      debugPrint('🔐 Using native Rust crypto implementation');
-      return nativeBridge;
+    // Create crypto bridge (native Rust or Dart fallback)
+    final bridge = native_bridge.createNativeCryptoBridge();
+    if (bridge != null) {
+      return bridge;
     }
 
-    // Native bridge creation failed - this is a critical error on native platforms
+    // This should not happen - createNativeCryptoBridge now always returns a bridge
     throw UnsupportedError(
-      'Native Rust crypto is required but not available. '
-      'Ensure libguardyn_crypto_ffi is built and included in the app bundle. '
-      'Web platform is not supported.',
+      'Failed to create crypto bridge. '
+      'This is an internal error - please report it.',
     );
   }
 
   /// Force native implementation (for testing)
   @visibleForTesting
   static void useNative() {
-    final bridge = native_bridge.createNativeCryptoBridge();
-    if (bridge == null) {
+    if (!native_bridge.isNativeCryptoAvailable()) {
       throw UnsupportedError(
-        'Native Rust crypto is not available on this platform',
+        'Native Rust crypto is not available on this platform. '
+        'Build native libraries first.',
       );
     }
-    _instance = bridge;
+    _instance = native_bridge.createNativeCryptoBridge();
   }
 
   /// Reset instance (for testing)

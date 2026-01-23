@@ -45,6 +45,9 @@ dependencies:
   uuid: ^4.0.0
 
   # E2EE Cryptography - all crypto now uses CryptoPrimitives (Rust FFI / Dart fallback)
+  # Pure Dart fallback for development/testing when native libraries are not built
+  cryptography: ^2.7.0
+  pinenacl: ^0.6.0
 
   # SVG Support
   flutter_svg: ^2.0.9
