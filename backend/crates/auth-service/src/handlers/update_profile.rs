@@ -235,7 +235,7 @@ mod tests {
         let secret = "test_secret_key_123";
         let user_id = "user-uuid-12345";
         let token = create_test_token(user_id, secret, 3600);
-        
+
         let result = validate_jwt_token(&token, secret);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), user_id);
@@ -270,7 +270,7 @@ mod tests {
         // Test display name with unicode characters
         let result = merge_profile_field("Иван Иванов", None);
         assert_eq!(result, Some("Иван Иванов".to_string()));
-        
+
         let result = merge_profile_field("John Doe 日本語", Some("Old Name".to_string()));
         assert_eq!(result, Some("John Doe 日本語".to_string()));
     }

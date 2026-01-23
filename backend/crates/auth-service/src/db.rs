@@ -145,9 +145,9 @@ impl DatabaseClient {
         let profile_key = format!("/users/{}/profile", user_id).into_bytes();
         let profile_data = self.client.get(profile_key.clone()).await?
             .ok_or_else(|| anyhow::anyhow!("User not found"))?;
-        
+
         let mut profile: UserProfile = serde_json::from_slice(&profile_data)?;
-        
+
         // Update fields if provided
         // clear_avatar explicitly removes the avatar
         if clear_avatar {
@@ -161,11 +161,11 @@ impl DatabaseClient {
         if bio.is_some() {
             profile.bio = bio;
         }
-        
+
         // Save updated profile
         let profile_value = serde_json::to_vec(&profile)?;
         self.client.put(profile_key, profile_value).await?;
-        
+
         Ok(profile)
     }
 
