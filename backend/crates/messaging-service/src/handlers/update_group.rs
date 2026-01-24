@@ -1,9 +1,10 @@
 //! Update group handler - updates group name, icon, and description
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use tonic::{Response, Status};
 
-use crate::auth_client::AuthClient;
+use crate::auth_client::{AuthClient, UserProfileInfo};
 use crate::db::DatabaseClient;
 use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
@@ -143,27 +144,37 @@ pub async fn update_group(
     }
 
     // Build response with updated group info
-    // Collect unique user IDs for batch username lookup
+    // Collect unique user IDs for batch profile lookup
     let user_ids: Vec<String> = members.iter().map(|m| m.user_id.clone()).collect();
 
-    // Fetch usernames from auth service
+    // Fetch full user profiles from auth service
     let auth_url = std::env::var("AUTH_SERVICE_URL")
         .unwrap_or_else(|_| "http://auth-service:50051".to_string());
-    let user_profiles = match AuthClient::new(&auth_url).await {
-        Ok(mut client) => client.get_usernames(&user_ids).await,
+    let user_profiles: HashMap<String, UserProfileInfo> = match AuthClient::new(&auth_url).await {
+        Ok(mut client) => client.get_user_profiles(&user_ids).await,
         Err(e) => {
-            tracing::warn!("Failed to connect to auth service for username lookup: {}", e);
-            std::collections::HashMap::new()
+            tracing::warn!("Failed to connect to auth service for profile lookup: {}", e);
+            HashMap::new()
         }
     };
 
     let member_infos: Vec<GroupMemberInfo> = members
         .iter()
         .map(|m| {
-            let username = user_profiles
-                .get(&m.user_id)
-                .cloned()
+            // Get full profile or create default with user_id as fallback
+            let profile = user_profiles.get(&m.user_id);
+            
+            let username = profile
+                .map(|p| p.username.clone())
                 .unwrap_or_else(|| m.user_id.clone());
+            
+            let display_name = profile
+                .map(|p| p.display_name.clone())
+                .unwrap_or_default();
+            
+            let avatar_media_id = profile
+                .map(|p| p.avatar_media_id.clone())
+                .unwrap_or_default();
 
             GroupMemberInfo {
                 user_id: m.user_id.clone(),
@@ -174,8 +185,8 @@ pub async fn update_group(
                     seconds: m.joined_at,
                     nanos: 0,
                 }),
-                avatar_media_id: String::new(), // TODO: Add to auth service profile response
-                display_name: String::new(),    // TODO: Add to auth service profile response
+                avatar_media_id,
+                display_name,
             }
         })
         .collect();

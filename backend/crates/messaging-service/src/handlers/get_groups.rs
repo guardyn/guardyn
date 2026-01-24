@@ -1,11 +1,12 @@
 /// Handler for getting all groups for a user
-use crate::auth_client::AuthClient;
+use crate::auth_client::{AuthClient, UserProfileInfo};
 use crate::db::DatabaseClient;
 use crate::proto::messaging::{
     get_groups_response, GetGroupsRequest, GetGroupsResponse, GetGroupsSuccess,
     GroupInfo, GroupMemberInfo, GroupMessage as ProtoGroupMessage,
 };
 use crate::proto::common::{ErrorResponse, Timestamp};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -74,14 +75,14 @@ pub async fn get_groups(
         .into_iter()
         .collect();
 
-    // Fetch usernames from auth service (batch lookup)
+    // Fetch full user profiles from auth service (batch lookup)
     let auth_url = std::env::var("AUTH_SERVICE_URL")
         .unwrap_or_else(|_| "http://auth-service:50051".to_string());
-    let user_profiles = match AuthClient::new(&auth_url).await {
-        Ok(mut client) => client.get_usernames(&all_user_ids).await,
+    let user_profiles: HashMap<String, UserProfileInfo> = match AuthClient::new(&auth_url).await {
+        Ok(mut client) => client.get_user_profiles(&all_user_ids).await,
         Err(e) => {
-            tracing::warn!("Failed to connect to auth service for username lookup: {}", e);
-            std::collections::HashMap::new()
+            tracing::warn!("Failed to connect to auth service for profile lookup: {}", e);
+            HashMap::new()
         }
     };
 
@@ -91,11 +92,20 @@ pub async fn get_groups(
         let member_infos: Vec<GroupMemberInfo> = members
             .iter()
             .map(|m| {
-                // Use fetched username or fall back to user_id
-                let username = user_profiles
-                    .get(&m.user_id)
-                    .cloned()
+                // Get full profile or create default with user_id as fallback
+                let profile = user_profiles.get(&m.user_id);
+                
+                let username = profile
+                    .map(|p| p.username.clone())
                     .unwrap_or_else(|| m.user_id.clone());
+                
+                let display_name = profile
+                    .map(|p| p.display_name.clone())
+                    .unwrap_or_default();
+                
+                let avatar_media_id = profile
+                    .map(|p| p.avatar_media_id.clone())
+                    .unwrap_or_default();
 
                 GroupMemberInfo {
                     user_id: m.user_id.clone(),
@@ -106,8 +116,8 @@ pub async fn get_groups(
                         seconds: m.joined_at,
                         nanos: 0,
                     }),
-                    avatar_media_id: String::new(), // TODO: Add to auth service profile response
-                    display_name: String::new(),    // TODO: Add to auth service profile response
+                    avatar_media_id,
+                    display_name,
                 }
             })
             .collect();
@@ -115,11 +125,11 @@ pub async fn get_groups(
         // Fetch last message for this group from ScyllaDB
         let last_message = match db.get_last_group_message(&group.group_id).await {
             Ok(Some(msg)) => {
-                // Extract sender_username from metadata or use sender_user_id
+                // Extract sender_username from metadata, user profiles cache, or fall back to sender_user_id
                 let sender_username = msg.metadata
                     .get("sender_username")
                     .cloned()
-                    .or_else(|| user_profiles.get(&msg.sender_user_id).cloned())
+                    .or_else(|| user_profiles.get(&msg.sender_user_id).map(|p| p.username.clone()))
                     .unwrap_or_else(|| msg.sender_user_id.clone());
 
                 // Extract message_type from metadata (default to 0)
