@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../contacts/presentation/bloc/contacts_bloc.dart';
+import '../../../messaging/domain/usecases/block_user.dart';
 
 /// Page to display a user's profile when tapped from a group member list
 class UserProfilePage extends StatefulWidget {
@@ -28,18 +29,41 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   late final ContactsBloc _contactsBloc;
+  late final BlockUser _blockUser;
+  late final UnblockUser _unblockUser;
+  late final GetBlockedUsers _getBlockedUsers;
+  
   bool _isContact = false;
   bool _isLoading = false;
+  bool _isBlocked = false;
+  bool _isBlockLoading = false;
 
   @override
   void initState() {
     super.initState();
     _contactsBloc = getIt<ContactsBloc>();
+    _blockUser = getIt<BlockUser>();
+    _unblockUser = getIt<UnblockUser>();
+    _getBlockedUsers = getIt<GetBlockedUsers>();
     _checkIsContact();
+    _checkIsBlocked();
   }
 
   Future<void> _checkIsContact() async {
     _contactsBloc.add(CheckIsContact(widget.userId));
+  }
+
+  Future<void> _checkIsBlocked() async {
+    final result = await _getBlockedUsers();
+    result.fold(
+      (failure) => debugPrint('Failed to get blocked users: $failure'),
+      (blockedUsers) {
+        final isBlocked = blockedUsers.any((u) => u.userId == widget.userId);
+        if (mounted) {
+          setState(() => _isBlocked = isBlocked);
+        }
+      },
+    );
   }
 
   void _addToContacts() {
@@ -50,6 +74,54 @@ class _UserProfilePageState extends State<UserProfilePage> {
   void _removeFromContacts() {
     setState(() => _isLoading = true);
     _contactsBloc.add(RemoveContact(widget.userId));
+  }
+
+  Future<void> _toggleBlock() async {
+    setState(() => _isBlockLoading = true);
+    
+    if (_isBlocked) {
+      final result = await _unblockUser(widget.userId);
+      result.fold(
+        (failure) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to unblock user: $failure')),
+            );
+          }
+        },
+        (_) {
+          if (mounted) {
+            setState(() => _isBlocked = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('User unblocked')),
+            );
+          }
+        },
+      );
+    } else {
+      final result = await _blockUser(widget.userId);
+      result.fold(
+        (failure) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to block user: $failure')),
+            );
+          }
+        },
+        (_) {
+          if (mounted) {
+            setState(() => _isBlocked = true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('User blocked')),
+            );
+          }
+        },
+      );
+    }
+    
+    if (mounted) {
+      setState(() => _isBlockLoading = false);
+    }
   }
 
   @override
@@ -253,16 +325,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.block, color: Colors.orange),
-                    title: const Text('Block User'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Block feature coming soon'),
-                        ),
-                      );
-                    },
+                    leading: Icon(
+                      _isBlocked ? Icons.check_circle : Icons.block,
+                      color: _isBlocked ? Colors.green : Colors.orange,
+                    ),
+                    title: Text(_isBlocked ? 'Unblock User' : 'Block User'),
+                    trailing: _isBlockLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right),
+                    onTap: _isBlockLoading ? null : _toggleBlock,
                   ),
                 ],
               ),
