@@ -3,7 +3,7 @@ use crate::db::DatabaseClient;
 use crate::proto::messaging::{
     get_messages_response, GetMessagesRequest, GetMessagesResponse, GetMessagesSuccess, Message,
 };
-use crate::proto::common::{ErrorResponse, Timestamp};
+use crate::proto::common::{ErrorResponse, PaginationResponse, Timestamp};
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -39,15 +39,15 @@ pub async fn get_messages(
         }));
     }
 
-    // Set default limit
+    // Set default limit (fetch one extra to check for has_more)
     let limit = if request.limit > 0 && request.limit <= 100 {
         request.limit
     } else {
         50
     };
 
-    // Fetch messages from ScyllaDB
-    let stored_messages = match db.get_messages(&request.conversation_id, limit).await {
+    // Fetch messages from ScyllaDB (request limit + 1 to check for more)
+    let stored_messages = match db.get_messages(&request.conversation_id, limit + 1).await {
         Ok(msgs) => msgs,
         Err(e) => {
             tracing::error!("Failed to fetch messages: {}", e);
@@ -61,10 +61,19 @@ pub async fn get_messages(
         }
     };
 
-    // Convert to proto messages
-    let messages: Vec<Message> = stored_messages
+    // Filter out deleted messages and convert to proto
+    let filtered_messages: Vec<_> = stored_messages
         .into_iter()
-        .filter(|m| !m.is_deleted) // Filter out deleted messages
+        .filter(|m| !m.is_deleted)
+        .collect();
+
+    // Check if there are more messages (we fetched limit + 1)
+    let has_more = filtered_messages.len() > limit as usize;
+
+    // Trim to the requested limit
+    let messages: Vec<Message> = filtered_messages
+        .into_iter()
+        .take(limit as usize)
         .map(|m| Message {
             message_id: m.message_id,
             sender_user_id: m.sender_user_id,
@@ -96,12 +105,24 @@ pub async fn get_messages(
         })
         .collect();
 
+    // Build pagination response
+    let page_size = limit as u32;
+    let current_page = 1u32; // Currently we only support fetching latest messages
+    let total_items = messages.len() as u32; // Approximate - full count would require separate query
+
+    let pagination = Some(PaginationResponse {
+        total_items,
+        total_pages: 1,
+        current_page,
+        page_size,
+    });
+
     Ok(Response::new(GetMessagesResponse {
         result: Some(get_messages_response::Result::Success(
             GetMessagesSuccess {
                 messages,
-                pagination: None, // TODO: Implement pagination
-                has_more: false, // TODO: Implement pagination
+                pagination,
+                has_more,
             },
         )),
     }))

@@ -51,9 +51,23 @@ pub async fn get_groups(
         }
     };
 
+    // Parse cursor (format: "offset:{number}" or empty for start)
+    let offset: usize = if request.cursor.is_empty() {
+        0
+    } else if let Some(offset_str) = request.cursor.strip_prefix("offset:") {
+        offset_str.parse().unwrap_or(0)
+    } else {
+        0
+    };
+
+    // Apply pagination: skip to offset, take limit+1 to check for more
+    let groups_with_extra: Vec<_> = user_groups.into_iter().skip(offset).take(limit + 1).collect();
+    let has_more = groups_with_extra.len() > limit;
+    let groups_to_return: Vec<_> = groups_with_extra.into_iter().take(limit).collect();
+
     // Convert to GroupInfo with members
     let mut groups_info = Vec::new();
-    for (group, members) in user_groups.into_iter().take(limit) {
+    for (group, members) in groups_to_return {
         let member_infos: Vec<GroupMemberInfo> = members
             .iter()
             .map(|m| GroupMemberInfo {
@@ -86,13 +100,27 @@ pub async fn get_groups(
         });
     }
 
-    tracing::info!("Fetched {} groups for user {}", groups_info.len(), user_id);
+    // Generate next cursor
+    let next_cursor = if has_more {
+        format!("offset:{}", offset + limit)
+    } else {
+        String::new()
+    };
+
+    tracing::info!(
+        user_id = %user_id,
+        offset,
+        limit,
+        returned = groups_info.len(),
+        has_more,
+        "Fetched groups with pagination"
+    );
 
     Ok(Response::new(GetGroupsResponse {
         result: Some(get_groups_response::Result::Success(GetGroupsSuccess {
             groups: groups_info,
-            next_cursor: String::new(), // TODO: Implement pagination
-            has_more: false,
+            next_cursor,
+            has_more,
         })),
     }))
 }

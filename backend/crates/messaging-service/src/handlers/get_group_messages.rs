@@ -4,7 +4,7 @@ use crate::proto::messaging::{
     get_group_messages_response, GetGroupMessagesRequest, GetGroupMessagesResponse,
     GetGroupMessagesSuccess, GroupMessage,
 };
-use crate::proto::common::ErrorResponse;
+use crate::proto::common::{ErrorResponse, PaginationResponse};
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -104,7 +104,7 @@ pub async fn get_group_messages(
         request.group_id
     );
 
-    // Determine limit (default 50, max 100)
+    // Determine limit (default 50, max 100) - fetch one extra for has_more check
     let limit = if request.limit > 0 && request.limit <= 100 {
         request.limit
     } else if request.limit > 100 {
@@ -113,8 +113,8 @@ pub async fn get_group_messages(
         50
     };
 
-    // Fetch group messages from ScyllaDB
-    let stored_messages = match db.get_group_messages(&request.group_id, limit).await {
+    // Fetch group messages from ScyllaDB (request limit + 1 for has_more)
+    let stored_messages = match db.get_group_messages(&request.group_id, limit + 1).await {
         Ok(msgs) => msgs,
         Err(e) => {
             tracing::error!("Failed to fetch group messages: {}", e);
@@ -128,9 +128,13 @@ pub async fn get_group_messages(
         }
     };
 
-    // Convert to protobuf format
+    // Check if there are more messages (we fetched limit + 1)
+    let has_more = stored_messages.len() > limit as usize;
+
+    // Convert to protobuf format (trim to requested limit)
     let messages: Vec<GroupMessage> = stored_messages
         .into_iter()
+        .take(limit as usize)
         .map(|msg| {
             // Extract message_type from metadata (default to 0 if not found)
             let message_type = msg.metadata
@@ -181,11 +185,19 @@ pub async fn get_group_messages(
         requester_user_id
     );
 
+    // Build pagination response
+    let pagination = Some(PaginationResponse {
+        total_items: messages.len() as u32,
+        total_pages: if has_more { 2 } else { 1 }, // Approximate
+        current_page: 1,
+        page_size: limit as u32,
+    });
+
     Ok(Response::new(GetGroupMessagesResponse {
         result: Some(get_group_messages_response::Result::Success(
             GetGroupMessagesSuccess {
                 messages,
-                pagination: None, // TODO: Implement pagination
+                pagination,
             },
         )),
     }))

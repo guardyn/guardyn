@@ -764,10 +764,15 @@ pub async fn get_call_history(
 
     let limit = if request.limit > 0 { request.limit } else { 50 };
 
-    match db.get_call_history(&user_id, limit).await {
+    // Fetch limit + 1 to determine if there are more results
+    match db.get_call_history(&user_id, limit + 1).await {
         Ok(history) => {
+            // Check if there are more results
+            let has_more = history.len() > limit as usize;
+
             let calls: Vec<CallHistoryEntry> = history
                 .into_iter()
+                .take(limit as usize)
                 .map(|h| CallHistoryEntry {
                     call_id: h.call_id,
                     call_type: h.call_type,
@@ -785,11 +790,18 @@ pub async fn get_call_history(
                 })
                 .collect();
 
+            // Generate next cursor if there are more results
+            let next_cursor = if has_more {
+                format!("offset:{}", limit)
+            } else {
+                String::new()
+            };
+
             GetCallHistoryResponse {
                 result: Some(get_call_history_response::Result::Success(
                     GetCallHistorySuccess {
                         calls,
-                        next_cursor: String::new(), // TODO: Implement pagination
+                        next_cursor,
                     },
                 )),
             }
