@@ -88,3 +88,9 @@ openmls = "0.6"
 openmls_rust_crypto = "0.3"
 openmls_basic_credential = "0.3"
 tls_codec = "0.4"
+
+# Screen capture (cross-platform: Linux X11/Wayland, macOS, Windows)
+xcap = "0.3"
+
+# Image processing for thumbnails
+image = { version = "0.25", default-features = false, features = ["png"] }

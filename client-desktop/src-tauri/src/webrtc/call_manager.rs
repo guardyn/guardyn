@@ -357,9 +357,10 @@ impl CallManager {
     pub async fn end_call(&self, call_id: String) -> Result<(), CallManagerError> {
         info!("Ending call: {}", call_id);
 
-        // Close WebRTC connection
-        if let Some(call) = self.active_calls.write().remove(&call_id) {
-            call.webrtc_manager.close().await;
+        // Close WebRTC connection (remove from map first to release lock before await)
+        let call = self.active_calls.write().remove(&call_id);
+        if let Some(active_call) = call {
+            active_call.webrtc_manager.close().await;
         }
 
         // Notify backend
@@ -437,16 +438,23 @@ impl CallManager {
     ) -> Result<(), CallManagerError> {
         debug!("Setting screen share: {} for call: {}", enabled, call_id);
 
-        // Update local state and WebRTC
-        {
+        // Get the WebRTC manager from the call (clone to release lock before await)
+        let webrtc_manager = {
             let mut calls = self.active_calls.write();
             if let Some(call) = calls.get_mut(&call_id) {
                 call.screen_sharing = enabled;
-                call.webrtc_manager
-                    .set_screen_sharing(enabled)
-                    .await
-                    .map_err(|e| CallManagerError::WebRtcError(e.to_string()))?;
+                Some(call.webrtc_manager.clone())
+            } else {
+                None
             }
+        };
+
+        // Now perform async operation outside of lock
+        if let Some(manager) = webrtc_manager {
+            manager
+                .set_screen_sharing(enabled)
+                .await
+                .map_err(|e| CallManagerError::WebRtcError(e.to_string()))?;
         }
 
         Ok(())
