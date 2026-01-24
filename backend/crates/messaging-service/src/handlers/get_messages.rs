@@ -39,15 +39,32 @@ pub async fn get_messages(
         }));
     }
 
-    // Set default limit (fetch one extra to check for has_more)
-    let limit = if request.limit > 0 && request.limit <= 100 {
-        request.limit
+    // Extract pagination parameters from request
+    // Priority: PaginationRequest > limit field
+    let (page, page_size) = if let Some(ref pagination_req) = request.pagination {
+        let page = pagination_req.page.max(0); // 0-indexed
+        let size = if pagination_req.page_size > 0 && pagination_req.page_size <= 100 {
+            pagination_req.page_size
+        } else {
+            50
+        };
+        (page, size)
     } else {
-        50
+        let size = if request.limit > 0 && request.limit <= 100 {
+            request.limit as u32
+        } else {
+            50
+        };
+        (0, size) // Default to first page
     };
 
-    // Fetch messages from ScyllaDB (request limit + 1 to check for more)
-    let stored_messages = match db.get_messages(&request.conversation_id, limit + 1).await {
+    let offset = page * page_size;
+    let limit = page_size as i32;
+
+    // Fetch more messages than needed to calculate has_more and support offset
+    // We fetch offset + limit + 1 to check for more pages
+    let fetch_limit = (offset + page_size + 1) as i32;
+    let stored_messages = match db.get_messages(&request.conversation_id, fetch_limit).await {
         Ok(msgs) => msgs,
         Err(e) => {
             tracing::error!("Failed to fetch messages: {}", e);
@@ -61,19 +78,30 @@ pub async fn get_messages(
         }
     };
 
-    // Filter out deleted messages and convert to proto
+    // Filter out deleted messages
     let filtered_messages: Vec<_> = stored_messages
         .into_iter()
         .filter(|m| !m.is_deleted)
         .collect();
 
-    // Check if there are more messages (we fetched limit + 1)
-    let has_more = filtered_messages.len() > limit as usize;
+    // Apply offset and limit for pagination
+    let offset_usize = offset as usize;
+    let limit_usize = limit as usize;
+
+    // Skip to the requested offset and take limit + 1 to check for more
+    let page_messages: Vec<_> = filtered_messages
+        .into_iter()
+        .skip(offset_usize)
+        .take(limit_usize + 1)
+        .collect();
+
+    // Check if there are more messages after this page
+    let has_more = page_messages.len() > limit_usize;
 
     // Trim to the requested limit
-    let messages: Vec<Message> = filtered_messages
+    let messages: Vec<Message> = page_messages
         .into_iter()
-        .take(limit as usize)
+        .take(limit_usize)
         .map(|m| Message {
             message_id: m.message_id,
             sender_user_id: m.sender_user_id,
@@ -106,14 +134,25 @@ pub async fn get_messages(
         .collect();
 
     // Build pagination response
-    let page_size = limit as u32;
-    let current_page = 1u32; // Currently we only support fetching latest messages
-    let total_items = messages.len() as u32; // Approximate - full count would require separate query
+    // Note: Getting exact total_items requires a separate COUNT query
+    // For now, we estimate based on what we fetched
+    let estimated_total = if has_more {
+        // If there are more pages, we have at least offset + fetched + 1 items
+        offset + page_size + 1
+    } else {
+        // If this is the last page, total is offset + messages on this page
+        offset + messages.len() as u32
+    };
+    let total_pages = if estimated_total == 0 {
+        0
+    } else {
+        (estimated_total + page_size - 1) / page_size
+    };
 
     let pagination = Some(PaginationResponse {
-        total_items,
-        total_pages: 1,
-        current_page,
+        total_items: estimated_total,
+        total_pages,
+        current_page: page,
         page_size,
     });
 
