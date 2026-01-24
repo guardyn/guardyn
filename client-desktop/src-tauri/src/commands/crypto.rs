@@ -2,7 +2,10 @@
 //!
 //! Exposes guardyn-crypto functionality to the frontend.
 //! Implements X3DH key agreement, Double Ratchet sessions, and message encryption.
+//! 
+//! Keys are persisted to secure storage (OS keychain/credential manager).
 
+use crate::services::SecureStorage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
@@ -12,7 +15,7 @@ use std::sync::{LazyLock, Mutex};
 // =============================================================================
 
 /// In-memory session storage for Double Ratchet sessions
-/// TODO: Persist to secure storage (keychain/credential manager)
+/// Backed by secure storage (keychain/credential manager) for persistence
 struct SessionStore {
     /// Identity key pair (Ed25519)
     identity_keypair: Option<IdentityKeyData>,
@@ -22,6 +25,8 @@ struct SessionStore {
     one_time_prekeys: Vec<PreKeyData>,
     /// Active Double Ratchet sessions by peer ID
     sessions: HashMap<String, SessionData>,
+    /// Flag indicating if data was loaded from secure storage
+    loaded_from_storage: bool,
 }
 
 impl Default for SessionStore {
@@ -31,12 +36,80 @@ impl Default for SessionStore {
             signed_prekey: None,
             one_time_prekeys: Vec::new(),
             sessions: HashMap::new(),
+            loaded_from_storage: false,
         }
     }
 }
 
 /// Global session store
-static SESSION_STORE: LazyLock<Mutex<SessionStore>> = LazyLock::new(|| Mutex::new(SessionStore::default()));
+static SESSION_STORE: LazyLock<Mutex<SessionStore>> = LazyLock::new(|| {
+    let mut store = SessionStore::default();
+    // Try to load existing keys from secure storage on initialization
+    if let Err(e) = load_from_secure_storage(&mut store) {
+        tracing::debug!("No existing keys in secure storage: {}", e);
+    }
+    Mutex::new(store)
+});
+
+/// Load keys from secure storage into the session store
+fn load_from_secure_storage(store: &mut SessionStore) -> Result<(), String> {
+    let storage = SecureStorage::default_instance();
+    
+    // Load identity keypair
+    if let Ok(keypair) = storage.get_identity_keypair() {
+        tracing::info!("Loaded identity keypair from secure storage");
+        store.identity_keypair = Some(keypair);
+    }
+    
+    // Load signed prekey
+    if let Ok(prekey) = storage.get_signed_prekey() {
+        tracing::info!("Loaded signed prekey from secure storage");
+        store.signed_prekey = Some(prekey);
+    }
+    
+    // Load one-time prekeys
+    if let Ok(prekeys) = storage.get_one_time_prekeys() {
+        tracing::info!("Loaded {} one-time prekeys from secure storage", prekeys.len());
+        store.one_time_prekeys = prekeys;
+    }
+    
+    // Load sessions
+    if let Ok(sessions) = storage.get_sessions() {
+        tracing::info!("Loaded {} sessions from secure storage", sessions.len());
+        store.sessions = sessions;
+    }
+    
+    store.loaded_from_storage = true;
+    Ok(())
+}
+
+/// Save identity keypair to secure storage
+fn persist_identity_keypair(keypair: &IdentityKeyData) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store_identity_keypair(keypair)
+        .map_err(|e| format!("Failed to persist identity keypair: {}", e))
+}
+
+/// Save signed prekey to secure storage
+fn persist_signed_prekey(prekey: &PreKeyData) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store_signed_prekey(prekey)
+        .map_err(|e| format!("Failed to persist signed prekey: {}", e))
+}
+
+/// Save one-time prekeys to secure storage
+fn persist_one_time_prekeys(prekeys: &[PreKeyData]) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store_one_time_prekeys(prekeys)
+        .map_err(|e| format!("Failed to persist one-time prekeys: {}", e))
+}
+
+/// Save sessions to secure storage
+fn persist_sessions(sessions: &HashMap<String, SessionData>) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store_sessions(sessions)
+        .map_err(|e| format!("Failed to persist sessions: {}", e))
+}
 
 // =============================================================================
 // DATA TYPES
@@ -47,7 +120,7 @@ pub struct IdentityKeyData {
     /// Ed25519 public key (hex)
     pub public_key: String,
     /// Ed25519 private key (hex) - stored securely
-    #[serde(skip_serializing)]
+    /// Note: serde skip removed to allow secure storage persistence
     pub private_key: String,
 }
 
@@ -139,7 +212,10 @@ pub async fn generate_identity_keys() -> Result<IdentityKeyData, String> {
             let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
             store.identity_keypair = Some(data.clone());
 
-            tracing::info!("Identity keys generated successfully");
+            // Persist to secure storage (OS keychain)
+            persist_identity_keypair(&data)?;
+
+            tracing::info!("Identity keys generated and persisted successfully");
             Ok(data)
         }
         Err(e) => {
@@ -172,7 +248,7 @@ pub async fn has_identity_keys() -> Result<bool, String> {
 pub async fn generate_signed_prekey() -> Result<PreKeyData, String> {
     tracing::info!("Generating signed prekey");
 
-    let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     let _identity = store.identity_keypair.as_ref()
         .ok_or_else(|| "Identity keys not generated".to_string())?;
 
@@ -185,6 +261,11 @@ pub async fn generate_signed_prekey() -> Result<PreKeyData, String> {
         signature: hex::encode([0u8; 64]),
     };
 
+    // Store in session and persist
+    store.signed_prekey = Some(prekey.clone());
+    persist_signed_prekey(&prekey)?;
+
+    tracing::info!("Signed prekey generated and persisted");
     Ok(prekey)
 }
 
