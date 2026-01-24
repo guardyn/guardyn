@@ -1,5 +1,6 @@
 /// Handler for removing members from group chats
 use crate::db::DatabaseClient;
+use crate::mls_manager::MlsManager;
 use crate::proto::messaging::{
     remove_group_member_response, RemoveGroupMemberRequest, RemoveGroupMemberResponse,
     RemoveGroupMemberSuccess,
@@ -185,7 +186,21 @@ pub async fn remove_group_member(
         }));
     }
 
-    // TODO: Update MLS group state in TiKV
+    // MLS-002: Update MLS group state in TiKV
+    // Remove member from MLS members list for this group
+    let mls_manager = MlsManager::new(db.clone());
+    if let Err(e) = mls_manager.remove_member_from_list(
+        &request.group_id,
+        &request.member_user_id,
+        "primary", // Default device
+    ).await {
+        tracing::warn!(
+            "Failed to update MLS member list for group {}: {}",
+            request.group_id,
+            e
+        );
+        // Continue anyway - the group membership was successfully removed
+    }
 
     tracing::info!(
         "Member {} removed from group {} by {}",

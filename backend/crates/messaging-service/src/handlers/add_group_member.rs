@@ -1,5 +1,6 @@
 /// Handler for adding members to group chats
 use crate::db::DatabaseClient;
+use crate::mls_manager::MlsManager;
 use crate::models::{GroupMember, GroupRole};
 use crate::proto::messaging::{
     add_group_member_response, AddGroupMemberRequest, AddGroupMemberResponse,
@@ -164,8 +165,21 @@ pub async fn add_group_member(
         }));
     }
 
-    // TODO: Update MLS group state in TiKV
-    // For MVP, we just store the provided state without validation
+    // MLS-001: Update MLS group state in TiKV
+    // Add member to MLS members list for this group
+    let mls_manager = MlsManager::new(db.clone());
+    if let Err(e) = mls_manager.add_member_to_list(
+        &request.group_id,
+        &request.member_user_id,
+        "primary", // Default device for non-MLS group members
+    ).await {
+        tracing::warn!(
+            "Failed to update MLS member list for group {}: {}",
+            request.group_id,
+            e
+        );
+        // Continue anyway - the group membership was successfully added
+    }
 
     tracing::info!(
         "Member {} added to group {} by {}",
