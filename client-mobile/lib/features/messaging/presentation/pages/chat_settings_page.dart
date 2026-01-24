@@ -5,6 +5,8 @@ import '../../data/datasources/notification_remote_datasource.dart';
 import '../../domain/usecases/block_user.dart';
 import '../../domain/usecases/delete_conversation.dart';
 import '../../domain/usecases/mute_conversation.dart';
+import '../bloc/message_bloc.dart';
+import '../bloc/message_event.dart';
 import 'media_gallery_page.dart';
 import 'search_messages_page.dart';
 
@@ -337,6 +339,13 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
   }
 
   void _confirmClearHistory(BuildContext context) {
+    if (widget.conversationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot clear: conversation not found')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -352,7 +361,10 @@ class _ChatSettingsPageState extends State<ChatSettingsPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              // TODO: Call MessageBloc.add(MessageClearChat)
+              // Clear chat via MessageBloc
+              getIt<MessageBloc>().add(
+                MessageClearChat(conversationId: widget.conversationId!),
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Chat history cleared')),
               );
