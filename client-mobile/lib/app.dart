@@ -21,6 +21,7 @@ import 'package:guardyn_client/features/chat/presentation/pages/home_page.dart';
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/change_member_role.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
@@ -29,6 +30,8 @@ import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_typing_indicator.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_chat_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_create_page.dart';
@@ -41,6 +44,7 @@ import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dar
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
@@ -120,9 +124,11 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
 
     // Groups dependencies
     final groupRemoteDatasource = GroupRemoteDatasource(grpcClients);
+    final getUserDisplayName = GetUserDisplayName();
     final groupRepository = GroupRepositoryImpl(
       groupRemoteDatasource,
       secureStorage,
+      getUserDisplayName,
     );
 
     final createGroup = CreateGroup(groupRepository);
@@ -134,6 +140,9 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
     final removeGroupMember = RemoveGroupMember(groupRepository);
     final leaveGroup = LeaveGroup(groupRepository);
     final deleteGroup = DeleteGroup(groupRepository);
+    final updateGroup = UpdateGroup(groupRepository);
+    final sendGroupTypingIndicator = SendGroupTypingIndicator(groupRepository);
+    final changeMemberRole = ChangeMemberRole(groupRepository);
 
     return MultiBlocProvider(
       providers: [
@@ -173,6 +182,9 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
             removeGroupMember: removeGroupMember,
             leaveGroup: leaveGroup,
             deleteGroup: deleteGroup,
+            updateGroup: updateGroup,
+            sendGroupTypingIndicator: sendGroupTypingIndicator,
+            changeMemberRole: changeMemberRole,
           ),
         ),
       ],
