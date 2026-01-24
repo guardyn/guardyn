@@ -62,6 +62,27 @@ impl IdentityKeyPair {
         self.public.to_bytes().to_vec()
     }
 
+    /// Export private key bytes for secure storage
+    ///
+    /// Returns the 32-byte seed that can be used to reconstruct the key pair.
+    pub fn private_key_bytes(&self) -> Vec<u8> {
+        self.secret.to_bytes().to_vec()
+    }
+
+    /// Reconstruct identity key pair from private key bytes
+    ///
+    /// Accepts the 32-byte seed returned by `private_key_bytes()`.
+    pub fn from_private_bytes(bytes: &[u8]) -> Result<Self> {
+        let seed: [u8; 32] = bytes
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Private key must be 32 bytes".into()))?;
+
+        let secret = SigningKey::from_bytes(&seed);
+        let public = secret.verifying_key();
+
+        Ok(Self { public, secret })
+    }
+
     /// Convert Ed25519 public key to X25519 for Diffie-Hellman operations.
     ///
     /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
@@ -706,5 +727,45 @@ mod tests {
         // Both parties should have identical shared secrets
         assert_eq!(alice_shared_secret, bob_shared_secret,
             "X3DH key agreement should produce identical shared secrets");
+    }
+
+    #[test]
+    fn test_identity_key_pair_serialization() {
+        // Generate a key pair
+        let original = IdentityKeyPair::generate().unwrap();
+
+        // Serialize private key
+        let private_bytes = original.private_key_bytes();
+        assert_eq!(private_bytes.len(), 32, "Private key should be 32 bytes");
+
+        // Reconstruct from private bytes
+        let restored = IdentityKeyPair::from_private_bytes(&private_bytes).unwrap();
+
+        // Verify public keys match
+        assert_eq!(
+            original.public_bytes(),
+            restored.public_bytes(),
+            "Public keys should match after reconstruction"
+        );
+
+        // Verify signing works the same
+        let test_data = b"test message for signing";
+        let original_sig = original.sign(test_data).unwrap();
+        let restored_sig = restored.sign(test_data).unwrap();
+        assert_eq!(original_sig, restored_sig, "Signatures should match");
+
+        // Verify signature is valid
+        IdentityKeyPair::verify(&original.public_bytes(), test_data, &original_sig).unwrap();
+    }
+
+    #[test]
+    fn test_identity_key_pair_from_invalid_bytes() {
+        // Too short
+        let result = IdentityKeyPair::from_private_bytes(&[0u8; 16]);
+        assert!(result.is_err());
+
+        // Too long
+        let result = IdentityKeyPair::from_private_bytes(&[0u8; 64]);
+        assert!(result.is_err());
     }
 }

@@ -6,6 +6,7 @@ use anyhow::{Context, Result, anyhow};
 use guardyn_crypto::{
     x3dh::{X3DHProtocol, X3DHKeyBundle, X3DHKeyMaterial, X3DHPrekeyMessage, IdentityKeyPair},
     double_ratchet::DoubleRatchet,
+    KeyStorage, KeyType,
 };
 use std::sync::Arc;
 
@@ -16,28 +17,113 @@ use crate::proto::auth::{
 };
 
 /// Crypto manager for E2EE operations
+///
+/// Handles key storage and session management for end-to-end encryption.
+/// In production, keys are loaded from secure storage; in development,
+/// ephemeral keys may be generated.
 pub struct CryptoManager {
     auth_service_url: String,
+    /// Secure key storage for identity and session keys
+    key_storage: Option<Arc<KeyStorage>>,
+    /// User ID for key namespacing
+    local_user_id: Option<String>,
+    /// Device ID for key namespacing
+    local_device_id: Option<String>,
 }
 
 impl CryptoManager {
+    /// Create a new CryptoManager without key storage (development mode)
     pub fn new(auth_service_url: String) -> Self {
-        Self { auth_service_url }
+        Self {
+            auth_service_url,
+            key_storage: None,
+            local_user_id: None,
+            local_device_id: None,
+        }
+    }
+
+    /// Create a new CryptoManager with secure key storage (production mode)
+    pub fn with_storage(
+        auth_service_url: String,
+        key_storage: Arc<KeyStorage>,
+        local_user_id: String,
+        local_device_id: String,
+    ) -> Self {
+        Self {
+            auth_service_url,
+            key_storage: Some(key_storage),
+            local_user_id: Some(local_user_id),
+            local_device_id: Some(local_device_id),
+        }
+    }
+
+    /// Get identity key ID for storage
+    fn identity_key_id(&self) -> String {
+        format!(
+            "identity:{}:{}",
+            self.local_user_id.as_deref().unwrap_or("unknown"),
+            self.local_device_id.as_deref().unwrap_or("unknown")
+        )
+    }
+
+    /// Load or generate identity key pair
+    ///
+    /// In production mode with key storage:
+    /// - Tries to load existing identity key from storage
+    /// - Generates and stores new key if not found
+    ///
+    /// In development mode without storage:
+    /// - Generates ephemeral key (not persisted)
+    fn load_or_generate_identity_key(&self) -> Result<IdentityKeyPair> {
+        if let Some(ref storage) = self.key_storage {
+            let key_id = self.identity_key_id();
+
+            // Try to load existing key
+            match storage.get_key(&key_id) {
+                Ok(key_bytes) => {
+                    // Deserialize identity key from storage
+                    IdentityKeyPair::from_private_bytes(&key_bytes)
+                        .map_err(|e| anyhow!("Failed to deserialize identity key: {}", e))
+                }
+                Err(_) => {
+                    // Key not found, generate new one
+                    let identity = IdentityKeyPair::generate()
+                        .context("Failed to generate identity key pair")?;
+
+                    // Store the private key
+                    storage.store_key_simple(
+                        &key_id,
+                        &identity.private_key_bytes(),
+                        KeyType::Identity,
+                        self.local_device_id.clone(),
+                    ).map_err(|e| anyhow!("Failed to store identity key: {}", e))?;
+
+                    tracing::info!("Generated and stored new identity key for {}", key_id);
+                    Ok(identity)
+                }
+            }
+        } else {
+            // Development mode: generate ephemeral key
+            tracing::warn!("No key storage configured, generating ephemeral identity key");
+            IdentityKeyPair::generate()
+                .context("Failed to generate identity key pair")
+        }
     }
 
     /// Initialize Double Ratchet session as sender (Alice)
     ///
     /// Steps:
     /// 1. Fetch recipient's key bundle from auth-service
-    /// 2. Perform X3DH key agreement
-    /// 3. Initialize Double Ratchet with shared secret
+    /// 2. Load or generate local identity key
+    /// 3. Perform X3DH key agreement
+    /// 4. Initialize Double Ratchet with shared secret
     pub async fn init_sender_session(
         &self,
         local_user_id: &str,
         local_device_id: &str,
         remote_user_id: &str,
         remote_device_id: &str,
-        local_identity_key: &[u8],
+        _local_identity_key: &[u8], // Deprecated: now loaded from storage
     ) -> Result<(DoubleRatchet, Vec<u8>)> {
         // Fetch remote key bundle from auth-service
         let key_bundle = self.fetch_key_bundle(remote_user_id, remote_device_id).await
@@ -46,11 +132,9 @@ impl CryptoManager {
         // Parse key bundle into X3DH types
         let x3dh_bundle = self.parse_key_bundle(&key_bundle)?;
 
-        // Generate or use local identity key for X3DH
+        // Load or generate local identity key from secure storage
         // Per ENCRYPTION_ARCHITECTURE.md: Identity Keys are Ed25519, converted to X25519 for DH operations
-        // TODO: In production, load from secure storage instead of generating new key
-        let local_identity = IdentityKeyPair::generate()
-            .context("Failed to generate identity key pair")?;
+        let local_identity = self.load_or_generate_identity_key()?;
 
         // Perform X3DH key agreement (Alice side)
         let (shared_secret, ephemeral_public) = X3DHProtocol::initiate_key_agreement(
