@@ -5,6 +5,7 @@
 use crate::commands::settings::UserSettings;
 use crate::grpc::{GrpcClient, GrpcConfig};
 use crate::services::{AuthClient, CallsClient, MediaClient, MessagingClient};
+use crate::webrtc::CallManager;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -16,6 +17,7 @@ pub struct AppState {
     messaging_client: Arc<MessagingClient>,
     calls_client: Arc<CallsClient>,
     media_client: Arc<MediaClient>,
+    call_manager: Arc<CallManager>,
 }
 
 struct AppStateInner {
@@ -29,6 +31,7 @@ impl AppState {
     pub fn new() -> Self {
         let config = GrpcConfig::default();
         let grpc = Arc::new(GrpcClient::new(config));
+        let calls_client = Arc::new(CallsClient::new(Arc::clone(&grpc)));
         
         Self {
             inner: Arc::new(RwLock::new(AppStateInner {
@@ -39,7 +42,8 @@ impl AppState {
             })),
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
-            calls_client: Arc::new(CallsClient::new(Arc::clone(&grpc))),
+            call_manager: Arc::new(CallManager::new(Arc::clone(&calls_client))),
+            calls_client,
             media_client: Arc::new(MediaClient::new(Arc::clone(&grpc))),
             grpc,
         }
@@ -68,6 +72,11 @@ impl AppState {
     /// Get the media client
     pub fn media(&self) -> &Arc<MediaClient> {
         &self.media_client
+    }
+
+    /// Get the call manager
+    pub fn call_manager(&self) -> &Arc<CallManager> {
+        &self.call_manager
     }
 
     /// Check if user is authenticated
@@ -129,12 +138,14 @@ impl Clone for AppState {
     fn clone(&self) -> Self {
         let config = GrpcConfig::default();
         let grpc = Arc::new(GrpcClient::new(config));
+        let calls_client = Arc::new(CallsClient::new(Arc::clone(&grpc)));
         
         Self {
             inner: Arc::clone(&self.inner),
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
-            calls_client: Arc::new(CallsClient::new(Arc::clone(&grpc))),
+            call_manager: Arc::new(CallManager::new(Arc::clone(&calls_client))),
+            calls_client,
             media_client: Arc::new(MediaClient::new(Arc::clone(&grpc))),
             grpc,
         }
