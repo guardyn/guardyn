@@ -83,7 +83,8 @@ spec:
           value: "true"
         - name: WEBSOCKET_PORT
           value: "8081"
-        - name: JWT_SECRET
+        # JWT authentication secret (GUARDYN_ prefix for consistency)
+        - name: GUARDYN_AUTH__JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: guardyn-backend-secrets

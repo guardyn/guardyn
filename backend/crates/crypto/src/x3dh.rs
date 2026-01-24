@@ -240,7 +240,7 @@ impl X3DHPrekeyMessage {
         let mut bytes = Vec::with_capacity(69);
         bytes.extend_from_slice(&self.sender_identity_key);
         bytes.extend_from_slice(&self.ephemeral_key);
-        
+
         match self.used_one_time_key_id {
             Some(id) => {
                 bytes.push(1); // flag: OTK used
@@ -630,17 +630,17 @@ mod tests {
     fn test_x3dh_prekey_message_serialization() {
         let sender_identity = vec![1u8; 32];
         let ephemeral_key = vec![2u8; 32];
-        
+
         // Test without OTK
         let msg = X3DHPrekeyMessage::new(
             sender_identity.clone(),
             ephemeral_key.clone(),
             None,
         );
-        
+
         let bytes = msg.to_bytes();
         assert_eq!(bytes.len(), 65); // 32 + 32 + 1
-        
+
         let decoded = X3DHPrekeyMessage::from_bytes(&bytes).unwrap();
         assert_eq!(decoded.sender_identity_key, sender_identity);
         assert_eq!(decoded.ephemeral_key, ephemeral_key);
@@ -651,17 +651,17 @@ mod tests {
     fn test_x3dh_prekey_message_with_otk() {
         let sender_identity = vec![3u8; 32];
         let ephemeral_key = vec![4u8; 32];
-        
+
         // Test with OTK
         let msg = X3DHPrekeyMessage::new(
             sender_identity.clone(),
             ephemeral_key.clone(),
             Some(42),
         );
-        
+
         let bytes = msg.to_bytes();
         assert_eq!(bytes.len(), 69); // 32 + 32 + 1 + 4
-        
+
         let decoded = X3DHPrekeyMessage::from_bytes(&bytes).unwrap();
         assert_eq!(decoded.sender_identity_key, sender_identity);
         assert_eq!(decoded.ephemeral_key, ephemeral_key);
@@ -672,16 +672,16 @@ mod tests {
     fn test_x3dh_prekey_message_base64() {
         let sender_identity = vec![5u8; 32];
         let ephemeral_key = vec![6u8; 32];
-        
+
         let msg = X3DHPrekeyMessage::new(
             sender_identity.clone(),
             ephemeral_key.clone(),
             Some(123),
         );
-        
+
         let base64 = msg.to_base64();
         let decoded = X3DHPrekeyMessage::from_base64(&base64).unwrap();
-        
+
         assert_eq!(decoded.sender_identity_key, sender_identity);
         assert_eq!(decoded.ephemeral_key, ephemeral_key);
         assert_eq!(decoded.used_one_time_key_id, Some(123));

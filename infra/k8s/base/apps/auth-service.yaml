@@ -44,7 +44,8 @@ spec:
           value: "info"
         - name: RUST_LOG
           value: "info,guardyn_auth_service=debug"
-        - name: JWT_SECRET
+        # JWT authentication secret (GUARDYN_ prefix for consistency)
+        - name: GUARDYN_AUTH__JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: guardyn-backend-secrets

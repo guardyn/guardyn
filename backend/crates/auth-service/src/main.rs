@@ -113,7 +113,7 @@ impl AuthService for AuthServiceImpl {
         request: Request<UploadMlsKeyPackageRequest>,
     ) -> Result<Response<UploadMlsKeyPackageResponse>, Status> {
         let db = std::sync::Arc::new(self.db.clone());
-        handlers::mls_key_package::upload_mls_key_package(request, db).await
+        handlers::mls_key_package::upload_mls_key_package(request, db, &self.jwt_secret).await
     }
 
     async fn get_mls_key_package(
@@ -236,12 +236,18 @@ async fn main() -> Result<()> {
     // Initialize database connection
     let db = db::DatabaseClient::new(config.database.tikv_pd_endpoints.clone()).await?;
 
-    // Load JWT secret from environment or config
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
+    // Load JWT secret from environment (GUARDYN_AUTH__JWT_SECRET)
+    // Falls back to legacy JWT_SECRET, then to dev default
+    let jwt_secret = std::env::var("GUARDYN_AUTH__JWT_SECRET")
+        .or_else(|_| std::env::var("JWT_SECRET"))
+        .unwrap_or_else(|_| config.auth.jwt_secret.clone());
 
-    if jwt_secret == "development-secret-change-in-production" {
-        tracing::warn!("Using default JWT secret - DO NOT USE IN PRODUCTION");
+    if jwt_secret.len() < 32 {
+        tracing::error!("JWT secret is too short (< 32 bytes) - this is insecure!");
+    }
+
+    if jwt_secret.contains("DEV") || jwt_secret.contains("development") || jwt_secret.contains("UNSAFE") {
+        tracing::warn!("Using development JWT secret - DO NOT USE IN PRODUCTION");
     }
 
     // Create service instance

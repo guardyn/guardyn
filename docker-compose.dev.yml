@@ -23,7 +23,8 @@ x-rust-service: &rust-service
   environment: &rust-env
     RUST_LOG: debug
     RUST_BACKTRACE: 1
-    JWT_SECRET: development-secret-change-in-production
+    # JWT authentication (use GUARDYN_ prefix for consistency)
+    GUARDYN_AUTH__JWT_SECRET: "UNSAFE_DEV_SECRET_CHANGE_IN_PRODUCTION_32BYTES"
     SCYLLA_CONSISTENCY: one
 
 services:
