@@ -6,6 +6,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:logger/logger.dart';
 
 /// Configuration for WebRTC peer connections
@@ -227,10 +228,9 @@ abstract class WebRTCDataSource {
 /// WebRTC DataSource Implementation
 ///
 /// Uses flutter_webrtc package for actual WebRTC functionality.
-/// Falls back to mock implementation when not available.
 class WebRTCDataSourceImpl implements WebRTCDataSource {
   final Logger _logger;
-  final WebRTCConfig _config;
+  WebRTCConfig _config;
 
   final _eventsController = StreamController<WebRTCEvent>.broadcast();
 
@@ -238,13 +238,14 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   MediaStreamInfo? _localStream;
   final List<MediaStreamInfo> _remoteStreams = [];
 
-  // Placeholders for flutter_webrtc objects
-  // These will be actual RTCPeerConnection and RTCMediaStream when integrated
-  dynamic _peerConnection;
+  // Real flutter_webrtc objects
+  RTCPeerConnection? _peerConnection;
+  MediaStream? _localMediaStream;
   bool _isAudioEnabled = true;
   bool _isVideoEnabled = true;
   bool _isFrontCamera = true;
   bool _isSpeakerEnabled = false;
+  bool _isInitialized = false;
 
   WebRTCDataSourceImpl({
     required Logger logger,
@@ -267,12 +268,17 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   @override
   Future<void> initialize(WebRTCConfig config) async {
     _logger.i('Initializing WebRTC with config: ${config.toRTCConfiguration()}');
+    _config = config;
 
     try {
-      // TODO: Initialize RTCPeerConnection when flutter_webrtc is added
-      // _peerConnection = await createPeerConnection(config.toRTCConfiguration());
-      // _setupPeerConnectionCallbacks();
+      // Initialize RTCPeerConnection with flutter_webrtc
+      _peerConnection = await createPeerConnection(
+        config.toRTCConfiguration(),
+        _getOfferSdpConstraints(),
+      );
 
+      _setupPeerConnectionCallbacks();
+      _isInitialized = true;
       _updateConnectionState(PeerConnectionState.idle);
       _logger.i('WebRTC initialized successfully');
     } catch (e, stackTrace) {
@@ -281,6 +287,105 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
       rethrow;
     }
   }
+
+  /// Set up all RTCPeerConnection event callbacks
+  void _setupPeerConnectionCallbacks() {
+    if (_peerConnection == null) return;
+
+    // ICE candidate generation
+    _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+      _logger.d('ICE candidate generated: ${candidate.candidate?.substring(0, 50)}...');
+      _eventsController.add(WebRTCIceCandidateGenerated(IceCandidate(
+        candidate: candidate.candidate ?? '',
+        sdpMid: candidate.sdpMid,
+        sdpMLineIndex: candidate.sdpMLineIndex,
+      )));
+    };
+
+    // ICE connection state changes
+    _peerConnection!.onIceConnectionState = (RTCIceConnectionState state) {
+      _logger.i('ICE connection state: $state');
+      final newState = switch (state) {
+        RTCIceConnectionState.RTCIceConnectionStateNew => PeerConnectionState.idle,
+        RTCIceConnectionState.RTCIceConnectionStateChecking => PeerConnectionState.connecting,
+        RTCIceConnectionState.RTCIceConnectionStateConnected => PeerConnectionState.connected,
+        RTCIceConnectionState.RTCIceConnectionStateCompleted => PeerConnectionState.connected,
+        RTCIceConnectionState.RTCIceConnectionStateDisconnected => PeerConnectionState.disconnected,
+        RTCIceConnectionState.RTCIceConnectionStateFailed => PeerConnectionState.failed,
+        RTCIceConnectionState.RTCIceConnectionStateClosed => PeerConnectionState.closed,
+        RTCIceConnectionState.RTCIceConnectionStateCount => PeerConnectionState.idle,
+      };
+      _updateConnectionState(newState);
+    };
+
+    // Peer connection state changes
+    _peerConnection!.onConnectionState = (RTCPeerConnectionState state) {
+      _logger.i('Peer connection state: $state');
+      final newState = switch (state) {
+        RTCPeerConnectionState.RTCPeerConnectionStateNew => PeerConnectionState.idle,
+        RTCPeerConnectionState.RTCPeerConnectionStateConnecting => PeerConnectionState.connecting,
+        RTCPeerConnectionState.RTCPeerConnectionStateConnected => PeerConnectionState.connected,
+        RTCPeerConnectionState.RTCPeerConnectionStateDisconnected => PeerConnectionState.disconnected,
+        RTCPeerConnectionState.RTCPeerConnectionStateFailed => PeerConnectionState.failed,
+        RTCPeerConnectionState.RTCPeerConnectionStateClosed => PeerConnectionState.closed,
+      };
+      _updateConnectionState(newState);
+    };
+
+    // Track added event (remote streams)
+    _peerConnection!.onTrack = (RTCTrackEvent event) {
+      _logger.i('Remote track added: ${event.track.kind}');
+      if (event.streams.isNotEmpty) {
+        final remoteStream = event.streams.first;
+        final streamInfo = MediaStreamInfo(
+          id: remoteStream.id,
+          stream: remoteStream,
+          isLocal: false,
+          hasAudio: remoteStream.getAudioTracks().isNotEmpty,
+          hasVideo: remoteStream.getVideoTracks().isNotEmpty,
+        );
+
+        // Check if stream already exists
+        final existingIndex = _remoteStreams.indexWhere((s) => s.id == remoteStream.id);
+        if (existingIndex >= 0) {
+          _remoteStreams[existingIndex] = streamInfo;
+        } else {
+          _remoteStreams.add(streamInfo);
+          _eventsController.add(WebRTCRemoteStreamAdded(streamInfo));
+        }
+      }
+    };
+
+    // Remote stream removed
+    _peerConnection!.onRemoveStream = (MediaStream stream) {
+      _logger.i('Remote stream removed: ${stream.id}');
+      _remoteStreams.removeWhere((s) => s.id == stream.id);
+      _eventsController.add(WebRTCRemoteStreamRemoved(stream.id));
+    };
+
+    // ICE gathering state
+    _peerConnection!.onIceGatheringState = (RTCIceGatheringState state) {
+      _logger.d('ICE gathering state: $state');
+    };
+
+    // Signaling state
+    _peerConnection!.onSignalingState = (RTCSignalingState state) {
+      _logger.d('Signaling state: $state');
+    };
+
+    // Renegotiation needed
+    _peerConnection!.onRenegotiationNeeded = () {
+      _logger.d('Renegotiation needed');
+    };
+  }
+
+  Map<String, dynamic> _getOfferSdpConstraints() => {
+        'mandatory': {
+          'OfferToReceiveAudio': true,
+          'OfferToReceiveVideo': true,
+        },
+        'optional': [],
+      };
 
   @override
   Future<MediaStreamInfo> startLocalMedia({
@@ -296,25 +401,43 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
       _isVideoEnabled = enableVideo;
       _isFrontCamera = facingMode == 'user';
 
-      // TODO: Get user media when flutter_webrtc is added
-      // final mediaConstraints = {
-      //   'audio': enableAudio,
-      //   'video': enableVideo ? {
-      //     'facingMode': facingMode,
-      //     'width': {'ideal': 1280},
-      //     'height': {'ideal': 720},
-      //   } : false,
-      // };
-      // final stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      // Build media constraints for getUserMedia
+      final mediaConstraints = <String, dynamic>{
+        'audio': enableAudio
+            ? {
+                'echoCancellation': true,
+                'noiseSuppression': true,
+                'autoGainControl': true,
+              }
+            : false,
+        'video': enableVideo
+            ? {
+                'facingMode': facingMode,
+                'width': {'ideal': 1280, 'max': 1920},
+                'height': {'ideal': 720, 'max': 1080},
+                'frameRate': {'ideal': 30, 'max': 60},
+              }
+            : false,
+      };
 
-      // Mock stream for now
+      // Get user media using flutter_webrtc
+      _localMediaStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+
       _localStream = MediaStreamInfo(
-        id: 'local-stream-${DateTime.now().millisecondsSinceEpoch}',
-        stream: null, // Will be RTCMediaStream
+        id: _localMediaStream!.id,
+        stream: _localMediaStream,
         isLocal: true,
-        hasAudio: enableAudio,
-        hasVideo: enableVideo,
+        hasAudio: _localMediaStream!.getAudioTracks().isNotEmpty,
+        hasVideo: _localMediaStream!.getVideoTracks().isNotEmpty,
       );
+
+      // Add tracks to peer connection if initialized
+      if (_peerConnection != null && _localMediaStream != null) {
+        for (final track in _localMediaStream!.getTracks()) {
+          await _peerConnection!.addTrack(track, _localMediaStream!);
+          _logger.d('Added ${track.kind} track to peer connection');
+        }
+      }
 
       _eventsController.add(WebRTCLocalStreamReady(_localStream!));
       _logger.i('Local media started: ${_localStream!.id}');
@@ -331,12 +454,14 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   Future<void> stopLocalMedia() async {
     _logger.i('Stopping local media');
 
-    if (_localStream != null) {
-      // TODO: Stop tracks when flutter_webrtc is added
-      // final stream = _localStream!.stream as RTCMediaStream;
-      // stream.getTracks().forEach((track) => track.stop());
-      // await stream.dispose();
-
+    if (_localMediaStream != null) {
+      // Stop all tracks
+      for (final track in _localMediaStream!.getTracks()) {
+        await track.stop();
+        _logger.d('Stopped ${track.kind} track');
+      }
+      await _localMediaStream!.dispose();
+      _localMediaStream = null;
       _localStream = null;
     }
   }
@@ -345,17 +470,17 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   Future<SessionDescription> createOffer() async {
     _logger.i('Creating SDP offer');
 
-    try {
-      // TODO: Create offer when flutter_webrtc is added
-      // final offer = await _peerConnection.createOffer({
-      //   'offerToReceiveAudio': true,
-      //   'offerToReceiveVideo': true,
-      // });
+    _ensureInitialized();
 
-      // Mock offer
+    try {
+      final offer = await _peerConnection!.createOffer(_getOfferSdpConstraints());
+
+      // Apply bitrate constraints
+      final modifiedSdp = _applyBitrateConstraints(offer.sdp ?? '');
+
       return SessionDescription(
-        type: 'offer',
-        sdp: _generateMockSdp('offer'),
+        type: offer.type ?? 'offer',
+        sdp: modifiedSdp,
       );
     } catch (e, stackTrace) {
       _logger.e('Failed to create offer', error: e, stackTrace: stackTrace);
@@ -367,13 +492,17 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   Future<SessionDescription> createAnswer() async {
     _logger.i('Creating SDP answer');
 
+    _ensureInitialized();
+
     try {
-      // TODO: Create answer when flutter_webrtc is added
-      // final answer = await _peerConnection.createAnswer();
+      final answer = await _peerConnection!.createAnswer();
+
+      // Apply bitrate constraints
+      final modifiedSdp = _applyBitrateConstraints(answer.sdp ?? '');
 
       return SessionDescription(
-        type: 'answer',
-        sdp: _generateMockSdp('answer'),
+        type: answer.type ?? 'answer',
+        sdp: modifiedSdp,
       );
     } catch (e, stackTrace) {
       _logger.e('Failed to create answer', error: e, stackTrace: stackTrace);
@@ -385,36 +514,39 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   Future<void> setLocalDescription(SessionDescription description) async {
     _logger.i('Setting local description: ${description.type}');
 
-    // TODO: Set local description when flutter_webrtc is added
-    // await _peerConnection.setLocalDescription(RTCSessionDescription(
-    //   description.sdp,
-    //   description.type,
-    // ));
+    _ensureInitialized();
+
+    await _peerConnection!.setLocalDescription(RTCSessionDescription(
+      description.sdp,
+      description.type,
+    ));
   }
 
   @override
   Future<void> setRemoteDescription(SessionDescription description) async {
     _logger.i('Setting remote description: ${description.type}');
 
-    // TODO: Set remote description when flutter_webrtc is added
-    // await _peerConnection.setRemoteDescription(RTCSessionDescription(
-    //   description.sdp,
-    //   description.type,
-    // ));
+    _ensureInitialized();
+
+    await _peerConnection!.setRemoteDescription(RTCSessionDescription(
+      description.sdp,
+      description.type,
+    ));
 
     _updateConnectionState(PeerConnectionState.connecting);
   }
 
   @override
   Future<void> addIceCandidate(IceCandidate candidate) async {
-    _logger.d('Adding ICE candidate: ${candidate.candidate.substring(0, 50)}...');
+    _logger.d('Adding ICE candidate: ${candidate.candidate.substring(0, 50.clamp(0, candidate.candidate.length))}...');
 
-    // TODO: Add ICE candidate when flutter_webrtc is added
-    // await _peerConnection.addCandidate(RTCIceCandidate(
-    //   candidate.candidate,
-    //   candidate.sdpMid,
-    //   candidate.sdpMLineIndex,
-    // ));
+    _ensureInitialized();
+
+    await _peerConnection!.addCandidate(RTCIceCandidate(
+      candidate.candidate,
+      candidate.sdpMid,
+      candidate.sdpMLineIndex,
+    ));
   }
 
   @override
@@ -422,9 +554,13 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
     _logger.i('Setting audio enabled: $enabled');
     _isAudioEnabled = enabled;
 
-    // TODO: Toggle audio track when flutter_webrtc is added
-    // final audioTracks = _localStream?.stream?.getAudioTracks();
-    // audioTracks?.forEach((track) => track.enabled = enabled);
+    if (_localMediaStream != null) {
+      final audioTracks = _localMediaStream!.getAudioTracks();
+      for (final track in audioTracks) {
+        track.enabled = enabled;
+        _logger.d('Audio track ${track.id} enabled: $enabled');
+      }
+    }
   }
 
   @override
@@ -432,9 +568,13 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
     _logger.i('Setting video enabled: $enabled');
     _isVideoEnabled = enabled;
 
-    // TODO: Toggle video track when flutter_webrtc is added
-    // final videoTracks = _localStream?.stream?.getVideoTracks();
-    // videoTracks?.forEach((track) => track.enabled = enabled);
+    if (_localMediaStream != null) {
+      final videoTracks = _localMediaStream!.getVideoTracks();
+      for (final track in videoTracks) {
+        track.enabled = enabled;
+        _logger.d('Video track ${track.id} enabled: $enabled');
+      }
+    }
   }
 
   @override
@@ -442,11 +582,13 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
     _logger.i('Switching camera');
     _isFrontCamera = !_isFrontCamera;
 
-    // TODO: Switch camera when flutter_webrtc is added
-    // final videoTracks = _localStream?.stream?.getVideoTracks();
-    // if (videoTracks != null && videoTracks.isNotEmpty) {
-    //   await Helper.switchCamera(videoTracks.first);
-    // }
+    if (_localMediaStream != null) {
+      final videoTracks = _localMediaStream!.getVideoTracks();
+      if (videoTracks.isNotEmpty) {
+        await Helper.switchCamera(videoTracks.first);
+        _logger.i('Camera switched to ${_isFrontCamera ? "front" : "back"}');
+      }
+    }
   }
 
   @override
@@ -454,13 +596,28 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
     _logger.i('Setting speaker enabled: $enabled');
     _isSpeakerEnabled = enabled;
 
-    // TODO: Toggle speaker when flutter_webrtc is added
-    // await Helper.setSpeakerphoneOn(enabled);
+    await Helper.setSpeakerphoneOn(enabled);
   }
 
   @override
   Future<double> getAudioLevel() async {
-    // TODO: Get audio level from WebRTC stats
+    // Get audio level from WebRTC stats
+    if (_peerConnection == null) return 0.0;
+
+    try {
+      final stats = await _peerConnection!.getStats();
+      for (final report in stats) {
+        if (report.type == 'inbound-rtp' || report.type == 'outbound-rtp') {
+          final audioLevel = report.values['audioLevel'];
+          if (audioLevel != null) {
+            return (audioLevel as num).toDouble();
+          }
+        }
+      }
+    } catch (e) {
+      _logger.w('Failed to get audio level', error: e);
+    }
+
     return 0.0;
   }
 
@@ -468,17 +625,73 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
   Future<Map<String, dynamic>> getStats() async {
     _logger.d('Getting connection stats');
 
-    // TODO: Get stats when flutter_webrtc is added
-    // final stats = await _peerConnection?.getStats();
-    // return _parseStats(stats);
+    if (_peerConnection == null) {
+      return {
+        'connectionState': _connectionState.name,
+        'hasLocalStream': _localStream != null,
+        'remoteStreamCount': _remoteStreams.length,
+        'audioEnabled': _isAudioEnabled,
+        'videoEnabled': _isVideoEnabled,
+        'speakerEnabled': _isSpeakerEnabled,
+        'frontCamera': _isFrontCamera,
+        'initialized': _isInitialized,
+      };
+    }
 
-    return {
-      'connectionState': _connectionState.name,
-      'hasLocalStream': _localStream != null,
-      'remoteStreamCount': _remoteStreams.length,
-      'audioEnabled': _isAudioEnabled,
-      'videoEnabled': _isVideoEnabled,
-    };
+    try {
+      final stats = await _peerConnection!.getStats();
+      final statsMap = <String, dynamic>{
+        'connectionState': _connectionState.name,
+        'hasLocalStream': _localStream != null,
+        'remoteStreamCount': _remoteStreams.length,
+        'audioEnabled': _isAudioEnabled,
+        'videoEnabled': _isVideoEnabled,
+        'speakerEnabled': _isSpeakerEnabled,
+        'frontCamera': _isFrontCamera,
+        'initialized': _isInitialized,
+        'reports': <Map<String, dynamic>>[],
+      };
+
+      for (final report in stats) {
+        if (report.type == 'candidate-pair' && report.values['selected'] == true) {
+          statsMap['selectedCandidatePair'] = {
+            'localCandidateId': report.values['localCandidateId'],
+            'remoteCandidateId': report.values['remoteCandidateId'],
+            'currentRoundTripTime': report.values['currentRoundTripTime'],
+            'availableOutgoingBitrate': report.values['availableOutgoingBitrate'],
+          };
+        } else if (report.type == 'inbound-rtp') {
+          (statsMap['reports'] as List).add({
+            'type': 'inbound',
+            'kind': report.values['kind'],
+            'packetsReceived': report.values['packetsReceived'],
+            'bytesReceived': report.values['bytesReceived'],
+            'packetsLost': report.values['packetsLost'],
+            'jitter': report.values['jitter'],
+          });
+        } else if (report.type == 'outbound-rtp') {
+          (statsMap['reports'] as List).add({
+            'type': 'outbound',
+            'kind': report.values['kind'],
+            'packetsSent': report.values['packetsSent'],
+            'bytesSent': report.values['bytesSent'],
+          });
+        }
+      }
+
+      return statsMap;
+    } catch (e) {
+      _logger.w('Failed to get detailed stats', error: e);
+      return {
+        'connectionState': _connectionState.name,
+        'hasLocalStream': _localStream != null,
+        'remoteStreamCount': _remoteStreams.length,
+        'audioEnabled': _isAudioEnabled,
+        'videoEnabled': _isVideoEnabled,
+        'initialized': _isInitialized,
+        'error': e.toString(),
+      };
+    }
   }
 
   @override
@@ -487,11 +700,13 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
 
     await stopLocalMedia();
 
-    // TODO: Close peer connection when flutter_webrtc is added
-    // await _peerConnection?.close();
-    _peerConnection = null;
+    if (_peerConnection != null) {
+      await _peerConnection!.close();
+      _peerConnection = null;
+    }
 
     _remoteStreams.clear();
+    _isInitialized = false;
     _updateConnectionState(PeerConnectionState.closed);
   }
 
@@ -504,6 +719,12 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
 
   // Private helpers
 
+  void _ensureInitialized() {
+    if (!_isInitialized || _peerConnection == null) {
+      throw StateError('WebRTC not initialized. Call initialize() first.');
+    }
+  }
+
   void _updateConnectionState(PeerConnectionState state) {
     if (_connectionState != state) {
       _connectionState = state;
@@ -512,72 +733,45 @@ class WebRTCDataSourceImpl implements WebRTCDataSource {
     }
   }
 
-  String _generateMockSdp(String type) {
-    // Generate a mock SDP for testing purposes
-    return '''v=0
-o=- ${DateTime.now().millisecondsSinceEpoch} 2 IN IP4 127.0.0.1
-s=-
-t=0 0
-a=group:BUNDLE audio video
-a=msid-semantic: WMS
-m=audio 9 UDP/TLS/RTP/SAVPF 111
-c=IN IP4 0.0.0.0
-a=rtcp:9 IN IP4 0.0.0.0
-a=ice-ufrag:mock
-a=ice-pwd:mockpassword123456789012
-a=$type
-a=mid:audio
-a=sendrecv
-m=video 9 UDP/TLS/RTP/SAVPF 96
-c=IN IP4 0.0.0.0
-a=rtcp:9 IN IP4 0.0.0.0
-a=ice-ufrag:mock
-a=ice-pwd:mockpassword123456789012
-a=$type
-a=mid:video
-a=sendrecv
-''';
-  }
+  /// Apply bitrate constraints to SDP for bandwidth management
+  String _applyBitrateConstraints(String sdp) {
+    var modifiedSdp = sdp;
 
-  // Callback methods for RTCPeerConnection events
-  // These will be wired up when flutter_webrtc is integrated
-
-  void _onIceCandidate(dynamic candidate) {
-    // Called when a new ICE candidate is generated
-    if (candidate != null) {
-      _eventsController.add(WebRTCIceCandidateGenerated(IceCandidate(
-        candidate: candidate.candidate,
-        sdpMid: candidate.sdpMid,
-        sdpMLineIndex: candidate.sdpMLineIndex,
-      )));
+    // Apply video bitrate constraint
+    if (_config.maxVideoBitrate > 0) {
+      modifiedSdp = _setBitrate(modifiedSdp, 'video', _config.maxVideoBitrate);
     }
+
+    // Apply audio bitrate constraint
+    if (_config.maxAudioBitrate > 0) {
+      modifiedSdp = _setBitrate(modifiedSdp, 'audio', _config.maxAudioBitrate);
+    }
+
+    return modifiedSdp;
   }
 
-  void _onTrack(dynamic event) {
-    // Called when a remote track is added
-    _logger.i('Remote track added');
-    final stream = MediaStreamInfo(
-      id: 'remote-${DateTime.now().millisecondsSinceEpoch}',
-      stream: event.streams.first,
-      isLocal: false,
-      hasAudio: true,
-      hasVideo: true,
-    );
-    _remoteStreams.add(stream);
-    _eventsController.add(WebRTCRemoteStreamAdded(stream));
-  }
+  /// Set bitrate in SDP for a specific media type
+  String _setBitrate(String sdp, String mediaType, int bitrate) {
+    final lines = sdp.split('\n');
+    final result = <String>[];
+    var foundMedia = false;
 
-  void _onConnectionState(dynamic state) {
-    // Called when connection state changes
-    final newState = switch (state.toString()) {
-      'new' => PeerConnectionState.idle,
-      'connecting' => PeerConnectionState.connecting,
-      'connected' => PeerConnectionState.connected,
-      'disconnected' => PeerConnectionState.disconnected,
-      'failed' => PeerConnectionState.failed,
-      'closed' => PeerConnectionState.closed,
-      _ => PeerConnectionState.idle,
-    };
-    _updateConnectionState(newState);
+    for (var i = 0; i < lines.length; i++) {
+      result.add(lines[i]);
+
+      if (lines[i].startsWith('m=$mediaType')) {
+        foundMedia = true;
+      } else if (foundMedia && lines[i].startsWith('m=')) {
+        foundMedia = false;
+      }
+
+      // Add bitrate constraint after connection line
+      if (foundMedia && lines[i].startsWith('c=')) {
+        result.add('b=AS:$bitrate');
+        result.add('b=TIAS:${bitrate * 1000}');
+      }
+    }
+
+    return result.join('\n');
   }
 }
