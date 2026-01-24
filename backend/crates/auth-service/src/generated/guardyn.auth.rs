@@ -528,6 +528,193 @@ pub struct DeleteAccountSuccess {
     #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Contact {
+    /// UUID of the contact relationship
+    #[prost(string, tag = "1")]
+    pub contact_id: ::prost::alloc::string::String,
+    /// UUID of the contact user
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Contact's username
+    #[prost(string, tag = "3")]
+    pub username: ::prost::alloc::string::String,
+    /// Contact's display name
+    #[prost(string, tag = "4")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Contact's avatar
+    #[prost(string, tag = "5")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Custom nickname set by owner
+    #[prost(string, tag = "6")]
+    pub nickname: ::prost::alloc::string::String,
+    /// Private notes about contact
+    #[prost(string, tag = "7")]
+    pub notes: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "8")]
+    pub added_at: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of user to add as contact
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Optional custom nickname
+    #[prost(string, tag = "3")]
+    pub nickname: ::prost::alloc::string::String,
+    /// Optional private notes
+    #[prost(string, tag = "4")]
+    pub notes: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddContactResponse {
+    #[prost(oneof = "add_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<add_contact_response::Result>,
+}
+/// Nested message and enum types in `AddContactResponse`.
+pub mod add_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Contact(super::Contact),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoveContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of contact user to remove
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoveContactResponse {
+    #[prost(oneof = "remove_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<remove_contact_response::Result>,
+}
+/// Nested message and enum types in `RemoveContactResponse`.
+pub mod remove_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::RemoveContactSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoveContactSuccess {
+    /// UUID of removed contact
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Confirmation message
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListContactsRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Max results (default: 50, max: 100)
+    #[prost(uint32, tag = "2")]
+    pub limit: u32,
+    /// Pagination cursor
+    #[prost(string, tag = "3")]
+    pub cursor: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListContactsResponse {
+    #[prost(oneof = "list_contacts_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<list_contacts_response::Result>,
+}
+/// Nested message and enum types in `ListContactsResponse`.
+pub mod list_contacts_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::ListContactsSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListContactsSuccess {
+    #[prost(message, repeated, tag = "1")]
+    pub contacts: ::prost::alloc::vec::Vec<Contact>,
+    /// Pagination cursor for next page
+    #[prost(string, tag = "2")]
+    pub next_cursor: ::prost::alloc::string::String,
+    /// Total number of contacts
+    #[prost(uint32, tag = "3")]
+    pub total_count: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of contact user
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetContactResponse {
+    #[prost(oneof = "get_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<get_contact_response::Result>,
+}
+/// Nested message and enum types in `GetContactResponse`.
+pub mod get_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Contact(super::Contact),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of contact user to update
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// New nickname (empty to keep current)
+    #[prost(string, tag = "3")]
+    pub nickname: ::prost::alloc::string::String,
+    /// New notes (empty to keep current)
+    #[prost(string, tag = "4")]
+    pub notes: ::prost::alloc::string::String,
+    /// If true, remove nickname
+    #[prost(bool, tag = "5")]
+    pub clear_nickname: bool,
+    /// If true, remove notes
+    #[prost(bool, tag = "6")]
+    pub clear_notes: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateContactResponse {
+    #[prost(oneof = "update_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<update_contact_response::Result>,
+}
+/// Nested message and enum types in `UpdateContactResponse`.
+pub mod update_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Contact(super::Contact),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
 /// Generated client implementations.
 pub mod auth_service_client {
     #![allow(
@@ -940,6 +1127,131 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "DeleteAccount"));
             self.inner.unary(req, path, codec).await
         }
+        /// Add a user to contacts
+        pub async fn add_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AddContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AddContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/AddContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "AddContact"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Remove a user from contacts
+        pub async fn remove_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RemoveContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RemoveContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/RemoveContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "RemoveContact"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// List all contacts
+        pub async fn list_contacts(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListContactsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ListContactsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/ListContacts",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "ListContacts"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Get contact by user ID
+        pub async fn get_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/GetContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetContact"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Update contact (nickname, notes)
+        pub async fn update_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/UpdateContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "UpdateContact"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Health check
         pub async fn health(
             &mut self,
@@ -1076,6 +1388,46 @@ pub mod auth_service_server {
             request: tonic::Request<super::DeleteAccountRequest>,
         ) -> std::result::Result<
             tonic::Response<super::DeleteAccountResponse>,
+            tonic::Status,
+        >;
+        /// Add a user to contacts
+        async fn add_contact(
+            &self,
+            request: tonic::Request<super::AddContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AddContactResponse>,
+            tonic::Status,
+        >;
+        /// Remove a user from contacts
+        async fn remove_contact(
+            &self,
+            request: tonic::Request<super::RemoveContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RemoveContactResponse>,
+            tonic::Status,
+        >;
+        /// List all contacts
+        async fn list_contacts(
+            &self,
+            request: tonic::Request<super::ListContactsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ListContactsResponse>,
+            tonic::Status,
+        >;
+        /// Get contact by user ID
+        async fn get_contact(
+            &self,
+            request: tonic::Request<super::GetContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetContactResponse>,
+            tonic::Status,
+        >;
+        /// Update contact (nickname, notes)
+        async fn update_contact(
+            &self,
+            request: tonic::Request<super::UpdateContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateContactResponse>,
             tonic::Status,
         >;
         /// Health check
@@ -1733,6 +2085,231 @@ pub mod auth_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DeleteAccountSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/AddContact" => {
+                    #[allow(non_camel_case_types)]
+                    struct AddContactSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::AddContactRequest>
+                    for AddContactSvc<T> {
+                        type Response = super::AddContactResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AddContactRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::add_contact(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = AddContactSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/RemoveContact" => {
+                    #[allow(non_camel_case_types)]
+                    struct RemoveContactSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::RemoveContactRequest>
+                    for RemoveContactSvc<T> {
+                        type Response = super::RemoveContactResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::RemoveContactRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::remove_contact(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = RemoveContactSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/ListContacts" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListContactsSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::ListContactsRequest>
+                    for ListContactsSvc<T> {
+                        type Response = super::ListContactsResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListContactsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::list_contacts(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListContactsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/GetContact" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetContactSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::GetContactRequest>
+                    for GetContactSvc<T> {
+                        type Response = super::GetContactResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetContactRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::get_contact(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetContactSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/guardyn.auth.AuthService/UpdateContact" => {
+                    #[allow(non_camel_case_types)]
+                    struct UpdateContactSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::UpdateContactRequest>
+                    for UpdateContactSvc<T> {
+                        type Response = super::UpdateContactResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UpdateContactRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::update_contact(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UpdateContactSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

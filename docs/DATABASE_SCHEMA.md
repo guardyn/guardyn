@@ -83,6 +83,32 @@ Guardyn uses a dual-database architecture for optimal performance:
 /sessions/user/<user_id>/<session_token> -> SessionReference
 ```
 
+#### Contacts Subspace
+
+```text
+/contacts/<owner_user_id>/<contact_user_id> -> Contact {
+  contact_user_id: String,
+  user_id: String,           // Same as contact_user_id (target user)
+  username: String,          // Cached username of the contact
+  display_name: String,      // Cached display name
+  avatar_media_id: Option<String>,
+  nickname: Option<String>,  // Custom nickname set by owner
+  notes: Option<String>,     // Private notes about contact
+  added_at: Timestamp,
+  updated_at: Timestamp,
+}
+
+// Reverse index for checking if user is a contact
+/contacts/reverse/<contact_user_id>/<owner_user_id> -> bool
+```
+
+**Key Design Notes:**
+
+- Contacts are stored per-user, enabling efficient listing
+- Reverse index allows quick "is this user my contact?" lookups
+- Contact data includes cached user info to reduce lookups
+- Nickname and notes are private to the contact owner
+
 #### Message Delivery State
 
 ```text

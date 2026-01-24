@@ -10,4 +10,4 @@ pub mod mls_key_package;
 pub mod search_users;
 pub mod get_user_profile;
 pub mod update_profile;
-pub mod delete_account;
+pub mod delete_account;pub mod contacts;

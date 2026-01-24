@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../contacts/presentation/bloc/contacts_bloc.dart';
 
 /// Page to display a user's profile when tapped from a group member list
-class UserProfilePage extends StatelessWidget {
+class UserProfilePage extends StatefulWidget {
   final String userId;
   final String username;
   final String? displayName;
@@ -20,11 +23,89 @@ class UserProfilePage extends StatelessWidget {
   });
 
   @override
+  State<UserProfilePage> createState() => _UserProfilePageState();
+}
+
+class _UserProfilePageState extends State<UserProfilePage> {
+  late final ContactsBloc _contactsBloc;
+  bool _isContact = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _contactsBloc = getIt<ContactsBloc>();
+    _checkIsContact();
+  }
+
+  Future<void> _checkIsContact() async {
+    _contactsBloc.add(CheckIsContact(widget.userId));
+  }
+
+  void _addToContacts() {
+    setState(() => _isLoading = true);
+    _contactsBloc.add(AddContact(userId: widget.userId));
+  }
+
+  void _removeFromContacts() {
+    setState(() => _isLoading = true);
+    _contactsBloc.add(RemoveContact(widget.userId));
+  }
+
+  @override
+  void dispose() {
+    _contactsBloc.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final displayNameText = displayName ?? username;
+    final displayNameText = widget.displayName ?? widget.username;
 
-    return Scaffold(
+    return BlocProvider.value(
+      value: _contactsBloc,
+      child: BlocListener<ContactsBloc, ContactsState>(
+        listener: (context, state) {
+          if (state is IsContactResult && state.userId == widget.userId) {
+            setState(() {
+              _isContact = state.isContact;
+              _isLoading = false;
+            });
+          } else if (state is ContactAdded &&
+              state.contact.userId == widget.userId) {
+            setState(() {
+              _isContact = true;
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Contact added successfully')),
+            );
+          } else if (state is ContactRemoved && state.userId == widget.userId) {
+            setState(() {
+              _isContact = false;
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Contact removed')));
+          } else if (state is ContactAddError) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to add contact: ${state.message}'),
+              ),
+            );
+          } else if (state is ContactRemoveError) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to remove contact: ${state.message}'),
+              ),
+            );
+          }
+        },
+        child: Scaffold(
       backgroundColor: isDark ? GrayColors.gray900 : Colors.grey[50],
       appBar: AppBar(
         title: const Text('Profile'),
@@ -80,14 +161,14 @@ class UserProfilePage extends StatelessWidget {
 
                     // Username
                     Text(
-                      '@$username',
+                          '@${widget.username}',
                       style: Theme.of(
                         context,
                       ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
                     ),
 
                     // Role badge
-                    if (role != null && role!.isNotEmpty) ...[
+                        if (widget.role != null && widget.role!.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -95,18 +176,22 @@ class UserProfilePage extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _getRoleColor(role!).withValues(alpha: 0.1),
+                              color: _getRoleColor(
+                                widget.role!,
+                              ).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _getRoleColor(role!).withValues(alpha: 0.3),
+                                color: _getRoleColor(
+                                  widget.role!,
+                                ).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Text(
-                          _formatRole(role!),
+                              _formatRole(widget.role!),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: _getRoleColor(role!),
+                                color: _getRoleColor(widget.role!),
                           ),
                         ),
                       ),
@@ -138,16 +223,33 @@ class UserProfilePage extends StatelessWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.person_add),
-                    title: const Text('Add to Contacts'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Contacts feature coming soon'),
+                        leading: Icon(
+                          _isContact ? Icons.person_remove : Icons.person_add,
+                          color: _isContact ? Colors.red : null,
                         ),
-                      );
-                    },
+                        title: Text(
+                          _isContact
+                              ? 'Remove from Contacts'
+                              : 'Add to Contacts',
+                        ),
+                        trailing: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.chevron_right),
+                        onTap: _isLoading
+                            ? null
+                            : () {
+                                if (_isContact) {
+                                  _removeFromContacts();
+                                } else {
+                                  _addToContacts();
+                                }
+                              },
                   ),
                   const Divider(height: 1),
                   ListTile(
@@ -187,7 +289,7 @@ class UserProfilePage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: SelectableText(
-                      userId,
+                          widget.userId,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontFamily: 'monospace',
                         fontSize: 12,
@@ -198,6 +300,8 @@ class UserProfilePage extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );

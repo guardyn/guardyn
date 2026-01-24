@@ -13,6 +13,11 @@ import 'package:guardyn_client/features/calls/data/repositories/call_repository_
 import 'package:guardyn_client/features/calls/domain/repositories/call_repository.dart';
 import 'package:guardyn_client/features/calls/domain/usecases/usecases.dart';
 import 'package:guardyn_client/features/calls/presentation/bloc/bloc.dart';
+// Contacts feature imports
+import 'package:guardyn_client/features/contacts/data/datasources/contacts_remote_datasource.dart';
+import 'package:guardyn_client/features/contacts/data/repositories/contacts_repository_impl.dart';
+import 'package:guardyn_client/features/contacts/domain/repositories/contacts_repository.dart';
+import 'package:guardyn_client/features/contacts/presentation/bloc/contacts_bloc.dart';
 // Groups feature imports
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
@@ -129,6 +134,9 @@ Future<void> configureDependencies() async {
 
   // Register media feature dependencies
   _registerMediaDependencies();
+
+  // Register contacts feature dependencies
+  _registerContactsDependencies();
 }
 
 void _registerAuthDependencies() {
@@ -533,5 +541,24 @@ void _registerMediaDependencies() {
       deleteMedia: getIt<DeleteMedia>(),
       manageMediaCache: getIt<ManageMediaCache>(),
     ),
+  );
+}
+
+void _registerContactsDependencies() {
+  // Data layer
+  getIt.registerLazySingleton<ContactsRemoteDatasource>(
+    () => ContactsRemoteDatasource(getIt<GrpcClients>()),
+  );
+
+  getIt.registerLazySingleton<ContactsRepository>(
+    () => ContactsRepositoryImpl(
+      getIt<ContactsRemoteDatasource>(),
+      getIt<SecureStorage>(),
+    ),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<ContactsBloc>(
+    () => ContactsBloc(getIt<ContactsRepository>()),
   );
 }

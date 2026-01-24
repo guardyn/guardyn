@@ -48,6 +48,25 @@ service AuthService {
   // Delete user account and all associated data
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
 
+  // ============================
+  // Contacts Management
+  // ============================
+
+  // Add a user to contacts
+  rpc AddContact(AddContactRequest) returns (AddContactResponse);
+
+  // Remove a user from contacts
+  rpc RemoveContact(RemoveContactRequest) returns (RemoveContactResponse);
+
+  // List all contacts
+  rpc ListContacts(ListContactsRequest) returns (ListContactsResponse);
+
+  // Get contact by user ID
+  rpc GetContact(GetContactRequest) returns (GetContactResponse);
+
+  // Update contact (nickname, notes)
+  rpc UpdateContact(UpdateContactRequest) returns (UpdateContactResponse);
+
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
 }
@@ -375,4 +394,96 @@ message DeleteAccountResponse {
 message DeleteAccountSuccess {
   string user_id = 1; // UUID of the deleted user
   string message = 2; // Confirmation message
+}
+// ============================================================================
+// Contacts Management
+// ============================================================================
+
+message Contact {
+  string contact_id = 1;       // UUID of the contact relationship
+  string user_id = 2;          // UUID of the contact user
+  string username = 3;         // Contact's username
+  string display_name = 4;     // Contact's display name
+  string avatar_media_id = 5;  // Contact's avatar
+  string nickname = 6;         // Custom nickname set by owner
+  string notes = 7;            // Private notes about contact
+  common.Timestamp added_at = 8;
+}
+
+message AddContactRequest {
+  string access_token = 1;     // Authentication
+  string user_id = 2;          // UUID of user to add as contact
+  string nickname = 3;         // Optional custom nickname
+  string notes = 4;            // Optional private notes
+}
+
+message AddContactResponse {
+  oneof result {
+    Contact contact = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RemoveContactRequest {
+  string access_token = 1;     // Authentication
+  string user_id = 2;          // UUID of contact user to remove
+}
+
+message RemoveContactResponse {
+  oneof result {
+    RemoveContactSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RemoveContactSuccess {
+  string user_id = 1;          // UUID of removed contact
+  string message = 2;          // Confirmation message
+}
+
+message ListContactsRequest {
+  string access_token = 1;     // Authentication
+  uint32 limit = 2;            // Max results (default: 50, max: 100)
+  string cursor = 3;           // Pagination cursor
+}
+
+message ListContactsResponse {
+  oneof result {
+    ListContactsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ListContactsSuccess {
+  repeated Contact contacts = 1;
+  string next_cursor = 2;      // Pagination cursor for next page
+  uint32 total_count = 3;      // Total number of contacts
+}
+
+message GetContactRequest {
+  string access_token = 1;     // Authentication
+  string user_id = 2;          // UUID of contact user
+}
+
+message GetContactResponse {
+  oneof result {
+    Contact contact = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateContactRequest {
+  string access_token = 1;     // Authentication
+  string user_id = 2;          // UUID of contact user to update
+  string nickname = 3;         // New nickname (empty to keep current)
+  string notes = 4;            // New notes (empty to keep current)
+  bool clear_nickname = 5;     // If true, remove nickname
+  bool clear_notes = 6;        // If true, remove notes
+}
+
+message UpdateContactResponse {
+  oneof result {
+    Contact contact = 1;
+    common.ErrorResponse error = 2;
+  }
 }

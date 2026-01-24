@@ -1054,3 +1054,320 @@ const DeleteAccountSuccess$json = {
 final $typed_data.Uint8List deleteAccountSuccessDescriptor = $convert.base64Decode(
     'ChREZWxldGVBY2NvdW50U3VjY2VzcxIXCgd1c2VyX2lkGAEgASgJUgZ1c2VySWQSGAoHbWVzc2'
     'FnZRgCIAEoCVIHbWVzc2FnZQ==');
+
+@$core.Deprecated('Use contactDescriptor instead')
+const Contact$json = {
+  '1': 'Contact',
+  '2': [
+    {'1': 'contact_id', '3': 1, '4': 1, '5': 9, '10': 'contactId'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'username', '3': 3, '4': 1, '5': 9, '10': 'username'},
+    {'1': 'display_name', '3': 4, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'avatar_media_id', '3': 5, '4': 1, '5': 9, '10': 'avatarMediaId'},
+    {'1': 'nickname', '3': 6, '4': 1, '5': 9, '10': 'nickname'},
+    {'1': 'notes', '3': 7, '4': 1, '5': 9, '10': 'notes'},
+    {
+      '1': 'added_at',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.Timestamp',
+      '10': 'addedAt'
+    },
+  ],
+};
+
+/// Descriptor for `Contact`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List contactDescriptor = $convert.base64Decode(
+    'CgdDb250YWN0Eh0KCmNvbnRhY3RfaWQYASABKAlSCWNvbnRhY3RJZBIXCgd1c2VyX2lkGAIgAS'
+    'gJUgZ1c2VySWQSGgoIdXNlcm5hbWUYAyABKAlSCHVzZXJuYW1lEiEKDGRpc3BsYXlfbmFtZRgE'
+    'IAEoCVILZGlzcGxheU5hbWUSJgoPYXZhdGFyX21lZGlhX2lkGAUgASgJUg1hdmF0YXJNZWRpYU'
+    'lkEhoKCG5pY2tuYW1lGAYgASgJUghuaWNrbmFtZRIUCgVub3RlcxgHIAEoCVIFbm90ZXMSNAoI'
+    'YWRkZWRfYXQYCCABKAsyGS5ndWFyZHluLmNvbW1vbi5UaW1lc3RhbXBSB2FkZGVkQXQ=');
+
+@$core.Deprecated('Use addContactRequestDescriptor instead')
+const AddContactRequest$json = {
+  '1': 'AddContactRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'nickname', '3': 3, '4': 1, '5': 9, '10': 'nickname'},
+    {'1': 'notes', '3': 4, '4': 1, '5': 9, '10': 'notes'},
+  ],
+};
+
+/// Descriptor for `AddContactRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List addContactRequestDescriptor = $convert.base64Decode(
+    'ChFBZGRDb250YWN0UmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2VuEh'
+    'cKB3VzZXJfaWQYAiABKAlSBnVzZXJJZBIaCghuaWNrbmFtZRgDIAEoCVIIbmlja25hbWUSFAoF'
+    'bm90ZXMYBCABKAlSBW5vdGVz');
+
+@$core.Deprecated('Use addContactResponseDescriptor instead')
+const AddContactResponse$json = {
+  '1': 'AddContactResponse',
+  '2': [
+    {
+      '1': 'contact',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.Contact',
+      '9': 0,
+      '10': 'contact'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `AddContactResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List addContactResponseDescriptor = $convert.base64Decode(
+    'ChJBZGRDb250YWN0UmVzcG9uc2USMQoHY29udGFjdBgBIAEoCzIVLmd1YXJkeW4uYXV0aC5Db2'
+    '50YWN0SABSB2NvbnRhY3QSNQoFZXJyb3IYAiABKAsyHS5ndWFyZHluLmNvbW1vbi5FcnJvclJl'
+    'c3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use removeContactRequestDescriptor instead')
+const RemoveContactRequest$json = {
+  '1': 'RemoveContactRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+  ],
+};
+
+/// Descriptor for `RemoveContactRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List removeContactRequestDescriptor = $convert.base64Decode(
+    'ChRSZW1vdmVDb250YWN0UmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2'
+    'VuEhcKB3VzZXJfaWQYAiABKAlSBnVzZXJJZA==');
+
+@$core.Deprecated('Use removeContactResponseDescriptor instead')
+const RemoveContactResponse$json = {
+  '1': 'RemoveContactResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.RemoveContactSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `RemoveContactResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List removeContactResponseDescriptor = $convert.base64Decode(
+    'ChVSZW1vdmVDb250YWN0UmVzcG9uc2USPgoHc3VjY2VzcxgBIAEoCzIiLmd1YXJkeW4uYXV0aC'
+    '5SZW1vdmVDb250YWN0U3VjY2Vzc0gAUgdzdWNjZXNzEjUKBWVycm9yGAIgASgLMh0uZ3VhcmR5'
+    'bi5jb21tb24uRXJyb3JSZXNwb25zZUgAUgVlcnJvckIICgZyZXN1bHQ=');
+
+@$core.Deprecated('Use removeContactSuccessDescriptor instead')
+const RemoveContactSuccess$json = {
+  '1': 'RemoveContactSuccess',
+  '2': [
+    {'1': 'user_id', '3': 1, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'message', '3': 2, '4': 1, '5': 9, '10': 'message'},
+  ],
+};
+
+/// Descriptor for `RemoveContactSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List removeContactSuccessDescriptor = $convert.base64Decode(
+    'ChRSZW1vdmVDb250YWN0U3VjY2VzcxIXCgd1c2VyX2lkGAEgASgJUgZ1c2VySWQSGAoHbWVzc2'
+    'FnZRgCIAEoCVIHbWVzc2FnZQ==');
+
+@$core.Deprecated('Use listContactsRequestDescriptor instead')
+const ListContactsRequest$json = {
+  '1': 'ListContactsRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'limit', '3': 2, '4': 1, '5': 13, '10': 'limit'},
+    {'1': 'cursor', '3': 3, '4': 1, '5': 9, '10': 'cursor'},
+  ],
+};
+
+/// Descriptor for `ListContactsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listContactsRequestDescriptor = $convert.base64Decode(
+    'ChNMaXN0Q29udGFjdHNSZXF1ZXN0EiEKDGFjY2Vzc190b2tlbhgBIAEoCVILYWNjZXNzVG9rZW'
+    '4SFAoFbGltaXQYAiABKA1SBWxpbWl0EhYKBmN1cnNvchgDIAEoCVIGY3Vyc29y');
+
+@$core.Deprecated('Use listContactsResponseDescriptor instead')
+const ListContactsResponse$json = {
+  '1': 'ListContactsResponse',
+  '2': [
+    {
+      '1': 'success',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.ListContactsSuccess',
+      '9': 0,
+      '10': 'success'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `ListContactsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listContactsResponseDescriptor = $convert.base64Decode(
+    'ChRMaXN0Q29udGFjdHNSZXNwb25zZRI9CgdzdWNjZXNzGAEgASgLMiEuZ3VhcmR5bi5hdXRoLk'
+    'xpc3RDb250YWN0c1N1Y2Nlc3NIAFIHc3VjY2VzcxI1CgVlcnJvchgCIAEoCzIdLmd1YXJkeW4u'
+    'Y29tbW9uLkVycm9yUmVzcG9uc2VIAFIFZXJyb3JCCAoGcmVzdWx0');
+
+@$core.Deprecated('Use listContactsSuccessDescriptor instead')
+const ListContactsSuccess$json = {
+  '1': 'ListContactsSuccess',
+  '2': [
+    {
+      '1': 'contacts',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.guardyn.auth.Contact',
+      '10': 'contacts'
+    },
+    {'1': 'next_cursor', '3': 2, '4': 1, '5': 9, '10': 'nextCursor'},
+    {'1': 'total_count', '3': 3, '4': 1, '5': 13, '10': 'totalCount'},
+  ],
+};
+
+/// Descriptor for `ListContactsSuccess`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listContactsSuccessDescriptor = $convert.base64Decode(
+    'ChNMaXN0Q29udGFjdHNTdWNjZXNzEjEKCGNvbnRhY3RzGAEgAygLMhUuZ3VhcmR5bi5hdXRoLk'
+    'NvbnRhY3RSCGNvbnRhY3RzEh8KC25leHRfY3Vyc29yGAIgASgJUgpuZXh0Q3Vyc29yEh8KC3Rv'
+    'dGFsX2NvdW50GAMgASgNUgp0b3RhbENvdW50');
+
+@$core.Deprecated('Use getContactRequestDescriptor instead')
+const GetContactRequest$json = {
+  '1': 'GetContactRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+  ],
+};
+
+/// Descriptor for `GetContactRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getContactRequestDescriptor = $convert.base64Decode(
+    'ChFHZXRDb250YWN0UmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2VuEh'
+    'cKB3VzZXJfaWQYAiABKAlSBnVzZXJJZA==');
+
+@$core.Deprecated('Use getContactResponseDescriptor instead')
+const GetContactResponse$json = {
+  '1': 'GetContactResponse',
+  '2': [
+    {
+      '1': 'contact',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.Contact',
+      '9': 0,
+      '10': 'contact'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `GetContactResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getContactResponseDescriptor = $convert.base64Decode(
+    'ChJHZXRDb250YWN0UmVzcG9uc2USMQoHY29udGFjdBgBIAEoCzIVLmd1YXJkeW4uYXV0aC5Db2'
+    '50YWN0SABSB2NvbnRhY3QSNQoFZXJyb3IYAiABKAsyHS5ndWFyZHluLmNvbW1vbi5FcnJvclJl'
+    'c3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');
+
+@$core.Deprecated('Use updateContactRequestDescriptor instead')
+const UpdateContactRequest$json = {
+  '1': 'UpdateContactRequest',
+  '2': [
+    {'1': 'access_token', '3': 1, '4': 1, '5': 9, '10': 'accessToken'},
+    {'1': 'user_id', '3': 2, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'nickname', '3': 3, '4': 1, '5': 9, '10': 'nickname'},
+    {'1': 'notes', '3': 4, '4': 1, '5': 9, '10': 'notes'},
+    {'1': 'clear_nickname', '3': 5, '4': 1, '5': 8, '10': 'clearNickname'},
+    {'1': 'clear_notes', '3': 6, '4': 1, '5': 8, '10': 'clearNotes'},
+  ],
+};
+
+/// Descriptor for `UpdateContactRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateContactRequestDescriptor = $convert.base64Decode(
+    'ChRVcGRhdGVDb250YWN0UmVxdWVzdBIhCgxhY2Nlc3NfdG9rZW4YASABKAlSC2FjY2Vzc1Rva2'
+    'VuEhcKB3VzZXJfaWQYAiABKAlSBnVzZXJJZBIaCghuaWNrbmFtZRgDIAEoCVIIbmlja25hbWUS'
+    'FAoFbm90ZXMYBCABKAlSBW5vdGVzEiUKDmNsZWFyX25pY2tuYW1lGAUgASgIUg1jbGVhck5pY2'
+    'tuYW1lEh8KC2NsZWFyX25vdGVzGAYgASgIUgpjbGVhck5vdGVz');
+
+@$core.Deprecated('Use updateContactResponseDescriptor instead')
+const UpdateContactResponse$json = {
+  '1': 'UpdateContactResponse',
+  '2': [
+    {
+      '1': 'contact',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.auth.Contact',
+      '9': 0,
+      '10': 'contact'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.guardyn.common.ErrorResponse',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'result'},
+  ],
+};
+
+/// Descriptor for `UpdateContactResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateContactResponseDescriptor = $convert.base64Decode(
+    'ChVVcGRhdGVDb250YWN0UmVzcG9uc2USMQoHY29udGFjdBgBIAEoCzIVLmd1YXJkeW4uYXV0aC'
+    '5Db250YWN0SABSB2NvbnRhY3QSNQoFZXJyb3IYAiABKAsyHS5ndWFyZHluLmNvbW1vbi5FcnJv'
+    'clJlc3BvbnNlSABSBWVycm9yQggKBnJlc3VsdA==');

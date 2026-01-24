@@ -42,6 +42,11 @@ use proto::auth::{
     GetUserProfileRequest, GetUserProfileResponse,
     UpdateProfileRequest, UpdateProfileResponse,
     DeleteAccountRequest, DeleteAccountResponse,
+    AddContactRequest, AddContactResponse,
+    RemoveContactRequest, RemoveContactResponse,
+    ListContactsRequest, ListContactsResponse,
+    GetContactRequest, GetContactResponse,
+    UpdateContactRequest, UpdateContactResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -178,6 +183,75 @@ impl AuthService for AuthServiceImpl {
         request: Request<DeleteAccountRequest>,
     ) -> Result<Response<DeleteAccountResponse>, Status> {
         handlers::delete_account::handle(self, request).await
+    }
+
+    // ============================
+    // Contacts Management
+    // ============================
+
+    async fn add_contact(
+        &self,
+        request: Request<AddContactRequest>,
+    ) -> Result<Response<AddContactResponse>, Status> {
+        let response = handlers::contacts::handle_add_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn remove_contact(
+        &self,
+        request: Request<RemoveContactRequest>,
+    ) -> Result<Response<RemoveContactResponse>, Status> {
+        let response = handlers::contacts::handle_remove_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn list_contacts(
+        &self,
+        request: Request<ListContactsRequest>,
+    ) -> Result<Response<ListContactsResponse>, Status> {
+        let response = handlers::contacts::handle_list_contacts(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn get_contact(
+        &self,
+        request: Request<GetContactRequest>,
+    ) -> Result<Response<GetContactResponse>, Status> {
+        let response = handlers::contacts::handle_get_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn update_contact(
+        &self,
+        request: Request<UpdateContactRequest>,
+    ) -> Result<Response<UpdateContactResponse>, Status> {
+        let response = handlers::contacts::handle_update_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
     }
 
     async fn health(

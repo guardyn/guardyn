@@ -54,3 +54,12 @@ class MediaFailure extends Failure {
 class UnknownFailure extends Failure {
   const UnknownFailure([super.message = 'An unknown error occurred']);
 }
+/// Not found failures (resource doesn't exist)
+class NotFoundFailure extends Failure {
+  const NotFoundFailure([super.message = 'Resource not found']);
+}
+
+/// Conflict failures (resource already exists)
+class ConflictFailure extends Failure {
+  const ConflictFailure([super.message = 'Resource already exists']);
+}

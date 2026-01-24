@@ -137,6 +137,46 @@ class AuthServiceClient extends $grpc.Client {
     return $createUnaryCall(_$deleteAccount, request, options: options);
   }
 
+  /// Add a user to contacts
+  $grpc.ResponseFuture<$0.AddContactResponse> addContact(
+    $0.AddContactRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$addContact, request, options: options);
+  }
+
+  /// Remove a user from contacts
+  $grpc.ResponseFuture<$0.RemoveContactResponse> removeContact(
+    $0.RemoveContactRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$removeContact, request, options: options);
+  }
+
+  /// List all contacts
+  $grpc.ResponseFuture<$0.ListContactsResponse> listContacts(
+    $0.ListContactsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listContacts, request, options: options);
+  }
+
+  /// Get contact by user ID
+  $grpc.ResponseFuture<$0.GetContactResponse> getContact(
+    $0.GetContactRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getContact, request, options: options);
+  }
+
+  /// Update contact (nickname, notes)
+  $grpc.ResponseFuture<$0.UpdateContactResponse> updateContact(
+    $0.UpdateContactRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$updateContact, request, options: options);
+  }
+
   /// Health check
   $grpc.ResponseFuture<$1.HealthStatus> health(
     $0.HealthRequest request, {
@@ -211,6 +251,31 @@ class AuthServiceClient extends $grpc.Client {
           '/guardyn.auth.AuthService/DeleteAccount',
           ($0.DeleteAccountRequest value) => value.writeToBuffer(),
           $0.DeleteAccountResponse.fromBuffer);
+  static final _$addContact =
+      $grpc.ClientMethod<$0.AddContactRequest, $0.AddContactResponse>(
+          '/guardyn.auth.AuthService/AddContact',
+          ($0.AddContactRequest value) => value.writeToBuffer(),
+          $0.AddContactResponse.fromBuffer);
+  static final _$removeContact =
+      $grpc.ClientMethod<$0.RemoveContactRequest, $0.RemoveContactResponse>(
+          '/guardyn.auth.AuthService/RemoveContact',
+          ($0.RemoveContactRequest value) => value.writeToBuffer(),
+          $0.RemoveContactResponse.fromBuffer);
+  static final _$listContacts =
+      $grpc.ClientMethod<$0.ListContactsRequest, $0.ListContactsResponse>(
+          '/guardyn.auth.AuthService/ListContacts',
+          ($0.ListContactsRequest value) => value.writeToBuffer(),
+          $0.ListContactsResponse.fromBuffer);
+  static final _$getContact =
+      $grpc.ClientMethod<$0.GetContactRequest, $0.GetContactResponse>(
+          '/guardyn.auth.AuthService/GetContact',
+          ($0.GetContactRequest value) => value.writeToBuffer(),
+          $0.GetContactResponse.fromBuffer);
+  static final _$updateContact =
+      $grpc.ClientMethod<$0.UpdateContactRequest, $0.UpdateContactResponse>(
+          '/guardyn.auth.AuthService/UpdateContact',
+          ($0.UpdateContactRequest value) => value.writeToBuffer(),
+          $0.UpdateContactResponse.fromBuffer);
   static final _$health = $grpc.ClientMethod<$0.HealthRequest, $1.HealthStatus>(
       '/guardyn.auth.AuthService/Health',
       ($0.HealthRequest value) => value.writeToBuffer(),
@@ -333,6 +398,47 @@ abstract class AuthServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.DeleteAccountRequest.fromBuffer(value),
             ($0.DeleteAccountResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.AddContactRequest, $0.AddContactResponse>(
+        'AddContact',
+        addContact_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.AddContactRequest.fromBuffer(value),
+        ($0.AddContactResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.RemoveContactRequest, $0.RemoveContactResponse>(
+            'RemoveContact',
+            removeContact_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.RemoveContactRequest.fromBuffer(value),
+            ($0.RemoveContactResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.ListContactsRequest, $0.ListContactsResponse>(
+            'ListContacts',
+            listContacts_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.ListContactsRequest.fromBuffer(value),
+            ($0.ListContactsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetContactRequest, $0.GetContactResponse>(
+        'GetContact',
+        getContact_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetContactRequest.fromBuffer(value),
+        ($0.GetContactResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.UpdateContactRequest, $0.UpdateContactResponse>(
+            'UpdateContact',
+            updateContact_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.UpdateContactRequest.fromBuffer(value),
+            ($0.UpdateContactResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HealthRequest, $1.HealthStatus>(
         'Health',
         health_Pre,
@@ -454,6 +560,49 @@ abstract class AuthServiceBase extends $grpc.Service {
 
   $async.Future<$0.DeleteAccountResponse> deleteAccount(
       $grpc.ServiceCall call, $0.DeleteAccountRequest request);
+
+  $async.Future<$0.AddContactResponse> addContact_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.AddContactRequest> $request) async {
+    return addContact($call, await $request);
+  }
+
+  $async.Future<$0.AddContactResponse> addContact(
+      $grpc.ServiceCall call, $0.AddContactRequest request);
+
+  $async.Future<$0.RemoveContactResponse> removeContact_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RemoveContactRequest> $request) async {
+    return removeContact($call, await $request);
+  }
+
+  $async.Future<$0.RemoveContactResponse> removeContact(
+      $grpc.ServiceCall call, $0.RemoveContactRequest request);
+
+  $async.Future<$0.ListContactsResponse> listContacts_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListContactsRequest> $request) async {
+    return listContacts($call, await $request);
+  }
+
+  $async.Future<$0.ListContactsResponse> listContacts(
+      $grpc.ServiceCall call, $0.ListContactsRequest request);
+
+  $async.Future<$0.GetContactResponse> getContact_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.GetContactRequest> $request) async {
+    return getContact($call, await $request);
+  }
+
+  $async.Future<$0.GetContactResponse> getContact(
+      $grpc.ServiceCall call, $0.GetContactRequest request);
+
+  $async.Future<$0.UpdateContactResponse> updateContact_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.UpdateContactRequest> $request) async {
+    return updateContact($call, await $request);
+  }
+
+  $async.Future<$0.UpdateContactResponse> updateContact(
+      $grpc.ServiceCall call, $0.UpdateContactRequest request);
 
   $async.Future<$1.HealthStatus> health_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.HealthRequest> $request) async {
