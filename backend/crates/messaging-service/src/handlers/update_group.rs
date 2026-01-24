@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use tonic::{Response, Status};
 
+use crate::auth_client::AuthClient;
 use crate::db::DatabaseClient;
 use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
@@ -142,19 +143,40 @@ pub async fn update_group(
     }
 
     // Build response with updated group info
+    // Collect unique user IDs for batch username lookup
+    let user_ids: Vec<String> = members.iter().map(|m| m.user_id.clone()).collect();
+
+    // Fetch usernames from auth service
+    let auth_url = std::env::var("AUTH_SERVICE_URL")
+        .unwrap_or_else(|_| "http://auth-service:50051".to_string());
+    let user_profiles = match AuthClient::new(&auth_url).await {
+        Ok(mut client) => client.get_usernames(&user_ids).await,
+        Err(e) => {
+            tracing::warn!("Failed to connect to auth service for username lookup: {}", e);
+            std::collections::HashMap::new()
+        }
+    };
+
     let member_infos: Vec<GroupMemberInfo> = members
         .iter()
-        .map(|m| GroupMemberInfo {
-            user_id: m.user_id.clone(),
-            username: m.user_id.clone(), // TODO: Fetch username from auth service
-            device_id: m.device_id.clone(),
-            role: m.role.to_string(),
-            joined_at: Some(Timestamp {
-                seconds: m.joined_at,
-                nanos: 0,
-            }),
-            avatar_media_id: String::new(), // TODO: Fetch from auth service
-            display_name: String::new(),    // TODO: Fetch from auth service
+        .map(|m| {
+            let username = user_profiles
+                .get(&m.user_id)
+                .cloned()
+                .unwrap_or_else(|| m.user_id.clone());
+
+            GroupMemberInfo {
+                user_id: m.user_id.clone(),
+                username,
+                device_id: m.device_id.clone(),
+                role: m.role.to_string(),
+                joined_at: Some(Timestamp {
+                    seconds: m.joined_at,
+                    nanos: 0,
+                }),
+                avatar_media_id: String::new(), // TODO: Add to auth service profile response
+                display_name: String::new(),    // TODO: Add to auth service profile response
+            }
         })
         .collect();
 

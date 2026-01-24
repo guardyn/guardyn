@@ -1492,6 +1492,17 @@ impl DatabaseClient {
         Ok(messages)
     }
 
+    /// Get the most recent message for a group
+    ///
+    /// Returns the last message sent in the group, if any
+    pub async fn get_last_group_message(
+        &self,
+        group_id: &str,
+    ) -> Result<Option<GroupMessage>> {
+        let messages = self.get_group_messages(group_id, 1).await?;
+        Ok(messages.into_iter().next())
+    }
+
     /// Health check - verify TiKV connectivity
     pub async fn tikv_health_check(&self) -> anyhow::Result<()> {
         let test_key = b"/__health_check__";
