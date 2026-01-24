@@ -389,7 +389,7 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SetDisappearingMessagesRequest>,
     ) -> Result<Response<SetDisappearingMessagesResponse>, Status> {
-        handlers::set_disappearing_messages(self.db.clone(), request).await
+        handlers::set_disappearing_messages(self.db.clone(), self.nats.clone(), request).await
     }
 
     async fn get_disappearing_config(
