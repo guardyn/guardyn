@@ -338,7 +338,7 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SendReadReceiptRequest>,
     ) -> Result<Response<SendReadReceiptResponse>, Status> {
-        handlers::send_read_receipt(self.db.clone(), request).await
+        handlers::send_read_receipt(self.db.clone(), self.nats.clone(), request).await
     }
 
     async fn get_read_receipts(
