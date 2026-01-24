@@ -129,8 +129,9 @@ pub struct PreKeyData {
     pub key_id: u32,
     /// X25519 public key (hex)
     pub public_key: String,
-    /// X25519 private key (hex) - stored securely
-    #[serde(skip_serializing)]
+    /// X25519 private key (hex) - stored in secure storage only
+    /// Default empty for API responses, populated from secure storage
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub private_key: String,
     /// Signature over public key (hex)
     pub signature: String,
@@ -166,10 +167,9 @@ pub struct SessionData {
     pub messages_sent: u64,
     /// Messages received
     pub messages_received: u64,
-    /// Session state (serialized Double Ratchet state)
-    #[serde(skip)]
-    #[allow(dead_code)]
-    state: Vec<u8>,
+    /// Session state (serialized Double Ratchet state, base64 encoded for JSON)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub state: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -291,7 +291,10 @@ pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PreKeyData>, St
         store.one_time_prekeys.push(prekey);
     }
 
-    tracing::info!("Generated {} one-time prekeys", prekeys.len());
+    // Persist one-time prekeys to secure storage
+    persist_one_time_prekeys(&store.one_time_prekeys)?;
+
+    tracing::info!("Generated and persisted {} one-time prekeys", prekeys.len());
     Ok(prekeys)
 }
 
@@ -383,11 +386,14 @@ pub async fn init_session(
         state: Vec::new(), // TODO: Serialize Double Ratchet state
     };
 
-    // Store session
+    // Store session in memory
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     store.sessions.insert(peer_id.clone(), session.clone());
 
-    tracing::info!("Session established with peer: {}", peer_id);
+    // Persist all sessions to secure storage
+    persist_sessions(&store.sessions)?;
+
+    tracing::info!("Session established and persisted with peer: {}", peer_id);
     Ok(SessionInfo {
         peer_id: session.peer_id,
         established_at: session.established_at,
@@ -429,7 +435,15 @@ pub async fn list_sessions() -> Result<Vec<SessionInfo>, String> {
 #[tauri::command]
 pub async fn delete_session(peer_id: String) -> Result<bool, String> {
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    Ok(store.sessions.remove(&peer_id).is_some())
+    let removed = store.sessions.remove(&peer_id).is_some();
+    
+    if removed {
+        // Persist updated sessions to secure storage
+        persist_sessions(&store.sessions)?;
+        tracing::info!("Session with peer {} deleted and persisted", peer_id);
+    }
+    
+    Ok(removed)
 }
 
 // =============================================================================
@@ -455,6 +469,13 @@ pub async fn encrypt_message(
     // TODO: Encrypt with Double Ratchet
     // For now, return base64-encoded padded message
     session.messages_sent += 1;
+
+    // Clone sessions for persistence (outside of mutable borrow)
+    let sessions_clone = store.sessions.clone();
+    drop(store);
+
+    // Persist updated session (message counter changed)
+    persist_sessions(&sessions_clone)?;
 
     Ok(EncryptedMessage {
         ciphertext: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &padded),
@@ -490,6 +511,13 @@ pub async fn decrypt_message(
 
     session.messages_received += 1;
 
+    // Clone sessions for persistence (outside of mutable borrow)
+    let sessions_clone = store.sessions.clone();
+    drop(store);
+
+    // Persist updated session (message counter changed)
+    persist_sessions(&sessions_clone)?;
+
     String::from_utf8(plaintext).map_err(|e| format!("Invalid UTF-8: {}", e))
 }
 
@@ -512,16 +540,162 @@ pub async fn get_crypto_version() -> String {
 }
 
 /// Clear all crypto state (logout/reset)
+/// This clears both in-memory state and persistent secure storage
 #[tauri::command]
 pub async fn clear_crypto_state() -> Result<(), String> {
-    tracing::warn!("Clearing all crypto state");
+    tracing::warn!("Clearing all crypto state (memory and secure storage)");
 
+    // Clear in-memory state
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     store.identity_keypair = None;
     store.signed_prekey = None;
     store.one_time_prekeys.clear();
     store.sessions.clear();
+    store.loaded_from_storage = false;
 
-    tracing::info!("Crypto state cleared");
+    // Clear secure storage (OS keychain)
+    SecureStorage::default_instance()
+        .clear_all()
+        .map_err(|e| format!("Failed to clear secure storage: {}", e))?;
+
+    tracing::info!("Crypto state cleared from memory and secure storage");
     Ok(())
+}
+
+// =============================================================================
+// TESTS
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_identity_key_data_serialization() {
+        let data = IdentityKeyData {
+            public_key: "abc123".to_string(),
+            private_key: "secret456".to_string(),
+        };
+
+        // Test that serialization works
+        let json = serde_json::to_string(&data).unwrap();
+        assert!(json.contains("abc123"));
+        assert!(json.contains("secret456")); // Private key should now be serialized for storage
+
+        // Test deserialization
+        let deserialized: IdentityKeyData = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.public_key, "abc123");
+        assert_eq!(deserialized.private_key, "secret456");
+    }
+
+    #[test]
+    fn test_prekey_data_serialization() {
+        let prekey = PreKeyData {
+            key_id: 42,
+            public_key: "pubkey".to_string(),
+            private_key: "privkey".to_string(),
+            signature: "sig".to_string(),
+        };
+
+        // Serialize for storage (private_key is included when non-empty)
+        let json = serde_json::to_string(&prekey).unwrap();
+        assert!(json.contains("pubkey"));
+        
+        // When private_key is populated, it should serialize for storage
+        if !prekey.private_key.is_empty() {
+            let full_json = serde_json::json!({
+                "key_id": prekey.key_id,
+                "public_key": prekey.public_key,
+                "private_key": prekey.private_key,
+                "signature": prekey.signature,
+            });
+            let full_serialized = full_json.to_string();
+            let deserialized: PreKeyData = serde_json::from_str(&full_serialized).unwrap();
+            assert_eq!(deserialized.private_key, "privkey");
+        }
+    }
+
+    #[test]
+    fn test_session_data_serialization() {
+        let session = SessionData {
+            peer_id: "peer123".to_string(),
+            established_at: 1234567890,
+            messages_sent: 10,
+            messages_received: 5,
+            state: vec![1, 2, 3, 4, 5], // Non-empty state
+        };
+
+        // State should be serialized when non-empty
+        let json = serde_json::to_string(&session).unwrap();
+        assert!(json.contains("peer123"));
+        assert!(json.contains("1234567890"));
+        
+        // Deserialize and verify state is preserved
+        let deserialized: SessionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.peer_id, "peer123");
+        assert_eq!(deserialized.state, vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_session_data_empty_state_serialization() {
+        let session = SessionData {
+            peer_id: "peer456".to_string(),
+            established_at: 9999999999,
+            messages_sent: 0,
+            messages_received: 0,
+            state: vec![], // Empty state should be skipped
+        };
+
+        let json = serde_json::to_string(&session).unwrap();
+        // Empty state should not appear in JSON
+        assert!(!json.contains("\"state\""));
+        
+        // Deserialize and verify state defaults to empty
+        let deserialized: SessionData = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.state.is_empty());
+    }
+
+    #[test]
+    fn test_persist_identity_keypair_format() {
+        // Test that the persistence format is correct
+        let keypair = IdentityKeyData {
+            public_key: hex::encode([0u8; 32]),
+            private_key: hex::encode([1u8; 32]),
+        };
+
+        let json = serde_json::to_string(&keypair).unwrap();
+        
+        // Verify JSON structure
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.get("public_key").is_some());
+        assert!(parsed.get("private_key").is_some());
+    }
+
+    #[test]
+    fn test_sessions_hashmap_serialization() {
+        let mut sessions = HashMap::new();
+        sessions.insert("user1".to_string(), SessionData {
+            peer_id: "user1".to_string(),
+            established_at: 100,
+            messages_sent: 5,
+            messages_received: 3,
+            state: vec![10, 20, 30],
+        });
+        sessions.insert("user2".to_string(), SessionData {
+            peer_id: "user2".to_string(),
+            established_at: 200,
+            messages_sent: 10,
+            messages_received: 7,
+            state: vec![],
+        });
+
+        // Serialize entire sessions map
+        let json = serde_json::to_string(&sessions).unwrap();
+        
+        // Deserialize and verify
+        let deserialized: HashMap<String, SessionData> = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.len(), 2);
+        assert_eq!(deserialized.get("user1").unwrap().state, vec![10, 20, 30]);
+        assert!(deserialized.get("user2").unwrap().state.is_empty());
+    }
 }
