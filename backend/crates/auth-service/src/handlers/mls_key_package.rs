@@ -30,12 +30,13 @@ use tracing::{error, info};
 pub async fn upload_mls_key_package(
     request: Request<UploadMlsKeyPackageRequest>,
     db: Arc<DatabaseClient>,
+    jwt_secret: &str,
 ) -> Result<Response<UploadMlsKeyPackageResponse>, Status> {
     let req = request.into_inner();
     info!("Uploading MLS key package");
 
     // Validate JWT token
-    let user_id = match verify_jwt(&req.access_token, "your-secret-key") { // TODO: Get from config
+    let user_id = match verify_jwt(&req.access_token, jwt_secret) {
         Ok(user_id) => user_id,
         Err(e) => {
             error!("JWT validation failed: {:?}", e);

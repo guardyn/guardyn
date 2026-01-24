@@ -7,6 +7,7 @@
 
 export * from './auth';
 export * from './calls';
+export * from './media';
 export * from './messaging';
 export * from './settings';
 
@@ -41,4 +42,11 @@ export type {
 export type {
     WebSocketConfig
 } from './websocket';
+
+// Media types
+export type {
+    DownloadUrlResult, GenerateThumbnailParams, GetUploadUrlParams, ListMediaParams, MediaListResult, MediaMetadata,
+    MediaType, ThumbnailResult, UploadMediaFileParams, UploadStatus,
+    UploadUrlResult
+} from './media';
 

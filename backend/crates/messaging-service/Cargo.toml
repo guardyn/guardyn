@@ -6,7 +6,7 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-guardyn-common = { path = "../common" }
+guardyn-common = { path = "../common", features = ["kafka"] }
 guardyn-crypto = { path = "../crypto" }
 
 tokio.workspace = true

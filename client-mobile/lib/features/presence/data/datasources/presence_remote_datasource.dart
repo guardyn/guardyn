@@ -105,4 +105,25 @@ class PresenceRemoteDatasource {
           (update) => PresenceModel.fromPresenceUpdate(update),
         );
   }
+
+  /// Get bulk presence status for multiple users
+  Future<List<PresenceModel>> getBulkStatus({
+    required String accessToken,
+    required List<String> userIds,
+  }) async {
+    final request = proto.GetBulkStatusRequest(
+      accessToken: accessToken,
+      userIds: userIds,
+    );
+
+    final response = await _presenceClient.getBulkStatus(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.presences
+        .map((p) => PresenceModel.fromUserPresence(p))
+        .toList();
+  }
 }

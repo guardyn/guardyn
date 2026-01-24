@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:dartz/dartz.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../messaging/domain/usecases/get_user_display_name.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../datasources/group_remote_datasource.dart';
@@ -14,11 +17,16 @@ import '../models/group_model.dart';
 class GroupRepositoryImpl implements GroupRepository {
   final GroupRemoteDatasource _remoteDatasource;
   final SecureStorage _secureStorage;
+  final GetUserDisplayName _getUserDisplayName;
 
   // Local cache for groups (in-memory)
   final Map<String, GroupModel> _groupCache = {};
 
-  GroupRepositoryImpl(this._remoteDatasource, this._secureStorage);
+  GroupRepositoryImpl(
+    this._remoteDatasource,
+    this._secureStorage,
+    this._getUserDisplayName,
+  );
 
   Future<String?> _getAccessToken() async {
     return await _secureStorage.getAccessToken();
@@ -51,15 +59,23 @@ class GroupRepositoryImpl implements GroupRepository {
         memberUserIds: memberUserIds,
       );
 
+      // Resolve creator's username
+      final creatorId = currentUserId ?? '';
+      final creatorUsernameResult = await _getUserDisplayName(creatorId);
+      final creatorUsername = creatorUsernameResult.fold(
+        (_) => creatorId,
+        (name) => name,
+      );
+
       // Update group with creator info
       final updatedGroup = GroupModel(
         groupId: group.groupId,
         name: group.name,
-        creatorUserId: currentUserId ?? '',
+        creatorUserId: creatorId,
         members: [
           GroupMemberModel(
-            userId: currentUserId ?? '',
-            username: '', // Will be fetched from user cache
+            userId: creatorId,
+            username: creatorUsername,
             deviceId: await _getCurrentDeviceId() ?? '',
             role: GroupRole.admin,
             joinedAt: group.createdAt,
@@ -139,6 +155,7 @@ class GroupRepositoryImpl implements GroupRepository {
     required String groupId,
     required String textContent,
     GroupMessageType messageType = GroupMessageType.text,
+    Map<String, String>? metadata,
   }) async {
     try {
       final accessToken = await _getAccessToken();
@@ -154,11 +171,24 @@ class GroupRepositoryImpl implements GroupRepository {
       final currentDeviceId = await _getCurrentDeviceId();
       final username = await _secureStorage.getUsername();
 
+      // For media messages with empty textContent, create JSON with media metadata
+      String contentToSend = textContent;
+      if (textContent.isEmpty && metadata != null && metadata['media_id'] != null) {
+        contentToSend = json.encode({
+          'type': 'media',
+          'media_id': metadata['media_id'],
+          'media_type': metadata['media_type'] ?? 'image',
+          'filename': metadata['filename'] ?? '',
+          'mime_type': metadata['mime_type'] ?? '',
+        });
+      }
+
       final message = await _remoteDatasource.sendGroupMessage(
         accessToken: accessToken,
         groupId: groupId,
-        textContent: textContent,
+        textContent: contentToSend,
         currentUserId: currentUserId,
+        metadata: metadata,
       );
 
       // Return message with complete user info
@@ -235,10 +265,17 @@ class GroupRepositoryImpl implements GroupRepository {
       // Update local cache if group exists
       final cachedGroup = _groupCache[groupId];
       if (cachedGroup != null && result) {
+        // Resolve username from cache or fetch from server
+        final usernameResult = await _getUserDisplayName(memberUserId);
+        final username = usernameResult.fold(
+          (_) => memberUserId,
+          (name) => name,
+        );
+        
         final updatedMembers = List<GroupMember>.from(cachedGroup.members)
           ..add(GroupMemberModel(
             userId: memberUserId,
-            username: memberUserId, // TODO: Fetch username
+            username: username,
             deviceId: memberDeviceId,
             role: GroupRole.member,
             joinedAt: DateTime.now(),
@@ -327,6 +364,116 @@ class GroupRepositoryImpl implements GroupRepository {
       return Right(result);
     } on GrpcError catch (e) {
       return Left(ServerFailure(e.message ?? 'Failed to leave group'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> deleteGroup(String groupId) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final result = await _remoteDatasource.deleteGroup(
+        accessToken: accessToken,
+        groupId: groupId,
+      );
+
+      // Remove from cache if successful
+      if (result) {
+        _groupCache.remove(groupId);
+      }
+
+      return Right(result);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to delete group'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Group>> updateGroup({
+    required String groupId,
+    String? name,
+    String? iconMediaId,
+    String? description,
+  }) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final group = await _remoteDatasource.updateGroup(
+        accessToken: accessToken,
+        groupId: groupId,
+        name: name,
+        iconMediaId: iconMediaId,
+        description: description,
+      );
+
+      // Update cache
+      _groupCache[group.groupId] = group;
+
+      return Right(group);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to update group'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> sendTypingIndicator({
+    required String groupId,
+    required bool isTyping,
+  }) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      final result = await _remoteDatasource.sendTypingIndicator(
+        accessToken: accessToken,
+        groupId: groupId,
+        isTyping: isTyping,
+      );
+
+      return Right(result);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to send typing indicator'));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> changeMemberRole({
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+  }) async {
+    try {
+      final accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      await _remoteDatasource.changeMemberRole(
+        accessToken: accessToken,
+        groupId: groupId,
+        targetUserId: targetUserId,
+        newRole: newRole,
+      );
+
+      return const Right(null);
+    } on GrpcError catch (e) {
+      return Left(ServerFailure(e.message ?? 'Failed to change member role'));
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }

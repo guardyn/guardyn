@@ -127,6 +127,16 @@ class GroupLeft extends GroupState {
   List<Object?> get props => [groupId];
 }
 
+/// Group deleted successfully (admin action)
+class GroupDeleted extends GroupState {
+  final String groupId;
+
+  const GroupDeleted({required this.groupId});
+
+  @override
+  List<Object?> get props => [groupId];
+}
+
 /// Group details loaded successfully
 class GroupDetailsLoaded extends GroupState {
   final Group group;
@@ -135,6 +145,48 @@ class GroupDetailsLoaded extends GroupState {
 
   @override
   List<Object?> get props => [group];
+}
+
+/// Group updated successfully
+class GroupUpdated extends GroupState {
+  final Group group;
+
+  const GroupUpdated({required this.group});
+
+  @override
+  List<Object?> get props => [group];
+}
+
+/// Typing users updated in a group
+class GroupTypingUsersUpdated extends GroupState {
+  final String groupId;
+  final List<String> typingUsernames;
+  final List<GroupMessage> messages;
+
+  const GroupTypingUsersUpdated({
+    required this.groupId,
+    required this.typingUsernames,
+    this.messages = const [],
+  });
+
+  @override
+  List<Object?> get props => [groupId, typingUsernames, messages];
+}
+
+/// Member role changed successfully
+class GroupMemberRoleChanged extends GroupState {
+  final String groupId;
+  final String targetUserId;
+  final String newRole;
+
+  const GroupMemberRoleChanged({
+    required this.groupId,
+    required this.targetUserId,
+    required this.newRole,
+  });
+
+  @override
+  List<Object?> get props => [groupId, targetUserId, newRole];
 }
 
 /// Error state

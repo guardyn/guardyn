@@ -33,18 +33,34 @@ class NativeRustCryptoBridge implements CryptoBridge {
   bool _nativeAvailable = false;
   bool _pqAvailable = false;
 
-  /// Check if native library is available for current platform
-  static bool checkNativeAvailable() {
-    try {
-      // Try to load the native library
-      final libName = _getLibraryName();
-      if (libName == null) return false;
+  /// Track if we've already checked native availability
+  static bool? _nativeLibraryAvailable;
 
-      // In production, this would actually load and verify the library
-      // For now, we check if the library file exists
+  /// Check if native library is available for current platform
+  ///
+  /// This performs a one-time check by attempting to call the Rust FFI.
+  /// Returns false if the native library is not loaded.
+  static bool checkNativeAvailable() {
+    // Return cached result if already checked
+    if (_nativeLibraryAvailable != null) {
+      return _nativeLibraryAvailable!;
+    }
+
+    try {
+      final libName = _getLibraryName();
+      if (libName == null) {
+        _nativeLibraryAvailable = false;
+        return false;
+      }
+
+      // Actually try to call a function to verify library is loaded
+      // If the stub is used, this will throw UnsupportedError
+      rust_api.cryptoStatus();
+      _nativeLibraryAvailable = true;
       return true;
     } catch (e) {
-      debugPrint('Native library not available: $e');
+      debugPrint('🔐 Native crypto library not available: $e');
+      _nativeLibraryAvailable = false;
       return false;
     }
   }

@@ -108,6 +108,9 @@ pub async fn handle(
         password_hash,
         created_at: now,
         last_seen: now,
+        avatar_media_id: None,
+        display_name: None,
+        bio: None,
     };
 
     // Store user in database

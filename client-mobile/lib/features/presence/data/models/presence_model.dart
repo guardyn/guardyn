@@ -53,6 +53,24 @@ class PresenceModel extends PresenceInfo {
     );
   }
 
+  /// Create PresenceModel from UserPresence proto (bulk status)
+  factory PresenceModel.fromUserPresence(proto.UserPresence protoPresence) {
+    return PresenceModel(
+      userId: protoPresence.userId,
+      status: _statusFromProto(protoPresence.status),
+      lastSeen: protoPresence.hasLastSeen()
+          ? DateTime.fromMillisecondsSinceEpoch(
+              protoPresence.lastSeen.seconds.toInt() * 1000,
+              isUtc: true,
+            ).toLocal()
+          : null,
+      isTyping: false,
+      customStatusText: protoPresence.hasCustomStatusText()
+          ? protoPresence.customStatusText
+          : null,
+    );
+  }
+
   /// Convert domain PresenceStatus to proto UserStatus
   static proto_enum.UserStatus statusToProto(PresenceStatus status) {
     switch (status) {

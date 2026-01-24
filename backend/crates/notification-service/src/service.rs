@@ -38,7 +38,8 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         request: Request<RegisterDeviceRequest>,
     ) -> Result<Response<RegisterDeviceResponse>, Status> {
-        let response = handlers::register_device(&self.db, request.into_inner(), &self.jwt_secret).await;
+        let response =
+            handlers::register_device(&self.db, request.into_inner(), &self.jwt_secret).await;
         Ok(Response::new(response))
     }
 
@@ -46,7 +47,8 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         request: Request<UnregisterDeviceRequest>,
     ) -> Result<Response<UnregisterDeviceResponse>, Status> {
-        let response = handlers::unregister_device(&self.db, request.into_inner(), &self.jwt_secret).await;
+        let response =
+            handlers::unregister_device(&self.db, request.into_inner(), &self.jwt_secret).await;
         Ok(Response::new(response))
     }
 
@@ -54,7 +56,8 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         request: Request<UpdatePushTokenRequest>,
     ) -> Result<Response<UpdatePushTokenResponse>, Status> {
-        let response = handlers::update_push_token(&self.db, request.into_inner(), &self.jwt_secret).await;
+        let response =
+            handlers::update_push_token(&self.db, request.into_inner(), &self.jwt_secret).await;
         Ok(Response::new(response))
     }
 
@@ -62,7 +65,9 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         request: Request<GetNotificationSettingsRequest>,
     ) -> Result<Response<GetNotificationSettingsResponse>, Status> {
-        let response = handlers::get_notification_settings(&self.db, request.into_inner(), &self.jwt_secret).await;
+        let response =
+            handlers::get_notification_settings(&self.db, request.into_inner(), &self.jwt_secret)
+                .await;
         Ok(Response::new(response))
     }
 
@@ -70,7 +75,12 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         request: Request<UpdateNotificationSettingsRequest>,
     ) -> Result<Response<UpdateNotificationSettingsResponse>, Status> {
-        let response = handlers::update_notification_settings(&self.db, request.into_inner(), &self.jwt_secret).await;
+        let response = handlers::update_notification_settings(
+            &self.db,
+            request.into_inner(),
+            &self.jwt_secret,
+        )
+        .await;
         Ok(Response::new(response))
     }
 
@@ -78,7 +88,8 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         request: Request<MuteConversationRequest>,
     ) -> Result<Response<MuteConversationResponse>, Status> {
-        let response = handlers::mute_conversation(&self.db, request.into_inner(), &self.jwt_secret).await;
+        let response =
+            handlers::mute_conversation(&self.db, request.into_inner(), &self.jwt_secret).await;
         Ok(Response::new(response))
     }
 
@@ -100,9 +111,22 @@ impl NotificationService for NotificationServiceImpl {
         &self,
         _request: Request<HealthRequest>,
     ) -> Result<Response<crate::generated::guardyn::common::HealthStatus>, Status> {
-        Ok(Response::new(crate::generated::guardyn::common::HealthStatus {
-            status: "healthy".to_string(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-        }))
+        use crate::generated::guardyn::common::health_status::Status as HealthStatusEnum;
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+
+        Ok(Response::new(
+            crate::generated::guardyn::common::HealthStatus {
+                status: HealthStatusEnum::Healthy.into(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                timestamp: Some(crate::generated::guardyn::common::Timestamp {
+                    seconds: now.as_secs() as i64,
+                    nanos: now.subsec_nanos() as i32,
+                }),
+                components: std::collections::HashMap::new(),
+            },
+        ))
     }
 }

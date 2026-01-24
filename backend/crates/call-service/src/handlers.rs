@@ -4,6 +4,7 @@ use anyhow::Result;
 use chrono::Utc;
 use tracing::{debug, warn};
 
+use crate::auth_client::AuthClient;
 use crate::db::{CallDb, CallParticipantRecord, CallRecord, UserCallHistoryEntry};
 use crate::generated::guardyn::calls::*;
 use crate::session::{CallSessionManager, SessionParticipant};
@@ -35,6 +36,7 @@ fn error_response(code: i32, message: &str) -> crate::generated::guardyn::common
     crate::generated::guardyn::common::ErrorResponse {
         code,
         message: message.to_string(),
+        details: std::collections::HashMap::new(),
     }
 }
 
@@ -73,6 +75,7 @@ pub async fn initiate_call(
     request: InitiateCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
+    auth_service_url: &str,
 ) -> InitiateCallResponse {
     let user_id = match validate_token(&request.access_token, jwt_secret) {
         Ok(id) => id,
@@ -96,6 +99,15 @@ pub async fn initiate_call(
         };
     }
 
+    // Get display name from auth service
+    let display_name = match AuthClient::new(auth_service_url).await {
+        Ok(mut client) => client.get_display_name(&user_id).await,
+        Err(e) => {
+            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            user_id.clone()
+        }
+    };
+
     // Determine if this is a group call
     let (is_group, group_id) = match &request.target {
         Some(initiate_call_request::Target::GroupId(gid)) => (true, Some(gid.clone())),
@@ -116,7 +128,7 @@ pub async fn initiate_call(
         is_group,
         group_id.clone(),
         &user_id,
-        &user_id, // TODO: Get display name from user service
+        &display_name,
     );
 
     // Persist to database
@@ -142,7 +154,7 @@ pub async fn initiate_call(
     let participant = CallParticipantRecord {
         call_id: call_id.clone(),
         user_id: user_id.clone(),
-        display_name: user_id.clone(),
+        display_name: display_name.clone(),
         is_muted: false,
         has_video: request.call_type == 2,
         is_screen_sharing: false,
@@ -178,6 +190,7 @@ pub async fn accept_call(
     request: AcceptCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
+    auth_service_url: &str,
 ) -> AcceptCallResponse {
     let user_id = match validate_token(&request.access_token, jwt_secret) {
         Ok(id) => id,
@@ -188,6 +201,15 @@ pub async fn accept_call(
                     "Invalid or expired token",
                 ))),
             };
+        }
+    };
+
+    // Get display name from auth service
+    let display_name = match AuthClient::new(auth_service_url).await {
+        Ok(mut client) => client.get_display_name(&user_id).await,
+        Err(e) => {
+            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            user_id.clone()
         }
     };
 
@@ -214,7 +236,7 @@ pub async fn accept_call(
     let (sframe_key_id, sframe_key) = match session_mgr.add_participant(
         &request.call_id,
         &user_id,
-        &user_id,
+        &display_name,
         has_video,
     ) {
         Some(keys) => keys,
@@ -235,7 +257,7 @@ pub async fn accept_call(
     let participant = CallParticipantRecord {
         call_id: request.call_id.clone(),
         user_id: user_id.clone(),
-        display_name: user_id.clone(),
+        display_name: display_name.clone(),
         is_muted: false,
         has_video,
         is_screen_sharing: false,
@@ -328,31 +350,35 @@ pub async fn end_call(
             warn!("Failed to update call: {}", e);
         }
 
+        // Collect participant IDs first to avoid borrow issues
+        let participant_ids: Vec<String> = session.participants.keys().cloned().collect();
+
         // Add to call history for all participants
-        for (participant_id, _) in session.participants {
+        for participant_id in &participant_ids {
+            let other_user_id = if session.is_group_call {
+                None
+            } else {
+                Some(if participant_id == &session.initiator_id {
+                    // Find the other participant
+                    participant_ids
+                        .iter()
+                        .find(|&k| k != participant_id)
+                        .cloned()
+                        .unwrap_or_default()
+                } else {
+                    session.initiator_id.clone()
+                })
+            };
+
             let entry = UserCallHistoryEntry {
                 user_id: participant_id.clone(),
                 call_id: request.call_id.clone(),
                 call_type: session.call_type,
                 is_group_call: session.is_group_call,
                 group_id: session.group_id.clone(),
-                other_user_id: if session.is_group_call {
-                    None
-                } else {
-                    Some(if participant_id == session.initiator_id {
-                        // Find the other participant
-                        session
-                            .participants
-                            .keys()
-                            .find(|&k| k != &participant_id)
-                            .cloned()
-                            .unwrap_or_default()
-                    } else {
-                        session.initiator_id.clone()
-                    })
-                },
+                other_user_id,
                 other_user_name: None,
-                is_outgoing: participant_id == session.initiator_id,
+                is_outgoing: participant_id == &session.initiator_id,
                 end_reason: request.reason,
                 started_at: session.started_at.unwrap_or(session.created_at),
                 duration_seconds: duration,
@@ -381,6 +407,7 @@ pub async fn join_call(
     request: JoinCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
+    auth_service_url: &str,
 ) -> JoinCallResponse {
     let user_id = match validate_token(&request.access_token, jwt_secret) {
         Ok(id) => id,
@@ -391,6 +418,15 @@ pub async fn join_call(
                     "Invalid or expired token",
                 ))),
             };
+        }
+    };
+
+    // Get display name from auth service
+    let display_name = match AuthClient::new(auth_service_url).await {
+        Ok(mut client) => client.get_display_name(&user_id).await,
+        Err(e) => {
+            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            user_id.clone()
         }
     };
 
@@ -431,7 +467,7 @@ pub async fn join_call(
     let (sframe_key_id, sframe_key) = match session_mgr.add_participant(
         &request.call_id,
         &user_id,
-        &user_id,
+        &display_name,
         has_video,
     ) {
         Some(keys) => keys,
@@ -456,7 +492,7 @@ pub async fn join_call(
     let participant = CallParticipantRecord {
         call_id: request.call_id.clone(),
         user_id: user_id.clone(),
-        display_name: user_id.clone(),
+        display_name: display_name.clone(),
         is_muted: false,
         has_video,
         is_screen_sharing: false,
@@ -757,11 +793,34 @@ pub async fn get_call_history(
         }
     };
 
-    let limit = if request.limit > 0 { request.limit } else { 50 };
+    let limit = if request.limit > 0 && request.limit <= 100 { 
+        request.limit 
+    } else { 
+        50 
+    };
 
-    match db.get_call_history(&user_id, limit).await {
+    // Parse cursor - format: "ts:{timestamp_millis}"
+    let before_timestamp: Option<i64> = if request.cursor.is_empty() {
+        None
+    } else if let Some(ts_str) = request.cursor.strip_prefix("ts:") {
+        ts_str.parse().ok()
+    } else {
+        None
+    };
+
+    // Fetch limit + 1 to determine if there are more results
+    match db.get_call_history(&user_id, limit + 1, before_timestamp).await {
         Ok(history) => {
-            let calls: Vec<CallHistoryEntry> = history
+            // Check if there are more results
+            let has_more = history.len() > limit as usize;
+
+            // Take only the requested limit
+            let history_limited: Vec<_> = history.into_iter().take(limit as usize).collect();
+            
+            // Get the timestamp of the last entry for the cursor
+            let last_timestamp = history_limited.last().map(|h| h.started_at.timestamp_millis());
+
+            let calls: Vec<CallHistoryEntry> = history_limited
                 .into_iter()
                 .map(|h| CallHistoryEntry {
                     call_id: h.call_id,
@@ -780,11 +839,20 @@ pub async fn get_call_history(
                 })
                 .collect();
 
+            // Generate next cursor using the timestamp of the last entry
+            let next_cursor = if has_more {
+                last_timestamp
+                    .map(|ts| format!("ts:{}", ts))
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            };
+
             GetCallHistoryResponse {
                 result: Some(get_call_history_response::Result::Success(
                     GetCallHistorySuccess {
                         calls,
-                        next_cursor: String::new(), // TODO: Implement pagination
+                        next_cursor,
                     },
                 )),
             }

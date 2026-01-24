@@ -79,6 +79,60 @@ class GroupRemoteDatasource {
     return response.success.left;
   }
 
+  /// Update group information (name, icon, description)
+  /// Only group owner and admins can perform this action
+  Future<GroupModel> updateGroup({
+    required String accessToken,
+    required String groupId,
+    String? name,
+    String? iconMediaId,
+    String? description,
+  }) async {
+    final request = proto.UpdateGroupRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+    );
+
+    if (name != null && name.isNotEmpty) {
+      request.name = name;
+    }
+    if (iconMediaId != null && iconMediaId.isNotEmpty) {
+      request.iconMediaId = iconMediaId;
+    }
+    if (description != null && description.isNotEmpty) {
+      request.description = description;
+    }
+
+    final response = await _messagingClient.updateGroup(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return _groupInfoToModel(response.success.group);
+  }
+
+  /// Delete a group (owner only)
+  /// Permanently deletes the group, all members, and all messages
+  Future<bool> deleteGroup({
+    required String accessToken,
+    required String groupId,
+  }) async {
+    final request = proto.DeleteGroupRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+    );
+
+    final response = await _messagingClient.deleteGroup(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return true;
+  }
+
+
   /// Convert GroupInfo proto to GroupModel
   GroupModel _groupInfoToModel(proto.GroupInfo groupInfo) {
     return GroupModel(
@@ -94,12 +148,18 @@ class GroupRemoteDatasource {
                 joinedAt: m.hasJoinedAt()
                     ? _timestampFromProto(m.joinedAt)
                     : DateTime.now(),
+                // Note: avatarMediaId and displayName will be available after proto regeneration
+                // avatarMediaId: m.avatarMediaId.isNotEmpty ? m.avatarMediaId : null,
+                // displayName: m.displayName.isNotEmpty ? m.displayName : null,
               ))
           .toList(),
       createdAt: groupInfo.hasCreatedAt()
           ? _timestampFromProto(groupInfo.createdAt)
           : DateTime.now(),
       memberCount: groupInfo.memberCount,
+      // Note: iconMediaId and description will be available after proto regeneration
+      // iconMediaId: groupInfo.iconMediaId.isNotEmpty ? groupInfo.iconMediaId : null,
+      // description: groupInfo.description.isNotEmpty ? groupInfo.description : null,
     );
   }
 
@@ -149,16 +209,22 @@ class GroupRemoteDatasource {
     required String groupId,
     required String textContent,
     required String currentUserId,
+    Map<String, String>? metadata,
     proto.MessageType messageType = proto.MessageType.TEXT,
   }) async {
     final clientMessageId = _uuid.v4();
     final clientTimestamp = DateTime.now();
 
+    // Determine message type based on metadata
+    final actualMessageType = metadata != null && metadata['media_id'] != null
+        ? proto.MessageType.IMAGE  // Use IMAGE for media messages
+        : messageType;
+
     final request = proto.SendGroupMessageRequest(
       accessToken: accessToken,
       groupId: groupId,
       encryptedContent: utf8.encode(textContent),
-      messageType: messageType,
+      messageType: actualMessageType,
       clientMessageId: clientMessageId,
       clientTimestamp: _createTimestamp(clientTimestamp),
     );
@@ -321,5 +387,48 @@ class GroupRemoteDatasource {
       isDeleted: msg.isDeleted,
       currentUserId: currentUserId,
     );
+  }
+
+  /// Send typing indicator to a group
+  Future<bool> sendTypingIndicator({
+    required String accessToken,
+    required String groupId,
+    required bool isTyping,
+  }) async {
+    final request = proto.TypingIndicatorRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+      isTyping: isTyping,
+    );
+
+    final response = await _messagingClient.sendTypingIndicator(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
+
+    return response.success.sent;
+  }
+
+  /// Change a member's role in the group
+  /// Only group owner can perform this action
+  Future<void> changeMemberRole({
+    required String accessToken,
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+  }) async {
+    final request = proto.ChangeMemberRoleRequest(
+      accessToken: accessToken,
+      groupId: groupId,
+      targetUserId: targetUserId,
+      newRole: newRole,
+    );
+
+    final response = await _messagingClient.changeMemberRole(request);
+
+    if (response.hasError()) {
+      throw GrpcError.custom(response.error.code.value, response.error.message);
+    }
   }
 }

@@ -241,4 +241,145 @@ class AuthRemoteDatasource {
         ..seconds = Int64(now.millisecondsSinceEpoch ~/ 1000)
         ..nanos = (now.millisecondsSinceEpoch % 1000) * 1000000);
   }
+
+  /// Update user profile (avatar, display name, bio)
+  Future<UserProfileData> updateProfile({
+    required String accessToken,
+    String? avatarMediaId,
+    String? displayName,
+    String? bio,
+    bool clearAvatar = false,
+  }) async {
+    try {
+      final request = UpdateProfileRequest()..accessToken = accessToken;
+
+      // Handle avatar: clearAvatar takes precedence
+      if (clearAvatar) {
+        request.clearAvatar = true;
+      } else if (avatarMediaId != null) {
+        request.avatarMediaId = avatarMediaId;
+      }
+      if (displayName != null) {
+        request.displayName = displayName;
+      }
+      if (bio != null) {
+        request.bio = bio;
+      }
+
+      final response = await grpcClients.authClient.updateProfile(request);
+
+      if (response.hasProfile()) {
+        final profile = response.profile;
+        logger.i('Profile updated successfully for user: ${profile.userId}');
+        return UserProfileData(
+          userId: profile.userId,
+          username: profile.username,
+          avatarMediaId: profile.hasAvatarMediaId() && profile.avatarMediaId.isNotEmpty
+              ? profile.avatarMediaId
+              : null,
+          displayName: profile.hasDisplayName() && profile.displayName.isNotEmpty
+              ? profile.displayName
+              : null,
+          bio: profile.hasBio() && profile.bio.isNotEmpty ? profile.bio : null,
+          createdAt: profile.hasCreatedAt()
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  profile.createdAt.seconds.toInt() * 1000,
+                  isUtc: true,
+                ).toLocal()
+              : null,
+        );
+      } else if (response.hasError()) {
+        throw AuthException(
+          response.error.message,
+          code: response.error.code.toString(),
+        );
+      } else {
+        throw AuthException('Unknown error during profile update');
+      }
+    } on GrpcError catch (e) {
+      logger.e('gRPC error during profile update: ${e.message}');
+      throw AuthException(
+        'Network error: ${e.message}',
+        code: e.code.toString(),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      logger.e('Unexpected error during profile update: $e');
+      throw AuthException('Profile update failed: $e');
+    }
+  }
+
+  /// Get user profile by user ID
+  Future<UserProfileData> getUserProfile({
+    required String accessToken,
+    required String userId,
+  }) async {
+    try {
+      // Note: GetUserProfileRequest doesn't take access_token per proto design
+      // (internal service-to-service call) but we keep the signature for consistency
+      final request = GetUserProfileRequest()..userId = userId;
+
+      final response = await grpcClients.authClient.getUserProfile(request);
+
+      if (response.hasSuccess()) {
+        final profile = response.success;
+        logger.i('Got profile for user: ${profile.userId}');
+        return UserProfileData(
+          userId: profile.userId,
+          username: profile.username,
+          avatarMediaId: profile.hasAvatarMediaId() && profile.avatarMediaId.isNotEmpty
+              ? profile.avatarMediaId
+              : null,
+          displayName: profile.hasDisplayName() && profile.displayName.isNotEmpty
+              ? profile.displayName
+              : null,
+          bio: profile.hasBio() && profile.bio.isNotEmpty ? profile.bio : null,
+          createdAt: profile.hasCreatedAt()
+              ? DateTime.fromMillisecondsSinceEpoch(
+                  profile.createdAt.seconds.toInt() * 1000,
+                  isUtc: true,
+                ).toLocal()
+              : null,
+        );
+      } else if (response.hasError()) {
+        throw AuthException(
+          response.error.message,
+          code: response.error.code.toString(),
+        );
+      } else {
+        throw AuthException('Unknown error during get user profile');
+      }
+    } on GrpcError catch (e) {
+      logger.e('gRPC error during get user profile: ${e.message}');
+      throw AuthException(
+        'Network error: ${e.message}',
+        code: e.code.toString(),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      logger.e('Unexpected error during get user profile: $e');
+      throw AuthException('Get user profile failed: $e');
+    }
+  }
+}
+
+/// Data class for user profile information returned from API
+class UserProfileData {
+  final String userId;
+  final String username;
+  final String? avatarMediaId;
+  final String? displayName;
+  final String? bio;
+  final DateTime? createdAt;
+
+  UserProfileData({
+    required this.userId,
+    required this.username,
+    this.avatarMediaId,
+    this.displayName,
+    this.bio,
+    this.createdAt,
+  });
 }

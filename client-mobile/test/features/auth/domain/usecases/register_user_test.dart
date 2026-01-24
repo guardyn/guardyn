@@ -17,7 +17,7 @@ void main() {
 
   group('RegisterUser', () {
     const testUsername = 'testuser';
-    const testPassword = 'password123';
+    const testPassword = 'SecurePass123!';
     const testDeviceName = 'Test Device';
 
     const testUser = User(
@@ -110,7 +110,7 @@ void main() {
       );
     });
 
-    test('should throw AuthException when password is less than 8 characters',
+    test('should throw AuthException when password is less than 12 characters',
         () async {
       // Act & Assert
       expect(
@@ -195,9 +195,9 @@ void main() {
       );
     });
 
-    test('should accept exactly 8 character password', () async {
+    test('should accept exactly 12 character password', () async {
       // Arrange
-      const validPassword = '12345678';
+      const validPassword = '123456789012';
       when(() => mockAuthRepository.register(
             username: any(named: 'username'),
             password: any(named: 'password'),

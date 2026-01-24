@@ -39,6 +39,9 @@ service MessagingService {
   // Remove member from group
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberResponse);
 
+  // Change a member's role in a group (owner only)
+  rpc ChangeMemberRole(ChangeMemberRoleRequest) returns (ChangeMemberRoleResponse);
+
   // Send group message
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageResponse);
 
@@ -51,8 +54,14 @@ service MessagingService {
   // Get group details by ID
   rpc GetGroupById(GetGroupByIdRequest) returns (GetGroupByIdResponse);
 
+  // Update group (name, icon, description)
+  rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse);
+
   // Leave a group
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse);
+
+  // Delete a group (owner only)
+  rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse);
 
   // Clear all messages in a conversation (local delete for current user)
   rpc ClearChat(ClearChatRequest) returns (ClearChatResponse);
@@ -110,6 +119,26 @@ service MessagingService {
 
   // Get disappearing messages config
   rpc GetDisappearingConfig(GetDisappearingConfigRequest) returns (GetDisappearingConfigResponse);
+
+  // ========================================================================
+  // Phase 3: User Blocking
+  // ========================================================================
+
+  // Block a user from messaging you
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+
+  // Unblock a previously blocked user
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+
+  // Get list of blocked users
+  rpc GetBlockedUsers(GetBlockedUsersRequest) returns (GetBlockedUsersResponse);
+
+  // ========================================================================
+  // Phase 3: Delete Conversation
+  // ========================================================================
+
+  // Delete a conversation (removes from user's list, keeps for other party)
+  rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
 
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
@@ -374,8 +403,9 @@ message ClearChatSuccess {
 
 message TypingIndicatorRequest {
   string access_token = 1;
-  string recipient_user_id = 2;
+  string recipient_user_id = 2;  // For 1-on-1 chats
   bool is_typing = 3; // true = started typing, false = stopped typing
+  string group_id = 4;           // For group chats (if set, recipient_user_id is ignored)
 }
 
 message TypingIndicatorResponse {
@@ -400,6 +430,10 @@ message CreateGroupRequest {
 
   // MLS group state (encrypted with OpenMLS)
   bytes mls_group_state = 4;
+
+  // Optional: group icon and description
+  string icon_media_id = 5;      // Reference to media in MediaService
+  string description = 6;        // Optional group description
 }
 
 message CreateGroupResponse {
@@ -453,6 +487,25 @@ message RemoveGroupMemberResponse {
 
 message RemoveGroupMemberSuccess {
   bool removed = 1;
+}
+
+message ChangeMemberRoleRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string target_user_id = 3;
+  string new_role = 4; // "admin" or "member"
+}
+
+message ChangeMemberRoleResponse {
+  oneof result {
+    ChangeMemberRoleSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ChangeMemberRoleSuccess {
+  bool changed = 1;
+  string new_role = 2;
 }
 
 message SendGroupMessageRequest {
@@ -573,6 +626,8 @@ message GroupInfo {
   common.Timestamp created_at = 5;
   int32 member_count = 6;
   GroupMessage last_message = 7; // Optional: for preview
+  string icon_media_id = 8;      // Reference to media in MediaService
+  string description = 9;        // Optional group description
 }
 
 message GroupMemberInfo {
@@ -581,6 +636,8 @@ message GroupMemberInfo {
   string device_id = 3;
   string role = 4; // "owner", "admin", "member"
   common.Timestamp joined_at = 5;
+  string avatar_media_id = 6;    // Reference to avatar in MediaService
+  string display_name = 7;       // Optional display name
 }
 
 // ============================================================================
@@ -604,6 +661,29 @@ message GetGroupByIdSuccess {
 }
 
 // ============================================================================
+// Update Group
+// ============================================================================
+
+message UpdateGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string name = 3;               // Optional: new group name
+  string icon_media_id = 4;      // Optional: new icon media ID from MediaService
+  string description = 5;        // Optional: new group description
+}
+
+message UpdateGroupResponse {
+  oneof result {
+    UpdateGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateGroupSuccess {
+  GroupInfo group = 1;
+}
+
+// ============================================================================
 // Leave Group
 // ============================================================================
 
@@ -621,6 +701,27 @@ message LeaveGroupResponse {
 
 message LeaveGroupSuccess {
   bool left = 1;
+}
+
+// ============================================================================
+// Delete Group (Owner Only)
+// ============================================================================
+
+message DeleteGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+}
+
+message DeleteGroupResponse {
+  oneof result {
+    DeleteGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteGroupSuccess {
+  bool deleted = 1;
+  string group_id = 2;
 }
 
 // ============================================================================
@@ -933,3 +1034,81 @@ message GetDisappearingConfigSuccess {
 // ============================================================================
 
 message HealthRequest {}
+
+// ============================================================================
+// User Blocking (Phase 3)
+// ============================================================================
+
+message BlockUserRequest {
+  string access_token = 1;
+  string blocked_user_id = 2;          // User ID to block
+}
+
+message BlockUserResponse {
+  oneof result {
+    BlockUserSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message BlockUserSuccess {
+  string blocked_user_id = 1;
+  common.Timestamp blocked_at = 2;
+}
+
+message UnblockUserRequest {
+  string access_token = 1;
+  string user_id = 2;                   // User ID to unblock
+}
+
+message UnblockUserResponse {
+  oneof result {
+    UnblockUserSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UnblockUserSuccess {
+  string user_id = 1;
+}
+
+message GetBlockedUsersRequest {
+  string access_token = 1;
+}
+
+message GetBlockedUsersResponse {
+  oneof result {
+    GetBlockedUsersSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetBlockedUsersSuccess {
+  repeated BlockedUser blocked_users = 1;
+}
+
+message BlockedUser {
+  string user_id = 1;
+  string username = 2;
+  common.Timestamp blocked_at = 3;
+}
+
+// ============================================================================
+// Delete Conversation (Phase 3)
+// ============================================================================
+
+message DeleteConversationRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+}
+
+message DeleteConversationResponse {
+  oneof result {
+    DeleteConversationSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteConversationSuccess {
+  string conversation_id = 1;
+}

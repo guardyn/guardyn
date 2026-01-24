@@ -22,6 +22,7 @@ abstract class GroupRepository {
     required String groupId,
     required String textContent,
     GroupMessageType messageType = GroupMessageType.text,
+    Map<String, String>? metadata,
   });
 
   /// Get group message history
@@ -47,4 +48,33 @@ abstract class GroupRepository {
 
   /// Leave a group (current user)
   Future<Either<Failure, bool>> leaveGroup(String groupId);
+
+  /// Delete a group (admin only)
+  Future<Either<Failure, bool>> deleteGroup(String groupId);
+
+  /// Update group information (name, icon, description)
+  /// Only group owner and admins can perform this action
+  Future<Either<Failure, Group>> updateGroup({
+    required String groupId,
+    String? name,
+    String? iconMediaId,
+    String? description,
+  });
+
+  /// Send typing indicator to a group
+  /// Notifies other group members that the user is typing
+  Future<Either<Failure, bool>> sendTypingIndicator({
+    required String groupId,
+    required bool isTyping,
+  });
+
+  /// Change a member's role in the group
+  /// Only group owner can change roles
+  /// [targetUserId] - the user whose role will be changed
+  /// [newRole] - the new role to assign (Admin, Member)
+  Future<Either<Failure, void>> changeMemberRole({
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+  });
 }

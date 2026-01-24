@@ -2,24 +2,27 @@
 ///
 /// Provides detailed read receipt tracking for conversations.
 /// Allows users to see who has read messages and when.
+/// Broadcasts read receipts to other participants in real-time via NATS.
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
-use proto::messaging::{
+use crate::nats::NatsClient;
+use crate::proto::messaging::{
     SendReadReceiptRequest, SendReadReceiptResponse, SendReadReceiptSuccess,
     GetReadReceiptsRequest, GetReadReceiptsResponse, GetReadReceiptsSuccess,
-    ReadReceipt,
     send_read_receipt_response, get_read_receipts_response,
 };
-use proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
+use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};
 
 /// Send a read receipt for a conversation
-#[instrument(skip(db, request), fields(user_id, conversation_id))]
+/// RT-001: Broadcasts read receipt to other participants via NATS
+#[instrument(skip(db, nats, request), fields(user_id, conversation_id))]
 pub async fn send_read_receipt(
     db: Arc<DatabaseClient>,
+    nats: Arc<NatsClient>,
     request: Request<SendReadReceiptRequest>,
 ) -> Result<Response<SendReadReceiptResponse>, Status> {
     let req = request.into_inner();
@@ -75,7 +78,36 @@ pub async fn send_read_receipt(
                 "Read receipt saved successfully"
             );
             
-            // TODO: Broadcast read receipt to other participants via WebSocket/NATS
+            // RT-001: Broadcast read receipt to other participants via NATS
+            let topic = if req.is_group {
+                format!("group.{}.read_receipts", req.conversation_id)
+            } else {
+                format!("conversation.{}.read_receipts", req.conversation_id)
+            };
+            
+            let read_receipt_event = serde_json::json!({
+                "type": "read_receipt",
+                "conversation_id": req.conversation_id,
+                "user_id": user_id,
+                "last_read_message_id": req.last_read_message_id,
+                "is_group": req.is_group,
+                "timestamp_seconds": now.timestamp(),
+                "timestamp_nanos": now.timestamp_subsec_nanos(),
+            });
+            
+            let payload = serde_json::to_vec(&read_receipt_event).unwrap_or_default();
+            if let Err(e) = nats.publish(&topic, &payload).await {
+                // Log but don't fail - read receipt was saved successfully
+                warn!(
+                    "Failed to broadcast read receipt via NATS: {} (topic={})",
+                    e, topic
+                );
+            } else {
+                info!(
+                    "Read receipt broadcast to topic: {} for user {}",
+                    topic, user_id
+                );
+            }
             
             Ok(Response::new(SendReadReceiptResponse {
                 result: Some(send_read_receipt_response::Result::Success(SendReadReceiptSuccess {

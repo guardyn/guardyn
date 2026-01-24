@@ -37,7 +37,8 @@ spec:
           value: "pd-0.pd.data.svc.cluster.local:2379"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: "http://tempo.observability.svc.cluster.local:4317"
-        - name: JWT_SECRET
+        # JWT authentication secret (GUARDYN_ prefix for consistency)
+        - name: GUARDYN_AUTH__JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: guardyn-backend-secrets

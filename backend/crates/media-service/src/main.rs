@@ -211,7 +211,7 @@ async fn main() -> Result<()> {
 
     // Get JWT secret
     let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-me".to_string());
+        .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
 
     // Create service
     let service = MediaServiceImpl::new(db, storage, jwt_secret, media_config).await;

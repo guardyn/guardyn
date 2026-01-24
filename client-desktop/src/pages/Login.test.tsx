@@ -136,8 +136,10 @@ describe('Login Page', () => {
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith('login', {
-          username: 'testuser',
-          password: 'testpass123',
+          request: {
+            username: 'testuser',
+            password: 'testpass123',
+          },
         });
       });
     });

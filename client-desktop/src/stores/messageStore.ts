@@ -32,6 +32,8 @@ export interface Message {
   /** Number of retry attempts */
   retryCount?: number;
   reactions?: { emoji: string; count: number; hasReacted: boolean }[];
+  /** Media attachment ID (from media-service) */
+  mediaId?: string;
   /** Optional attachment metadata */
   attachments?: MessageAttachment[];
   /** Reply to another message */

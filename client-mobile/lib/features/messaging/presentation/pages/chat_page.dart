@@ -5,6 +5,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/conversation_utils.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../calls/domain/entities/entities.dart';
+import '../../../calls/presentation/bloc/call_bloc.dart';
+import '../../../calls/presentation/bloc/call_event.dart';
+import '../../../calls/presentation/pages/call_page.dart';
+import '../../../media/presentation/bloc/media_bloc.dart';
+import '../../../media/presentation/bloc/media_event.dart';
+import '../../../media/presentation/bloc/media_state.dart';
+import '../../../media/presentation/widgets/media_picker_sheet.dart';
 import '../../../presence/presentation/bloc/presence_bloc.dart';
 import '../../../presence/presentation/bloc/presence_event.dart';
 import '../../../presence/presentation/bloc/presence_state.dart';
@@ -40,6 +51,9 @@ class _ChatPageState extends State<ChatPage> {
   String? _conversationId;
   late PresenceBloc _presenceBloc;
   late MessageBloc _messageBloc;
+  late MediaBloc _mediaBloc;
+  bool _isUploadingMedia = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -48,6 +62,8 @@ class _ChatPageState extends State<ChatPage> {
     _messageBloc = context.read<MessageBloc>();
     // Initialize presence bloc
     _presenceBloc = getIt<PresenceBloc>();
+    // Initialize media bloc for attachment uploads
+    _mediaBloc = getIt<MediaBloc>();
     // Set current user as online and start heartbeat
     _presenceBloc.add(const PresenceSetOnline());
     _presenceBloc.add(PresenceFetchUser(widget.conversationUserId));
@@ -142,6 +158,8 @@ class _ChatPageState extends State<ChatPage> {
       _presenceBloc.add(const PresenceUnsubscribe());
       _presenceBloc.add(const PresenceSetOffline());
     }
+    // Close media bloc
+    _mediaBloc.close();
     _scrollController.dispose();
     super.dispose();
   }
@@ -188,6 +206,23 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  /// Initiate a voice or video call with the conversation partner
+  void _initiateCall(CallType type) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (context) => getIt<CallBloc>()
+            ..add(InitiateCallEvent(
+              userId: widget.conversationUserId,
+              userName: widget.conversationUserName,
+              type: type,
+            )),
+          child: const CallPage(),
+        ),
+      ),
+    );
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -209,6 +244,69 @@ class _ChatPageState extends State<ChatPage> {
     );
     // Scroll to bottom after sending
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _handleMediaSelected(MediaPickerResult result) {
+    setState(() {
+      _isUploadingMedia = true;
+      _uploadProgress = 0.0;
+    });
+
+    // Upload media
+    _mediaBloc.add(MediaUploadRequested(
+      filePath: result.filePath,
+      mimeType: result.mimeType,
+      conversationId: _conversationId,
+    ));
+
+    // Listen for upload completion
+    _mediaBloc.stream.listen((state) {
+      if (state is MediaUploading) {
+        setState(() {
+          _uploadProgress = state.progress;
+        });
+      } else if (state is MediaUploadSuccess) {
+        setState(() {
+          _isUploadingMedia = false;
+          _uploadProgress = 0.0;
+        });
+
+        // Send message with media attachment
+        context.read<MessageBloc>().add(
+          MessageSend(
+            recipientUserId: widget.conversationUserId,
+            recipientDeviceId: widget.deviceId,
+            recipientUsername: widget.conversationUserName,
+            textContent: '', // Caption can be added later
+            metadata: {
+              'media_id': state.media.id,
+              'media_type': state.media.type.name,
+              'filename': state.media.filename,
+              'mime_type': state.media.mimeType,
+              'size_bytes': state.media.sizeBytes.toString(),
+            },
+          ),
+        );
+
+        // Scroll to bottom after sending
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      } else if (state is MediaError) {
+        setState(() {
+          _isUploadingMedia = false;
+          _uploadProgress = 0.0;
+        });
+
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to upload: ${state.message}'),
+              backgroundColor: SemanticColors.error,
+            ),
+          );
+        }
+      }
+    });
   }
 
   void _handleTypingChanged(bool isTyping) {
@@ -257,8 +355,17 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark
+          ? ChatColors.darkBackground
+          : ChatColors.lightBackground,
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: isDark ? Colors.white : GrayColors.gray900,
         title: Row(
           children: [
             // Online indicator dot
@@ -274,12 +381,18 @@ class _ChatPageState extends State<ChatPage> {
                 return const OnlineIndicator(size: 10);
               },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.space2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.conversationUserName),
+                  Text(
+                    widget.conversationUserName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : GrayColors.gray900,
+                    ),
+                  ),
                   StreamBuilder<PresenceState>(
                     stream: _presenceBloc.stream,
                     initialData: _presenceBloc.state,
@@ -318,15 +431,13 @@ class _ChatPageState extends State<ChatPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.videocam),
-            onPressed: () {
-              // TODO: Implement video call
-            },
+            onPressed: () => _initiateCall(CallType.video),
+            tooltip: 'Video call',
           ),
           IconButton(
             icon: const Icon(Icons.call),
-            onPressed: () {
-              // TODO: Implement voice call
-            },
+            onPressed: () => _initiateCall(CallType.voice),
+            tooltip: 'Voice call',
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -378,7 +489,7 @@ class _ChatPageState extends State<ChatPage> {
               },
               builder: (context, state) {
                 if (state is MessageLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const MessageShimmerList();
                 }
 
                 if (state is MessageError) {
@@ -389,22 +500,24 @@ class _ChatPageState extends State<ChatPage> {
                         Icon(
                           Icons.error_outline,
                           size: 64,
-                          color: Theme.of(context).colorScheme.error,
+                          color: SemanticColors.error,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.space4),
                         Text(
                           state.message,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
+                          style: TextStyle(color: SemanticColors.error),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.space4),
                         ElevatedButton(
                           onPressed: () {
                             // Reload messages and reconnect WebSocket
                             _initializeChat();
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GuardynColors.guardyn500,
+                            foregroundColor: Colors.white,
+                          ),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -419,14 +532,30 @@ class _ChatPageState extends State<ChatPage> {
 
                   if (messages.isEmpty) {
                     return Center(
-                      child: Text(
-                        'No messages yet.\nSend a message to start the conversation!',
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                        textAlign: TextAlign.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_outlined,
+                            size: 64,
+                            color: GrayColors.gray400,
+                          ),
+                          const SizedBox(height: AppSpacing.space4),
+                          Text(
+                            'No messages yet',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? GrayColors.gray400 : GrayColors.gray600,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.space2),
+                          Text(
+                            'Send a message to start the conversation!',
+                            style: TextStyle(color: GrayColors.gray500),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -453,15 +582,30 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ),
-          // Message input
+          // Message input with upload progress
           BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
               final isEnabled =
-                  state is! MessageSending && state is! MessageLoading;
-              return MessageInput(
-                onSend: _handleSendMessage,
-                onTypingChanged: _handleTypingChanged,
-                enabled: isEnabled,
+                  state is! MessageSending && state is! MessageLoading && !_isUploadingMedia;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Upload progress indicator
+                  if (_isUploadingMedia)
+                    LinearProgressIndicator(
+                      value: _uploadProgress,
+                      backgroundColor: GrayColors.gray300,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        GuardynColors.guardyn500,
+                      ),
+                    ),
+                  MessageInput(
+                    onSend: _handleSendMessage,
+                    onTypingChanged: _handleTypingChanged,
+                    onMediaSelected: _handleMediaSelected,
+                    enabled: isEnabled,
+                  ),
+                ],
               );
             },
           ),

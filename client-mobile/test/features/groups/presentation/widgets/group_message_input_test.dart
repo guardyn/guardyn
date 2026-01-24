@@ -190,21 +190,28 @@ void main() {
       expect(textField.maxLines, greaterThan(1));
     });
 
-    testWidgets('shows snackbar when attachment button pressed',
-        (tester) async {
+    testWidgets('attachment button is disabled when onMediaSelected is null', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: GroupMessageInput(
             onSend: (_) {},
+            // onMediaSelected is null - attachment should be disabled
           ),
         ),
       ));
 
-      // Tap attachment button
-      await tester.tap(find.byIcon(Icons.attach_file));
-      await tester.pump();
+      // Find the attachment button
+      final attachButton = find.byIcon(Icons.attach_file);
+      expect(attachButton, findsOneWidget);
 
-      expect(find.text('Attachments coming soon'), findsOneWidget);
+      // The button should be disabled when onMediaSelected is null
+      final iconButton = tester.widget<IconButton>(find.ancestor(
+        of: attachButton,
+        matching: find.byType(IconButton),
+      ));
+      
+      // When disabled, onPressed is null
+      expect(iconButton.onPressed, isNull);
     });
 
     testWidgets('trims whitespace from sent text', (tester) async {

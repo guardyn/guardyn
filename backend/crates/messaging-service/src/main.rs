@@ -18,6 +18,7 @@ mod mls_manager;
 mod auth_client;
 mod config;
 mod websocket;
+mod event_consumer;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
@@ -50,18 +51,44 @@ use proto::messaging::{
     CreateGroupRequest, CreateGroupResponse,
     AddGroupMemberRequest, AddGroupMemberResponse,
     RemoveGroupMemberRequest, RemoveGroupMemberResponse,
+    ChangeMemberRoleRequest, ChangeMemberRoleResponse,
     SendGroupMessageRequest, SendGroupMessageResponse,
     GetGroupMessagesRequest, GetGroupMessagesResponse,
     GetGroupsRequest, GetGroupsResponse,
     GetGroupByIdRequest, GetGroupByIdResponse,
+    UpdateGroupRequest, UpdateGroupResponse,
     LeaveGroupRequest, LeaveGroupResponse,
+    DeleteGroupRequest, DeleteGroupResponse,
     HealthRequest,
+    // Phase 2: Reactions
+    AddReactionRequest, AddReactionResponse,
+    RemoveReactionRequest, RemoveReactionResponse,
+    GetReactionsRequest, GetReactionsResponse,
+    // Phase 2: Read Receipts
+    SendReadReceiptRequest, SendReadReceiptResponse,
+    GetReadReceiptsRequest, GetReadReceiptsResponse,
+    // Phase 2: Forward/Reply
+    ForwardMessageRequest, ForwardMessageResponse,
+    // Phase 2: Edit
+    EditMessageRequest, EditMessageResponse,
+    // Phase 2: Search
+    SearchMessagesRequest, SearchMessagesResponse,
+    // Phase 2: Disappearing Messages
+    SetDisappearingMessagesRequest, SetDisappearingMessagesResponse,
+    GetDisappearingConfigRequest, GetDisappearingConfigResponse,
+    // Phase 3: Block User
+    BlockUserRequest, BlockUserResponse,
+    UnblockUserRequest, UnblockUserResponse,
+    GetBlockedUsersRequest, GetBlockedUsersResponse,
+    // Phase 3: Delete Conversation
+    DeleteConversationRequest, DeleteConversationResponse,
 };
 use proto::common::HealthStatus;
 
 pub struct MessagingServiceImpl {
     db: Arc<db::DatabaseClient>,
     nats: Arc<nats::NatsClient>,
+    config: config::MessagingConfig,
 }
 
 #[tonic::async_trait]
@@ -70,13 +97,8 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SendMessageRequest>,
     ) -> Result<Response<SendMessageResponse>, Status> {
-        // TODO: Enable E2EE by default after testing
-        // For gradual rollout, check env var ENABLE_E2EE=true
-        let enable_e2ee = std::env::var("ENABLE_E2EE")
-            .unwrap_or_else(|_| "false".to_string())
-            .to_lowercase() == "true";
-
-        if enable_e2ee {
+        // Use E2EE configuration from service config
+        if self.config.e2ee.enabled {
             tracing::info!("E2EE enabled, using send_message_e2ee handler");
             handlers::send_message_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
         } else {
@@ -91,12 +113,8 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<ReceiveMessagesRequest>,
     ) -> Result<Response<Self::ReceiveMessagesStream>, Status> {
-        // TODO: Enable E2EE by default after testing
-        let enable_e2ee = std::env::var("ENABLE_E2EE")
-            .unwrap_or_else(|_| "false".to_string())
-            .to_lowercase() == "true";
-
-        if enable_e2ee {
+        // Use E2EE configuration from service config
+        if self.config.e2ee.enabled {
             tracing::info!("E2EE enabled, using receive_messages_e2ee handler");
             handlers::receive_messages_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
         } else {
@@ -135,9 +153,10 @@ impl MessagingService for MessagingServiceImpl {
 
     async fn send_typing_indicator(
         &self,
-        _request: Request<TypingIndicatorRequest>,
+        request: Request<TypingIndicatorRequest>,
     ) -> Result<Response<TypingIndicatorResponse>, Status> {
-        Err(Status::unimplemented("SendTypingIndicator not yet implemented"))
+        handlers::send_typing_indicator(request.into_inner(), self.db.clone(), self.nats.clone())
+            .await
     }
 
     async fn create_group(
@@ -159,6 +178,13 @@ impl MessagingService for MessagingServiceImpl {
         request: Request<RemoveGroupMemberRequest>,
     ) -> Result<Response<RemoveGroupMemberResponse>, Status> {
         handlers::remove_group_member(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn change_member_role(
+        &self,
+        request: Request<ChangeMemberRoleRequest>,
+    ) -> Result<Response<ChangeMemberRoleResponse>, Status> {
+        handlers::change_member_role(request.into_inner(), self.db.clone()).await
     }
 
     async fn send_group_message(
@@ -190,11 +216,25 @@ impl MessagingService for MessagingServiceImpl {
         handlers::get_group_by_id(request.into_inner(), self.db.clone()).await
     }
 
+    async fn update_group(
+        &self,
+        request: Request<UpdateGroupRequest>,
+    ) -> Result<Response<UpdateGroupResponse>, Status> {
+        handlers::update_group(request.into_inner(), self.db.clone()).await
+    }
+
     async fn leave_group(
         &self,
         request: Request<LeaveGroupRequest>,
     ) -> Result<Response<LeaveGroupResponse>, Status> {
         handlers::leave_group(request.into_inner(), self.db.clone()).await
+    }
+
+    async fn delete_group(
+        &self,
+        request: Request<DeleteGroupRequest>,
+    ) -> Result<Response<DeleteGroupResponse>, Status> {
+        handlers::delete_group(request.into_inner(), self.db.clone()).await
     }
 
     async fn clear_chat(
@@ -264,6 +304,136 @@ impl MessagingService for MessagingServiceImpl {
             components,
         }))
     }
+
+    // ========================================================================
+    // Phase 2: Message Reactions
+    // ========================================================================
+
+    async fn add_reaction(
+        &self,
+        request: Request<AddReactionRequest>,
+    ) -> Result<Response<AddReactionResponse>, Status> {
+        handlers::add_reaction(self.db.clone(), request).await
+    }
+
+    async fn remove_reaction(
+        &self,
+        request: Request<RemoveReactionRequest>,
+    ) -> Result<Response<RemoveReactionResponse>, Status> {
+        handlers::remove_reaction(self.db.clone(), request).await
+    }
+
+    async fn get_reactions(
+        &self,
+        request: Request<GetReactionsRequest>,
+    ) -> Result<Response<GetReactionsResponse>, Status> {
+        handlers::get_reactions(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Enhanced Read Receipts
+    // ========================================================================
+
+    async fn send_read_receipt(
+        &self,
+        request: Request<SendReadReceiptRequest>,
+    ) -> Result<Response<SendReadReceiptResponse>, Status> {
+        handlers::send_read_receipt(self.db.clone(), self.nats.clone(), request).await
+    }
+
+    async fn get_read_receipts(
+        &self,
+        request: Request<GetReadReceiptsRequest>,
+    ) -> Result<Response<GetReadReceiptsResponse>, Status> {
+        handlers::get_read_receipts(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Reply/Quote/Forward
+    // ========================================================================
+
+    async fn forward_message(
+        &self,
+        request: Request<ForwardMessageRequest>,
+    ) -> Result<Response<ForwardMessageResponse>, Status> {
+        handlers::forward_message(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Message Edit
+    // ========================================================================
+
+    async fn edit_message(
+        &self,
+        request: Request<EditMessageRequest>,
+    ) -> Result<Response<EditMessageResponse>, Status> {
+        handlers::edit_message(self.db.clone(), self.nats.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Message Search
+    // ========================================================================
+
+    async fn search_messages(
+        &self,
+        request: Request<SearchMessagesRequest>,
+    ) -> Result<Response<SearchMessagesResponse>, Status> {
+        handlers::search_messages(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 2: Disappearing Messages
+    // ========================================================================
+
+    async fn set_disappearing_messages(
+        &self,
+        request: Request<SetDisappearingMessagesRequest>,
+    ) -> Result<Response<SetDisappearingMessagesResponse>, Status> {
+        handlers::set_disappearing_messages(self.db.clone(), self.nats.clone(), request).await
+    }
+
+    async fn get_disappearing_config(
+        &self,
+        request: Request<GetDisappearingConfigRequest>,
+    ) -> Result<Response<GetDisappearingConfigResponse>, Status> {
+        handlers::get_disappearing_config(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 3: User Blocking
+    // ========================================================================
+
+    async fn block_user(
+        &self,
+        request: Request<BlockUserRequest>,
+    ) -> Result<Response<BlockUserResponse>, Status> {
+        handlers::block_user(self.db.clone(), request).await
+    }
+
+    async fn unblock_user(
+        &self,
+        request: Request<UnblockUserRequest>,
+    ) -> Result<Response<UnblockUserResponse>, Status> {
+        handlers::unblock_user(self.db.clone(), request).await
+    }
+
+    async fn get_blocked_users(
+        &self,
+        request: Request<GetBlockedUsersRequest>,
+    ) -> Result<Response<GetBlockedUsersResponse>, Status> {
+        handlers::get_blocked_users(self.db.clone(), request).await
+    }
+
+    // ========================================================================
+    // Phase 3: Delete Conversation
+    // ========================================================================
+
+    async fn delete_conversation(
+        &self,
+        request: Request<DeleteConversationRequest>,
+    ) -> Result<Response<DeleteConversationResponse>, Status> {
+        handlers::delete_conversation(self.db.clone(), request).await
+    }
 }
 
 #[tokio::main]
@@ -276,7 +446,7 @@ async fn main() -> Result<()> {
         Some(config.observability.otlp_endpoint.as_str())
     };
     let _tracing_guard = observability::init_tracing(
-        &config.service_name, 
+        &config.service_name,
         &config.observability.log_level,
         otlp_endpoint,
     );
@@ -307,10 +477,39 @@ async fn main() -> Result<()> {
     let db = Arc::new(db);
     let nats = Arc::new(nats);
 
+    // Start event consumer for cross-service events (user deletion, etc.)
+    let event_consumer_enabled = std::env::var("ENABLE_EVENT_CONSUMER")
+        .unwrap_or_else(|_| "true".to_string())
+        .to_lowercase() == "true";
+
+    if event_consumer_enabled {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
+        
+        match event_consumer::EventConsumer::new(db.clone(), shutdown_rx) {
+            Ok(consumer) => {
+                tracing::info!("Starting event consumer for cross-service events");
+                tokio::spawn(async move {
+                    consumer.run().await;
+                });
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "Failed to create event consumer - cross-service events disabled"
+                );
+            }
+        }
+    }
+
+    // Load service configuration
+    let messaging_config = config::MessagingConfig::from_env();
+    messaging_config.print_summary();
+
     // Create gRPC service
     let service = MessagingServiceImpl {
         db: db.clone(),
         nats: nats.clone(),
+        config: messaging_config.clone(),
     };
 
     // Start WebSocket server if enabled
@@ -325,7 +524,7 @@ async fn main() -> Result<()> {
             .unwrap_or(8081);
 
         let jwt_secret = std::env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "dev-jwt-secret-change-in-prod".to_string());
+            .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
 
         let ws_config = websocket::server::WebSocketServerConfig {
             port: ws_port,

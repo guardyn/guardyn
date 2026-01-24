@@ -39,6 +39,9 @@ service MessagingService {
   // Remove member from group
   rpc RemoveGroupMember(RemoveGroupMemberRequest) returns (RemoveGroupMemberResponse);
 
+  // Change a member's role in a group (owner only)
+  rpc ChangeMemberRole(ChangeMemberRoleRequest) returns (ChangeMemberRoleResponse);
+
   // Send group message
   rpc SendGroupMessage(SendGroupMessageRequest) returns (SendGroupMessageResponse);
 
@@ -51,11 +54,91 @@ service MessagingService {
   // Get group details by ID
   rpc GetGroupById(GetGroupByIdRequest) returns (GetGroupByIdResponse);
 
+  // Update group (name, icon, description)
+  rpc UpdateGroup(UpdateGroupRequest) returns (UpdateGroupResponse);
+
   // Leave a group
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse);
 
+  // Delete a group (owner only)
+  rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse);
+
   // Clear all messages in a conversation (local delete for current user)
   rpc ClearChat(ClearChatRequest) returns (ClearChatResponse);
+
+  // ========================================================================
+  // Phase 2: Message Reactions
+  // ========================================================================
+
+  // Add reaction to a message
+  rpc AddReaction(AddReactionRequest) returns (AddReactionResponse);
+
+  // Remove reaction from a message
+  rpc RemoveReaction(RemoveReactionRequest) returns (RemoveReactionResponse);
+
+  // Get all reactions for a message
+  rpc GetReactions(GetReactionsRequest) returns (GetReactionsResponse);
+
+  // ========================================================================
+  // Phase 2: Enhanced Read Receipts
+  // ========================================================================
+
+  // Send read receipt for a conversation
+  rpc SendReadReceipt(SendReadReceiptRequest) returns (SendReadReceiptResponse);
+
+  // Get read receipts for a conversation (who read what)
+  rpc GetReadReceipts(GetReadReceiptsRequest) returns (GetReadReceiptsResponse);
+
+  // ========================================================================
+  // Phase 2: Reply/Quote/Forward
+  // ========================================================================
+
+  // Forward a message to another conversation
+  rpc ForwardMessage(ForwardMessageRequest) returns (ForwardMessageResponse);
+
+  // ========================================================================
+  // Phase 2: Message Edit
+  // ========================================================================
+
+  // Edit a previously sent message
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
+
+  // ========================================================================
+  // Phase 2: Message Search
+  // ========================================================================
+
+  // Search messages (returns encrypted content for client-side search)
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
+
+  // ========================================================================
+  // Phase 2: Disappearing Messages
+  // ========================================================================
+
+  // Set disappearing messages config for a conversation
+  rpc SetDisappearingMessages(SetDisappearingMessagesRequest) returns (SetDisappearingMessagesResponse);
+
+  // Get disappearing messages config
+  rpc GetDisappearingConfig(GetDisappearingConfigRequest) returns (GetDisappearingConfigResponse);
+
+  // ========================================================================
+  // Phase 3: User Blocking
+  // ========================================================================
+
+  // Block a user from messaging you
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+
+  // Unblock a previously blocked user
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+
+  // Get list of blocked users
+  rpc GetBlockedUsers(GetBlockedUsersRequest) returns (GetBlockedUsersResponse);
+
+  // ========================================================================
+  // Phase 3: Delete Conversation
+  // ========================================================================
+
+  // Delete a conversation (removes from user's list, keeps for other party)
+  rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
 
   // Health check
   rpc Health(HealthRequest) returns (common.HealthStatus);
@@ -87,6 +170,12 @@ message SendMessageRequest {
   // X3DH prekey data for first message (allows recipient to create responder session)
   // Base64-encoded X3DHPrekeyMessage containing: sender_identity_key, ephemeral_key, used_otpk_id
   string x3dh_prekey = 10;
+
+  // Phase 2: Reply/Quote support
+  ThreadReference thread_reference = 11;
+
+  // Phase 2: Voice message metadata
+  VoiceMessageMetadata voice_metadata = 12;
 }
 
 enum MessageType {
@@ -156,6 +245,29 @@ message Message {
 
   // X3DH prekey data for first message (allows recipient to create responder session)
   string x3dh_prekey = 14;
+
+  // Phase 2: Reply/Quote support
+  ThreadReference thread_reference = 15;
+
+  // Phase 2: Forward support
+  ForwardInfo forward_info = 16;
+
+  // Phase 2: Edit tracking
+  int32 edit_version = 17;
+  common.Timestamp last_edited_at = 18;
+
+  // Phase 2: Voice message metadata
+  VoiceMessageMetadata voice_metadata = 19;
+
+  // Phase 2: Reactions summary (aggregated)
+  repeated ReactionSummary reaction_summaries = 20;
+}
+
+// Aggregated reaction count for UI display
+message ReactionSummary {
+  string emoji = 1;
+  int32 count = 2;
+  bool user_reacted = 3;  // Did current user react with this emoji?
 }
 
 // ============================================================================
@@ -291,8 +403,9 @@ message ClearChatSuccess {
 
 message TypingIndicatorRequest {
   string access_token = 1;
-  string recipient_user_id = 2;
+  string recipient_user_id = 2;  // For 1-on-1 chats
   bool is_typing = 3; // true = started typing, false = stopped typing
+  string group_id = 4;           // For group chats (if set, recipient_user_id is ignored)
 }
 
 message TypingIndicatorResponse {
@@ -317,6 +430,10 @@ message CreateGroupRequest {
 
   // MLS group state (encrypted with OpenMLS)
   bytes mls_group_state = 4;
+
+  // Optional: group icon and description
+  string icon_media_id = 5;      // Reference to media in MediaService
+  string description = 6;        // Optional group description
 }
 
 message CreateGroupResponse {
@@ -372,6 +489,25 @@ message RemoveGroupMemberSuccess {
   bool removed = 1;
 }
 
+message ChangeMemberRoleRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string target_user_id = 3;
+  string new_role = 4; // "admin" or "member"
+}
+
+message ChangeMemberRoleResponse {
+  oneof result {
+    ChangeMemberRoleSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ChangeMemberRoleSuccess {
+  bool changed = 1;
+  string new_role = 2;
+}
+
 message SendGroupMessageRequest {
   string access_token = 1;
   string group_id = 2;
@@ -384,6 +520,12 @@ message SendGroupMessageRequest {
   common.Timestamp client_timestamp = 6;
 
   string media_id = 7; // Optional
+
+  // Phase 2: Reply/Quote support
+  ThreadReference thread_reference = 8;
+
+  // Phase 2: Voice message metadata
+  VoiceMessageMetadata voice_metadata = 9;
 }
 
 message SendGroupMessageResponse {
@@ -435,6 +577,22 @@ message GroupMessage {
 
   string media_id = 10;
   bool is_deleted = 11; // Soft deletion flag
+
+  // Phase 2: Reply/Quote support
+  ThreadReference thread_reference = 13;
+
+  // Phase 2: Forward support
+  ForwardInfo forward_info = 14;
+
+  // Phase 2: Edit tracking
+  int32 edit_version = 15;
+  common.Timestamp last_edited_at = 16;
+
+  // Phase 2: Voice message metadata
+  VoiceMessageMetadata voice_metadata = 17;
+
+  // Phase 2: Reactions summary (aggregated)
+  repeated ReactionSummary reaction_summaries = 18;
 }
 
 // ============================================================================
@@ -468,6 +626,8 @@ message GroupInfo {
   common.Timestamp created_at = 5;
   int32 member_count = 6;
   GroupMessage last_message = 7; // Optional: for preview
+  string icon_media_id = 8;      // Reference to media in MediaService
+  string description = 9;        // Optional group description
 }
 
 message GroupMemberInfo {
@@ -476,6 +636,8 @@ message GroupMemberInfo {
   string device_id = 3;
   string role = 4; // "owner", "admin", "member"
   common.Timestamp joined_at = 5;
+  string avatar_media_id = 6;    // Reference to avatar in MediaService
+  string display_name = 7;       // Optional display name
 }
 
 // ============================================================================
@@ -495,6 +657,29 @@ message GetGroupByIdResponse {
 }
 
 message GetGroupByIdSuccess {
+  GroupInfo group = 1;
+}
+
+// ============================================================================
+// Update Group
+// ============================================================================
+
+message UpdateGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+  string name = 3;               // Optional: new group name
+  string icon_media_id = 4;      // Optional: new icon media ID from MediaService
+  string description = 5;        // Optional: new group description
+}
+
+message UpdateGroupResponse {
+  oneof result {
+    UpdateGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UpdateGroupSuccess {
   GroupInfo group = 1;
 }
 
@@ -519,7 +704,411 @@ message LeaveGroupSuccess {
 }
 
 // ============================================================================
+// Delete Group (Owner Only)
+// ============================================================================
+
+message DeleteGroupRequest {
+  string access_token = 1;
+  string group_id = 2;
+}
+
+message DeleteGroupResponse {
+  oneof result {
+    DeleteGroupSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteGroupSuccess {
+  bool deleted = 1;
+  string group_id = 2;
+}
+
+// ============================================================================
+// Message Reactions
+// ============================================================================
+
+message Reaction {
+  string reaction_id = 1;       // Server-generated UUID
+  string message_id = 2;        // Target message UUID
+  string user_id = 3;           // User who reacted
+  string emoji = 4;             // Unicode emoji (e.g., "👍", "❤️", "😂")
+  common.Timestamp created_at = 5;
+}
+
+message AddReactionRequest {
+  string access_token = 1;
+  string message_id = 2;        // Target message UUID
+  string conversation_id = 3;   // Conversation UUID (for efficient lookup)
+  string emoji = 4;             // Unicode emoji
+  bool is_group = 5;            // True if group message
+}
+
+message AddReactionResponse {
+  oneof result {
+    AddReactionSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message AddReactionSuccess {
+  Reaction reaction = 1;
+}
+
+message RemoveReactionRequest {
+  string access_token = 1;
+  string message_id = 2;
+  string conversation_id = 3;
+  string emoji = 4;             // Which emoji to remove
+  bool is_group = 5;
+}
+
+message RemoveReactionResponse {
+  oneof result {
+    RemoveReactionSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message RemoveReactionSuccess {
+  bool removed = 1;
+}
+
+message GetReactionsRequest {
+  string access_token = 1;
+  string message_id = 2;
+  string conversation_id = 3;
+  bool is_group = 4;
+}
+
+message GetReactionsResponse {
+  oneof result {
+    GetReactionsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetReactionsSuccess {
+  repeated Reaction reactions = 1;
+}
+
+// ============================================================================
+// Read Receipts (Enhanced)
+// ============================================================================
+
+message ReadReceipt {
+  string conversation_id = 1;
+  string user_id = 2;
+  string last_read_message_id = 3;
+  common.Timestamp timestamp = 4;
+}
+
+message SendReadReceiptRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+  string last_read_message_id = 3;
+  bool is_group = 4;
+}
+
+message SendReadReceiptResponse {
+  oneof result {
+    SendReadReceiptSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SendReadReceiptSuccess {
+  common.Timestamp timestamp = 1;
+}
+
+message GetReadReceiptsRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+  bool is_group = 3;
+}
+
+message GetReadReceiptsResponse {
+  oneof result {
+    GetReadReceiptsSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetReadReceiptsSuccess {
+  repeated ReadReceipt receipts = 1;
+}
+
+// ============================================================================
+// Reply / Quote / Forward
+// ============================================================================
+
+// Thread reference for replies/quotes
+message ThreadReference {
+  string reply_to_message_id = 1;   // Original message being replied to
+  string quoted_content_hash = 2;   // SHA-256 hash of original content (for verification)
+  string quoted_sender_id = 3;      // Original sender's user ID
+  string quoted_sender_name = 4;    // Original sender's display name (cached)
+  bytes encrypted_quote_preview = 5; // Encrypted preview of quoted message (optional)
+}
+
+// Forward metadata
+message ForwardInfo {
+  string original_message_id = 1;
+  string original_sender_id = 2;
+  string original_sender_name = 3;
+  common.Timestamp original_timestamp = 4;
+  int32 forward_count = 5;          // How many times this message has been forwarded
+}
+
+message ForwardMessageRequest {
+  string access_token = 1;
+  string source_message_id = 2;       // Message to forward
+  string source_conversation_id = 3;  // Source conversation
+  bool source_is_group = 4;           // Is source a group?
+
+  // Target destination
+  string target_conversation_id = 5;  // Destination conversation
+  bool target_is_group = 6;           // Is target a group?
+  string target_user_id = 7;          // Target user (for 1-on-1)
+
+  // Re-encrypted content for target
+  bytes encrypted_content = 8;
+  string client_message_id = 9;
+}
+
+message ForwardMessageResponse {
+  oneof result {
+    ForwardMessageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message ForwardMessageSuccess {
+  string message_id = 1;
+  common.Timestamp server_timestamp = 2;
+}
+
+// ============================================================================
+// Message Edit
+// ============================================================================
+
+message EditMessageRequest {
+  string access_token = 1;
+  string message_id = 2;
+  string conversation_id = 3;
+  bool is_group = 4;
+
+  bytes encrypted_content = 5;        // New encrypted content
+  common.Timestamp client_timestamp = 6;
+}
+
+message EditMessageResponse {
+  oneof result {
+    EditMessageSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message EditMessageSuccess {
+  string message_id = 1;
+  int32 edit_version = 2;             // Incremented on each edit
+  common.Timestamp server_timestamp = 3;
+}
+
+message MessageEdit {
+  string message_id = 1;
+  bytes encrypted_content = 2;
+  int32 edit_version = 3;
+  common.Timestamp edit_timestamp = 4;
+  string edited_by = 5;               // User ID who made the edit
+}
+
+// ============================================================================
+// Voice Messages
+// ============================================================================
+
+message VoiceMessageMetadata {
+  string media_id = 1;               // Reference to media in Media Service
+  int32 duration_ms = 2;             // Duration in milliseconds
+  bytes waveform = 3;                // Audio waveform for UI visualization (100 samples, 0-255)
+  string codec = 4;                  // Audio codec (e.g., "opus", "aac")
+  int32 sample_rate = 5;             // Sample rate in Hz
+  int32 bitrate = 6;                 // Bitrate in bps
+}
+
+// ============================================================================
+// Message Search
+// ============================================================================
+
+message SearchMessagesRequest {
+  string access_token = 1;
+  string query = 2;                   // Search query (will be applied to decrypted content client-side)
+
+  // Filter options
+  string conversation_id = 3;         // Optional: limit to specific conversation
+  bool is_group = 4;
+  common.Timestamp start_time = 5;    // Optional: date range start
+  common.Timestamp end_time = 6;      // Optional: date range end
+  repeated MessageType message_types = 7; // Optional: filter by type
+
+  // Pagination
+  int32 limit = 8;
+  string cursor = 9;
+}
+
+message SearchMessagesResponse {
+  oneof result {
+    SearchMessagesSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SearchMessagesSuccess {
+  repeated SearchResult results = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+  int32 total_count = 4;              // Approximate total matches
+}
+
+message SearchResult {
+  string message_id = 1;
+  string conversation_id = 2;
+  bool is_group = 3;
+  string sender_user_id = 4;
+  bytes encrypted_content = 5;
+  common.Timestamp server_timestamp = 6;
+  MessageType message_type = 7;
+
+  // Context for search highlighting (client will decrypt and highlight)
+  string conversation_name = 8;       // Conversation or group name for display
+}
+
+// ============================================================================
+// Disappearing Messages
+// ============================================================================
+
+message DisappearingConfig {
+  string conversation_id = 1;
+  int32 ttl_seconds = 2;              // 0 = disabled, else auto-delete after TTL
+  string set_by_user_id = 3;          // Who configured this
+  common.Timestamp updated_at = 4;
+}
+
+message SetDisappearingMessagesRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+  bool is_group = 3;
+  int32 ttl_seconds = 4;              // 0 = disable, common values: 86400 (1d), 604800 (7d)
+}
+
+message SetDisappearingMessagesResponse {
+  oneof result {
+    SetDisappearingMessagesSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message SetDisappearingMessagesSuccess {
+  DisappearingConfig config = 1;
+}
+
+message GetDisappearingConfigRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+  bool is_group = 3;
+}
+
+message GetDisappearingConfigResponse {
+  oneof result {
+    GetDisappearingConfigSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetDisappearingConfigSuccess {
+  DisappearingConfig config = 1;
+}
+
+// ============================================================================
 // Health Check
 // ============================================================================
 
 message HealthRequest {}
+
+// ============================================================================
+// User Blocking (Phase 3)
+// ============================================================================
+
+message BlockUserRequest {
+  string access_token = 1;
+  string blocked_user_id = 2;          // User ID to block
+}
+
+message BlockUserResponse {
+  oneof result {
+    BlockUserSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message BlockUserSuccess {
+  string blocked_user_id = 1;
+  common.Timestamp blocked_at = 2;
+}
+
+message UnblockUserRequest {
+  string access_token = 1;
+  string user_id = 2;                   // User ID to unblock
+}
+
+message UnblockUserResponse {
+  oneof result {
+    UnblockUserSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message UnblockUserSuccess {
+  string user_id = 1;
+}
+
+message GetBlockedUsersRequest {
+  string access_token = 1;
+}
+
+message GetBlockedUsersResponse {
+  oneof result {
+    GetBlockedUsersSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message GetBlockedUsersSuccess {
+  repeated BlockedUser blocked_users = 1;
+}
+
+message BlockedUser {
+  string user_id = 1;
+  string username = 2;
+  common.Timestamp blocked_at = 3;
+}
+
+// ============================================================================
+// Delete Conversation (Phase 3)
+// ============================================================================
+
+message DeleteConversationRequest {
+  string access_token = 1;
+  string conversation_id = 2;
+}
+
+message DeleteConversationResponse {
+  oneof result {
+    DeleteConversationSuccess success = 1;
+    common.ErrorResponse error = 2;
+  }
+}
+
+message DeleteConversationSuccess {
+  string conversation_id = 1;
+}

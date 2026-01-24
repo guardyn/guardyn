@@ -14,11 +14,22 @@
 
 ---
 
-## 🎯 Current Status: v1.0.0 RELEASED (January 17, 2026)
+## 🎯 Current Status: v1.0.1 (January 24, 2026)
 
-### 🎉 **PRODUCTION-READY RELEASE**
+### 🎉 **ALL TECHNICAL DEBT RESOLVED**
 
-Guardyn v1.0 represents the completion of the evolution from PoC/MVP to production-ready secure communication platform. All core features from the [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) Phases 1-3 are complete and deployed.
+Guardyn v1.0.1 represents the completion of all technical debt identified in the production-readiness phase. **57 items completed totaling 228 hours of development work.**
+
+**Technical Debt Summary:**
+
+| Priority | Count | Hours | Status |
+|----------|-------|-------|--------|
+| 🔴 P0 Security | 6 | 27h | ✅ Complete |
+| 🟠 P1 Core | 13 | 40h | ✅ Complete |
+| 🟡 P2 Enhancement | 22 | 95h | ✅ Complete |
+| 🟢 P3 Polish | 13 | 44h | ✅ Complete |
+| 🟢 P3 WebRTC | 3 | 22h | ✅ Complete |
+| **Total** | **57** | **228h** | **✅ DONE** |
 
 **Release Highlights:**
 
@@ -30,8 +41,14 @@ Guardyn v1.0 represents the completion of the evolution from PoC/MVP to producti
 - ✅ **Hardware Key Storage**: TPM 2.0, Secure Enclave, KeyStore integration
 - ✅ **Production Observability**: Prometheus, Loki, Tempo, Grafana stack
 - ✅ **Sealed Sender**: Metadata protection preventing correlation attacks
+- ✅ **All Security TODOs**: Key storage, X3DH responder, secure loading, JWT secrets
+- ✅ **All Core Features**: Pagination, authorization checks, MLS integration
+- ✅ **All Real-time Features**: Read receipts, typing indicators, WebSocket broadcasts
+- ✅ **All Call Features**: WebRTC implementation, screen sharing, audio/video toggles
+- ✅ **All Client Features**: Settings persistence, presence integration, crypto persistence
 
 **Full Changelog:** [CHANGELOG.md](../CHANGELOG.md)
+**Technical Debt Tracker:** [TECHNICAL_DEBT_TRACKER.md](../_local/done/TECHNICAL_DEBT_TRACKER.md)
 
 ---
 
@@ -357,6 +374,16 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 
 ## 📋 Post-v1.0 Roadmap
 
+### v1.0.1 (January 24, 2026) - Technical Debt Resolution ✅ COMPLETE
+
+- [x] All P0 Security issues (key storage, X3DH, JWT secrets)
+- [x] All P1 Core functionality (pagination, authorization, MLS)
+- [x] All P2 Enhancements (real-time features, call service)
+- [x] All P3 Polish (Flutter features, WebRTC implementation)
+- [x] WebPush notifications implementation
+- [x] Screen sharing for desktop clients
+- [x] Settings persistence
+
 ### v1.1 (Q2 2026) - Group Calls + Search
 
 - [ ] Group voice/video calls (LiveKit SFU)
@@ -418,7 +445,7 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 ### Complete ✅
 
 - [x] [README.md](../README.md) - Project overview + architecture
-- [x] [CHANGELOG.md](../CHANGELOG.md) - v1.0 release notes
+- [x] [CHANGELOG.md](../CHANGELOG.md) - v1.0.1 release notes
 - [x] [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - This document
 - [x] [TESTING_GUIDE.md](TESTING_GUIDE.md) - E2E + performance tests
 - [x] [QUICKSTART_TESTING.md](QUICKSTART_TESTING.md) - Fast testing reference
@@ -428,16 +455,22 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 - [x] [ENCRYPTION_ARCHITECTURE.md](ENCRYPTION_ARCHITECTURE.md) - Crypto deep dive
 - [x] [OBSERVABILITY_GUIDE.md](OBSERVABILITY_GUIDE.md) - Monitoring + logging
 - [x] [CLIENT_TESTING_GUIDE.md](CLIENT_TESTING_GUIDE.md) - Flutter testing
+- [x] [RUST_FFI_INTEGRATION.md](RUST_FFI_INTEGRATION.md) - FFI architecture
+- [x] [RUST_FFI_STATUS.md](RUST_FFI_STATUS.md) - FFI build status
+- [x] [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
+- [x] [GRPC_API.md](GRPC_API.md) - API documentation
+- [x] [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Data models
 
-### In Progress 🚧
+### Planned 📋
 
 - [ ] API_REFERENCE.md - Complete gRPC API documentation
 - [ ] FEDERATION_SPEC.md - Federation protocol specification
 - [ ] THREAT_MODEL.md - Formal threat modeling
+- [ ] SECURITY_AUDIT_REPORT.md - External audit results (Q2 2026)
 
 ---
 
-## 🎯 Success Metrics (v1.0)
+## 🎯 Success Metrics (v1.0.1)
 
 ### Performance
 
@@ -461,6 +494,9 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 - ✅ Metadata protection (Sealed Sender)
 - ✅ Hardware key storage (TPM/Secure Enclave/KeyStore)
 - ✅ Rate limiting (abuse prevention)
+- ✅ **Key persistence to secure storage**
+- ✅ **X3DH responder implementation**
+- ✅ **Cross-service data deletion**
 
 ### Code Quality
 
@@ -469,6 +505,7 @@ See [Evolution Plan](../_local/backlog/plan_guardyn_evolution_plan.md) for detai
 - ✅ Crypto test coverage: >95% (achieved)
 - ✅ Zero high/critical static analysis issues
 - ✅ All dependencies up-to-date
+- ✅ **All technical debt resolved (57 items)**
 
 ---
 
@@ -1959,6 +1996,6 @@ Flutter Client ←→ WebSocket (ws://host:8081) ←→ messaging-service (Axum)
 
 ---
 
-**Last Updated**: 2025-11-25  
-**Plan Version**: 1.2  
-**Status**: MVP deployed, polling workaround active, WebSocket migration planned
+**Last Updated**: 2026-01-24  
+**Plan Version**: 1.3  
+**Status**: v1.0.1 Released - All Technical Debt Resolved

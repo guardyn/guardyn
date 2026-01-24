@@ -18,7 +18,11 @@ use std::time::Duration;
 /// Storage client for S3/MinIO operations
 #[derive(Clone)]
 pub struct StorageClient {
+    /// Client for internal operations (using internal endpoint)
     client: S3Client,
+    /// Client for generating presigned URLs (using public endpoint)
+    /// This is needed because presigned URL signature includes the host header
+    presign_client: S3Client,
     bucket: String,
     presigned_expiry: Duration,
 }
@@ -34,17 +38,40 @@ impl StorageClient {
             "guardyn-media",
         );
 
+        // Client for internal operations (backend-to-minio communication)
         let s3_config = S3ConfigBuilder::new()
             .region(Region::new(config.s3_region.clone()))
             .endpoint_url(&config.s3_endpoint)
-            .credentials_provider(credentials)
+            .credentials_provider(credentials.clone())
             .force_path_style(true) // Required for MinIO
             .build();
 
         let client = S3Client::from_conf(s3_config);
 
+        // Client for presigned URL generation (uses public endpoint)
+        // This is necessary because presigned URL signature includes the host header,
+        // so we need to sign with the same host that clients will use
+        let presign_endpoint = config.s3_public_endpoint.as_ref()
+            .unwrap_or(&config.s3_endpoint);
+        
+        let presign_config = S3ConfigBuilder::new()
+            .region(Region::new(config.s3_region.clone()))
+            .endpoint_url(presign_endpoint)
+            .credentials_provider(credentials)
+            .force_path_style(true)
+            .build();
+
+        let presign_client = S3Client::from_conf(presign_config);
+
+        tracing::info!(
+            internal_endpoint = %config.s3_endpoint,
+            presign_endpoint = %presign_endpoint,
+            "Storage client initialized with separate presign client"
+        );
+
         Ok(Self {
             client,
+            presign_client,
             bucket: config.bucket_name.clone(),
             presigned_expiry: Duration::from_secs(config.presigned_url_expiry_seconds),
         })
@@ -213,6 +240,7 @@ impl StorageClient {
     }
 
     /// Generate a pre-signed URL for upload
+    /// Uses presign_client which is configured with public endpoint
     pub async fn generate_upload_url(
         &self,
         key: &str,
@@ -225,8 +253,10 @@ impl StorageClient {
             .build()
             .map_err(|e| anyhow!("Failed to build presigning config: {}", e))?;
 
+        // Use presign_client which is configured with public endpoint
+        // This ensures the host header in the signature matches what clients will send
         let presigned = self
-            .client
+            .presign_client
             .put_object()
             .bucket(&self.bucket)
             .key(key)
@@ -239,6 +269,7 @@ impl StorageClient {
     }
 
     /// Generate a pre-signed URL for download
+    /// Uses presign_client which is configured with public endpoint
     pub async fn generate_download_url(
         &self,
         key: &str,
@@ -250,8 +281,9 @@ impl StorageClient {
             .build()
             .map_err(|e| anyhow!("Failed to build presigning config: {}", e))?;
 
+        // Use presign_client which is configured with public endpoint
         let presigned = self
-            .client
+            .presign_client
             .get_object()
             .bucket(&self.bucket)
             .key(key)

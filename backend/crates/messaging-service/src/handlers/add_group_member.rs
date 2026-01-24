@@ -1,5 +1,6 @@
 /// Handler for adding members to group chats
 use crate::db::DatabaseClient;
+use crate::mls_manager::MlsManager;
 use crate::models::{GroupMember, GroupRole};
 use crate::proto::messaging::{
     add_group_member_response, AddGroupMemberRequest, AddGroupMemberResponse,
@@ -90,6 +91,43 @@ pub async fn add_group_member(
     // Check if member is already in group
     match db.get_group_members(&request.group_id).await {
         Ok(existing_members) => {
+            // First verify requester has permission to add members
+            let requester_member = existing_members.iter().find(|m| m.user_id == requester_user_id);
+            match requester_member {
+                None => {
+                    tracing::warn!(
+                        "User {} attempted to add member to group {} without membership",
+                        requester_user_id,
+                        request.group_id
+                    );
+                    return Ok(Response::new(AddGroupMemberResponse {
+                        result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                            code: 7, // PERMISSION_DENIED
+                            message: "Not a member of this group".to_string(),
+                            details: Default::default(),
+                        })),
+                    }));
+                }
+                Some(member) if member.role == crate::models::GroupRole::Owner || member.role == crate::models::GroupRole::Admin => {
+                    // Has permission, continue
+                }
+                Some(_) => {
+                    tracing::warn!(
+                        "User {} attempted to add member to group {} without admin/owner permission",
+                        requester_user_id,
+                        request.group_id
+                    );
+                    return Ok(Response::new(AddGroupMemberResponse {
+                        result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                            code: 7, // PERMISSION_DENIED
+                            message: "Only owners and admins can add members".to_string(),
+                            details: Default::default(),
+                        })),
+                    }));
+                }
+            }
+
+            // Check if target user is already a member
             if existing_members.iter().any(|m| m.user_id == request.member_user_id) {
                 return Ok(Response::new(AddGroupMemberResponse {
                     result: Some(add_group_member_response::Result::Error(ErrorResponse {
@@ -127,8 +165,21 @@ pub async fn add_group_member(
         }));
     }
 
-    // TODO: Update MLS group state in TiKV
-    // For MVP, we just store the provided state without validation
+    // MLS-001: Update MLS group state in TiKV
+    // Add member to MLS members list for this group
+    let mls_manager = MlsManager::new(db.clone());
+    if let Err(e) = mls_manager.add_member_to_list(
+        &request.group_id,
+        &request.member_user_id,
+        "primary", // Default device for non-MLS group members
+    ).await {
+        tracing::warn!(
+            "Failed to update MLS member list for group {}: {}",
+            request.group_id,
+            e
+        );
+        // Continue anyway - the group membership was successfully added
+    }
 
     tracing::info!(
         "Member {} added to group {} by {}",

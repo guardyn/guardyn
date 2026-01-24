@@ -5,8 +5,11 @@ use serde::{Deserialize, Serialize};
 /// Media service configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaConfig {
-    /// S3/MinIO endpoint URL
+    /// S3/MinIO endpoint URL (internal, for backend operations)
     pub s3_endpoint: String,
+    /// S3/MinIO public endpoint URL (external, for presigned URLs that clients access)
+    /// If not set, s3_endpoint is used for presigned URLs
+    pub s3_public_endpoint: Option<String>,
     /// S3 region (us-east-1 for MinIO)
     pub s3_region: String,
     /// S3 access key
@@ -35,6 +38,7 @@ impl Default for MediaConfig {
     fn default() -> Self {
         Self {
             s3_endpoint: "http://minio.data.svc.cluster.local:9000".to_string(),
+            s3_public_endpoint: None, // Will use s3_endpoint if not set
             s3_region: "us-east-1".to_string(),
             s3_access_key: "minioadmin".to_string(),
             s3_secret_key: "minioadmin".to_string(),
@@ -57,6 +61,9 @@ impl MediaConfig {
         
         if let Ok(val) = std::env::var("S3_ENDPOINT") {
             config.s3_endpoint = val;
+        }
+        if let Ok(val) = std::env::var("S3_PUBLIC_ENDPOINT") {
+            config.s3_public_endpoint = Some(val);
         }
         if let Ok(val) = std::env::var("S3_REGION") {
             config.s3_region = val;

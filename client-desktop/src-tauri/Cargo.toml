@@ -77,6 +77,10 @@ hex = { workspace = true }
 # System directories
 dirs = { workspace = true }
 
+# Screen capture
+xcap = { workspace = true }
+image = { workspace = true }
+
 # MLS (Messaging Layer Security) for groups
 openmls = { workspace = true }
 openmls_rust_crypto = { workspace = true }

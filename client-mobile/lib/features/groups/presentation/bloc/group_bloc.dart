@@ -7,19 +7,24 @@ import '../../../../core/di/injection.dart';
 import '../../../messaging/data/datasources/websocket_datasource.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/usecases/add_group_member.dart';
+import '../../domain/usecases/change_member_role.dart';
 import '../../domain/usecases/create_group.dart';
+import '../../domain/usecases/delete_group.dart';
 import '../../domain/usecases/get_group_by_id.dart';
 import '../../domain/usecases/get_group_messages.dart';
 import '../../domain/usecases/get_groups.dart';
 import '../../domain/usecases/leave_group.dart';
 import '../../domain/usecases/remove_group_member.dart';
 import '../../domain/usecases/send_group_message.dart';
+import '../../domain/usecases/send_group_typing_indicator.dart';
+import '../../domain/usecases/update_group.dart';
 import 'group_event.dart';
 import 'group_state.dart';
 
 @injectable
 class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final CreateGroup createGroup;
+  final DeleteGroup deleteGroup;
   final GetGroups getGroups;
   final GetGroupById getGroupById;
   final SendGroupMessage sendGroupMessage;
@@ -27,6 +32,9 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   final AddGroupMember addGroupMember;
   final RemoveGroupMember removeGroupMember;
   final LeaveGroup leaveGroup;
+  final UpdateGroup updateGroup;
+  final SendGroupTypingIndicator sendGroupTypingIndicator;
+  final ChangeMemberRole changeMemberRole;
 
   Timer? _pollingTimer;
   String? _activeGroupId;
@@ -36,9 +44,15 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
   StreamSubscription<dynamic>? _wsMessageSubscription;
   StreamSubscription<dynamic>? _wsStateSubscription;
   bool _useWebSocket = true;
+  
+  /// Track typing users: groupId -> {userId -> username}
+  final Map<String, Map<String, String>> _typingUsers = {};
+  /// Timers to auto-clear typing after 5 seconds
+  final Map<String, Map<String, Timer>> _typingTimers = {};
 
   GroupBloc({
     required this.createGroup,
+    required this.deleteGroup,
     required this.getGroups,
     required this.getGroupById,
     required this.sendGroupMessage,
@@ -46,9 +60,14 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     required this.addGroupMember,
     required this.removeGroupMember,
     required this.leaveGroup,
+    required this.updateGroup,
+    required this.sendGroupTypingIndicator,
+    required this.changeMemberRole,
   }) : super(const GroupInitial()) {
     on<GroupLoadAll>(_onLoadAll);
     on<GroupCreate>(_onCreateGroup);
+    on<GroupDelete>(_onDeleteGroup);
+    on<GroupUpdate>(_onUpdateGroup);
     on<GroupLoadDetails>(_onLoadDetails);
     on<GroupLoadMessages>(_onLoadMessages);
     on<GroupSendMessage>(_onSendMessage);
@@ -63,6 +82,11 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     on<GroupConnectWebSocket>(_onConnectWebSocket);
     on<GroupDisconnectWebSocket>(_onDisconnectWebSocket);
     on<GroupSubscribeWebSocket>(_onSubscribeWebSocket);
+    // Typing indicator events
+    on<GroupSendTypingIndicator>(_onSendTypingIndicator);
+    on<GroupTypingReceived>(_onTypingReceived);
+    // Admin management events
+    on<GroupChangeMemberRole>(_onChangeMemberRole);
   }
 
   Future<void> _onLoadAll(
@@ -119,6 +143,25 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     );
   }
 
+  Future<void> _onUpdateGroup(
+    GroupUpdate event,
+    Emitter<GroupState> emit,
+  ) async {
+    emit(const GroupLoading());
+
+    final result = await updateGroup(UpdateGroupParams(
+      groupId: event.groupId,
+      name: event.name,
+      iconMediaId: event.iconMediaId,
+      description: event.description,
+    ));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message)),
+      (group) => emit(GroupUpdated(group: group)),
+    );
+  }
+
   Future<void> _onLoadMessages(
     GroupLoadMessages event,
     Emitter<GroupState> emit,
@@ -157,6 +200,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     final result = await sendGroupMessage(SendGroupMessageParams(
       groupId: event.groupId,
       textContent: event.textContent,
+      metadata: event.metadata,
     ));
 
     result.fold(
@@ -260,6 +304,33 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
       (success) {
         if (success) {
           emit(GroupLeft(groupId: event.groupId));
+          // Update groups list
+          final updatedGroups = currentGroups
+              .where((g) => g.groupId != event.groupId)
+              .toList();
+          emit(GroupListLoaded(groups: updatedGroups));
+        }
+      },
+    );
+  }
+
+  Future<void> _onDeleteGroup(
+    GroupDelete event,
+    Emitter<GroupState> emit,
+  ) async {
+    final currentGroups = state is GroupListLoaded
+        ? (state as GroupListLoaded).groups
+        : <Group>[];
+
+    emit(GroupLoading(groups: currentGroups));
+
+    final result = await deleteGroup(DeleteGroupParams(groupId: event.groupId));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message, groups: currentGroups)),
+      (success) {
+        if (success) {
+          emit(GroupDeleted(groupId: event.groupId));
           // Update groups list
           final updatedGroups = currentGroups
               .where((g) => g.groupId != event.groupId)
@@ -443,12 +514,108 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     }
   }
 
+  /// Send typing indicator to a group
+  Future<void> _onSendTypingIndicator(
+    GroupSendTypingIndicator event,
+    Emitter<GroupState> emit,
+  ) async {
+    // Fire and forget - we don't need to wait for response or change state
+    await sendGroupTypingIndicator(SendGroupTypingIndicatorParams(
+      groupId: event.groupId,
+      isTyping: event.isTyping,
+    ));
+  }
+
+  /// Handle received typing indicator from another user
+  Future<void> _onTypingReceived(
+    GroupTypingReceived event,
+    Emitter<GroupState> emit,
+  ) async {
+    final groupId = event.groupId;
+    final userId = event.userId;
+    final username = event.username;
+    final isTyping = event.isTyping;
+
+    // Initialize maps if needed
+    _typingUsers[groupId] ??= {};
+    _typingTimers[groupId] ??= {};
+
+    // Cancel existing timer for this user
+    _typingTimers[groupId]![userId]?.cancel();
+
+    if (isTyping) {
+      // Add user to typing list
+      _typingUsers[groupId]![userId] = username;
+
+      // Set timer to auto-remove after 5 seconds
+      _typingTimers[groupId]![userId] = Timer(
+        const Duration(seconds: 5),
+        () {
+          add(GroupTypingReceived(
+            groupId: groupId,
+            userId: userId,
+            username: username,
+            isTyping: false,
+          ));
+        },
+      );
+    } else {
+      // Remove user from typing list
+      _typingUsers[groupId]!.remove(userId);
+      _typingTimers[groupId]!.remove(userId);
+    }
+
+    // Get current messages for the state
+    final currentMessages = state is GroupMessagesLoaded
+        ? (state as GroupMessagesLoaded).messages
+        : <GroupMessage>[];
+
+    // Emit updated typing users state
+    emit(GroupTypingUsersUpdated(
+      groupId: groupId,
+      typingUsernames: _typingUsers[groupId]!.values.toList(),
+      messages: currentMessages,
+    ));
+  }
+
+  /// Get list of typing usernames for a group
+  List<String> getTypingUsernames(String groupId) {
+    return _typingUsers[groupId]?.values.toList() ?? [];
+  }
+
+  /// Handle changing a member's role (owner only)
+  Future<void> _onChangeMemberRole(
+    GroupChangeMemberRole event,
+    Emitter<GroupState> emit,
+  ) async {
+    final result = await changeMemberRole(ChangeMemberRoleParams(
+      groupId: event.groupId,
+      targetUserId: event.targetUserId,
+      newRole: event.newRole,
+    ));
+
+    result.fold(
+      (failure) => emit(GroupError(failure.message)),
+      (_) => emit(GroupMemberRoleChanged(
+        groupId: event.groupId,
+        targetUserId: event.targetUserId,
+        newRole: event.newRole,
+      )),
+    );
+  }
+
   @override
   Future<void> close() {
     _pollingTimer?.cancel();
     _wsMessageSubscription?.cancel();
     _wsStateSubscription?.cancel();
     _webSocketDatasource?.disconnect();
+    // Cancel all typing timers
+    for (final timersMap in _typingTimers.values) {
+      for (final timer in timersMap.values) {
+        timer.cancel();
+      }
+    }
     return super.close();
   }
 }

@@ -22,6 +22,9 @@ uuid = { version = "1.11", features = ["v4", "serde"] }
 chrono = "0.4"
 jsonwebtoken = "9.3"
 reqwest = { version = "0.12", features = ["json"] }
+tracing-subscriber.workspace = true
+web-push = "0.11"
+base64 = "0.22"
 
 [build-dependencies]
 tonic-build.workspace = true

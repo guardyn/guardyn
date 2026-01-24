@@ -9,8 +9,12 @@ license.workspace = true
 name = "auth-service"
 path = "src/main.rs"
 
+[[bin]]
+name = "list-users"
+path = "src/bin/list_users.rs"
+
 [dependencies]
-guardyn-common = { path = "../common" }
+guardyn-common = { path = "../common", features = ["kafka"] }
 guardyn-crypto = { path = "../crypto" }
 
 tokio.workspace = true
@@ -40,6 +44,9 @@ hex = "0.4"
 
 # SHA2 for hashing
 sha2 = "0.10"
+
+# Date/time for list-users utility
+chrono = "0.4"
 
 [build-dependencies]
 tonic-build.workspace = true

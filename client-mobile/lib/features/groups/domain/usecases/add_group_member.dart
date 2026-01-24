@@ -1,9 +1,11 @@
 import 'package:dartz/dartz.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../../../core/error/failures.dart';
 import '../repositories/group_repository.dart';
 
 /// Use case for adding a member to a group
+@injectable
 class AddGroupMember {
   final GroupRepository repository;
 

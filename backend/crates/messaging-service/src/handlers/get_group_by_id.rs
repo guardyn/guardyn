@@ -1,10 +1,12 @@
 /// Handler for getting a group by ID
+use crate::auth_client::{AuthClient, UserProfileInfo};
 use crate::db::DatabaseClient;
 use crate::proto::messaging::{
     get_group_by_id_response, GetGroupByIdRequest, GetGroupByIdResponse, GetGroupByIdSuccess,
-    GroupInfo, GroupMemberInfo,
+    GroupInfo, GroupMemberInfo, GroupMessage as ProtoGroupMessage,
 };
 use crate::proto::common::{ErrorResponse, Timestamp};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -85,20 +87,103 @@ pub async fn get_group_by_id(
         }));
     }
 
+    // Collect unique user IDs for batch username lookup
+    let user_ids: Vec<String> = members.iter().map(|m| m.user_id.clone()).collect();
+
+    // Fetch full user profiles from auth service
+    let auth_url = std::env::var("AUTH_SERVICE_URL")
+        .unwrap_or_else(|_| "http://auth-service:50051".to_string());
+    let user_profiles: HashMap<String, UserProfileInfo> = match AuthClient::new(&auth_url).await {
+        Ok(mut client) => client.get_user_profiles(&user_ids).await,
+        Err(e) => {
+            tracing::warn!("Failed to connect to auth service for profile lookup: {}", e);
+            HashMap::new()
+        }
+    };
+
     // Convert members to GroupMemberInfo
     let member_infos: Vec<GroupMemberInfo> = members
         .iter()
-        .map(|m| GroupMemberInfo {
-            user_id: m.user_id.clone(),
-            username: m.user_id.clone(), // TODO: Fetch username from auth service
-            device_id: m.device_id.clone(),
-            role: m.role.to_string(),
-            joined_at: Some(Timestamp {
-                seconds: m.joined_at,
-                nanos: 0,
-            }),
+        .map(|m| {
+            // Get full profile or create default with user_id as fallback
+            let profile = user_profiles.get(&m.user_id);
+            
+            let username = profile
+                .map(|p| p.username.clone())
+                .unwrap_or_else(|| m.user_id.clone());
+            
+            let display_name = profile
+                .map(|p| p.display_name.clone())
+                .unwrap_or_default();
+            
+            let avatar_media_id = profile
+                .map(|p| p.avatar_media_id.clone())
+                .unwrap_or_default();
+
+            GroupMemberInfo {
+                user_id: m.user_id.clone(),
+                username,
+                device_id: m.device_id.clone(),
+                role: m.role.to_string(),
+                joined_at: Some(Timestamp {
+                    seconds: m.joined_at,
+                    nanos: 0,
+                }),
+                avatar_media_id,
+                display_name,
+            }
         })
         .collect();
+
+    // Fetch last message for this group from ScyllaDB
+    let last_message = match db.get_last_group_message(&request.group_id).await {
+        Ok(Some(msg)) => {
+            // Extract sender_username from metadata, user profiles cache, or fall back to sender_user_id
+            let sender_username = msg.metadata
+                .get("sender_username")
+                .cloned()
+                .or_else(|| user_profiles.get(&msg.sender_user_id).map(|p| p.username.clone()))
+                .unwrap_or_else(|| msg.sender_user_id.clone());
+
+            // Extract message_type from metadata (default to 0)
+            let message_type = msg.metadata
+                .get("message_type")
+                .and_then(|s| s.parse::<i32>().ok())
+                .unwrap_or(0);
+
+            Some(ProtoGroupMessage {
+                message_id: msg.message_id,
+                group_id: msg.group_id,
+                sender_user_id: msg.sender_user_id,
+                sender_device_id: msg.sender_device_id,
+                sender_username,
+                encrypted_content: msg.encrypted_content,
+                message_type,
+                client_message_id: String::new(),
+                server_timestamp: Some(Timestamp {
+                    seconds: msg.sent_at / 1000,
+                    nanos: ((msg.sent_at % 1000) * 1_000_000) as i32,
+                }),
+                client_timestamp: Some(Timestamp {
+                    seconds: msg.sent_at / 1000,
+                    nanos: 0,
+                }),
+                media_id: String::new(),
+                is_deleted: false,
+                thread_reference: None,
+                forward_info: None,
+                edit_version: 0,
+                last_edited_at: None,
+                voice_metadata: None,
+                reaction_summaries: Vec::new(),
+            })
+        }
+        Ok(None) => None,
+        Err(e) => {
+            tracing::warn!("Failed to fetch last message for group {}: {}", request.group_id, e);
+            None
+        }
+    };
 
     let group_info = GroupInfo {
         group_id: group.group_id,
@@ -110,7 +195,9 @@ pub async fn get_group_by_id(
             nanos: 0,
         }),
         member_count: members.len() as i32,
-        last_message: None, // TODO: Fetch last message from ScyllaDB
+        last_message,
+        icon_media_id: group.icon_media_id.unwrap_or_default(),
+        description: group.description.unwrap_or_default(),
     };
 
     tracing::info!("Fetched group {} for user {}", request.group_id, user_id);

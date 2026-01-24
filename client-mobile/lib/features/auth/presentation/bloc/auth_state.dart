@@ -53,3 +53,24 @@ class AuthAccountDeleting extends AuthState {
   const AuthAccountDeleting();
 }
 
+/// Profile update in progress
+class AuthProfileUpdating extends AuthState {
+  final User user;
+  final double? uploadProgress;
+
+  const AuthProfileUpdating(this.user, {this.uploadProgress});
+
+  @override
+  List<Object?> get props => [user, uploadProgress];
+}
+
+/// Profile update successful
+class AuthProfileUpdated extends AuthState {
+  final User user;
+
+  const AuthProfileUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
+

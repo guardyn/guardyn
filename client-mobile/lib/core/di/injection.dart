@@ -1,7 +1,9 @@
 import 'package:get_it/get_it.dart';
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/core/services/notification_service.dart';
+import 'package:guardyn_client/core/services/user_provider.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 // Auth feature imports
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -11,30 +13,58 @@ import 'package:guardyn_client/features/calls/data/repositories/call_repository_
 import 'package:guardyn_client/features/calls/domain/repositories/call_repository.dart';
 import 'package:guardyn_client/features/calls/domain/usecases/usecases.dart';
 import 'package:guardyn_client/features/calls/presentation/bloc/bloc.dart';
+// Contacts feature imports
+import 'package:guardyn_client/features/contacts/data/datasources/contacts_remote_datasource.dart';
+import 'package:guardyn_client/features/contacts/data/repositories/contacts_repository_impl.dart';
+import 'package:guardyn_client/features/contacts/domain/repositories/contacts_repository.dart';
+import 'package:guardyn_client/features/contacts/presentation/bloc/contacts_bloc.dart';
 // Groups feature imports
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/repositories/group_repository.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/change_member_role.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_typing_indicator.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
+// Media feature imports
+import 'package:guardyn_client/features/media/data/datasources/media_local_datasource.dart';
+import 'package:guardyn_client/features/media/data/datasources/media_remote_datasource.dart';
+import 'package:guardyn_client/features/media/data/repositories/media_repository_impl.dart';
+import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
+import 'package:guardyn_client/features/media/domain/usecases/delete_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/get_media_metadata.dart';
+import 'package:guardyn_client/features/media/domain/usecases/get_thumbnail_url.dart';
+import 'package:guardyn_client/features/media/domain/usecases/list_media.dart';
+import 'package:guardyn_client/features/media/domain/usecases/manage_media_cache.dart';
+import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
+import 'package:guardyn_client/features/media/presentation/bloc/media_bloc.dart';
 // Messaging feature imports
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
+import 'package:guardyn_client/features/messaging/data/datasources/notification_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/websocket_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
+import 'package:guardyn_client/features/messaging/data/repositories/notification_repository_impl.dart';
 import 'package:guardyn_client/features/messaging/domain/repositories/message_repository.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/block_user.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/clear_chat.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/decrypt_message.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/delete_conversation.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/delete_message.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/mute_conversation.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/receive_messages.dart';
 import 'package:guardyn_client/features/messaging/domain/usecases/send_message.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
@@ -48,6 +78,7 @@ import 'package:guardyn_client/features/presence/domain/usecases/send_heartbeat.
 import 'package:guardyn_client/features/presence/domain/usecases/send_typing_indicator.dart';
 import 'package:guardyn_client/features/presence/domain/usecases/update_my_status.dart';
 import 'package:guardyn_client/features/presence/presentation/bloc/presence_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 import 'package:logger/logger.dart';
 
@@ -57,6 +88,11 @@ final getIt = GetIt.instance;
 Future<void> configureDependencies() async {
   // Register core services
   getIt.registerLazySingleton<SecureStorage>(() => SecureStorage());
+
+  // Register user provider for current user access
+  getIt.registerLazySingleton<UserProvider>(
+    () => UserProvider(getIt<SecureStorage>()),
+  );
 
   // Register crypto service for E2EE
   final cryptoService = CryptoService();
@@ -73,6 +109,14 @@ Future<void> configureDependencies() async {
   await grpcClients.initialize();
   getIt.registerSingleton<GrpcClients>(grpcClients);
 
+  // Register TokenManager for automatic token refresh
+  final tokenManager = TokenManager(
+    getIt<SecureStorage>(),
+    getIt<GrpcClients>(),
+  );
+  await tokenManager.initialize();
+  getIt.registerSingleton<TokenManager>(tokenManager);
+
   // Register auth feature dependencies
   _registerAuthDependencies();
 
@@ -87,6 +131,12 @@ Future<void> configureDependencies() async {
 
   // Register calls feature dependencies
   _registerCallsDependencies();
+
+  // Register media feature dependencies
+  _registerMediaDependencies();
+
+  // Register contacts feature dependencies
+  _registerContactsDependencies();
 }
 
 void _registerAuthDependencies() {
@@ -147,6 +197,59 @@ void _registerMessagingDependencies() {
     () => DeleteMessage(getIt<MessageRepository>()),
   );
 
+  // Notification-related dependencies for messaging
+  getIt.registerLazySingleton<NotificationRemoteDatasource>(
+    () => NotificationRemoteDatasource(getIt<GrpcClients>()),
+  );
+
+  getIt.registerLazySingleton<MuteConversationRepository>(
+    () => NotificationRepositoryImpl(
+      getIt<NotificationRemoteDatasource>(),
+      getIt<SecureStorage>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<MuteConversation>(
+    () => MuteConversation(getIt<MuteConversationRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetUserDisplayName>(
+    () => GetUserDisplayName(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  // Block/Unblock user use cases
+  getIt.registerLazySingleton<BlockUser>(
+    () => BlockUser(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<UnblockUser>(
+    () => UnblockUser(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<GetBlockedUsers>(
+    () => GetBlockedUsers(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
+  // Delete conversation use case
+  getIt.registerLazySingleton<DeleteConversation>(
+    () => DeleteConversation(
+      grpcClients: getIt<GrpcClients>(),
+      secureStorage: getIt<SecureStorage>(),
+    ),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<MessageBloc>(
     () => MessageBloc(
@@ -171,6 +274,7 @@ void _registerGroupsDependencies() {
     () => GroupRepositoryImpl(
       getIt<GroupRemoteDatasource>(),
       getIt<SecureStorage>(),
+      getIt<GetUserDisplayName>(),
     ),
   );
 
@@ -207,10 +311,27 @@ void _registerGroupsDependencies() {
     () => LeaveGroup(getIt<GroupRepository>()),
   );
 
+  getIt.registerLazySingleton<DeleteGroup>(
+    () => DeleteGroup(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<UpdateGroup>(
+    () => UpdateGroup(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<SendGroupTypingIndicator>(
+    () => SendGroupTypingIndicator(getIt<GroupRepository>()),
+  );
+
+  getIt.registerLazySingleton<ChangeMemberRole>(
+    () => ChangeMemberRole(getIt<GroupRepository>()),
+  );
+
   // Presentation layer - BLoC
   getIt.registerFactory<GroupBloc>(
     () => GroupBloc(
       createGroup: getIt<CreateGroup>(),
+      deleteGroup: getIt<DeleteGroup>(),
       getGroups: getIt<GetGroups>(),
       getGroupById: getIt<GetGroupById>(),
       sendGroupMessage: getIt<SendGroupMessage>(),
@@ -218,6 +339,9 @@ void _registerGroupsDependencies() {
       addGroupMember: getIt<AddGroupMember>(),
       removeGroupMember: getIt<RemoveGroupMember>(),
       leaveGroup: getIt<LeaveGroup>(),
+      updateGroup: getIt<UpdateGroup>(),
+      sendGroupTypingIndicator: getIt<SendGroupTypingIndicator>(),
+      changeMemberRole: getIt<ChangeMemberRole>(),
     ),
   );
 }
@@ -286,13 +410,12 @@ void _registerCallsDependencies() {
   );
 
   // Repository
-  // Note: currentUserId should come from auth state in production
   getIt.registerLazySingleton<CallRepository>(
     () => CallRepositoryImpl(
       webrtcDataSource: getIt<WebRTCDataSource>(),
       signalingDataSource: getIt<SignalingDataSource>(),
       logger: callLogger,
-      currentUserId: 'temp-user-id', // TODO: Get from auth state
+      userProvider: getIt<UserProvider>(),
     ),
   );
 
@@ -350,6 +473,93 @@ void _registerCallsDependencies() {
   getIt.registerFactory<CallHistoryBloc>(
     () => CallHistoryBloc(
       getCallHistory: getIt<GetCallHistory>(),
+      callRepository: getIt<CallRepository>(),
     ),
+  );
+}
+
+void _registerMediaDependencies() {
+  // HTTP client for presigned URL uploads/downloads
+  getIt.registerLazySingleton<http.Client>(() => http.Client());
+
+  // Data layer
+  getIt.registerLazySingleton<MediaLocalDatasource>(
+    () => MediaLocalDatasource(),
+  );
+
+  getIt.registerLazySingleton<MediaRemoteDatasource>(
+    () => MediaRemoteDatasource(
+      getIt<GrpcClients>(),
+      getIt<http.Client>(),
+      getIt<TokenManager>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<MediaRepository>(
+    () => MediaRepositoryImpl(
+      remoteDatasource: getIt<MediaRemoteDatasource>(),
+      localDatasource: getIt<MediaLocalDatasource>(),
+    ),
+  );
+
+  // Domain layer - Use cases
+  getIt.registerLazySingleton<UploadMedia>(
+    () => UploadMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<DownloadMedia>(
+    () => DownloadMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<ListMedia>(
+    () => ListMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetMediaMetadata>(
+    () => GetMediaMetadata(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<GetThumbnailUrl>(
+    () => GetThumbnailUrl(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<DeleteMedia>(
+    () => DeleteMedia(getIt<MediaRepository>()),
+  );
+
+  getIt.registerLazySingleton<ManageMediaCache>(
+    () => ManageMediaCache(getIt<MediaRepository>()),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<MediaBloc>(
+    () => MediaBloc(
+      uploadMedia: getIt<UploadMedia>(),
+      downloadMedia: getIt<DownloadMedia>(),
+      listMedia: getIt<ListMedia>(),
+      getMediaMetadata: getIt<GetMediaMetadata>(),
+      getThumbnailUrl: getIt<GetThumbnailUrl>(),
+      deleteMedia: getIt<DeleteMedia>(),
+      manageMediaCache: getIt<ManageMediaCache>(),
+    ),
+  );
+}
+
+void _registerContactsDependencies() {
+  // Data layer
+  getIt.registerLazySingleton<ContactsRemoteDatasource>(
+    () => ContactsRemoteDatasource(getIt<GrpcClients>()),
+  );
+
+  getIt.registerLazySingleton<ContactsRepository>(
+    () => ContactsRepositoryImpl(
+      getIt<ContactsRemoteDatasource>(),
+      getIt<SecureStorage>(),
+    ),
+  );
+
+  // Presentation layer - BLoC
+  getIt.registerFactory<ContactsBloc>(
+    () => ContactsBloc(getIt<ContactsRepository>()),
   );
 }

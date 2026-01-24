@@ -21,7 +21,7 @@ pub struct DatabaseClient {
 
 impl DatabaseClient {
     /// Initialize database connections
-    /// 
+    ///
     /// Environment variables:
     /// - SCYLLA_CONSISTENCY: "one", "local_one", "local_quorum" (default), "quorum", "all"
     /// - SCYLLA_REPLICATION_FACTOR: integer (default: 3 for production, use 1 for local dev)
@@ -43,7 +43,7 @@ impl DatabaseClient {
             "all" => Consistency::All,
             "local_quorum" | _ => Consistency::LocalQuorum,
         };
-        
+
         tracing::info!("ScyllaDB consistency level: {:?}", consistency);
 
         // Connect to ScyllaDB
@@ -63,8 +63,18 @@ impl DatabaseClient {
         })
     }
 
+    /// Get TiKV client reference
+    pub fn tikv(&self) -> Arc<RawClient> {
+        Arc::clone(&self.tikv)
+    }
+
+    /// Get ScyllaDB session reference
+    pub fn scylla(&self) -> Arc<Session> {
+        Arc::clone(&self.scylla)
+    }
+
     /// Initialize ScyllaDB keyspace and tables
-    /// 
+    ///
     /// Uses SCYLLA_REPLICATION_FACTOR env var (default: 3)
     /// For local development with single node, set SCYLLA_REPLICATION_FACTOR=1
     async fn init_scylla_schema(session: &Session) -> Result<()> {
@@ -73,9 +83,9 @@ impl DatabaseClient {
             .unwrap_or_else(|_| "3".to_string())
             .parse()
             .unwrap_or(3);
-        
+
         tracing::info!("ScyllaDB replication factor: {}", replication_factor);
-        
+
         // Create keyspace if not exists
         let keyspace_query = format!(
             "CREATE KEYSPACE IF NOT EXISTS guardyn 
@@ -225,6 +235,23 @@ impl DatabaseClient {
             )
             .await
             .context("Failed to create disappearing_config table")?;
+
+        // ========================================================================
+        // Phase 3: Blocked users table
+        // ========================================================================
+        session
+            .query_unpaged(
+                "CREATE TABLE IF NOT EXISTS guardyn.blocked_users (
+                    user_id TEXT,
+                    blocked_user_id TEXT,
+                    blocked_username TEXT,
+                    blocked_at BIGINT,
+                    PRIMARY KEY (user_id, blocked_user_id)
+                )",
+                &[],
+            )
+            .await
+            .context("Failed to create blocked_users table")?;
 
         // Add Phase 2 columns to existing messages table (migration)
         let _ = session
@@ -817,6 +844,13 @@ impl DatabaseClient {
                     media_id: String::new(),
                     is_deleted,
                     x3dh_prekey,
+                    // Phase 2 fields (not yet stored in DB)
+                    thread_reference: None,
+                    forward_info: None,
+                    edit_version: 0,
+                    last_edited_at: None,
+                    voice_metadata: None,
+                    reaction_summaries: Vec::new(),
                 };
 
                 // Update or create conversation
@@ -839,7 +873,7 @@ impl DatabaseClient {
                         user_id: other_user_id.clone(),
                         username: other_user_id, // Will need to fetch actual username from auth service
                         last_message: Some(message.clone()),
-                        unread_count: 0, // TODO: Calculate actual unread count
+                        unread_count: 0, // Will be calculated below
                         updated_at: message.server_timestamp,
                     });
 
@@ -849,6 +883,20 @@ impl DatabaseClient {
             }
 
         let mut conversations: Vec<_> = conversations_map.into_values().collect();
+
+        // RT-004: Calculate actual unread count for each conversation
+        for conv in &mut conversations {
+            match self.get_unread_count(&conv.conversation_id, user_id).await {
+                Ok(count) => conv.unread_count = count as u32,
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to get unread count for conversation {}: {}",
+                        conv.conversation_id, e
+                    );
+                    // Keep default 0 on error
+                }
+            }
+        }
 
         // Sort by last activity
         conversations.sort_by(|a, b| {
@@ -1094,6 +1142,13 @@ impl DatabaseClient {
                     media_id: String::new(),
                     is_deleted: false,
                     x3dh_prekey: String::new(),
+                    // Phase 2 fields (not yet stored in DB)
+                    thread_reference: None,
+                    forward_info: None,
+                    edit_version: 0,
+                    last_edited_at: None,
+                    voice_metadata: None,
+                    reaction_summaries: Vec::new(),
                 };
 
                 let conversation = crate::proto::messaging::Conversation {
@@ -1120,18 +1175,64 @@ impl DatabaseClient {
     }
 
     /// Reset unread count for a conversation
+    /// RT-005: Properly resets unread count by updating the read receipt
+    /// to the latest message in the conversation
     pub async fn reset_unread_count(&self, user_id: &str, conversation_id: &str) -> Result<()> {
-        // Since last_message_time is part of the clustering key, we can't just UPDATE
-        // For MVP, we'll need to read and rewrite the row
-        // In production, consider a separate table for unread counts
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
 
         tracing::debug!(
             "Reset unread count requested for user {} conversation {}",
             user_id, conversation_id
         );
 
-        // TODO: Implement proper unread count reset
-        // This requires finding the row by conversation_id and rewriting it
+        // RT-005: Find the latest message in the conversation where user is recipient
+        let latest_message_rows = self.scylla_query(
+            "SELECT message_id, server_timestamp FROM guardyn.messages 
+             WHERE conversation_id = ? AND recipient_user_id = ?
+             ORDER BY server_timestamp DESC
+             LIMIT 1
+             ALLOW FILTERING",
+            (conversation_uuid, user_id.to_string()),
+        ).await?;
+
+        let (latest_message_id, latest_timestamp) = if let Some(rows) = latest_message_rows.rows {
+            rows.into_iter().next()
+                .map(|row| {
+                    let message_id: uuid::Uuid = row.columns[0].as_ref()
+                        .and_then(|v| v.as_uuid())
+                        .unwrap_or_default();
+                    let timestamp: i64 = row.columns[1].as_ref()
+                        .and_then(|v| v.as_cql_timestamp())
+                        .map(|ts| ts.0)
+                        .unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
+                    (message_id, timestamp)
+                })
+                .unwrap_or_else(|| (uuid::Uuid::nil(), chrono::Utc::now().timestamp_millis()))
+        } else {
+            // No messages, use current timestamp
+            (uuid::Uuid::nil(), chrono::Utc::now().timestamp_millis())
+        };
+
+        // Update the read receipt to mark all messages as read
+        self.scylla_query(
+            "INSERT INTO guardyn.read_receipts (
+                conversation_id, user_id, last_read_message_id, timestamp, is_group
+            ) VALUES (?, ?, ?, ?, false)",
+            (conversation_uuid, user_id.to_string(), latest_message_id, latest_timestamp, false),
+        ).await.context("Failed to update read receipt")?;
+
+        // Also update the conversations table for backward compatibility
+        self.scylla_query(
+            "UPDATE guardyn.conversations SET unread_count = 0 
+             WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
+            (user_id.to_string(), conversation_uuid),
+        ).await.ok(); // Ignore errors for legacy table update
+
+        tracing::info!(
+            "Reset unread count for user {} in conversation {} (latest_message: {})",
+            user_id, conversation_id, latest_message_id
+        );
 
         Ok(())
     }
@@ -1162,6 +1263,35 @@ impl DatabaseClient {
         }
     }
 
+    /// Update group info (name, icon, description)
+    pub async fn update_group_info(
+        &self,
+        group_id: &str,
+        name: &str,
+        icon_media_id: Option<&str>,
+        description: Option<&str>,
+    ) -> Result<()> {
+        let key = format!("/groups/{}", group_id);
+        let value = self.tikv.get(key.clone().into_bytes()).await?;
+
+        match value {
+            Some(bytes) => {
+                let mut group: GroupMetadata = serde_json::from_slice(&bytes)?;
+                group.group_name = name.to_string();
+                group.icon_media_id = icon_media_id.map(String::from);
+                group.description = description.map(String::from);
+                
+                let updated_value = serde_json::to_vec(&group)?;
+                self.tikv.put(key.into_bytes(), updated_value).await?;
+                tracing::info!("Updated group {} info", group_id);
+                Ok(())
+            }
+            None => {
+                anyhow::bail!("Group not found: {}", group_id);
+            }
+        }
+    }
+
     /// Add group member
     pub async fn add_group_member(&self, member: &GroupMember) -> Result<()> {
         let key = format!("/groups/{}/members/{}", member.group_id, member.user_id);
@@ -1176,6 +1306,34 @@ impl DatabaseClient {
         self.tikv.delete(key.into_bytes()).await?;
         tracing::info!("Removed member {} from group {}", user_id, group_id);
         Ok(())
+    }
+
+    /// Change member role (admin or member)
+    pub async fn change_member_role(
+        &self,
+        group_id: &str,
+        user_id: &str,
+        new_role: &GroupRole,
+    ) -> Result<()> {
+        let key = format!("/groups/{}/members/{}", group_id, user_id);
+
+        // Get existing member
+        let existing = self.tikv.get(key.clone().into_bytes()).await?;
+        if let Some(value) = existing {
+            let mut member: GroupMember = serde_json::from_slice(&value)?;
+            member.role = new_role.clone();
+            let new_value = serde_json::to_vec(&member)?;
+            self.tikv.put(key.into_bytes(), new_value).await?;
+            tracing::info!(
+                "Changed member {} role to {:?} in group {}",
+                user_id,
+                new_role,
+                group_id
+            );
+            Ok(())
+        } else {
+            anyhow::bail!("Member {} not found in group {}", user_id, group_id);
+        }
     }
 
     /// Get group members
@@ -1392,6 +1550,17 @@ impl DatabaseClient {
         }
 
         Ok(messages)
+    }
+
+    /// Get the most recent message for a group
+    ///
+    /// Returns the last message sent in the group, if any
+    pub async fn get_last_group_message(
+        &self,
+        group_id: &str,
+    ) -> Result<Option<GroupMessage>> {
+        let messages = self.get_group_messages(group_id, 1).await?;
+        Ok(messages.into_iter().next())
     }
 
     /// Health check - verify TiKV connectivity
@@ -1716,7 +1885,7 @@ impl DatabaseClient {
         message_id: &str,
         _conversation_id: &str,
         _is_group: bool,
-    ) -> Result<Vec<proto::messaging::Reaction>> {
+    ) -> Result<Vec<crate::proto::messaging::Reaction>> {
         let message_uuid = uuid::Uuid::parse_str(message_id)
             .context("Invalid message_id UUID")?;
 
@@ -1744,12 +1913,12 @@ impl DatabaseClient {
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
-                reactions.push(proto::messaging::Reaction {
+                reactions.push(crate::proto::messaging::Reaction {
                     reaction_id: reaction_id.to_string(),
                     message_id: message_id.to_string(),
                     user_id,
                     emoji,
-                    created_at: Some(proto::common::Timestamp {
+                    created_at: Some(crate::proto::common::Timestamp {
                         seconds: created_at / 1000,
                         nanos: ((created_at % 1000) * 1_000_000) as i32,
                     }),
@@ -1800,7 +1969,7 @@ impl DatabaseClient {
         &self,
         conversation_id: &str,
         _is_group: bool,
-    ) -> Result<Vec<proto::messaging::ReadReceipt>> {
+    ) -> Result<Vec<crate::proto::messaging::ReadReceipt>> {
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
             .context("Invalid conversation_id UUID")?;
 
@@ -1824,11 +1993,11 @@ impl DatabaseClient {
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
-                receipts.push(proto::messaging::ReadReceipt {
+                receipts.push(crate::proto::messaging::ReadReceipt {
                     conversation_id: conversation_id.to_string(),
                     user_id,
                     last_read_message_id: last_read_message_id.to_string(),
-                    timestamp: Some(proto::common::Timestamp {
+                    timestamp: Some(crate::proto::common::Timestamp {
                         seconds: timestamp / 1000,
                         nanos: ((timestamp % 1000) * 1_000_000) as i32,
                     }),
@@ -1837,6 +2006,60 @@ impl DatabaseClient {
         }
 
         Ok(receipts)
+    }
+
+    /// RT-004: Get unread message count for a user in a conversation
+    /// Counts messages where server_timestamp > last_read_message_timestamp
+    pub async fn get_unread_count(
+        &self,
+        conversation_id: &str,
+        user_id: &str,
+    ) -> Result<i32> {
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+
+        // First, get the last read message timestamp for this user
+        let read_receipt_rows = self.scylla_query(
+            "SELECT last_read_message_id, timestamp 
+             FROM guardyn.read_receipts 
+             WHERE conversation_id = ? AND user_id = ?",
+            (conversation_uuid, user_id.to_string()),
+        ).await?;
+
+        let last_read_timestamp = if let Some(rows) = read_receipt_rows.rows {
+            rows.into_iter().next()
+                .and_then(|row| {
+                    row.columns[1].as_ref()
+                        .and_then(|v| v.as_bigint())
+                })
+                .unwrap_or(0)
+        } else {
+            0 // No read receipt means all messages are unread
+        };
+
+        // Count messages after the last read timestamp where user is recipient
+        let count_rows = self.scylla_query(
+            "SELECT COUNT(*) FROM guardyn.messages 
+             WHERE conversation_id = ? 
+             AND recipient_user_id = ?
+             AND server_timestamp > ?
+             AND is_deleted = false
+             ALLOW FILTERING",
+            (conversation_uuid, user_id.to_string(), last_read_timestamp),
+        ).await?;
+
+        let count = if let Some(rows) = count_rows.rows {
+            rows.into_iter().next()
+                .and_then(|row| {
+                    row.columns[0].as_ref()
+                        .and_then(|v| v.as_bigint())
+                })
+                .unwrap_or(0) as i32
+        } else {
+            0
+        };
+
+        Ok(count)
     }
 
     // ========================================================================
@@ -1903,11 +2126,19 @@ impl DatabaseClient {
         );
         let rows = self.scylla_query(&version_query, (conversation_uuid, message_uuid)).await?;
         
-        let current_version: i32 = rows.rows
-            .and_then(|r| r.into_iter().next())
-            .and_then(|row| row.columns[0].as_ref())
-            .and_then(|v| v.as_int())
-            .unwrap_or(0);
+        let current_version: i32 = if let Some(rows) = rows.rows {
+            if let Some(row) = rows.into_iter().next() {
+                if let Some(Some(cql_value)) = row.columns.into_iter().next() {
+                    cql_value.as_int().unwrap_or(0)
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        } else {
+            0
+        };
 
         let new_version = current_version + 1;
 
@@ -1970,7 +2201,7 @@ impl DatabaseClient {
                     sender_user_id,
                     sender_username: String::new(), // Would need additional lookup
                     message_type,
-                    server_timestamp: Some(proto::common::Timestamp {
+                    server_timestamp: Some(crate::proto::common::Timestamp {
                         seconds: server_timestamp / 1000,
                         nanos: ((server_timestamp % 1000) * 1_000_000) as i32,
                     }),
@@ -1993,7 +2224,7 @@ impl DatabaseClient {
         encrypted_content: &[u8],
         message_type: i32,
         client_message_id: &str,
-        forward_info: &proto::messaging::ForwardInfo,
+        forward_info: &crate::proto::messaging::ForwardInfo,
     ) -> Result<()> {
         let message_uuid = uuid::Uuid::parse_str(message_id)?;
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
@@ -2033,7 +2264,7 @@ impl DatabaseClient {
         encrypted_content: &[u8],
         message_type: i32,
         _client_message_id: &str,
-        forward_info: &proto::messaging::ForwardInfo,
+        forward_info: &crate::proto::messaging::ForwardInfo,
     ) -> Result<()> {
         let group_uuid = uuid::Uuid::parse_str(group_id)?;
         let now = chrono::Utc::now();
@@ -2072,7 +2303,7 @@ impl DatabaseClient {
     pub async fn fetch_messages_for_search(
         &self,
         params: &crate::handlers::SearchParams,
-    ) -> Result<(Vec<proto::messaging::SearchResult>, Option<String>, usize)> {
+    ) -> Result<(Vec<crate::proto::messaging::SearchResult>, Option<String>, usize)> {
         // Build query based on parameters
         let mut results = Vec::new();
         let mut total_count = 0usize;
@@ -2112,13 +2343,13 @@ impl DatabaseClient {
                         .and_then(|v| v.as_int())
                         .unwrap_or(0);
 
-                    results.push(proto::messaging::SearchResult {
+                    results.push(crate::proto::messaging::SearchResult {
                         message_id: message_id.to_string(),
                         conversation_id: conv_id.clone(),
                         is_group: params.is_group,
                         sender_user_id: sender,
                         encrypted_content: content,
-                        server_timestamp: Some(proto::common::Timestamp {
+                        server_timestamp: Some(crate::proto::common::Timestamp {
                             seconds: timestamp / 1000,
                             nanos: ((timestamp % 1000) * 1_000_000) as i32,
                         }),
@@ -2165,13 +2396,13 @@ impl DatabaseClient {
                                         .and_then(|v| v.as_int())
                                         .unwrap_or(0);
 
-                                    results.push(proto::messaging::SearchResult {
+                                    results.push(crate::proto::messaging::SearchResult {
                                         message_id: message_id.to_string(),
                                         conversation_id: conv_uuid.to_string(),
                                         is_group: false,
                                         sender_user_id: sender,
                                         encrypted_content: content,
-                                        server_timestamp: Some(proto::common::Timestamp {
+                                        server_timestamp: Some(crate::proto::common::Timestamp {
                                             seconds: timestamp / 1000,
                                             nanos: ((timestamp % 1000) * 1_000_000) as i32,
                                         }),
@@ -2254,7 +2485,7 @@ impl DatabaseClient {
         &self,
         conversation_id: &str,
         _is_group: bool,
-    ) -> Result<proto::messaging::DisappearingConfig> {
+    ) -> Result<crate::proto::messaging::DisappearingConfig> {
         let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
 
         let rows = self.scylla_query(
@@ -2276,11 +2507,11 @@ impl DatabaseClient {
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
-                return Ok(proto::messaging::DisappearingConfig {
+                return Ok(crate::proto::messaging::DisappearingConfig {
                     conversation_id: conversation_id.to_string(),
                     ttl_seconds: ttl,
                     set_by_user_id: set_by,
-                    updated_at: Some(proto::common::Timestamp {
+                    updated_at: Some(crate::proto::common::Timestamp {
                         seconds: updated_at / 1000,
                         nanos: ((updated_at % 1000) * 1_000_000) as i32,
                     }),
@@ -2289,7 +2520,7 @@ impl DatabaseClient {
         }
 
         // Return default config (disabled)
-        Ok(proto::messaging::DisappearingConfig {
+        Ok(crate::proto::messaging::DisappearingConfig {
             conversation_id: conversation_id.to_string(),
             ttl_seconds: 0,
             set_by_user_id: String::new(),
@@ -2303,6 +2534,176 @@ pub struct MessageMetadata {
     pub sender_user_id: String,
     pub sender_username: String,
     pub message_type: i32,
-    pub server_timestamp: Option<proto::common::Timestamp>,
+    pub server_timestamp: Option<crate::proto::common::Timestamp>,
     pub forward_count: i32,
+}
+
+// ============================================================================
+// Phase 3: Blocked Users Methods
+// ============================================================================
+
+impl DatabaseClient {
+    /// Block a user
+    pub async fn block_user(
+        &self,
+        user_id: &str,
+        blocked_user_id: &str,
+        blocked_username: &str,
+    ) -> Result<i64> {
+        let blocked_at = chrono::Utc::now().timestamp_millis();
+
+        self.scylla_query(
+            "INSERT INTO guardyn.blocked_users (user_id, blocked_user_id, blocked_username, blocked_at) 
+             VALUES (?, ?, ?, ?)",
+            (user_id, blocked_user_id, blocked_username, blocked_at),
+        ).await?;
+
+        tracing::info!(
+            user_id = %user_id,
+            blocked_user_id = %blocked_user_id,
+            "User blocked successfully"
+        );
+
+        Ok(blocked_at)
+    }
+
+    /// Unblock a user
+    pub async fn unblock_user(&self, user_id: &str, blocked_user_id: &str) -> Result<()> {
+        self.scylla_query(
+            "DELETE FROM guardyn.blocked_users WHERE user_id = ? AND blocked_user_id = ?",
+            (user_id, blocked_user_id),
+        ).await?;
+
+        tracing::info!(
+            user_id = %user_id,
+            unblocked_user_id = %blocked_user_id,
+            "User unblocked successfully"
+        );
+
+        Ok(())
+    }
+
+    /// Check if a user is blocked
+    pub async fn is_user_blocked(&self, user_id: &str, potential_blocked_id: &str) -> Result<bool> {
+        let rows = self.scylla_query(
+            "SELECT blocked_user_id FROM guardyn.blocked_users 
+             WHERE user_id = ? AND blocked_user_id = ?",
+            (user_id, potential_blocked_id),
+        ).await?;
+
+        Ok(rows.rows.map_or(false, |r| !r.is_empty()))
+    }
+
+    /// Get all blocked users for a user
+    pub async fn get_blocked_users(&self, user_id: &str) -> Result<Vec<crate::proto::messaging::BlockedUser>> {
+        let rows = self.scylla_query(
+            "SELECT blocked_user_id, blocked_username, blocked_at 
+             FROM guardyn.blocked_users WHERE user_id = ?",
+            (user_id,),
+        ).await?;
+
+        let mut blocked_users = Vec::new();
+
+        if let Some(rows) = rows.rows {
+            for row in rows {
+                let blocked_user_id: String = row.columns[0].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let blocked_username: String = row.columns[1].as_ref()
+                    .and_then(|v| v.as_text())
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let blocked_at: i64 = row.columns[2].as_ref()
+                    .and_then(|v| v.as_bigint())
+                    .unwrap_or(0);
+
+                blocked_users.push(crate::proto::messaging::BlockedUser {
+                    user_id: blocked_user_id,
+                    username: blocked_username,
+                    blocked_at: Some(crate::proto::common::Timestamp {
+                        seconds: blocked_at / 1000,
+                        nanos: ((blocked_at % 1000) * 1_000_000) as i32,
+                    }),
+                });
+            }
+        }
+
+        Ok(blocked_users)
+    }
+
+    /// Delete a conversation for a user (soft delete - only removes from user's view)
+    pub async fn delete_conversation(&self, user_id: &str, conversation_id: &str) -> Result<()> {
+        let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
+
+        // Delete the conversation from user's conversation list
+        // We use ALLOW FILTERING since we need to delete by user_id and conversation_id
+        // but conversation_id is not part of the clustering key
+        self.scylla_query(
+            "DELETE FROM guardyn.conversations 
+             WHERE user_id = ? AND conversation_id = ?
+             ALLOW FILTERING",
+            (user_id, conv_uuid),
+        ).await?;
+
+        tracing::info!(
+            user_id = %user_id,
+            conversation_id = %conversation_id,
+            "Conversation deleted for user"
+        );
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Group Deletion Methods
+    // =========================================================================
+
+    /// Delete a group (metadata only)
+    pub async fn delete_group(&self, group_id: &str) -> Result<()> {
+        let key = format!("/groups/{}", group_id);
+        self.tikv.delete(key.into_bytes()).await?;
+        tracing::info!("Deleted group metadata: {}", group_id);
+        Ok(())
+    }
+
+    /// Delete all members from a group
+    pub async fn delete_all_group_members(&self, group_id: &str) -> Result<()> {
+        let prefix = format!("/groups/{}/members/", group_id);
+        let keys = self.tikv.scan(prefix.clone().into_bytes().., 1000).await?;
+
+        let mut deleted_count = 0;
+        for kv_pair in keys {
+            let key_bytes: Vec<u8> = kv_pair.0.into();
+            self.tikv.delete(key_bytes).await?;
+            deleted_count += 1;
+        }
+
+        tracing::info!(
+            "Deleted {} members from group {}",
+            deleted_count,
+            group_id
+        );
+        Ok(())
+    }
+
+    /// Delete all messages from a group
+    pub async fn delete_all_group_messages(&self, group_id: &str) -> Result<()> {
+        let prefix = format!("/group_messages/{}/", group_id);
+        let keys = self.tikv.scan(prefix.clone().into_bytes().., 10000).await?;
+
+        let mut deleted_count = 0;
+        for kv_pair in keys {
+            let key_bytes: Vec<u8> = kv_pair.0.into();
+            self.tikv.delete(key_bytes).await?;
+            deleted_count += 1;
+        }
+
+        tracing::info!(
+            "Deleted {} messages from group {}",
+            deleted_count,
+            group_id
+        );
+        Ok(())
+    }
 }

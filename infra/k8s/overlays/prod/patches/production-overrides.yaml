@@ -114,6 +114,16 @@ spec:
             limits:
               cpu: 2000m
               memory: 2Gi
+          env:
+            # Production: Enable E2EE and MLS encryption
+            - name: GUARDYN_E2EE_ENABLED
+              value: "true"
+            - name: GUARDYN_MLS_ENABLED
+              value: "true"
+            - name: GUARDYN_OBSERVABILITY__LOG_LEVEL
+              value: "info"
+            - name: RUST_LOG
+              value: "info,guardyn=info"
 ---
 # Presence Service - Production Configuration
 apiVersion: apps/v1

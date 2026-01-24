@@ -86,23 +86,17 @@ class PresenceRepositoryImpl implements PresenceRepository {
         return const Left(AuthFailure('No access token found'));
       }
 
-      // For now, fetch each user individually
-      // TODO: Implement bulk presence RPC when backend supports it
+      // Use bulk presence RPC for efficient batch retrieval
+      final presenceModels = await remoteDatasource.getBulkStatus(
+        accessToken: accessToken,
+        userIds: userIds,
+      );
+
       final result = <String, PresenceInfo>{};
-      for (final userId in userIds) {
-        try {
-          final presenceModel = await remoteDatasource.getUserPresence(
-            accessToken: accessToken,
-            userId: userId,
-          );
-          final presenceInfo = presenceModel.toEntity();
-          result[userId] = presenceInfo;
-          _presenceCache[userId] = presenceInfo;
-        } catch (e) {
-          // If we fail to get one user's presence, continue with others
-          _logger.w('Failed to get presence for $userId: $e');
-          result[userId] = PresenceInfo.offline(userId);
-        }
+      for (final model in presenceModels) {
+        final presenceInfo = model.toEntity();
+        result[model.userId] = presenceInfo;
+        _presenceCache[model.userId] = presenceInfo;
       }
 
       return Right(result);
@@ -200,25 +194,54 @@ class PresenceRepositoryImpl implements PresenceRepository {
 
   @override
   Stream<PresenceInfo> subscribeToPresence(List<String> userIds) async* {
-    try {
-      // Get access token
-      final accessToken = await secureStorage.getAccessToken();
-      if (accessToken == null) {
-        return;
-      }
+    int retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = Duration(seconds: 2);
 
-      final stream = remoteDatasource.subscribe(
-        accessToken: accessToken,
-        userIds: userIds,
-      );
+    while (retryCount <= maxRetries) {
+      try {
+        // Get access token
+        final accessToken = await secureStorage.getAccessToken();
+        if (accessToken == null) {
+          _logger.w('No access token for presence subscription');
+          return;
+        }
 
-      await for (final update in stream) {
-        final presenceInfo = update.toEntity();
-        _presenceCache[presenceInfo.userId] = presenceInfo;
-        yield presenceInfo;
+        final stream = remoteDatasource.subscribe(
+          accessToken: accessToken,
+          userIds: userIds,
+        );
+
+        await for (final update in stream) {
+          final presenceInfo = update.toEntity();
+          _presenceCache[presenceInfo.userId] = presenceInfo;
+          yield presenceInfo;
+          // Reset retry count on successful data
+          retryCount = 0;
+        }
+        // Stream ended normally
+        break;
+      } on GrpcError catch (e) {
+        _logger.w('gRPC error subscribing to presence (attempt ${retryCount + 1}): ${e.message}');
+        // Don't retry on auth errors
+        if (e.code == StatusCode.unauthenticated || e.code == StatusCode.permissionDenied) {
+          break;
+        }
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          await Future<void>.delayed(retryDelay * retryCount);
+        }
+      } catch (e) {
+        _logger.e('Error subscribing to presence (attempt ${retryCount + 1}): $e');
+        retryCount++;
+        if (retryCount <= maxRetries) {
+          await Future<void>.delayed(retryDelay * retryCount);
+        }
       }
-    } catch (e) {
-      _logger.e('Error subscribing to presence: $e');
+    }
+
+    if (retryCount > maxRetries) {
+      _logger.w('Presence subscription failed after $maxRetries retries');
     }
   }
 

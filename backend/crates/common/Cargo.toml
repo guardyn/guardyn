@@ -40,3 +40,5 @@ http = "1.0"
 tonic = "0.12"
 tower = "0.4"
 pin-project = "1.0"
+# Events
+uuid = { version = "1.0", features = ["v4"] }

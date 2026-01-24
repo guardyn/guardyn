@@ -1,5 +1,6 @@
 /// Handler for sending group messages
 use crate::db::DatabaseClient;
+use crate::mls_manager::MlsManager;
 use crate::nats::NatsClient;
 use crate::proto::messaging::{
     send_group_message_response, SendGroupMessageRequest, SendGroupMessageResponse,
@@ -79,8 +80,36 @@ pub async fn send_group_message(
         }
     }
 
-    // TODO: Verify sender is a member of the group
-    // For MVP, we skip this check
+    // Verify sender is a member of the group
+    let members = match db.get_group_members(&request.group_id).await {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::error!("Failed to fetch group members: {}", e);
+            return Ok(Response::new(SendGroupMessageResponse {
+                result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                    code: 13, // INTERNAL
+                    message: "Failed to verify membership".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
+
+    let is_member = members.iter().any(|m| m.user_id == sender_user_id);
+    if !is_member {
+        tracing::warn!(
+            "User {} attempted to send message to group {} without membership",
+            sender_user_id,
+            request.group_id
+        );
+        return Ok(Response::new(SendGroupMessageResponse {
+            result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                code: 7, // PERMISSION_DENIED
+                message: "Not a member of this group".to_string(),
+                details: Default::default(),
+            })),
+        }));
+    }
 
     tracing::info!("Generating message_id for group message");
 
@@ -100,6 +129,16 @@ pub async fn send_group_message(
     let mut metadata = std::collections::HashMap::new();
     metadata.insert("message_type".to_string(), request.message_type.to_string());
 
+    // MLS-005: Get current MLS epoch for this group
+    let mls_manager = MlsManager::new(db.clone());
+    let mls_epoch = match mls_manager.get_current_epoch(&request.group_id).await {
+        Ok(epoch) => epoch as i64,
+        Err(e) => {
+            tracing::debug!("MLS epoch not available for group {}: {}", request.group_id, e);
+            0 // Default to epoch 0 if MLS state not initialized
+        }
+    };
+
     // Store group message in ScyllaDB
     let group_message = crate::models::GroupMessage {
         message_id: message_id.clone(),
@@ -107,7 +146,7 @@ pub async fn send_group_message(
         sender_user_id: sender_user_id.clone(),
         sender_device_id: sender_device_id.clone(),
         encrypted_content: request.encrypted_content.clone(),
-        mls_epoch: 0, // TODO: Implement MLS epoch tracking
+        mls_epoch,
         sent_at: server_timestamp_millis,
         metadata,
     };

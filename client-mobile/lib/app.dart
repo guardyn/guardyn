@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/di/injection.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
@@ -10,6 +11,7 @@ import 'package:guardyn_client/features/auth/data/repositories/auth_repository_i
 import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart';
+import 'package:guardyn_client/features/auth/domain/usecases/update_profile.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/login_page.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/registration_page.dart';
@@ -20,6 +22,7 @@ import 'package:guardyn_client/features/groups/data/datasources/group_remote_dat
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
@@ -30,6 +33,7 @@ import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart
 import 'package:guardyn_client/features/groups/presentation/pages/group_chat_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_create_page.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_list_page.dart';
+import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/message_remote_datasource.dart';
 import 'package:guardyn_client/features/messaging/data/repositories/message_repository_impl.dart';
@@ -44,8 +48,32 @@ import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc
 import 'package:guardyn_client/shared/theme/app_theme.dart';
 import 'package:guardyn_client/shared/theme/theme_bloc.dart';
 
-class GuardynApp extends StatelessWidget {
+/// Main application widget with system theme observer
+class GuardynApp extends StatefulWidget {
   const GuardynApp({super.key});
+
+  @override
+  State<GuardynApp> createState() => _GuardynAppState();
+}
+
+class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    // Force rebuild when system brightness changes
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +81,7 @@ class GuardynApp extends StatelessWidget {
     final grpcClients = getIt<GrpcClients>();
     final secureStorage = getIt<SecureStorage>();
     final cryptoService = getIt<CryptoService>();
+    final tokenManager = getIt<TokenManager>();
 
     // Auth dependencies
     final remoteDatasource = AuthRemoteDatasource(grpcClients, cryptoService);
@@ -60,11 +89,16 @@ class GuardynApp extends StatelessWidget {
       remoteDatasource: remoteDatasource,
       secureStorage: secureStorage,
       cryptoService: cryptoService,
+      tokenManager: tokenManager,
     );
 
     final registerUser = RegisterUser(authRepository);
     final loginUser = LoginUser(authRepository);
     final logoutUser = LogoutUser(authRepository);
+    final updateProfile = UpdateProfile(authRepository);
+
+    // Get UploadMedia from DI (already registered in injection.dart)
+    final uploadMedia = getIt<UploadMedia>();
 
     // Messaging dependencies
     final messageRemoteDatasource = MessageRemoteDatasource(grpcClients);
@@ -99,6 +133,7 @@ class GuardynApp extends StatelessWidget {
     final addGroupMember = AddGroupMember(groupRepository);
     final removeGroupMember = RemoveGroupMember(groupRepository);
     final leaveGroup = LeaveGroup(groupRepository);
+    final deleteGroup = DeleteGroup(groupRepository);
 
     return MultiBlocProvider(
       providers: [
@@ -112,6 +147,8 @@ class GuardynApp extends StatelessWidget {
             logoutUser: logoutUser,
             authRepository: authRepository,
             cryptoService: cryptoService,
+            updateProfile: updateProfile,
+            uploadMedia: uploadMedia,
           ),
         ),
         BlocProvider(
@@ -135,6 +172,7 @@ class GuardynApp extends StatelessWidget {
             addGroupMember: addGroupMember,
             removeGroupMember: removeGroupMember,
             leaveGroup: leaveGroup,
+            deleteGroup: deleteGroup,
           ),
         ),
       ],

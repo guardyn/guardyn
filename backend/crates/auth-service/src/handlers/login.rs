@@ -181,6 +181,9 @@ pub async fn handle(
             seconds: now,
             nanos: 0,
         }),
+        avatar_media_id: user.avatar_media_id.clone().unwrap_or_default(),
+        display_name: user.display_name.clone().unwrap_or_default(),
+        bio: user.bio.clone().unwrap_or_default(),
     });
     
     // Return success response

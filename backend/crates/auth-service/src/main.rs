@@ -12,11 +12,12 @@ mod models;
 mod jwt;
 mod db;
 
-use guardyn_common::{config::ServiceConfig, observability};
+use guardyn_common::{config::ServiceConfig, observability, kafka::{KafkaProducer, KafkaConfig}};
 use tonic::{transport::Server, Request, Response, Status};
 use anyhow::Result;
+use std::sync::Arc;
 
-// Import generated protobuf code
+// Import generated protobuf code - pub to make available to handlers
 pub mod proto {
     pub mod common {
         include!("generated/guardyn.common.rs");
@@ -39,7 +40,13 @@ use proto::auth::{
     GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
     SearchUsersRequest, SearchUsersResponse,
     GetUserProfileRequest, GetUserProfileResponse,
+    UpdateProfileRequest, UpdateProfileResponse,
     DeleteAccountRequest, DeleteAccountResponse,
+    AddContactRequest, AddContactResponse,
+    RemoveContactRequest, RemoveContactResponse,
+    ListContactsRequest, ListContactsResponse,
+    GetContactRequest, GetContactResponse,
+    UpdateContactRequest, UpdateContactResponse,
     HealthRequest,
 };
 use proto::common::HealthStatus;
@@ -48,11 +55,20 @@ use proto::common::HealthStatus;
 pub struct AuthServiceImpl {
     db: db::DatabaseClient,
     jwt_secret: String,
+    event_producer: Option<Arc<KafkaProducer>>,
 }
 
 impl AuthServiceImpl {
     pub fn new(db: db::DatabaseClient, jwt_secret: String) -> Self {
-        Self { db, jwt_secret }
+        Self { db, jwt_secret, event_producer: None }
+    }
+
+    pub fn with_events(db: db::DatabaseClient, jwt_secret: String, producer: KafkaProducer) -> Self {
+        Self {
+            db,
+            jwt_secret,
+            event_producer: Some(Arc::new(producer)),
+        }
     }
 }
 
@@ -112,7 +128,7 @@ impl AuthService for AuthServiceImpl {
         request: Request<UploadMlsKeyPackageRequest>,
     ) -> Result<Response<UploadMlsKeyPackageResponse>, Status> {
         let db = std::sync::Arc::new(self.db.clone());
-        handlers::mls_key_package::upload_mls_key_package(request, db).await
+        handlers::mls_key_package::upload_mls_key_package(request, db, &self.jwt_secret).await
     }
 
     async fn get_mls_key_package(
@@ -148,11 +164,94 @@ impl AuthService for AuthServiceImpl {
         Ok(Response::new(response))
     }
 
+    async fn update_profile(
+        &self,
+        request: Request<UpdateProfileRequest>,
+    ) -> Result<Response<UpdateProfileResponse>, Status> {
+        let db = std::sync::Arc::new(self.db.clone());
+        let response = handlers::update_profile::update_profile(
+            request.into_inner(),
+            db,
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
     async fn delete_account(
         &self,
         request: Request<DeleteAccountRequest>,
     ) -> Result<Response<DeleteAccountResponse>, Status> {
         handlers::delete_account::handle(self, request).await
+    }
+
+    // ============================
+    // Contacts Management
+    // ============================
+
+    async fn add_contact(
+        &self,
+        request: Request<AddContactRequest>,
+    ) -> Result<Response<AddContactResponse>, Status> {
+        let response = handlers::contacts::handle_add_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn remove_contact(
+        &self,
+        request: Request<RemoveContactRequest>,
+    ) -> Result<Response<RemoveContactResponse>, Status> {
+        let response = handlers::contacts::handle_remove_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn list_contacts(
+        &self,
+        request: Request<ListContactsRequest>,
+    ) -> Result<Response<ListContactsResponse>, Status> {
+        let response = handlers::contacts::handle_list_contacts(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn get_contact(
+        &self,
+        request: Request<GetContactRequest>,
+    ) -> Result<Response<GetContactResponse>, Status> {
+        let response = handlers::contacts::handle_get_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
+    }
+
+    async fn update_contact(
+        &self,
+        request: Request<UpdateContactRequest>,
+    ) -> Result<Response<UpdateContactResponse>, Status> {
+        let response = handlers::contacts::handle_update_contact(
+            request.into_inner(),
+            self.db.clone(),
+            &self.jwt_secret,
+        )
+        .await;
+        Ok(Response::new(response))
     }
 
     async fn health(
@@ -221,16 +320,35 @@ async fn main() -> Result<()> {
     // Initialize database connection
     let db = db::DatabaseClient::new(config.database.tikv_pd_endpoints.clone()).await?;
 
-    // Load JWT secret from environment or config
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
+    // Load JWT secret from environment (GUARDYN_AUTH__JWT_SECRET)
+    // Falls back to legacy JWT_SECRET, then to dev default
+    let jwt_secret = std::env::var("GUARDYN_AUTH__JWT_SECRET")
+        .or_else(|_| std::env::var("JWT_SECRET"))
+        .unwrap_or_else(|_| config.auth.jwt_secret.clone());
 
-    if jwt_secret == "development-secret-change-in-production" {
-        tracing::warn!("Using default JWT secret - DO NOT USE IN PRODUCTION");
+    if jwt_secret.len() < 32 {
+        tracing::error!("JWT secret is too short (< 32 bytes) - this is insecure!");
     }
 
-    // Create service instance
-    let auth_service = AuthServiceImpl::new(db, jwt_secret);
+    if jwt_secret.contains("DEV") || jwt_secret.contains("development") || jwt_secret.contains("UNSAFE") {
+        tracing::warn!("Using development JWT secret - DO NOT USE IN PRODUCTION");
+    }
+
+    // Initialize Kafka producer for cross-service events
+    let kafka_config = KafkaConfig::from_env();
+    let auth_service = match KafkaProducer::new(&kafka_config) {
+        Ok(producer) => {
+            tracing::info!("Kafka producer initialized for cross-service events");
+            AuthServiceImpl::with_events(db, jwt_secret, producer)
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to create Kafka producer - cross-service events disabled"
+            );
+            AuthServiceImpl::new(db, jwt_secret)
+        }
+    };
 
     // Build gRPC server
     let addr = format!("{}:{}", config.host, config.port).parse()?;

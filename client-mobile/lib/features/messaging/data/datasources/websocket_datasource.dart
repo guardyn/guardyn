@@ -47,9 +47,13 @@ class WebSocketDatasource {
 
   WebSocketState _state = WebSocketState.disconnected;
   int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 5;
-  static const Duration _heartbeatInterval = Duration(seconds: 30);
+  // Increased max reconnect attempts for better resilience
+  static const int _maxReconnectAttempts = 10;
+  // Reduced heartbeat interval to match server expectations and prevent timeouts
+  static const Duration _heartbeatInterval = Duration(seconds: 20);
   static const Duration _reconnectDelay = Duration(seconds: 2);
+  // Track last pong time for connection health monitoring
+  DateTime? _lastPongTime;
 
   WebSocketDatasource();
 
@@ -282,6 +286,7 @@ class WebSocketDatasource {
           _logger.d('Subscription confirmed: ${json['subscription_type']}');
           break;
         case 'pong':
+          _lastPongTime = DateTime.now();
           _logger.d('Heartbeat pong received');
           break;
         case 'error':
@@ -450,8 +455,18 @@ class WebSocketDatasource {
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
+    _lastPongTime = DateTime.now();
     _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
       if (isConnected) {
+        // Check if we haven't received a pong in too long (connection stale)
+        if (_lastPongTime != null) {
+          final timeSinceLastPong = DateTime.now().difference(_lastPongTime!);
+          if (timeSinceLastPong > const Duration(seconds: 60)) {
+            _logger.w('No pong received for ${timeSinceLastPong.inSeconds}s, reconnecting...');
+            _handleDone();
+            return;
+          }
+        }
         _send({
           'type': 'ping',
           'payload': {

@@ -118,14 +118,13 @@ class SdpMessage extends SignalingMessage {
   final SessionDescription sdp;
 
   SdpMessage({
-    required SignalType type,
+    required super.type,
     required super.callId,
     required super.fromUserId,
     required super.toUserId,
     required this.sdp,
     super.timestamp,
-  })  : assert(type == SignalType.offer || type == SignalType.answer),
-        super(type: type);
+  })  : assert(type == SignalType.offer || type == SignalType.answer);
 
   @override
   Map<String, dynamic> toMap() => {
@@ -190,7 +189,7 @@ class CallControlMessage extends SignalingMessage {
   final String? reason;
 
   CallControlMessage({
-    required SignalType type,
+    required super.type,
     required super.callId,
     required super.fromUserId,
     required super.toUserId,
@@ -199,8 +198,7 @@ class CallControlMessage extends SignalingMessage {
   })  : assert(type == SignalType.accept ||
             type == SignalType.reject ||
             type == SignalType.hangup ||
-            type == SignalType.ringing),
-        super(type: type);
+            type == SignalType.ringing);
 
   @override
   Map<String, dynamic> toMap() => {

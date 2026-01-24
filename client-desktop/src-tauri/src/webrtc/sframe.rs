@@ -50,8 +50,8 @@ impl SFrameEncryptor {
             .as_nanos();
 
         let mut key = Vec::with_capacity(32);
-        for i in 0..32 {
-            key.push(((seed >> (i % 16)) & 0xFF) as u8 ^ (i as u8 * 17));
+        for i in 0u32..32 {
+            key.push(((seed >> (i % 16)) & 0xFF) as u8 ^ (i.wrapping_mul(17)) as u8);
         }
         key
     }

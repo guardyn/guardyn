@@ -37,10 +37,12 @@ async fn main() -> Result<()> {
     let db = NotificationDb::new(&config.scylla_hosts).await?;
 
     // Initialize push providers
-    let push_service = push::PushService::new(
-        config.fcm_server_key.clone(),
-        config.apns_config.clone(),
-    );
+    let push_service =
+        push::PushService::new(
+            config.fcm_server_key.clone(), 
+            config.apns_config.clone(),
+            config.webpush_config.clone(),
+        );
 
     // Create service implementation
     let notification_service = NotificationServiceImpl::new(
@@ -68,6 +70,7 @@ pub struct Config {
     pub jwt_secret: String,
     pub fcm_server_key: Option<String>,
     pub apns_config: Option<ApnsConfig>,
+    pub webpush_config: Option<push::WebPushConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +90,8 @@ fn load_config() -> Result<Config> {
             .split(',')
             .map(|s| s.to_string())
             .collect(),
-        jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret".to_string()),
+        jwt_secret: std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "development-secret-change-in-production".to_string()),
         fcm_server_key: std::env::var("FCM_SERVER_KEY").ok(),
         apns_config: std::env::var("APNS_KEY_ID").ok().map(|key_id| ApnsConfig {
             key_id,
@@ -97,6 +101,12 @@ fn load_config() -> Result<Config> {
             production: std::env::var("APNS_PRODUCTION")
                 .map(|v| v == "true")
                 .unwrap_or(false),
+        }),
+        webpush_config: std::env::var("VAPID_PRIVATE_KEY").ok().map(|private_key| push::WebPushConfig {
+            vapid_private_key: private_key,
+            vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").unwrap_or_default(),
+            contact_email: std::env::var("VAPID_CONTACT_EMAIL")
+                .unwrap_or_else(|_| "admin@example.com".to_string()),
         }),
     })
 }

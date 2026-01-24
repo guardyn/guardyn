@@ -5,12 +5,12 @@
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
-use proto::messaging::{
+use crate::proto::messaging::{
     ForwardMessageRequest, ForwardMessageResponse, ForwardMessageSuccess,
     ForwardInfo, MessageType,
     forward_message_response,
 };
-use proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
+use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};
@@ -40,7 +40,7 @@ pub async fn forward_message(
     };
     
     let user_id = claims.sub.clone();
-    let device_id = claims.device_id.clone().unwrap_or_default();
+    let device_id = claims.device_id.clone();
     
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("source_message_id", &req.source_message_id);

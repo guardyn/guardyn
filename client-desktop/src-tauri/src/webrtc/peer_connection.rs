@@ -105,11 +105,11 @@ struct MediaState {
     audio_muted: bool,
 }
 
-/// WebRTC Manager for handling peer connections
-pub struct WebRtcManager {
+/// Internal state for WebRtcManager
+struct WebRtcManagerInner {
     config: WebRtcConfig,
     media_state: RwLock<MediaState>,
-    event_sender: Option<mpsc::UnboundedSender<WebRtcEvent>>,
+    event_sender: RwLock<Option<mpsc::UnboundedSender<WebRtcEvent>>>,
     // Note: Actual WebRTC implementation would use webrtc-rs here
     // For now, this is a placeholder structure that would be
     // completed when integrating with webrtc-rs crate
@@ -118,23 +118,31 @@ pub struct WebRtcManager {
     remote_description: RwLock<Option<String>>,
 }
 
+/// WebRTC Manager for handling peer connections
+#[derive(Clone)]
+pub struct WebRtcManager {
+    inner: Arc<WebRtcManagerInner>,
+}
+
 impl WebRtcManager {
     /// Create a new WebRTC manager with the given configuration
     pub fn new(config: WebRtcConfig) -> Self {
         Self {
-            config,
-            media_state: RwLock::new(MediaState::default()),
-            event_sender: None,
-            is_connected: RwLock::new(false),
-            local_description: RwLock::new(None),
-            remote_description: RwLock::new(None),
+            inner: Arc::new(WebRtcManagerInner {
+                config,
+                media_state: RwLock::new(MediaState::default()),
+                event_sender: RwLock::new(None),
+                is_connected: RwLock::new(false),
+                local_description: RwLock::new(None),
+                remote_description: RwLock::new(None),
+            }),
         }
     }
 
     /// Subscribe to WebRTC events
-    pub fn subscribe(&mut self) -> mpsc::UnboundedReceiver<WebRtcEvent> {
+    pub fn subscribe(&self) -> mpsc::UnboundedReceiver<WebRtcEvent> {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.event_sender = Some(tx);
+        *self.inner.event_sender.write() = Some(tx);
         rx
     }
 
@@ -176,7 +184,7 @@ a=sendrecv
 a=rtcp-mux
 a=rtpmap:96 VP8/90000"#;
 
-        *self.local_description.write() = Some(offer.to_string());
+        *self.inner.local_description.write() = Some(offer.to_string());
 
         Ok(offer.to_string())
     }
@@ -186,7 +194,7 @@ a=rtpmap:96 VP8/90000"#;
         info!("Creating SDP answer for remote offer");
 
         // Store remote description
-        *self.remote_description.write() = Some(remote_offer.to_string());
+        *self.inner.remote_description.write() = Some(remote_offer.to_string());
 
         // In a real implementation, this would:
         // 1. Set the remote description from the offer
@@ -221,7 +229,7 @@ a=sendrecv
 a=rtcp-mux
 a=rtpmap:96 VP8/90000"#;
 
-        *self.local_description.write() = Some(answer.to_string());
+        *self.inner.local_description.write() = Some(answer.to_string());
 
         Ok(answer.to_string())
     }
@@ -229,7 +237,7 @@ a=rtpmap:96 VP8/90000"#;
     /// Set remote SDP description (answer)
     pub async fn set_remote_description(&self, sdp: &str) -> Result<(), WebRtcError> {
         info!("Setting remote description");
-        *self.remote_description.write() = Some(sdp.to_string());
+        *self.inner.remote_description.write() = Some(sdp.to_string());
         Ok(())
     }
 
@@ -254,19 +262,19 @@ a=rtpmap:96 VP8/90000"#;
     /// Enable/disable local audio
     pub fn set_audio_enabled(&self, enabled: bool) {
         info!("Setting audio enabled: {}", enabled);
-        self.media_state.write().audio_enabled = enabled;
+        self.inner.media_state.write().audio_enabled = enabled;
     }
 
     /// Enable/disable local video
     pub fn set_video_enabled(&self, enabled: bool) {
         info!("Setting video enabled: {}", enabled);
-        self.media_state.write().video_enabled = enabled;
+        self.inner.media_state.write().video_enabled = enabled;
     }
 
     /// Mute/unmute local audio
     pub fn set_audio_muted(&self, muted: bool) {
         info!("Setting audio muted: {}", muted);
-        self.media_state.write().audio_muted = muted;
+        self.inner.media_state.write().audio_muted = muted;
     }
 
     /// Enable/disable screen sharing
@@ -277,38 +285,38 @@ a=rtpmap:96 VP8/90000"#;
         // 1. Start/stop screen capture
         // 2. Replace video track with screen share track
 
-        self.media_state.write().screen_sharing = enabled;
+        self.inner.media_state.write().screen_sharing = enabled;
         Ok(())
     }
 
     /// Get current connection state
     pub fn is_connected(&self) -> bool {
-        *self.is_connected.read()
+        *self.inner.is_connected.read()
     }
 
     /// Get local SDP description
     pub fn get_local_description(&self) -> Option<String> {
-        self.local_description.read().clone()
+        self.inner.local_description.read().clone()
     }
 
     /// Get remote SDP description
     pub fn get_remote_description(&self) -> Option<String> {
-        self.remote_description.read().clone()
+        self.inner.remote_description.read().clone()
     }
 
     /// Close the peer connection
     pub async fn close(&self) {
         info!("Closing WebRTC connection");
-        *self.is_connected.write() = false;
-        *self.local_description.write() = None;
-        *self.remote_description.write() = None;
+        *self.inner.is_connected.write() = false;
+        *self.inner.local_description.write() = None;
+        *self.inner.remote_description.write() = None;
     }
 
     /// Emit an event to subscribers
     fn emit_event(&self, event: WebRtcEvent) {
-        if let Some(ref sender) = self.event_sender {
+        if let Some(ref sender) = *self.inner.event_sender.read() {
             if let Err(e) = sender.send(event) {
-                warn!("Failed to send WebRTC event: {}", e);
+                debug!("Failed to send WebRTC event: {}", e);
             }
         }
     }

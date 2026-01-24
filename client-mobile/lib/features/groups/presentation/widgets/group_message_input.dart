@@ -1,13 +1,25 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
-/// Widget for inputting group messages
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_spacing.dart';
+import '../../../../shared/theme/app_typography.dart';
+import '../../../media/presentation/widgets/media_picker_sheet.dart';
+
+/// Widget for inputting group messages with glassmorphism styling
 class GroupMessageInput extends StatefulWidget {
   final void Function(String text) onSend;
+  final void Function(MediaPickerResult result)? onMediaSelected;
+  final void Function(bool isTyping)? onTypingChanged;
   final bool isLoading;
 
   const GroupMessageInput({
     super.key,
     required this.onSend,
+    this.onMediaSelected,
+    this.onTypingChanged,
     this.isLoading = false,
   });
 
@@ -18,6 +30,8 @@ class GroupMessageInput extends StatefulWidget {
 class _GroupMessageInputState extends State<GroupMessageInput> {
   final _controller = TextEditingController();
   bool _hasText = false;
+  bool _isTyping = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
@@ -28,6 +42,11 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
   @override
   void dispose() {
     _controller.removeListener(_onTextChanged);
+    _typingTimer?.cancel();
+    // Send stopped typing on dispose
+    if (_isTyping) {
+      widget.onTypingChanged?.call(false);
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -37,94 +56,207 @@ class _GroupMessageInputState extends State<GroupMessageInput> {
     if (hasText != _hasText) {
       setState(() => _hasText = hasText);
     }
+    
+    // Handle typing indicator
+    if (hasText && !_isTyping) {
+      _isTyping = true;
+      widget.onTypingChanged?.call(true);
+    }
+    
+    // Reset the typing timer
+    _typingTimer?.cancel();
+    if (hasText) {
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        if (_isTyping) {
+          _isTyping = false;
+          widget.onTypingChanged?.call(false);
+        }
+      });
+    } else if (_isTyping) {
+      _isTyping = false;
+      widget.onTypingChanged?.call(false);
+    }
   }
 
   void _handleSend() {
     final text = _controller.text.trim();
     if (text.isEmpty || widget.isLoading) return;
 
+    // Stop typing indicator when sending
+    _typingTimer?.cancel();
+    if (_isTyping) {
+      _isTyping = false;
+      widget.onTypingChanged?.call(false);
+    }
+
     widget.onSend(text);
     _controller.clear();
   }
 
+  void _handleAttach() {
+    if (widget.isLoading || widget.onMediaSelected == null) return;
+
+    MediaPickerSheet.show(
+      context,
+      onMediaSelected: (result) {
+        widget.onMediaSelected?.call(result);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0, -2),
-            blurRadius: 4,
-            color: Colors.black.withAlpha(25),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            // Attachment button (placeholder)
-            IconButton(
-              icon: const Icon(Icons.attach_file),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Attachments coming soon'),
-                  ),
-                );
-              },
-              color: Colors.grey[600],
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-            // Text input
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 4,
-                minLines: 1,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _handleSend(),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space3,
+            vertical: AppSpacing.space2,
+          ),
+          decoration: BoxDecoration(
+            color: isDark
+                ? GrayColors.gray900.withOpacity(0.8)
+                : Colors.white.withOpacity(0.8),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : GrayColors.gray200,
               ),
             ),
+          ),
+          child: SafeArea(
+            child: Row(
+              children: [
+                // Attachment button
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark
+                        ? GrayColors.gray800
+                        : GrayColors.gray100,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.attach_file, size: 20),
+                    onPressed: widget.onMediaSelected != null && !widget.isLoading
+                        ? _handleAttach
+                        : null,
+                    color: widget.onMediaSelected != null
+                        ? (isDark ? GrayColors.gray400 : GrayColors.gray600)
+                        : GrayColors.gray500,
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Attach media',
+                  ),
+                ),
 
-            const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.space2),
 
-            // Send button
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              child: widget.isLoading
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                // Text input with glassmorphism
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? GrayColors.gray800.withOpacity(0.6)
+                          : Colors.white.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : GrayColors.gray300.withOpacity(0.5),
                       ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.send),
-                      onPressed: _hasText ? _handleSend : null,
-                      color: _hasText
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey[400],
                     ),
+                    child: TextField(
+                      controller: _controller,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: isDark ? Colors.white : GrayColors.gray900,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        hintStyle: AppTypography.bodyMedium.copyWith(
+                          color: GrayColors.gray400,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space4,
+                          vertical: AppSpacing.space3,
+                        ),
+                      ),
+                      keyboardType: TextInputType.text,
+                      enableIMEPersonalizedLearning: true,
+                      textCapitalization: TextCapitalization.sentences,
+                      maxLines: 4,
+                      minLines: 1,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _handleSend(),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: AppSpacing.space2),
+
+                // Send button with neumorphic style
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  child: widget.isLoading
+                      ? Padding(
+                          padding: const EdgeInsets.all(AppSpacing.space3),
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: GuardynColors.guardyn500,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: _hasText
+                                ? const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      GuardynColors.guardyn400,
+                                      GuardynColors.guardyn600,
+                                    ],
+                                  )
+                                : null,
+                            color: _hasText
+                                ? null
+                                : (isDark
+                                    ? GrayColors.gray800
+                                    : GrayColors.gray100),
+                            boxShadow: _hasText
+                                ? [
+                                    BoxShadow(
+                                      color: GuardynColors.guardyn500
+                                          .withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.send, size: 20),
+                            onPressed: _hasText ? _handleSend : null,
+                            color:
+                                _hasText ? Colors.white : GrayColors.gray400,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

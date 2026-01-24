@@ -1,3 +1,4 @@
+import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:guardyn_client/core/error/failures.dart';
@@ -6,6 +7,7 @@ import 'package:guardyn_client/features/groups/data/datasources/group_remote_dat
 import 'package:guardyn_client/features/groups/data/models/group_model.dart';
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:guardyn_client/features/groups/domain/entities/group.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart';
 import 'package:mocktail/mocktail.dart';
 
 // Mocks
@@ -13,10 +15,13 @@ class MockGroupRemoteDatasource extends Mock implements GroupRemoteDatasource {}
 
 class MockSecureStorage extends Mock implements SecureStorage {}
 
+class MockGetUserDisplayName extends Mock implements GetUserDisplayName {}
+
 void main() {
   late GroupRepositoryImpl repository;
   late MockGroupRemoteDatasource mockDatasource;
   late MockSecureStorage mockSecureStorage;
+  late MockGetUserDisplayName mockGetUserDisplayName;
 
   // Test data
   const tAccessToken = 'test-access-token';
@@ -51,7 +56,12 @@ void main() {
   setUp(() {
     mockDatasource = MockGroupRemoteDatasource();
     mockSecureStorage = MockSecureStorage();
-    repository = GroupRepositoryImpl(mockDatasource, mockSecureStorage);
+    mockGetUserDisplayName = MockGetUserDisplayName();
+    repository = GroupRepositoryImpl(
+      mockDatasource,
+      mockSecureStorage,
+      mockGetUserDisplayName,
+    );
   });
 
   void setUpAuthenticatedUser() {
@@ -62,6 +72,9 @@ void main() {
         .thenAnswer((_) async => tDeviceId);
     when(() => mockSecureStorage.getUsername())
         .thenAnswer((_) async => tUsername);
+    // Default mock for username resolution
+    when(() => mockGetUserDisplayName.call(any()))
+        .thenAnswer((_) async => const Right(tUsername));
   }
 
   void setUpUnauthenticatedUser() {
@@ -411,6 +424,47 @@ void main() {
         (failure) => fail('Expected Right but got Left'),
         (success) => expect(success, true),
       );
+    });
+
+    test('resolves username when adding member to cached group', () async {
+      // Arrange - first create a group to populate cache
+      setUpAuthenticatedUser();
+      when(() => mockDatasource.createGroup(
+            accessToken: tAccessToken,
+            name: tGroupName,
+            memberUserIds: const [],
+          )).thenAnswer((_) async => tGroupModel);
+      
+      // Create group first (populates cache)
+      await repository.createGroup(
+        name: tGroupName,
+        memberUserIds: const [],
+      );
+      
+      // Now add a member
+      const newMemberId = 'user-456';
+      const newMemberUsername = 'bob';
+      
+      when(() => mockDatasource.addGroupMember(
+            accessToken: tAccessToken,
+            groupId: tGroupId,
+            memberUserId: newMemberId,
+            memberDeviceId: 'device-456',
+          )).thenAnswer((_) async => true);
+      
+      when(() => mockGetUserDisplayName.call(newMemberId))
+          .thenAnswer((_) async => const Right(newMemberUsername));
+
+      // Act
+      final result = await repository.addGroupMember(
+        groupId: tGroupId,
+        memberUserId: newMemberId,
+        memberDeviceId: 'device-456',
+      );
+
+      // Assert
+      expect(result.isRight(), true);
+      verify(() => mockGetUserDisplayName.call(newMemberId)).called(1);
     });
 
     test('returns AuthFailure when not authenticated', () async {

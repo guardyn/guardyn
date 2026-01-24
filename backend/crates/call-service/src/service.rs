@@ -3,16 +3,18 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
-use async_nats::Client as NatsClient;
+use chrono::Utc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
 use tonic::{Request, Response, Status};
+use tracing::{debug, warn};
 
 use crate::db::CallDb;
 use crate::generated::guardyn::calls::call_service_server::CallService;
 use crate::generated::guardyn::calls::*;
 use crate::handlers;
+use crate::nats::{CallEventEnvelope, CallEventType, CallNatsClient, IceCandidateEnvelope, SdpEnvelope, SFrameKeyEnvelope};
 use crate::session::CallSessionManager;
 use crate::IceServerConfig;
 
@@ -20,7 +22,8 @@ use crate::IceServerConfig;
 pub struct CallServiceImpl {
     db: Arc<CallDb>,
     session_mgr: Arc<CallSessionManager>,
-    _nats_client: NatsClient,
+    nats_client: Arc<CallNatsClient>,
+    auth_service_url: String,
     jwt_secret: String,
     ice_servers: Vec<IceServerConfig>,
 }
@@ -30,14 +33,16 @@ impl CallServiceImpl {
     pub fn new(
         db: Arc<CallDb>,
         session_mgr: Arc<CallSessionManager>,
-        nats_client: NatsClient,
+        nats_client: Arc<CallNatsClient>,
+        auth_service_url: String,
         jwt_secret: String,
         ice_servers: Vec<IceServerConfig>,
     ) -> Self {
         Self {
             db,
             session_mgr,
-            _nats_client: nats_client,
+            nats_client,
+            auth_service_url,
             jwt_secret,
             ice_servers,
         }
@@ -56,6 +61,7 @@ impl CallService for CallServiceImpl {
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
+            &self.auth_service_url,
         )
         .await;
         Ok(Response::new(response))
@@ -71,6 +77,7 @@ impl CallService for CallServiceImpl {
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
+            &self.auth_service_url,
         )
         .await;
         Ok(Response::new(response))
@@ -114,6 +121,7 @@ impl CallService for CallServiceImpl {
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
+            &self.auth_service_url,
         )
         .await;
         Ok(Response::new(response))
@@ -179,21 +187,81 @@ impl CallService for CallServiceImpl {
         &self,
         request: Request<ExchangeIceCandidateRequest>,
     ) -> Result<Response<ExchangeIceCandidateResponse>, Status> {
-        // Validate token
+        // Validate token and extract user ID
         let req = request.into_inner();
-        if handlers::validate_token(&req.access_token, &self.jwt_secret).is_err() {
+        let from_user_id = match handlers::validate_token(&req.access_token, &self.jwt_secret) {
+            Ok(id) => id,
+            Err(_) => {
+                return Ok(Response::new(ExchangeIceCandidateResponse {
+                    result: Some(exchange_ice_candidate_response::Result::Error(
+                        crate::generated::guardyn::common::ErrorResponse {
+                            code: 2,
+                            message: "Invalid or expired token".to_string(),
+                            details: std::collections::HashMap::new(),
+                        },
+                    )),
+                }));
+            }
+        };
+
+        // Verify call exists
+        if self.session_mgr.get_session(&req.call_id).is_none() {
             return Ok(Response::new(ExchangeIceCandidateResponse {
                 result: Some(exchange_ice_candidate_response::Result::Error(
                     crate::generated::guardyn::common::ErrorResponse {
-                        code: 2,
-                        message: "Invalid or expired token".to_string(),
+                        code: 3,
+                        message: "Call not found".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }));
         }
 
-        // TODO: Distribute ICE candidate to target participant via NATS
-        // For now, just acknowledge receipt
+        // Extract ICE candidate data
+        let candidate = match &req.candidate {
+            Some(c) => c,
+            None => {
+                return Ok(Response::new(ExchangeIceCandidateResponse {
+                    result: Some(exchange_ice_candidate_response::Result::Error(
+                        crate::generated::guardyn::common::ErrorResponse {
+                            code: 1,
+                            message: "ICE candidate is required".to_string(),
+                            details: std::collections::HashMap::new(),
+                        },
+                    )),
+                }));
+            }
+        };
+
+        // Create envelope and distribute via NATS
+        let envelope = IceCandidateEnvelope {
+            call_id: req.call_id.clone(),
+            from_user_id: from_user_id.clone(),
+            target_user_id: req.target_user_id.clone(),
+            candidate: candidate.candidate.clone(),
+            sdp_mid: candidate.sdp_mid.clone(),
+            sdp_mline_index: candidate.sdp_mline_index,
+            username_fragment: candidate.username_fragment.clone(),
+            timestamp: Utc::now().timestamp(),
+        };
+
+        if let Err(e) = self.nats_client.publish_ice_candidate(&envelope).await {
+            warn!("Failed to distribute ICE candidate via NATS: {}", e);
+            return Ok(Response::new(ExchangeIceCandidateResponse {
+                result: Some(exchange_ice_candidate_response::Result::Error(
+                    crate::generated::guardyn::common::ErrorResponse {
+                        code: 4,
+                        message: format!("Failed to distribute ICE candidate: {}", e),
+                        details: std::collections::HashMap::new(),
+                    },
+                )),
+            }));
+        }
+
+        debug!(
+            "ICE candidate distributed from {} to {} in call {}",
+            from_user_id, req.target_user_id, req.call_id
+        );
 
         Ok(Response::new(ExchangeIceCandidateResponse {
             result: Some(exchange_ice_candidate_response::Result::Success(
@@ -206,21 +274,79 @@ impl CallService for CallServiceImpl {
         &self,
         request: Request<ExchangeSdpRequest>,
     ) -> Result<Response<ExchangeSdpResponse>, Status> {
-        // Validate token
+        // Validate token and extract user ID
         let req = request.into_inner();
-        if handlers::validate_token(&req.access_token, &self.jwt_secret).is_err() {
+        let from_user_id = match handlers::validate_token(&req.access_token, &self.jwt_secret) {
+            Ok(id) => id,
+            Err(_) => {
+                return Ok(Response::new(ExchangeSdpResponse {
+                    result: Some(exchange_sdp_response::Result::Error(
+                        crate::generated::guardyn::common::ErrorResponse {
+                            code: 2,
+                            message: "Invalid or expired token".to_string(),
+                            details: std::collections::HashMap::new(),
+                        },
+                    )),
+                }));
+            }
+        };
+
+        // Verify call exists
+        if self.session_mgr.get_session(&req.call_id).is_none() {
             return Ok(Response::new(ExchangeSdpResponse {
                 result: Some(exchange_sdp_response::Result::Error(
                     crate::generated::guardyn::common::ErrorResponse {
-                        code: 2,
-                        message: "Invalid or expired token".to_string(),
+                        code: 3,
+                        message: "Call not found".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }));
         }
 
-        // TODO: Distribute SDP to target participant via NATS
-        // For now, just acknowledge receipt
+        // Extract SDP data
+        let sdp = match &req.sdp {
+            Some(s) => s,
+            None => {
+                return Ok(Response::new(ExchangeSdpResponse {
+                    result: Some(exchange_sdp_response::Result::Error(
+                        crate::generated::guardyn::common::ErrorResponse {
+                            code: 1,
+                            message: "SDP is required".to_string(),
+                            details: std::collections::HashMap::new(),
+                        },
+                    )),
+                }));
+            }
+        };
+
+        // Create envelope and distribute via NATS
+        let envelope = SdpEnvelope {
+            call_id: req.call_id.clone(),
+            from_user_id: from_user_id.clone(),
+            target_user_id: req.target_user_id.clone(),
+            sdp_type: sdp.r#type,
+            sdp: sdp.sdp.clone(),
+            timestamp: Utc::now().timestamp(),
+        };
+
+        if let Err(e) = self.nats_client.publish_sdp(&envelope).await {
+            warn!("Failed to distribute SDP via NATS: {}", e);
+            return Ok(Response::new(ExchangeSdpResponse {
+                result: Some(exchange_sdp_response::Result::Error(
+                    crate::generated::guardyn::common::ErrorResponse {
+                        code: 4,
+                        message: format!("Failed to distribute SDP: {}", e),
+                        details: std::collections::HashMap::new(),
+                    },
+                )),
+            }));
+        }
+
+        debug!(
+            "SDP type {} distributed from {} to {} in call {}",
+            sdp.r#type, from_user_id, req.target_user_id, req.call_id
+        );
 
         Ok(Response::new(ExchangeSdpResponse {
             result: Some(exchange_sdp_response::Result::Success(ExchangeSdpSuccess {
@@ -261,10 +387,11 @@ impl CallService for CallServiceImpl {
     ) -> Result<Response<Self::StreamCallEventsStream>, Status> {
         let req = request.into_inner();
 
-        // Validate token
-        if handlers::validate_token(&req.access_token, &self.jwt_secret).is_err() {
-            return Err(Status::unauthenticated("Invalid or expired token"));
-        }
+        // Validate token and get user ID
+        let user_id = match handlers::validate_token(&req.access_token, &self.jwt_secret) {
+            Ok(id) => id,
+            Err(_) => return Err(Status::unauthenticated("Invalid or expired token")),
+        };
 
         // Check if call exists
         if self.session_mgr.get_session(&req.call_id).is_none() {
@@ -274,17 +401,147 @@ impl CallService for CallServiceImpl {
         // Create channel for events
         let (tx, rx) = mpsc::channel::<Result<CallEvent, Status>>(100);
 
-        // TODO: Subscribe to NATS for call events and forward to stream
-        // For now, just keep the stream open
+        // Subscribe to NATS for call events and forward to stream
+        let nats_client = Arc::clone(&self.nats_client);
+        let call_id = req.call_id.clone();
+        let user_id_clone = user_id.clone();
 
-        let _call_id = req.call_id;
         tokio::spawn(async move {
-            // Keep connection alive, events would be pushed via NATS subscription
+            // Subscribe to ICE candidates for this user
+            let ice_consumer = match nats_client.subscribe_ice_candidates(&call_id, &user_id_clone).await {
+                Ok(c) => Some(c),
+                Err(e) => {
+                    warn!("Failed to subscribe to ICE candidates: {}", e);
+                    None
+                }
+            };
+
+            // Subscribe to SDP messages for this user
+            let sdp_consumer = match nats_client.subscribe_sdp(&call_id, &user_id_clone).await {
+                Ok(c) => Some(c),
+                Err(e) => {
+                    warn!("Failed to subscribe to SDP messages: {}", e);
+                    None
+                }
+            };
+
+            // Subscribe to general call events
+            let events_consumer = match nats_client.subscribe_call_events(&call_id).await {
+                Ok(c) => Some(c),
+                Err(e) => {
+                    warn!("Failed to subscribe to call events: {}", e);
+                    None
+                }
+            };
+
+            // Subscribe to SFrame keys for this user
+            let sframe_consumer = match nats_client.subscribe_sframe_keys(&call_id, &user_id_clone).await {
+                Ok(c) => Some(c),
+                Err(e) => {
+                    warn!("Failed to subscribe to SFrame keys: {}", e);
+                    None
+                }
+            };
+
+            // Poll for events
             loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
                 if tx.is_closed() {
+                    debug!("Event stream closed for call {}", call_id);
                     break;
                 }
+
+                // Fetch ICE candidates
+                if let Some(ref consumer) = ice_consumer {
+                    if let Ok(candidates) = nats_client.fetch_ice_candidates(consumer, 10).await {
+                        for candidate in candidates {
+                            let event = CallEvent {
+                                call_id: call_id.clone(),
+                                timestamp: Some(crate::generated::guardyn::common::Timestamp {
+                                    seconds: candidate.timestamp,
+                                    nanos: 0,
+                                }),
+                                event: Some(call_event::Event::IceCandidateReceived(
+                                    IceCandidateReceived {
+                                        from_user_id: candidate.from_user_id,
+                                        candidate: Some(IceCandidate {
+                                            candidate: candidate.candidate,
+                                            sdp_mid: candidate.sdp_mid,
+                                            sdp_mline_index: candidate.sdp_mline_index,
+                                            username_fragment: candidate.username_fragment,
+                                        }),
+                                    },
+                                )),
+                            };
+                            if tx.send(Ok(event)).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Fetch SDP messages
+                if let Some(ref consumer) = sdp_consumer {
+                    if let Ok(sdps) = nats_client.fetch_sdp_messages(consumer, 10).await {
+                        for sdp_msg in sdps {
+                            let event = CallEvent {
+                                call_id: call_id.clone(),
+                                timestamp: Some(crate::generated::guardyn::common::Timestamp {
+                                    seconds: sdp_msg.timestamp,
+                                    nanos: 0,
+                                }),
+                                event: Some(call_event::Event::SdpReceived(SdpReceived {
+                                    from_user_id: sdp_msg.from_user_id,
+                                    sdp: Some(SdpMessage {
+                                        r#type: sdp_msg.sdp_type,
+                                        sdp: sdp_msg.sdp,
+                                    }),
+                                })),
+                            };
+                            if tx.send(Ok(event)).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Fetch call events
+                if let Some(ref consumer) = events_consumer {
+                    if let Ok(events) = nats_client.fetch_call_events(consumer, 10).await {
+                        for event_envelope in events {
+                            if let Some(call_event) = convert_call_event(&call_id, &event_envelope) {
+                                if tx.send(Ok(call_event)).await.is_err() {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fetch SFrame keys
+                if let Some(ref consumer) = sframe_consumer {
+                    if let Ok(keys) = nats_client.fetch_sframe_keys(consumer, 10).await {
+                        for key in keys {
+                            let event = CallEvent {
+                                call_id: call_id.clone(),
+                                timestamp: Some(crate::generated::guardyn::common::Timestamp {
+                                    seconds: key.timestamp,
+                                    nanos: 0,
+                                }),
+                                event: Some(call_event::Event::SframeKeyRotated(SFrameKeyRotated {
+                                    from_user_id: key.from_user_id,
+                                    new_key_id: key.key_id,
+                                    encrypted_key_material: key.encrypted_key_material,
+                                })),
+                            };
+                            if tx.send(Ok(event)).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Small delay between polling
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             }
         });
 
@@ -298,26 +555,67 @@ impl CallService for CallServiceImpl {
     ) -> Result<Response<ExchangeSFrameKeyResponse>, Status> {
         let req = request.into_inner();
 
-        // Validate token
-        if handlers::validate_token(&req.access_token, &self.jwt_secret).is_err() {
+        // Validate token and extract user ID
+        let from_user_id = match handlers::validate_token(&req.access_token, &self.jwt_secret) {
+            Ok(id) => id,
+            Err(_) => {
+                return Ok(Response::new(ExchangeSFrameKeyResponse {
+                    result: Some(exchange_s_frame_key_response::Result::Error(
+                        crate::generated::guardyn::common::ErrorResponse {
+                            code: 2,
+                            message: "Invalid or expired token".to_string(),
+                            details: std::collections::HashMap::new(),
+                        },
+                    )),
+                }));
+            }
+        };
+
+        // Verify call exists
+        if self.session_mgr.get_session(&req.call_id).is_none() {
             return Ok(Response::new(ExchangeSFrameKeyResponse {
                 result: Some(exchange_s_frame_key_response::Result::Error(
                     crate::generated::guardyn::common::ErrorResponse {
-                        code: 2,
-                        message: "Invalid or expired token".to_string(),
+                        code: 3,
+                        message: "Call not found".to_string(),
+                        details: std::collections::HashMap::new(),
                     },
                 )),
             }));
         }
 
-        // TODO: Distribute encrypted key packages to participants via NATS
-        let participants_count = req.key_packages.len() as i32;
+        // Distribute encrypted key packages to participants via NATS
+        let mut distributed_count = 0;
+        for key_package in &req.key_packages {
+            let envelope = SFrameKeyEnvelope {
+                call_id: req.call_id.clone(),
+                from_user_id: from_user_id.clone(),
+                target_user_id: key_package.user_id.clone(),
+                key_id: key_package.key_id,
+                encrypted_key_material: key_package.encrypted_key_material.clone(),
+                timestamp: Utc::now().timestamp(),
+            };
+
+            if let Err(e) = self.nats_client.publish_sframe_key(&envelope).await {
+                warn!(
+                    "Failed to distribute SFrame key to {}: {}",
+                    key_package.user_id, e
+                );
+            } else {
+                distributed_count += 1;
+            }
+        }
+
+        debug!(
+            "Distributed {} SFrame key packages from {} in call {}",
+            distributed_count, from_user_id, req.call_id
+        );
 
         Ok(Response::new(ExchangeSFrameKeyResponse {
             result: Some(exchange_s_frame_key_response::Result::Success(
                 ExchangeSFrameKeySuccess {
                     distributed: true,
-                    participants_count,
+                    participants_count: distributed_count,
                 },
             )),
         }))
@@ -338,6 +636,7 @@ impl CallService for CallServiceImpl {
                         crate::generated::guardyn::common::ErrorResponse {
                             code: 2,
                             message: "Invalid or expired token".to_string(),
+                            details: std::collections::HashMap::new(),
                         },
                     )),
                 }));
@@ -354,19 +653,45 @@ impl CallService for CallServiceImpl {
                         crate::generated::guardyn::common::ErrorResponse {
                             code: 3,
                             message: "Call not found".to_string(),
+                            details: std::collections::HashMap::new(),
                         },
                     )),
                 }));
             }
         };
 
-        // TODO: Distribute new key packages to participants via NATS
+        // Distribute new key packages to participants via NATS
+        let mut distributed_count = 0;
+        for key_package in &req.key_packages {
+            let envelope = SFrameKeyEnvelope {
+                call_id: req.call_id.clone(),
+                from_user_id: user_id.clone(),
+                target_user_id: key_package.user_id.clone(),
+                key_id: key_package.key_id,
+                encrypted_key_material: key_package.encrypted_key_material.clone(),
+                timestamp: Utc::now().timestamp(),
+            };
+
+            if let Err(e) = self.nats_client.publish_sframe_key(&envelope).await {
+                warn!(
+                    "Failed to distribute rotated SFrame key to {}: {}",
+                    key_package.user_id, e
+                );
+            } else {
+                distributed_count += 1;
+            }
+        }
+
+        debug!(
+            "Distributed {} rotated SFrame key packages from {} in call {}",
+            distributed_count, user_id, req.call_id
+        );
 
         Ok(Response::new(RotateSFrameKeyResponse {
             result: Some(rotate_s_frame_key_response::Result::Success(
                 RotateSFrameKeySuccess {
                     new_key_id,
-                    distributed: true,
+                    distributed: distributed_count > 0 || req.key_packages.is_empty(),
                 },
             )),
         }))
@@ -376,11 +701,119 @@ impl CallService for CallServiceImpl {
         &self,
         _request: Request<HealthRequest>,
     ) -> Result<Response<crate::generated::guardyn::common::HealthStatus>, Status> {
+        use crate::generated::guardyn::common::{health_status::Status as HealthStatusEnum, Timestamp};
+        
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
         Ok(Response::new(
             crate::generated::guardyn::common::HealthStatus {
-                status: "healthy".to_string(),
+                status: HealthStatusEnum::Healthy as i32,
                 version: env!("CARGO_PKG_VERSION").to_string(),
+                timestamp: Some(Timestamp {
+                    seconds: now,
+                    nanos: 0,
+                }),
+                components: std::collections::HashMap::new(),
             },
         ))
     }
+}
+
+/// Convert CallEventEnvelope from NATS to proto CallEvent
+fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<CallEvent> {
+    let timestamp = Some(crate::generated::guardyn::common::Timestamp {
+        seconds: envelope.timestamp,
+        nanos: 0,
+    });
+
+    let event = match envelope.event_type {
+        CallEventType::StateChanged => {
+            let old_state = envelope.payload.get("old_state")?.as_i64()? as i32;
+            let new_state = envelope.payload.get("new_state")?.as_i64()? as i32;
+            let end_reason = envelope.payload.get("end_reason").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            Some(call_event::Event::StateChanged(CallStateChanged {
+                old_state,
+                new_state,
+                end_reason,
+            }))
+        }
+        CallEventType::ParticipantJoined => {
+            let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
+            let display_name = envelope.payload.get("display_name")?.as_str()?.to_string();
+            Some(call_event::Event::ParticipantJoined(ParticipantJoined {
+                participant: Some(CallParticipant {
+                    user_id,
+                    display_name,
+                    is_muted: false,
+                    has_video: false,
+                    is_screen_sharing: false,
+                    is_speaking: false,
+                    joined_at: timestamp.clone(),
+                }),
+            }))
+        }
+        CallEventType::ParticipantLeft => {
+            let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
+            let reason = envelope.payload.get("reason").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            Some(call_event::Event::ParticipantLeft(ParticipantLeft {
+                user_id,
+                reason,
+            }))
+        }
+        CallEventType::ParticipantMuted => {
+            let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
+            let is_muted = envelope.payload.get("is_muted")?.as_bool()?;
+            Some(call_event::Event::ParticipantMuted(ParticipantMuted {
+                user_id,
+                is_muted,
+            }))
+        }
+        CallEventType::ParticipantVideoChanged => {
+            let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
+            let has_video = envelope.payload.get("has_video")?.as_bool()?;
+            Some(call_event::Event::ParticipantVideoChanged(ParticipantVideoChanged {
+                user_id,
+                has_video,
+            }))
+        }
+        CallEventType::ParticipantScreenShareChanged => {
+            let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
+            let is_screen_sharing = envelope.payload.get("is_screen_sharing")?.as_bool()?;
+            Some(call_event::Event::ParticipantScreenShareChanged(
+                ParticipantScreenShareChanged {
+                    user_id,
+                    is_screen_sharing,
+                },
+            ))
+        }
+        CallEventType::ParticipantSpeaking => {
+            let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
+            let is_speaking = envelope.payload.get("is_speaking")?.as_bool()?;
+            let audio_level = envelope.payload.get("audio_level").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+            Some(call_event::Event::ParticipantSpeaking(ParticipantSpeaking {
+                user_id,
+                is_speaking,
+                audio_level,
+            }))
+        }
+        CallEventType::QualityChanged => {
+            let quality = envelope.payload.get("quality")?.as_i64()? as i32;
+            Some(call_event::Event::QualityChanged(CallQualityChanged {
+                quality,
+            }))
+        }
+        // These are handled directly from their respective consumers
+        CallEventType::IceCandidateReceived |
+        CallEventType::SdpReceived |
+        CallEventType::SFrameKeyRotated => None,
+    };
+
+    event.map(|e| CallEvent {
+        call_id: call_id.to_string(),
+        timestamp,
+        event: Some(e),
+    })
 }

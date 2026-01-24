@@ -277,6 +277,28 @@ impl MlsManager {
         }
     }
 
+    /// Get current MLS epoch for a group
+    ///
+    /// Returns the current epoch number, or 0 if the group doesn't have MLS state
+    ///
+    /// # Arguments
+    /// * `group_id` - Group identifier
+    ///
+    /// # Returns
+    /// Current epoch number
+    pub async fn get_current_epoch(&self, group_id: &str) -> Result<u64> {
+        match self.get_metadata(group_id).await? {
+            Some(metadata) => Ok(metadata.current_epoch),
+            None => {
+                // Try to load from group state if metadata doesn't exist
+                match self.load_group_state(group_id).await {
+                    Ok(state) => Ok(state.epoch),
+                    Err(_) => Ok(0), // Default to epoch 0
+                }
+            }
+        }
+    }
+
     /// Check if user is a member of the group
     ///
     /// # Arguments

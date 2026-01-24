@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/di/injection.dart';
+import '../../data/datasources/notification_remote_datasource.dart';
+import '../../domain/usecases/block_user.dart';
+import '../../domain/usecases/delete_conversation.dart';
+import '../../domain/usecases/mute_conversation.dart';
+import '../bloc/message_bloc.dart';
+import '../bloc/message_event.dart';
+import 'media_gallery_page.dart';
+import 'search_messages_page.dart';
+
 /// Chat Settings Page for 1-on-1 conversations
 /// Allows users to view contact info, manage notifications,
 /// and perform actions like blocking or clearing chat history.
-class ChatSettingsPage extends StatelessWidget {
+class ChatSettingsPage extends StatefulWidget {
   final String userId;
   final String username;
   final String? conversationId;
@@ -14,6 +24,66 @@ class ChatSettingsPage extends StatelessWidget {
     required this.username,
     this.conversationId,
   });
+
+  @override
+  State<ChatSettingsPage> createState() => _ChatSettingsPageState();
+}
+
+class _ChatSettingsPageState extends State<ChatSettingsPage> {
+  bool _isMuted = false;
+  bool _isMuteLoading = false;
+  bool _isBlockLoading = false;
+  bool _isDeleteLoading = false;
+  late MuteConversation _muteConversation;
+  late BlockUser _blockUser;
+  late DeleteConversation _deleteConversation;
+
+  @override
+  void initState() {
+    super.initState();
+    _muteConversation = getIt<MuteConversation>();
+    _blockUser = getIt<BlockUser>();
+    _deleteConversation = getIt<DeleteConversation>();
+  }
+
+  Future<void> _toggleMute(bool muted) async {
+    if (widget.conversationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot mute: conversation not found')),
+      );
+      return;
+    }
+
+    setState(() => _isMuteLoading = true);
+
+    final result = await _muteConversation(MuteConversationParams(
+      conversationId: widget.conversationId!,
+      isGroup: false,
+      duration: muted ? MuteDuration.forever : MuteDuration.unmute,
+    ));
+
+    setState(() => _isMuteLoading = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${failure.message}')),
+        );
+      },
+      (muteResult) {
+        setState(() => _isMuted = muteResult.muted);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              muteResult.muted
+                  ? 'Notifications muted'
+                  : 'Notifications enabled',
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +116,7 @@ class ChatSettingsPage extends StatelessWidget {
             radius: 50,
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
             child: Text(
-              username.isNotEmpty ? username[0].toUpperCase() : '?',
+              widget.username.isNotEmpty ? widget.username[0].toUpperCase() : '?',
               style: TextStyle(
                 fontSize: 40,
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -56,12 +126,12 @@ class ChatSettingsPage extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Username
-          Text(username, style: Theme.of(context).textTheme.headlineSmall),
+          Text(widget.username, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 4),
 
           // User ID (for debugging/verification)
           Text(
-            'ID: ${userId.length > 12 ? '${userId.substring(0, 12)}...' : userId}',
+            'ID: ${widget.userId.length > 12 ? '${widget.userId.substring(0, 12)}...' : widget.userId}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.outline,
             ),
@@ -76,16 +146,17 @@ class ChatSettingsPage extends StatelessWidget {
       children: [
         // Mute Notifications
         SwitchListTile(
-          secondary: const Icon(Icons.notifications_off),
+          secondary: _isMuteLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.notifications_off),
           title: const Text('Mute Notifications'),
           subtitle: const Text('Stop receiving notifications from this chat'),
-          value: false, // TODO: Get from settings
-          onChanged: (value) {
-            // TODO: Implement mute
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Coming soon')));
-          },
+          value: _isMuted,
+          onChanged: _isMuteLoading ? null : _toggleMute,
         ),
 
         // Media, Links, Docs
@@ -94,10 +165,15 @@ class ChatSettingsPage extends StatelessWidget {
           title: const Text('Media, Links, and Docs'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            // TODO: Navigate to media gallery
-            ScaffoldMessenger.of(
+            Navigator.push(
               context,
-            ).showSnackBar(const SnackBar(content: Text('Coming soon')));
+              MaterialPageRoute(
+                builder: (_) => MediaGalleryPage(
+                  conversationId: widget.conversationId ?? '',
+                  conversationUserName: widget.username,
+                ),
+              ),
+            );
           },
         ),
 
@@ -106,11 +182,21 @@ class ChatSettingsPage extends StatelessWidget {
           leading: const Icon(Icons.search),
           title: const Text('Search in Conversation'),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            // TODO: Implement search
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Coming soon')));
+          onTap: () async {
+            final navigator = Navigator.of(context);
+            final messageId = await navigator.push<String>(
+              MaterialPageRoute(
+                builder: (_) => SearchMessagesPage(
+                  conversationId: widget.conversationId ?? '',
+                  conversationUserName: widget.username,
+                ),
+              ),
+            );
+
+            if (messageId != null && mounted) {
+              // Return to chat page with message ID to scroll to
+              navigator.pop({'scrollToMessageId': messageId});
+            }
           },
         ),
 
@@ -133,12 +219,17 @@ class ChatSettingsPage extends StatelessWidget {
       children: [
         // Block User
         ListTile(
-          leading: const Icon(Icons.block, color: Colors.orange),
+          leading: _isBlockLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.block, color: Colors.orange),
           title: const Text('Block User'),
           subtitle: const Text('Stop receiving messages from this user'),
-          onTap: () {
-            _confirmBlockUser(context);
-          },
+          enabled: !_isBlockLoading,
+          onTap: _isBlockLoading ? null : () => _confirmBlockUser(context),
         ),
 
         // Clear Chat History
@@ -153,12 +244,19 @@ class ChatSettingsPage extends StatelessWidget {
 
         // Delete Conversation
         ListTile(
-          leading: const Icon(Icons.delete_forever, color: Colors.red),
+          leading: _isDeleteLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.delete_forever, color: Colors.red),
           title: const Text('Delete Conversation'),
           subtitle: const Text('Remove this conversation completely'),
-          onTap: () {
-            _confirmDeleteConversation(context);
-          },
+          enabled: !_isDeleteLoading,
+          onTap: _isDeleteLoading
+              ? null
+              : () => _confirmDeleteConversation(context),
         ),
       ],
     );
@@ -196,7 +294,7 @@ class ChatSettingsPage extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Block User?'),
         content: Text(
-          'Block $username? You will no longer receive messages from them.',
+          'Block ${widget.username}? You will no longer receive messages from them.',
         ),
         actions: [
           TextButton(
@@ -204,12 +302,9 @@ class ChatSettingsPage extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // TODO: Implement block user API call
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('User blocked')));
+              await _performBlockUser();
             },
             child: const Text('Block', style: TextStyle(color: Colors.red)),
           ),
@@ -218,7 +313,39 @@ class ChatSettingsPage extends StatelessWidget {
     );
   }
 
+  Future<void> _performBlockUser() async {
+    setState(() => _isBlockLoading = true);
+
+    final result = await _blockUser(widget.userId);
+
+    if (!mounted) return;
+
+    setState(() => _isBlockLoading = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${failure.message}')));
+      },
+      (_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${widget.username} blocked')));
+        // Return to conversation list
+        Navigator.of(context).pop({'userBlocked': true});
+      },
+    );
+  }
+
   void _confirmClearHistory(BuildContext context) {
+    if (widget.conversationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot clear: conversation not found')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -234,7 +361,10 @@ class ChatSettingsPage extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              // TODO: Call MessageBloc.add(MessageClearChat)
+              // Clear chat via MessageBloc
+              getIt<MessageBloc>().add(
+                MessageClearChat(conversationId: widget.conversationId!),
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Chat history cleared')),
               );
@@ -247,6 +377,13 @@ class ChatSettingsPage extends StatelessWidget {
   }
 
   void _confirmDeleteConversation(BuildContext context) {
+    if (widget.conversationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot delete: conversation not found')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -260,18 +397,41 @@ class ChatSettingsPage extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              // TODO: Implement delete conversation API call
-              Navigator.pop(context); // Return to conversation list
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Conversation deleted')),
-              );
+              await _performDeleteConversation();
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _performDeleteConversation() async {
+    if (widget.conversationId == null) return;
+
+    setState(() => _isDeleteLoading = true);
+
+    final result = await _deleteConversation(widget.conversationId!);
+
+    if (!mounted) return;
+
+    setState(() => _isDeleteLoading = false);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${failure.message}')));
+      },
+      (_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Conversation deleted')));
+        // Return to conversation list
+        Navigator.of(context).pop({'conversationDeleted': true});
+      },
     );
   }
 }

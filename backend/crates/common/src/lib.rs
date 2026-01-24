@@ -1,6 +1,7 @@
 /// Common utilities and shared types for Guardyn backend services
 pub mod config;
 pub mod error;
+pub mod events;
 pub mod observability;
 pub mod rate_limit;
 pub mod rate_limit_middleware;

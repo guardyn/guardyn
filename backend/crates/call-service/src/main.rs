@@ -2,9 +2,11 @@
 //!
 //! Provides signaling for WebRTC calls with SFrame end-to-end encryption.
 
+mod auth_client;
 mod db;
 mod generated;
 mod handlers;
+mod nats;
 mod service;
 mod session;
 
@@ -17,6 +19,7 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 use crate::db::CallDb;
+use crate::nats::CallNatsClient;
 use crate::service::CallServiceImpl;
 use crate::session::CallSessionManager;
 
@@ -40,13 +43,14 @@ async fn main() -> Result<()> {
     let session_manager = CallSessionManager::new();
 
     // Connect to NATS for event distribution
-    let nats_client = async_nats::connect(&config.nats_url).await?;
+    let nats_client = CallNatsClient::new(&config.nats_url).await?;
 
     // Create service implementation
     let call_service = CallServiceImpl::new(
         Arc::new(db),
         Arc::new(session_manager),
-        nats_client,
+        Arc::new(nats_client),
+        config.auth_service_url.clone(),
         config.jwt_secret.clone(),
         config.ice_servers.clone(),
     );
@@ -68,6 +72,7 @@ pub struct Config {
     pub listen_addr: String,
     pub scylla_hosts: Vec<String>,
     pub nats_url: String,
+    pub auth_service_url: String,
     pub jwt_secret: String,
     pub ice_servers: Vec<IceServerConfig>,
 }
@@ -92,7 +97,9 @@ fn load_config() -> Result<Config> {
             .collect(),
         nats_url: std::env::var("NATS_URL")
             .unwrap_or_else(|_| "nats://nats.messaging.svc.cluster.local:4222".to_string()),
-        jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret".to_string()),
+        auth_service_url: std::env::var("AUTH_SERVICE_URL")
+            .unwrap_or_else(|_| "http://auth-service.apps.svc.cluster.local:50051".to_string()),
+        jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "development-secret-change-in-production".to_string()),
         ice_servers,
     })
 }

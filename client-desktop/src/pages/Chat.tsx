@@ -2,23 +2,23 @@ import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { destroyWebSocket, getWebSocket, initWebSocket, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
-import { ForwardModal, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
+import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
-  addMessage,
-  addTypingUser,
-  clearReplyingTo,
-  deleteMessage as deleteMessageFromStore,
-  forwardMessage,
-  getActiveMessages,
-  getActiveTypingUsers,
-  getMessageById,
-  getReplyingTo,
-  removeTypingUser,
-  setActiveConversation,
-  setReplyingTo,
-  toggleReaction,
-  type Message as StoreMessage
+    addMessage,
+    addTypingUser,
+    clearReplyingTo,
+    deleteMessage as deleteMessageFromStore,
+    forwardMessage,
+    getActiveMessages,
+    getActiveTypingUsers,
+    getMessageById,
+    getReplyingTo,
+    removeTypingUser,
+    setActiveConversation,
+    setReplyingTo,
+    toggleReaction,
+    type Message as StoreMessage
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
 
@@ -27,7 +27,6 @@ interface ChatPageProps {}
 const Chat: Component<ChatPageProps> = () => {
   const [conversations, setConversations] = createSignal<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = createSignal<string | null>(null);
-  const [newMessage, setNewMessage] = createSignal('');
   const [loading, setLoading] = createSignal(true);
   const [isConnected, setIsConnected] = createSignal(false);
 
@@ -151,16 +150,16 @@ const Chat: Component<ChatPageProps> = () => {
     }
   };
 
-  const sendMessage = async (e: Event) => {
-    e.preventDefault();
-    const content = newMessage().trim();
+  // Handle send message from MessageInput component (with optional media)
+  const handleSendMessage = async (content: string, mediaId?: string) => {
     const convId = selectedConversation();
-    if (!content || !convId) return;
+    if (!convId) return;
+    if (!content.trim() && !mediaId) return;
 
     // Get reply context if replying
     const replyContext = replyingTo();
 
-    // Create optimistic message with optional replyTo
+    // Create optimistic message with optional replyTo and media
     const messageId = crypto.randomUUID();
     const messageData = {
       id: messageId,
@@ -170,6 +169,7 @@ const Chat: Component<ChatPageProps> = () => {
       content,
       timestamp: Date.now(),
       status: 'sending' as const,
+      mediaId,
       ...(replyContext && {
         replyTo: {
           id: replyContext.id,
@@ -188,14 +188,13 @@ const Chat: Component<ChatPageProps> = () => {
       clearReplyingTo();
     }
 
-    setNewMessage('');
-
     try {
       // Send via WebSocket
       const ws = getWebSocket();
       if (ws && isConnected()) {
         ws.sendMessage(convId, content, {
           clientMessageId: messageId,
+          mediaId,
         });
       }
 
@@ -203,6 +202,7 @@ const Chat: Component<ChatPageProps> = () => {
       await invoke('send_message', {
         conversationId: convId,
         content,
+        mediaId,
       });
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -536,30 +536,14 @@ const Chat: Component<ChatPageProps> = () => {
               </div>
             </Show>
 
-            <form onSubmit={sendMessage} class="p-4">
-              <div class="flex space-x-2">
-                <input
-                type="text"
-                value={newMessage()}
-                onInput={(e) => {
-                  setNewMessage(e.currentTarget.value);
-                  handleTyping();
-                }}
+            <div class="p-4">
+              <MessageInput
+                onSend={handleSendMessage}
+                onTyping={handleTyping}
+                conversationId={selectedConversation() ?? undefined}
                 placeholder="Type a message..."
-                class="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-guardyn-500 focus:border-transparent"
               />
-              <button
-                type="submit"
-                disabled={!newMessage().trim()}
-                aria-label="Send message"
-                class="px-6 py-3 bg-guardyn-600 text-white rounded-lg hover:bg-guardyn-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
             </div>
-          </form>
           </div>
         </Show>
       </div>

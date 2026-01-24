@@ -20,6 +20,9 @@ pub struct UserProfile {
     pub password_hash: String,
     pub created_at: i64,
     pub last_seen: i64,
+    pub avatar_media_id: Option<String>,  // Reference to media in MediaService
+    pub display_name: Option<String>,     // Optional display name
+    pub bio: Option<String>,              // Optional bio text
 }
 
 /// Device information
@@ -51,6 +54,17 @@ pub struct KeyBundle {
     pub signed_pre_key_signature: Vec<u8>,
     pub one_time_pre_keys: Vec<Vec<u8>>,
     pub created_at: i64,
+}
+
+/// Contact relationship stored in TiKV
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Contact {
+    pub contact_id: String,     // UUID of the contact relationship
+    pub owner_user_id: String,  // User who owns this contact
+    pub contact_user_id: String, // User who is the contact
+    pub nickname: Option<String>, // Custom nickname set by owner
+    pub notes: Option<String>,   // Private notes about contact
+    pub added_at: i64,
 }
 
 /// Database client
@@ -127,6 +141,43 @@ impl DatabaseClient {
 
         let profile: UserProfile = serde_json::from_slice(&profile_data)?;
         Ok(Some(profile))
+    }
+
+    /// Update user profile fields (avatar, display_name, bio)
+    pub async fn update_user_profile(
+        &self,
+        user_id: &str,
+        avatar_media_id: Option<String>,
+        display_name: Option<String>,
+        bio: Option<String>,
+        clear_avatar: bool,
+    ) -> Result<UserProfile> {
+        // Get existing profile
+        let profile_key = format!("/users/{}/profile", user_id).into_bytes();
+        let profile_data = self.client.get(profile_key.clone()).await?
+            .ok_or_else(|| anyhow::anyhow!("User not found"))?;
+
+        let mut profile: UserProfile = serde_json::from_slice(&profile_data)?;
+
+        // Update fields if provided
+        // clear_avatar explicitly removes the avatar
+        if clear_avatar {
+            profile.avatar_media_id = None;
+        } else if avatar_media_id.is_some() {
+            profile.avatar_media_id = avatar_media_id;
+        }
+        if display_name.is_some() {
+            profile.display_name = display_name;
+        }
+        if bio.is_some() {
+            profile.bio = bio;
+        }
+
+        // Save updated profile
+        let profile_value = serde_json::to_vec(&profile)?;
+        self.client.put(profile_key, profile_value).await?;
+
+        Ok(profile)
     }
 
     /// Search users by username prefix
@@ -212,7 +263,11 @@ impl DatabaseClient {
 
         // Store session in user index
         let user_key = format!("/sessions/user/{}/{}", session.user_id, session.session_token).into_bytes();
-        self.client.put(user_key, session_value).await?;
+        self.client.put(user_key, session_value.clone()).await?;
+
+        // Store session in device index (for single-device logout)
+        let device_key = format!("/sessions/device/{}/{}/{}", session.user_id, session.device_id, session.session_token).into_bytes();
+        self.client.put(device_key, session_value).await?;
 
         Ok(())
     }
@@ -230,22 +285,103 @@ impl DatabaseClient {
         Ok(Some(session))
     }
 
-    /// Delete session
+    /// Delete session by token
     pub async fn delete_session(&self, token: &str) -> Result<()> {
-        // Get session to find user_id
+        // Get session to find user_id and device_id
         let session = match self.get_session(token).await? {
             Some(s) => s,
             None => return Ok(()), // Already deleted
         };
 
-        // Delete from both indexes
+        // Delete from all three indexes
         let token_key = format!("/sessions/{}", token).into_bytes();
         self.client.delete(token_key).await?;
 
         let user_key = format!("/sessions/user/{}/{}", session.user_id, token).into_bytes();
         self.client.delete(user_key).await?;
 
+        let device_key = format!("/sessions/device/{}/{}/{}", session.user_id, session.device_id, token).into_bytes();
+        self.client.delete(device_key).await?;
+
         Ok(())
+    }
+
+    /// Delete session by device (for single-device logout)
+    ///
+    /// Returns true if a session was deleted, false if no session found.
+    pub async fn delete_session_by_device(&self, user_id: &str, device_id: &str) -> Result<bool> {
+        let prefix = format!("/sessions/device/{}/{}/", user_id, device_id);
+        let start_key = prefix.as_bytes().to_vec();
+        let end_key = format!("{}~", prefix).as_bytes().to_vec();
+
+        // Scan for session(s) on this device
+        let sessions = self.client.scan(start_key..end_key, 10).await?;
+
+        if sessions.is_empty() {
+            return Ok(false);
+        }
+
+        for kv in sessions {
+            let key_bytes: &[u8] = (&kv.0).into();
+            let key_str = String::from_utf8_lossy(key_bytes);
+            if let Some(token) = key_str.strip_prefix(&prefix) {
+                // Delete from all three indexes
+                let token_key = format!("/sessions/{}", token).into_bytes();
+                self.client.delete(token_key).await?;
+
+                let user_key = format!("/sessions/user/{}/{}", user_id, token).into_bytes();
+                self.client.delete(user_key).await?;
+
+                self.client.delete(kv.0.clone()).await?;
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Delete all sessions for a user (logout from all devices)
+    ///
+    /// Returns the number of sessions deleted.
+    pub async fn delete_all_user_sessions(&self, user_id: &str) -> Result<u32> {
+        let prefix = format!("/sessions/user/{}/", user_id);
+        let start_key = prefix.as_bytes().to_vec();
+        let end_key = format!("{}~", prefix).as_bytes().to_vec(); // ~ is after / in ASCII
+
+        // Scan for all session tokens for this user (limit 100 sessions per user)
+        let sessions = self.client.scan(start_key..end_key, 100).await?;
+
+        let mut deleted_count = 0u32;
+
+        for kv in sessions {
+            // Extract session token from key and parse session data
+            let key_bytes: &[u8] = (&kv.0).into();
+            let key_str = String::from_utf8_lossy(key_bytes);
+            if let Some(token) = key_str.strip_prefix(&prefix) {
+                // Parse session to get device_id
+                if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
+                    // Delete from device index
+                    let device_key = format!("/sessions/device/{}/{}/{}", user_id, session.device_id, token).into_bytes();
+                    self.client.delete(device_key).await?;
+                }
+
+                // Delete from main index
+                let token_key = format!("/sessions/{}", token).into_bytes();
+                self.client.delete(token_key).await?;
+
+                // Delete from user index
+                self.client.delete(kv.0.clone()).await?;
+
+                deleted_count += 1;
+            }
+        }
+
+        tracing::info!(
+            user_id = user_id,
+            deleted = deleted_count,
+            "Deleted all user sessions"
+        );
+
+        Ok(deleted_count)
     }
 
     /// Store key bundle
@@ -397,11 +533,14 @@ impl DatabaseClient {
 
         let session_keys = self.client.scan(start_key..end_key, 1000).await?;
         for kv in session_keys {
-            // Get the session token from the value to also delete from main sessions index
-            let session_token = String::from_utf8_lossy(&kv.1);
+            // Get the session to also delete from main sessions index and device index
             if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
                 let token_key = format!("/sessions/{}", session.session_token).into_bytes();
                 let _ = self.client.delete(token_key).await;
+
+                // Delete from device index
+                let device_key = format!("/sessions/device/{}/{}/{}", user_id, session.device_id, session.session_token).into_bytes();
+                let _ = self.client.delete(device_key).await;
             }
 
             let key_bytes: Vec<u8> = kv.0.into();
@@ -425,4 +564,189 @@ impl DatabaseClient {
         tracing::info!("Deleted all auth data for user: {}", user_id);
         Ok(())
     }
-}
+
+    // ========================================================================
+    // Contacts Management
+    // ========================================================================
+
+    /// Add a contact
+    /// Key structure: /contacts/{owner_user_id}/{contact_user_id} -> Contact
+    pub async fn add_contact(&self, contact: &Contact) -> Result<()> {
+        // Check if contact already exists
+        let key = format!(
+            "/contacts/{}/{}",
+            contact.owner_user_id, contact.contact_user_id
+        )
+        .into_bytes();
+
+        if self.client.get(key.clone()).await?.is_some() {
+            anyhow::bail!("Contact already exists");
+        }
+
+        // Store contact
+        let value = serde_json::to_vec(contact)?;
+        self.client.put(key, value).await?;
+
+        tracing::info!(
+            "Added contact {} for user {}",
+            contact.contact_user_id,
+            contact.owner_user_id
+        );
+        Ok(())
+    }
+
+    /// Remove a contact
+    pub async fn remove_contact(&self, owner_user_id: &str, contact_user_id: &str) -> Result<()> {
+        let key = format!("/contacts/{}/{}", owner_user_id, contact_user_id).into_bytes();
+
+        // Check if contact exists
+        if self.client.get(key.clone()).await?.is_none() {
+            anyhow::bail!("Contact not found");
+        }
+
+        self.client.delete(key).await?;
+
+        tracing::info!(
+            "Removed contact {} for user {}",
+            contact_user_id,
+            owner_user_id
+        );
+        Ok(())
+    }
+
+    /// Get a specific contact
+    pub async fn get_contact(
+        &self,
+        owner_user_id: &str,
+        contact_user_id: &str,
+    ) -> Result<Option<Contact>> {
+        let key = format!("/contacts/{}/{}", owner_user_id, contact_user_id).into_bytes();
+
+        match self.client.get(key).await? {
+            Some(data) => {
+                let contact: Contact = serde_json::from_slice(&data)?;
+                Ok(Some(contact))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Update a contact
+    pub async fn update_contact(
+        &self,
+        owner_user_id: &str,
+        contact_user_id: &str,
+        nickname: Option<String>,
+        notes: Option<String>,
+        clear_nickname: bool,
+        clear_notes: bool,
+    ) -> Result<Contact> {
+        let key = format!("/contacts/{}/{}", owner_user_id, contact_user_id).into_bytes();
+
+        // Get existing contact
+        let contact_data = self
+            .client
+            .get(key.clone())
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Contact not found"))?;
+
+        let mut contact: Contact = serde_json::from_slice(&contact_data)?;
+
+        // Update fields
+        if clear_nickname {
+            contact.nickname = None;
+        } else if nickname.is_some() && !nickname.as_ref().unwrap().is_empty() {
+            contact.nickname = nickname;
+        }
+
+        if clear_notes {
+            contact.notes = None;
+        } else if notes.is_some() && !notes.as_ref().unwrap().is_empty() {
+            contact.notes = notes;
+        }
+
+        // Save updated contact
+        let value = serde_json::to_vec(&contact)?;
+        self.client.put(key, value).await?;
+
+        tracing::info!(
+            "Updated contact {} for user {}",
+            contact_user_id,
+            owner_user_id
+        );
+        Ok(contact)
+    }
+
+    /// List all contacts for a user with pagination
+    pub async fn list_contacts(
+        &self,
+        owner_user_id: &str,
+        limit: u32,
+        cursor: Option<&str>,
+    ) -> Result<(Vec<Contact>, Option<String>, u32)> {
+        let prefix = format!("/contacts/{}/", owner_user_id);
+
+        // Determine start key based on cursor
+        let start_key = if let Some(cursor_value) = cursor {
+            format!("/contacts/{}/{}", owner_user_id, cursor_value).into_bytes()
+        } else {
+            prefix.clone().into_bytes()
+        };
+
+        let mut end_key = prefix.clone().into_bytes();
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1;
+        }
+
+        // Fetch one extra to determine if there are more results
+        let scan_limit = limit + 1;
+        let keys = self.client.scan(start_key..end_key, scan_limit).await?;
+
+        let mut contacts = Vec::new();
+        let mut next_cursor: Option<String> = None;
+
+        for kv in keys {
+            if contacts.len() >= limit as usize {
+                // We have more results, extract cursor from this key
+                let key_bytes: &[u8] = (&kv.0).into();
+                let key_str = String::from_utf8_lossy(key_bytes);
+                if let Some(contact_user_id) = key_str.strip_prefix(&prefix) {
+                    next_cursor = Some(contact_user_id.to_string());
+                }
+                break;
+            }
+
+            let contact: Contact = serde_json::from_slice(&kv.1)?;
+            contacts.push(contact);
+        }
+
+        // Count total contacts (separate scan for count)
+        let count_start = prefix.clone().into_bytes();
+        let mut count_end = count_start.clone();
+        if let Some(last) = count_end.last_mut() {
+            *last = *last + 1;
+        }
+        let all_keys = self.client.scan(count_start..count_end, 10000).await?;
+        let total_count = all_keys.len() as u32;
+
+        Ok((contacts, next_cursor, total_count))
+    }
+
+    /// Delete all contacts for a user (used during account deletion)
+    pub async fn delete_user_contacts(&self, user_id: &str) -> Result<()> {
+        let prefix = format!("/contacts/{}/", user_id);
+        let start_key = prefix.clone().into_bytes();
+        let mut end_key = start_key.clone();
+        if let Some(last) = end_key.last_mut() {
+            *last = *last + 1;
+        }
+
+        let keys = self.client.scan(start_key..end_key, 10000).await?;
+        for kv in keys {
+            let key_bytes: Vec<u8> = kv.0.into();
+            self.client.delete(key_bytes).await?;
+        }
+
+        tracing::info!("Deleted all contacts for user: {}", user_id);
+        Ok(())
+    }}

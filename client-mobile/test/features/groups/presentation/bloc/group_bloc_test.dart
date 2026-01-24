@@ -4,13 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/features/groups/domain/entities/group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/change_member_role.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_by_id.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_group_messages.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/get_groups.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/leave_group.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/remove_group_member.dart';
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_typing_indicator.dart';
+import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_event.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_state.dart';
@@ -18,6 +22,8 @@ import 'package:mocktail/mocktail.dart';
 
 // Mocks
 class MockCreateGroup extends Mock implements CreateGroup {}
+
+class MockDeleteGroup extends Mock implements DeleteGroup {}
 
 class MockGetGroups extends Mock implements GetGroups {}
 
@@ -33,6 +39,12 @@ class MockRemoveGroupMember extends Mock implements RemoveGroupMember {}
 
 class MockLeaveGroup extends Mock implements LeaveGroup {}
 
+class MockUpdateGroup extends Mock implements UpdateGroup {}
+
+class MockSendGroupTypingIndicator extends Mock implements SendGroupTypingIndicator {}
+
+class MockChangeMemberRole extends Mock implements ChangeMemberRole {}
+
 // Fake classes for argument matchers
 class FakeCreateGroupParams extends Fake implements CreateGroupParams {}
 
@@ -46,9 +58,18 @@ class FakeRemoveGroupMemberParams extends Fake implements RemoveGroupMemberParam
 
 class FakeLeaveGroupParams extends Fake implements LeaveGroupParams {}
 
+class FakeDeleteGroupParams extends Fake implements DeleteGroupParams {}
+
+class FakeUpdateGroupParams extends Fake implements UpdateGroupParams {}
+
+class FakeSendGroupTypingIndicatorParams extends Fake implements SendGroupTypingIndicatorParams {}
+
+class FakeChangeMemberRoleParams extends Fake implements ChangeMemberRoleParams {}
+
 void main() {
   late GroupBloc bloc;
   late MockCreateGroup mockCreateGroup;
+  late MockDeleteGroup mockDeleteGroup;
   late MockGetGroups mockGetGroups;
   late MockGetGroupById mockGetGroupById;
   late MockSendGroupMessage mockSendGroupMessage;
@@ -56,6 +77,9 @@ void main() {
   late MockAddGroupMember mockAddGroupMember;
   late MockRemoveGroupMember mockRemoveGroupMember;
   late MockLeaveGroup mockLeaveGroup;
+  late MockUpdateGroup mockUpdateGroup;
+  late MockSendGroupTypingIndicator mockSendGroupTypingIndicator;
+  late MockChangeMemberRole mockChangeMemberRole;
 
   // Test data
   const tGroupId = 'group-001';
@@ -102,10 +126,15 @@ void main() {
     registerFallbackValue(FakeAddGroupMemberParams());
     registerFallbackValue(FakeRemoveGroupMemberParams());
     registerFallbackValue(FakeLeaveGroupParams());
+    registerFallbackValue(FakeDeleteGroupParams());
+    registerFallbackValue(FakeUpdateGroupParams());
+    registerFallbackValue(FakeSendGroupTypingIndicatorParams());
+    registerFallbackValue(FakeChangeMemberRoleParams());
   });
 
   setUp(() {
     mockCreateGroup = MockCreateGroup();
+    mockDeleteGroup = MockDeleteGroup();
     mockGetGroups = MockGetGroups();
     mockGetGroupById = MockGetGroupById();
     mockSendGroupMessage = MockSendGroupMessage();
@@ -113,17 +142,33 @@ void main() {
     mockAddGroupMember = MockAddGroupMember();
     mockRemoveGroupMember = MockRemoveGroupMember();
     mockLeaveGroup = MockLeaveGroup();
+    mockUpdateGroup = MockUpdateGroup();
+    mockSendGroupTypingIndicator = MockSendGroupTypingIndicator();
+    mockChangeMemberRole = MockChangeMemberRole();
     
     // Setup default mock behavior for leaveGroup
     when(() => mockLeaveGroup.call(any()))
         .thenAnswer((_) async => const Right<Failure, bool>(true));
     
+    // Setup default mock behavior for deleteGroup
+    when(() => mockDeleteGroup.call(any()))
+        .thenAnswer((_) async => const Right<Failure, bool>(true));
+    
     // Setup default mock behavior for getGroups
     when(() => mockGetGroups())
         .thenAnswer((_) async => const Right<Failure, List<Group>>([]));
+    
+    // Setup default mock behavior for sendGroupTypingIndicator
+    when(() => mockSendGroupTypingIndicator.call(any()))
+        .thenAnswer((_) async => const Right<Failure, bool>(true));
+    
+    // Setup default mock behavior for changeMemberRole
+    when(() => mockChangeMemberRole.call(any()))
+        .thenAnswer((_) async => const Right<Failure, void>(null));
 
     bloc = GroupBloc(
       createGroup: mockCreateGroup,
+      deleteGroup: mockDeleteGroup,
       getGroups: mockGetGroups,
       getGroupById: mockGetGroupById,
       sendGroupMessage: mockSendGroupMessage,
@@ -131,6 +176,9 @@ void main() {
       addGroupMember: mockAddGroupMember,
       removeGroupMember: mockRemoveGroupMember,
       leaveGroup: mockLeaveGroup,
+      updateGroup: mockUpdateGroup,
+      sendGroupTypingIndicator: mockSendGroupTypingIndicator,
+      changeMemberRole: mockChangeMemberRole,
     );
   });
 
@@ -458,5 +506,175 @@ void main() {
       },
       expect: () => [], // No state change expected for duplicate
     );
+  });
+
+  group('GroupUpdate', () {
+    final tUpdatedGroup = Group(
+      groupId: tGroupId,
+      name: 'Updated Group Name',
+      creatorUserId: tCreatorUserId,
+      members: const [],
+      createdAt: DateTime(2025, 11, 29),
+      memberCount: 3,
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits [GroupLoading, GroupUpdated] when UpdateGroup succeeds',
+      build: () {
+        when(() => mockUpdateGroup(any()))
+            .thenAnswer((_) async => Right(tUpdatedGroup));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupUpdate(
+        groupId: tGroupId,
+        name: 'Updated Group Name',
+      )),
+      expect: () => [
+        const GroupLoading(),
+        GroupUpdated(group: tUpdatedGroup),
+      ],
+      verify: (_) {
+        verify(() => mockUpdateGroup(any())).called(1);
+      },
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits [GroupLoading, GroupError] when UpdateGroup fails',
+      build: () {
+        when(() => mockUpdateGroup(any()))
+            .thenAnswer((_) async => const Left(ServerFailure('Permission denied')));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupUpdate(
+        groupId: tGroupId,
+        name: 'Updated Group Name',
+      )),
+      expect: () => [
+        const GroupLoading(),
+        const GroupError('Permission denied'),
+      ],
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits [GroupLoading, GroupUpdated] when updating icon',
+      build: () {
+        when(() => mockUpdateGroup(any()))
+            .thenAnswer((_) async => Right(tUpdatedGroup));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupUpdate(
+        groupId: tGroupId,
+        iconMediaId: 'new-icon-media-id',
+      )),
+      expect: () => [
+        const GroupLoading(),
+        GroupUpdated(group: tUpdatedGroup),
+      ],
+    );
+  });
+
+  group('GroupTypingIndicator', () {
+    const tTypingGroupId = 'group-001';
+
+    blocTest<GroupBloc, GroupState>(
+      'sends typing indicator via use case when GroupSendTypingIndicator is added',
+      build: () {
+        when(() => mockSendGroupTypingIndicator(any()))
+            .thenAnswer((_) async => const Right(true));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const GroupSendTypingIndicator(
+        groupId: tTypingGroupId,
+        isTyping: true,
+      )),
+      verify: (_) {
+        verify(() => mockSendGroupTypingIndicator(any())).called(1);
+      },
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits GroupTypingUsersUpdated when GroupTypingReceived is added with isTyping=true',
+      build: () => bloc,
+      act: (bloc) => bloc.add(const GroupTypingReceived(
+        groupId: tTypingGroupId,
+        userId: 'user-456',
+        username: 'Bob',
+        isTyping: true,
+      )),
+      expect: () => [
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob'],
+          messages: [],
+        ),
+      ],
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'emits GroupTypingUsersUpdated with empty list when user stops typing',
+      build: () => bloc,
+      act: (bloc) {
+        // First add typing, then remove
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-456',
+          username: 'Bob',
+          isTyping: true,
+        ));
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-456',
+          username: 'Bob',
+          isTyping: false,
+        ));
+      },
+      expect: () => [
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob'],
+          messages: [],
+        ),
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: [],
+          messages: [],
+        ),
+      ],
+    );
+
+    blocTest<GroupBloc, GroupState>(
+      'handles multiple users typing simultaneously',
+      build: () => bloc,
+      act: (bloc) {
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-456',
+          username: 'Bob',
+          isTyping: true,
+        ));
+        bloc.add(const GroupTypingReceived(
+          groupId: tTypingGroupId,
+          userId: 'user-789',
+          username: 'Charlie',
+          isTyping: true,
+        ));
+      },
+      expect: () => [
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob'],
+          messages: [],
+        ),
+        const GroupTypingUsersUpdated(
+          groupId: tTypingGroupId,
+          typingUsernames: ['Bob', 'Charlie'],
+          messages: [],
+        ),
+      ],
+    );
+
+    test('getTypingUsernames returns empty list for unknown group', () {
+      expect(bloc.getTypingUsernames('unknown-group'), isEmpty);
+    });
   });
 }

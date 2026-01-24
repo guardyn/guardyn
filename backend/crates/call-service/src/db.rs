@@ -457,22 +457,46 @@ impl CallDb {
         Ok(())
     }
 
-    /// Get user's call history
-    pub async fn get_call_history(&self, user_id: &str, limit: i32) -> Result<Vec<UserCallHistoryEntry>> {
-        let result = self
-            .session
-            .query_unpaged(
-                r#"
-                SELECT user_id, started_at, call_id, call_type, is_group_call, group_id,
-                       other_user_id, other_user_name, is_outgoing, end_reason, duration_seconds
-                FROM guardyn_calls.user_call_history
-                WHERE user_id = ?
-                LIMIT ?
-                "#,
-                (user_id, limit),
-            )
-            .await
-            .context("Failed to get call history")?;
+    /// Get user's call history with cursor-based pagination
+    /// 
+    /// The cursor is a timestamp (millis) - returns calls older than this timestamp
+    pub async fn get_call_history(
+        &self, 
+        user_id: &str, 
+        limit: i32,
+        before_timestamp: Option<i64>,
+    ) -> Result<Vec<UserCallHistoryEntry>> {
+        let result = if let Some(ts) = before_timestamp {
+            // Query with cursor - get calls older than the given timestamp
+            self.session
+                .query_unpaged(
+                    r#"
+                    SELECT user_id, started_at, call_id, call_type, is_group_call, group_id,
+                           other_user_id, other_user_name, is_outgoing, end_reason, duration_seconds
+                    FROM guardyn_calls.user_call_history
+                    WHERE user_id = ? AND started_at < ?
+                    LIMIT ?
+                    "#,
+                    (user_id, ts, limit),
+                )
+                .await
+                .context("Failed to get call history with cursor")?
+        } else {
+            // Query without cursor - get most recent calls
+            self.session
+                .query_unpaged(
+                    r#"
+                    SELECT user_id, started_at, call_id, call_type, is_group_call, group_id,
+                           other_user_id, other_user_name, is_outgoing, end_reason, duration_seconds
+                    FROM guardyn_calls.user_call_history
+                    WHERE user_id = ?
+                    LIMIT ?
+                    "#,
+                    (user_id, limit),
+                )
+                .await
+                .context("Failed to get call history")?
+        };
 
         let mut history = Vec::new();
         if let Some(rows) = result.rows {

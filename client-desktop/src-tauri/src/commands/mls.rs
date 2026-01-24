@@ -3,6 +3,7 @@
 //! Exposes OpenMLS functionality to the frontend for group chat encryption.
 //! Provides group creation, member management, and message encryption/decryption.
 
+use crate::services::SecureStorage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
@@ -12,7 +13,7 @@ use std::sync::{LazyLock, Mutex};
 // =============================================================================
 
 /// In-memory storage for MLS groups and key packages
-/// TODO: Persist to secure storage (keychain/credential manager)
+/// Backed by secure storage (OS keychain/credential manager) for persistence
 struct MlsStore {
     /// User identity for MLS operations
     identity: Option<Vec<u8>>,
@@ -36,7 +37,77 @@ impl Default for MlsStore {
 }
 
 /// Global MLS store
-static MLS_STORE: LazyLock<Mutex<MlsStore>> = LazyLock::new(|| Mutex::new(MlsStore::default()));
+static MLS_STORE: LazyLock<Mutex<MlsStore>> = LazyLock::new(|| {
+    let mut store = MlsStore::default();
+    // Try to load existing MLS state from secure storage on initialization
+    if let Err(e) = load_mls_from_secure_storage(&mut store) {
+        tracing::debug!("No existing MLS state in secure storage: {}", e);
+    }
+    Mutex::new(store)
+});
+
+// =============================================================================
+// SECURE STORAGE PERSISTENCE
+// =============================================================================
+
+const MLS_IDENTITY_KEY: &str = "mls_identity";
+const MLS_KEYPAIR_KEY: &str = "mls_signature_keypair";
+const MLS_GROUPS_KEY: &str = "mls_groups";
+
+/// Load MLS state from secure storage
+fn load_mls_from_secure_storage(store: &mut MlsStore) -> Result<(), String> {
+    let storage = SecureStorage::default_instance();
+
+    // Load identity
+    if let Ok(identity) = storage.retrieve::<Vec<u8>>(MLS_IDENTITY_KEY) {
+        store.identity = Some(identity);
+        tracing::info!("Loaded MLS identity from secure storage");
+    }
+
+    // Load signature keypair
+    if let Ok(keypair) = storage.retrieve::<Vec<u8>>(MLS_KEYPAIR_KEY) {
+        store.signature_keypair = Some(keypair);
+        tracing::info!("Loaded MLS keypair from secure storage");
+    }
+
+    // Load groups
+    if let Ok(groups) = storage.retrieve::<HashMap<String, MlsGroupData>>(MLS_GROUPS_KEY) {
+        store.group_states = groups;
+        tracing::info!("Loaded {} MLS groups from secure storage", store.group_states.len());
+    }
+
+    Ok(())
+}
+
+/// Persist MLS identity to secure storage
+fn persist_mls_identity(identity: &[u8]) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store(MLS_IDENTITY_KEY, identity)
+        .map_err(|e| format!("Failed to persist MLS identity: {}", e))
+}
+
+/// Persist MLS signature keypair to secure storage
+fn persist_mls_keypair(keypair: &[u8]) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store(MLS_KEYPAIR_KEY, keypair)
+        .map_err(|e| format!("Failed to persist MLS keypair: {}", e))
+}
+
+/// Persist MLS groups to secure storage
+fn persist_mls_groups(groups: &HashMap<String, MlsGroupData>) -> Result<(), String> {
+    SecureStorage::default_instance()
+        .store(MLS_GROUPS_KEY, groups)
+        .map_err(|e| format!("Failed to persist MLS groups: {}", e))
+}
+
+/// Clear all MLS data from secure storage
+fn clear_mls_from_secure_storage() -> Result<(), String> {
+    let storage = SecureStorage::default_instance();
+    let _ = storage.delete(MLS_IDENTITY_KEY);
+    let _ = storage.delete(MLS_KEYPAIR_KEY);
+    let _ = storage.delete(MLS_GROUPS_KEY);
+    Ok(())
+}
 
 // =============================================================================
 // DATA TYPES
@@ -68,11 +139,9 @@ pub struct MlsGroupData {
     pub messages_received: u64,
     /// Last activity timestamp
     pub last_activity: u64,
-    /// Serialized group state (base64) - only stored internally
-    /// TODO: Used for group state persistence in production
-    #[serde(skip)]
-    #[allow(dead_code)]
-    serialized_state: Vec<u8>,
+    /// Serialized group state (base64 encoded for JSON compatibility)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub serialized_state: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -158,10 +227,14 @@ pub async fn mls_init(user_id: String, device_id: String) -> Result<bool, String
     let keypair_bytes = keypair.public().to_vec();
 
     let mut store = MLS_STORE.lock().map_err(|e| e.to_string())?;
-    store.identity = Some(identity);
-    store.signature_keypair = Some(keypair_bytes);
+    store.identity = Some(identity.clone());
+    store.signature_keypair = Some(keypair_bytes.clone());
 
-    tracing::info!("MLS initialized successfully");
+    // Persist to secure storage
+    persist_mls_identity(&identity)?;
+    persist_mls_keypair(&keypair_bytes)?;
+
+    tracing::info!("MLS initialized and persisted successfully");
     Ok(true)
 }
 
@@ -275,7 +348,10 @@ pub async fn mls_create_group(group_id: String, name: String) -> Result<MlsGroup
 
     store.group_states.insert(group_id.clone(), group_data);
 
-    tracing::info!("MLS group created: {} at epoch 0", group_id);
+    // Persist groups to secure storage
+    persist_mls_groups(&store.group_states)?;
+
+    tracing::info!("MLS group created and persisted: {} at epoch 0", group_id);
     Ok(MlsGroupCreateResult {
         group_id,
         epoch: 0,
@@ -375,6 +451,9 @@ pub async fn mls_add_member(
 
     store.group_states.insert(group_id.clone(), updated_group);
 
+    // Persist groups to secure storage
+    persist_mls_groups(&store.group_states)?;
+
     tracing::info!("Member added to group: {} (epoch {})", group_id, new_epoch);
     Ok(MlsAddMemberResult {
         commit: base64::Engine::encode(
@@ -436,6 +515,9 @@ pub async fn mls_remove_member(
         .as_secs();
 
     store.group_states.insert(group_id.clone(), updated_group);
+
+    // Persist groups to secure storage
+    persist_mls_groups(&store.group_states)?;
 
     tracing::info!("Member removed from group: {} (epoch {})", group_id, new_epoch);
     Ok(MlsRemoveMemberResult {
@@ -522,6 +604,9 @@ pub async fn mls_join_group(
 
     store.group_states.insert(group_id.clone(), group_data);
 
+    // Persist groups to secure storage
+    persist_mls_groups(&store.group_states)?;
+
     tracing::info!("Joined MLS group: {} at epoch {}", group_id, info.epoch);
     Ok(info)
 }
@@ -566,6 +651,11 @@ pub async fn mls_encrypt_message(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+
+    // Persist groups to secure storage
+    let groups_clone = store.group_states.clone();
+    drop(store);
+    persist_mls_groups(&groups_clone)?;
 
     tracing::debug!("Message encrypted for group: {} (epoch {})", group_id, epoch);
     Ok(MlsEncryptedMessage {
@@ -623,6 +713,11 @@ pub async fn mls_decrypt_message(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+
+    // Persist groups to secure storage
+    let groups_clone = store.group_states.clone();
+    drop(store);
+    persist_mls_groups(&groups_clone)?;
 
     tracing::debug!("Message decrypted from group: {} (epoch {})", group_id, epoch);
     Ok(MlsDecryptedMessage {
@@ -682,6 +777,9 @@ pub async fn mls_process_commit(
         .unwrap_or_default()
         .as_secs();
 
+    // Persist groups to secure storage
+    persist_mls_groups(&store.group_states)?;
+
     tracing::info!("Commit processed for group: {} (epoch {})", group_id, new_epoch);
     Ok(new_epoch)
 }
@@ -695,7 +793,9 @@ pub async fn mls_delete_group(group_id: String) -> Result<bool, String> {
     let removed = store.group_states.remove(&group_id).is_some();
 
     if removed {
-        tracing::info!("MLS group deleted: {}", group_id);
+        // Persist updated groups to secure storage
+        persist_mls_groups(&store.group_states)?;
+        tracing::info!("MLS group deleted and persisted: {}", group_id);
     } else {
         tracing::warn!("MLS group not found: {}", group_id);
     }
@@ -714,7 +814,10 @@ pub async fn mls_clear_state() -> Result<(), String> {
     store.pending_key_packages.clear();
     store.group_states.clear();
 
-    tracing::info!("MLS state cleared");
+    // Clear from secure storage
+    clear_mls_from_secure_storage()?;
+
+    tracing::info!("MLS state cleared from memory and secure storage");
     Ok(())
 }
 

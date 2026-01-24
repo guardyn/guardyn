@@ -47,3 +47,43 @@ class AuthDeleteAccountRequested extends AuthEvent {
 
 /// Event to check authentication status (on app start)
 class AuthCheckStatus extends AuthEvent {}
+
+/// Event to update user profile (avatar, display name, bio)
+class AuthUpdateProfileRequested extends AuthEvent {
+  /// New avatar media ID (null to not change, empty string to remove)
+  final String? avatarMediaId;
+
+  /// New display name (null to not change, empty string to remove)
+  final String? displayName;
+
+  /// New bio (null to not change, empty string to remove)
+  final String? bio;
+
+  /// Whether to remove the current avatar
+  final bool removeAvatar;
+
+  /// Local file path to new avatar image to upload (handled before profile update)
+  final String? newAvatarPath;
+
+  AuthUpdateProfileRequested({
+    this.avatarMediaId,
+    this.displayName,
+    this.bio,
+    this.removeAvatar = false,
+    this.newAvatarPath,
+  });
+
+  @override
+  List<Object?> get props => [avatarMediaId, displayName, bio, removeAvatar, newAvatarPath];
+}
+
+/// Event to upload a new avatar image
+class AuthUploadAvatarRequested extends AuthEvent {
+  /// Local file path to the avatar image
+  final String filePath;
+
+  AuthUploadAvatarRequested({required this.filePath});
+
+  @override
+  List<Object?> get props => [filePath];
+}

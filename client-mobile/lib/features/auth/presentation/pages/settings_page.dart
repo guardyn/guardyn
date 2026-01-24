@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/features/auth/presentation/pages/profile_edit_page.dart';
+import 'package:guardyn_client/features/media/domain/usecases/download_media.dart';
+import 'package:guardyn_client/features/media/presentation/widgets/avatar_widget.dart';
 import 'package:guardyn_client/shared/widgets/theme_switcher.dart';
 
 /// Settings page with account management options
@@ -19,6 +23,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _hasNavigated = false;
   bool _showedDeleteMessage = false;
   bool _isDeleting = false;
+  String? _avatarUrl;
+  String? _currentAvatarMediaId;
 
   late final AuthBloc _authBloc;
   StreamSubscription<AuthState>? _authSubscription;
@@ -110,6 +116,10 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Profile section
+          _buildProfileSection(context),
+          const SizedBox(height: 24),
+
           // Appearance section
           _buildSectionHeader('Appearance'),
           const SizedBox(height: 8),
@@ -118,25 +128,18 @@ class _SettingsPageState extends State<SettingsPage> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Theme',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Choose your preferred color scheme',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
+                  Text('Theme', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Choose your preferred color scheme',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
+                  const SizedBox(height: 12),
                   const ThemeSwitcher(),
                 ],
               ),
@@ -221,6 +224,103 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildProfileSection(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        if (state is! AuthAuthenticated) {
+          return const SizedBox.shrink();
+        }
+
+        final user = state.user;
+        return Card(
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileEditPage(user: user),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  AvatarWidget(
+                    imageUrl: user.avatarMediaId != null
+                        ? _getAvatarUrl(user.avatarMediaId!)
+                        : null,
+                    name: user.effectiveDisplayName,
+                    size: AvatarSize.large,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.effectiveDisplayName,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '@${user.username}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        if (user.bio?.isNotEmpty == true) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            user.bio!,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String? _getAvatarUrl(String mediaId) {
+    // Check if we need to load a new URL
+    if (_currentAvatarMediaId != mediaId) {
+      _currentAvatarMediaId = mediaId;
+      _avatarUrl = null;
+      _loadAvatarUrl(mediaId);
+    }
+    return _avatarUrl;
+  }
+
+  Future<void> _loadAvatarUrl(String mediaId) async {
+    try {
+      final downloadMedia = GetIt.I<DownloadMedia>();
+      final result = await downloadMedia.getUrl(mediaId: mediaId);
+      if (mounted && _currentAvatarMediaId == mediaId) {
+        setState(() {
+          _avatarUrl = result.presignedUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load avatar URL: $e');
+    }
   }
 
   Widget _buildSectionHeader(String title, {Color? color}) {

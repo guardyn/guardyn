@@ -75,6 +75,8 @@ pub struct GroupMetadata {
     pub created_at: i64,
     pub mls_group_id: Vec<u8>, // OpenMLS group identifier
     pub mls_epoch: u64,
+    pub icon_media_id: Option<String>,  // Reference to media in MediaService
+    pub description: Option<String>,     // Optional group description
 }
 
 /// Group member

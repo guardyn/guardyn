@@ -8,7 +8,7 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
 
 import 'dart:core' as $core;
 
@@ -716,6 +716,9 @@ class UserProfile extends $pb.GeneratedMessage {
     $core.String? email,
     $1.Timestamp? createdAt,
     $1.Timestamp? lastSeen,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
+    $core.String? bio,
   }) {
     final result = create();
     if (userId != null) result.userId = userId;
@@ -723,6 +726,9 @@ class UserProfile extends $pb.GeneratedMessage {
     if (email != null) result.email = email;
     if (createdAt != null) result.createdAt = createdAt;
     if (lastSeen != null) result.lastSeen = lastSeen;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
+    if (bio != null) result.bio = bio;
     return result;
   }
 
@@ -746,6 +752,9 @@ class UserProfile extends $pb.GeneratedMessage {
         subBuilder: $1.Timestamp.create)
     ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'lastSeen',
         subBuilder: $1.Timestamp.create)
+    ..aOS(6, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(7, _omitFieldNames ? '' : 'displayName')
+    ..aOS(8, _omitFieldNames ? '' : 'bio')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -815,6 +824,33 @@ class UserProfile extends $pb.GeneratedMessage {
   void clearLastSeen() => $_clearField(5);
   @$pb.TagNumber(5)
   $1.Timestamp ensureLastSeen() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  $core.String get avatarMediaId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set avatarMediaId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAvatarMediaId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAvatarMediaId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get displayName => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set displayName($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasDisplayName() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearDisplayName() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get bio => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set bio($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasBio() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearBio() => $_clearField(8);
 }
 
 class DeviceInfo extends $pb.GeneratedMessage {
@@ -2759,11 +2795,15 @@ class UserSearchResult extends $pb.GeneratedMessage {
     $core.String? userId,
     $core.String? username,
     $1.Timestamp? createdAt,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
   }) {
     final result = create();
     if (userId != null) result.userId = userId;
     if (username != null) result.username = username;
     if (createdAt != null) result.createdAt = createdAt;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
     return result;
   }
 
@@ -2784,6 +2824,8 @@ class UserSearchResult extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'username')
     ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'createdAt',
         subBuilder: $1.Timestamp.create)
+    ..aOS(4, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(5, _omitFieldNames ? '' : 'displayName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2833,6 +2875,24 @@ class UserSearchResult extends $pb.GeneratedMessage {
   void clearCreatedAt() => $_clearField(3);
   @$pb.TagNumber(3)
   $1.Timestamp ensureCreatedAt() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $core.String get avatarMediaId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set avatarMediaId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAvatarMediaId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAvatarMediaId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get displayName => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set displayName($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasDisplayName() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDisplayName() => $_clearField(5);
 }
 
 class GetUserProfileRequest extends $pb.GeneratedMessage {
@@ -2967,6 +3027,198 @@ class GetUserProfileResponse extends $pb.GeneratedMessage {
   void clearSuccess() => $_clearField(1);
   @$pb.TagNumber(1)
   UserProfile ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class UpdateProfileRequest extends $pb.GeneratedMessage {
+  factory UpdateProfileRequest({
+    $core.String? accessToken,
+    $core.String? avatarMediaId,
+    $core.String? displayName,
+    $core.String? bio,
+    $core.bool? clearAvatar,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (displayName != null) result.displayName = displayName;
+    if (bio != null) result.bio = bio;
+    if (clearAvatar != null) result.clearAvatar = clearAvatar;
+    return result;
+  }
+
+  UpdateProfileRequest._();
+
+  factory UpdateProfileRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateProfileRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateProfileRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(3, _omitFieldNames ? '' : 'displayName')
+    ..aOS(4, _omitFieldNames ? '' : 'bio')
+    ..aOB(5, _omitFieldNames ? '' : 'clearAvatar')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileRequest copyWith(void Function(UpdateProfileRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdateProfileRequest))
+          as UpdateProfileRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileRequest create() => UpdateProfileRequest._();
+  @$core.override
+  UpdateProfileRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateProfileRequest>(create);
+  static UpdateProfileRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get avatarMediaId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set avatarMediaId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAvatarMediaId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAvatarMediaId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get displayName => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set displayName($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDisplayName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDisplayName() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get bio => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set bio($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBio() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBio() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get clearAvatar => $_getBF(4);
+  @$pb.TagNumber(5)
+  set clearAvatar($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClearAvatar() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClearAvatar() => $_clearField(5);
+}
+
+enum UpdateProfileResponse_Result { profile, error, notSet }
+
+class UpdateProfileResponse extends $pb.GeneratedMessage {
+  factory UpdateProfileResponse({
+    UserProfile? profile,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (profile != null) result.profile = profile;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  UpdateProfileResponse._();
+
+  factory UpdateProfileResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateProfileResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, UpdateProfileResponse_Result>
+      _UpdateProfileResponse_ResultByTag = {
+    1: UpdateProfileResponse_Result.profile,
+    2: UpdateProfileResponse_Result.error,
+    0: UpdateProfileResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateProfileResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<UserProfile>(1, _omitFieldNames ? '' : 'profile',
+        subBuilder: UserProfile.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateProfileResponse copyWith(
+          void Function(UpdateProfileResponse) updates) =>
+      super.copyWith((message) => updates(message as UpdateProfileResponse))
+          as UpdateProfileResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileResponse create() => UpdateProfileResponse._();
+  @$core.override
+  UpdateProfileResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateProfileResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateProfileResponse>(create);
+  static UpdateProfileResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  UpdateProfileResponse_Result whichResult() =>
+      _UpdateProfileResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  UserProfile get profile => $_getN(0);
+  @$pb.TagNumber(1)
+  set profile(UserProfile value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProfile() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProfile() => $_clearField(1);
+  @$pb.TagNumber(1)
+  UserProfile ensureProfile() => $_ensure(0);
 
   @$pb.TagNumber(2)
   $1.ErrorResponse get error => $_getN(1);
@@ -3238,6 +3490,1146 @@ class DeleteAccountSuccess extends $pb.GeneratedMessage {
   $core.bool hasMessage() => $_has(1);
   @$pb.TagNumber(2)
   void clearMessage() => $_clearField(2);
+}
+
+class Contact extends $pb.GeneratedMessage {
+  factory Contact({
+    $core.String? contactId,
+    $core.String? userId,
+    $core.String? username,
+    $core.String? displayName,
+    $core.String? avatarMediaId,
+    $core.String? nickname,
+    $core.String? notes,
+    $1.Timestamp? addedAt,
+  }) {
+    final result = create();
+    if (contactId != null) result.contactId = contactId;
+    if (userId != null) result.userId = userId;
+    if (username != null) result.username = username;
+    if (displayName != null) result.displayName = displayName;
+    if (avatarMediaId != null) result.avatarMediaId = avatarMediaId;
+    if (nickname != null) result.nickname = nickname;
+    if (notes != null) result.notes = notes;
+    if (addedAt != null) result.addedAt = addedAt;
+    return result;
+  }
+
+  Contact._();
+
+  factory Contact.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory Contact.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Contact',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'contactId')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..aOS(3, _omitFieldNames ? '' : 'username')
+    ..aOS(4, _omitFieldNames ? '' : 'displayName')
+    ..aOS(5, _omitFieldNames ? '' : 'avatarMediaId')
+    ..aOS(6, _omitFieldNames ? '' : 'nickname')
+    ..aOS(7, _omitFieldNames ? '' : 'notes')
+    ..aOM<$1.Timestamp>(8, _omitFieldNames ? '' : 'addedAt',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Contact clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Contact copyWith(void Function(Contact) updates) =>
+      super.copyWith((message) => updates(message as Contact)) as Contact;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Contact create() => Contact._();
+  @$core.override
+  Contact createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static Contact getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Contact>(create);
+  static Contact? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get contactId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set contactId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContactId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContactId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get username => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set username($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUsername() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUsername() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get displayName => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set displayName($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDisplayName() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDisplayName() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get avatarMediaId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set avatarMediaId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAvatarMediaId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAvatarMediaId() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get nickname => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set nickname($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNickname() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNickname() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get notes => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set notes($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasNotes() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearNotes() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $1.Timestamp get addedAt => $_getN(7);
+  @$pb.TagNumber(8)
+  set addedAt($1.Timestamp value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasAddedAt() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearAddedAt() => $_clearField(8);
+  @$pb.TagNumber(8)
+  $1.Timestamp ensureAddedAt() => $_ensure(7);
+}
+
+class AddContactRequest extends $pb.GeneratedMessage {
+  factory AddContactRequest({
+    $core.String? accessToken,
+    $core.String? userId,
+    $core.String? nickname,
+    $core.String? notes,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (userId != null) result.userId = userId;
+    if (nickname != null) result.nickname = nickname;
+    if (notes != null) result.notes = notes;
+    return result;
+  }
+
+  AddContactRequest._();
+
+  factory AddContactRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AddContactRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AddContactRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..aOS(3, _omitFieldNames ? '' : 'nickname')
+    ..aOS(4, _omitFieldNames ? '' : 'notes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddContactRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddContactRequest copyWith(void Function(AddContactRequest) updates) =>
+      super.copyWith((message) => updates(message as AddContactRequest))
+          as AddContactRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AddContactRequest create() => AddContactRequest._();
+  @$core.override
+  AddContactRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AddContactRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AddContactRequest>(create);
+  static AddContactRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get nickname => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set nickname($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNickname() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNickname() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get notes => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set notes($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNotes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNotes() => $_clearField(4);
+}
+
+enum AddContactResponse_Result { contact, error, notSet }
+
+class AddContactResponse extends $pb.GeneratedMessage {
+  factory AddContactResponse({
+    Contact? contact,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (contact != null) result.contact = contact;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  AddContactResponse._();
+
+  factory AddContactResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory AddContactResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, AddContactResponse_Result>
+      _AddContactResponse_ResultByTag = {
+    1: AddContactResponse_Result.contact,
+    2: AddContactResponse_Result.error,
+    0: AddContactResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AddContactResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<Contact>(1, _omitFieldNames ? '' : 'contact',
+        subBuilder: Contact.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddContactResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddContactResponse copyWith(void Function(AddContactResponse) updates) =>
+      super.copyWith((message) => updates(message as AddContactResponse))
+          as AddContactResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static AddContactResponse create() => AddContactResponse._();
+  @$core.override
+  AddContactResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static AddContactResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AddContactResponse>(create);
+  static AddContactResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  AddContactResponse_Result whichResult() =>
+      _AddContactResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  Contact get contact => $_getN(0);
+  @$pb.TagNumber(1)
+  set contact(Contact value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContact() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContact() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Contact ensureContact() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class RemoveContactRequest extends $pb.GeneratedMessage {
+  factory RemoveContactRequest({
+    $core.String? accessToken,
+    $core.String? userId,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (userId != null) result.userId = userId;
+    return result;
+  }
+
+  RemoveContactRequest._();
+
+  factory RemoveContactRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RemoveContactRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveContactRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveContactRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveContactRequest copyWith(void Function(RemoveContactRequest) updates) =>
+      super.copyWith((message) => updates(message as RemoveContactRequest))
+          as RemoveContactRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RemoveContactRequest create() => RemoveContactRequest._();
+  @$core.override
+  RemoveContactRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RemoveContactRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveContactRequest>(create);
+  static RemoveContactRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
+}
+
+enum RemoveContactResponse_Result { success, error, notSet }
+
+class RemoveContactResponse extends $pb.GeneratedMessage {
+  factory RemoveContactResponse({
+    RemoveContactSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  RemoveContactResponse._();
+
+  factory RemoveContactResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RemoveContactResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, RemoveContactResponse_Result>
+      _RemoveContactResponse_ResultByTag = {
+    1: RemoveContactResponse_Result.success,
+    2: RemoveContactResponse_Result.error,
+    0: RemoveContactResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveContactResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<RemoveContactSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: RemoveContactSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveContactResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveContactResponse copyWith(
+          void Function(RemoveContactResponse) updates) =>
+      super.copyWith((message) => updates(message as RemoveContactResponse))
+          as RemoveContactResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RemoveContactResponse create() => RemoveContactResponse._();
+  @$core.override
+  RemoveContactResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RemoveContactResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveContactResponse>(create);
+  static RemoveContactResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  RemoveContactResponse_Result whichResult() =>
+      _RemoveContactResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  RemoveContactSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(RemoveContactSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  RemoveContactSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class RemoveContactSuccess extends $pb.GeneratedMessage {
+  factory RemoveContactSuccess({
+    $core.String? userId,
+    $core.String? message,
+  }) {
+    final result = create();
+    if (userId != null) result.userId = userId;
+    if (message != null) result.message = message;
+    return result;
+  }
+
+  RemoveContactSuccess._();
+
+  factory RemoveContactSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RemoveContactSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RemoveContactSuccess',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'userId')
+    ..aOS(2, _omitFieldNames ? '' : 'message')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveContactSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RemoveContactSuccess copyWith(void Function(RemoveContactSuccess) updates) =>
+      super.copyWith((message) => updates(message as RemoveContactSuccess))
+          as RemoveContactSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RemoveContactSuccess create() => RemoveContactSuccess._();
+  @$core.override
+  RemoveContactSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RemoveContactSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RemoveContactSuccess>(create);
+  static RemoveContactSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get userId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set userId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUserId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUserId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get message => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set message($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMessage() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMessage() => $_clearField(2);
+}
+
+class ListContactsRequest extends $pb.GeneratedMessage {
+  factory ListContactsRequest({
+    $core.String? accessToken,
+    $core.int? limit,
+    $core.String? cursor,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (limit != null) result.limit = limit;
+    if (cursor != null) result.cursor = cursor;
+    return result;
+  }
+
+  ListContactsRequest._();
+
+  factory ListContactsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListContactsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListContactsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aI(2, _omitFieldNames ? '' : 'limit', fieldType: $pb.PbFieldType.OU3)
+    ..aOS(3, _omitFieldNames ? '' : 'cursor')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListContactsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListContactsRequest copyWith(void Function(ListContactsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListContactsRequest))
+          as ListContactsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListContactsRequest create() => ListContactsRequest._();
+  @$core.override
+  ListContactsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListContactsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListContactsRequest>(create);
+  static ListContactsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get limit => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set limit($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLimit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLimit() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get cursor => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set cursor($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCursor() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCursor() => $_clearField(3);
+}
+
+enum ListContactsResponse_Result { success, error, notSet }
+
+class ListContactsResponse extends $pb.GeneratedMessage {
+  factory ListContactsResponse({
+    ListContactsSuccess? success,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (success != null) result.success = success;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  ListContactsResponse._();
+
+  factory ListContactsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListContactsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, ListContactsResponse_Result>
+      _ListContactsResponse_ResultByTag = {
+    1: ListContactsResponse_Result.success,
+    2: ListContactsResponse_Result.error,
+    0: ListContactsResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListContactsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<ListContactsSuccess>(1, _omitFieldNames ? '' : 'success',
+        subBuilder: ListContactsSuccess.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListContactsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListContactsResponse copyWith(void Function(ListContactsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListContactsResponse))
+          as ListContactsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListContactsResponse create() => ListContactsResponse._();
+  @$core.override
+  ListContactsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListContactsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListContactsResponse>(create);
+  static ListContactsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  ListContactsResponse_Result whichResult() =>
+      _ListContactsResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  ListContactsSuccess get success => $_getN(0);
+  @$pb.TagNumber(1)
+  set success(ListContactsSuccess value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSuccess() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSuccess() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ListContactsSuccess ensureSuccess() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class ListContactsSuccess extends $pb.GeneratedMessage {
+  factory ListContactsSuccess({
+    $core.Iterable<Contact>? contacts,
+    $core.String? nextCursor,
+    $core.int? totalCount,
+  }) {
+    final result = create();
+    if (contacts != null) result.contacts.addAll(contacts);
+    if (nextCursor != null) result.nextCursor = nextCursor;
+    if (totalCount != null) result.totalCount = totalCount;
+    return result;
+  }
+
+  ListContactsSuccess._();
+
+  factory ListContactsSuccess.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListContactsSuccess.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListContactsSuccess',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..pPM<Contact>(1, _omitFieldNames ? '' : 'contacts',
+        subBuilder: Contact.create)
+    ..aOS(2, _omitFieldNames ? '' : 'nextCursor')
+    ..aI(3, _omitFieldNames ? '' : 'totalCount', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListContactsSuccess clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListContactsSuccess copyWith(void Function(ListContactsSuccess) updates) =>
+      super.copyWith((message) => updates(message as ListContactsSuccess))
+          as ListContactsSuccess;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListContactsSuccess create() => ListContactsSuccess._();
+  @$core.override
+  ListContactsSuccess createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListContactsSuccess getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListContactsSuccess>(create);
+  static ListContactsSuccess? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Contact> get contacts => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get nextCursor => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set nextCursor($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNextCursor() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNextCursor() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get totalCount => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set totalCount($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTotalCount() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTotalCount() => $_clearField(3);
+}
+
+class GetContactRequest extends $pb.GeneratedMessage {
+  factory GetContactRequest({
+    $core.String? accessToken,
+    $core.String? userId,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (userId != null) result.userId = userId;
+    return result;
+  }
+
+  GetContactRequest._();
+
+  factory GetContactRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetContactRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetContactRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetContactRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetContactRequest copyWith(void Function(GetContactRequest) updates) =>
+      super.copyWith((message) => updates(message as GetContactRequest))
+          as GetContactRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetContactRequest create() => GetContactRequest._();
+  @$core.override
+  GetContactRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetContactRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetContactRequest>(create);
+  static GetContactRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
+}
+
+enum GetContactResponse_Result { contact, error, notSet }
+
+class GetContactResponse extends $pb.GeneratedMessage {
+  factory GetContactResponse({
+    Contact? contact,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (contact != null) result.contact = contact;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetContactResponse._();
+
+  factory GetContactResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetContactResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, GetContactResponse_Result>
+      _GetContactResponse_ResultByTag = {
+    1: GetContactResponse_Result.contact,
+    2: GetContactResponse_Result.error,
+    0: GetContactResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetContactResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<Contact>(1, _omitFieldNames ? '' : 'contact',
+        subBuilder: Contact.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetContactResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetContactResponse copyWith(void Function(GetContactResponse) updates) =>
+      super.copyWith((message) => updates(message as GetContactResponse))
+          as GetContactResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetContactResponse create() => GetContactResponse._();
+  @$core.override
+  GetContactResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetContactResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetContactResponse>(create);
+  static GetContactResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  GetContactResponse_Result whichResult() =>
+      _GetContactResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  Contact get contact => $_getN(0);
+  @$pb.TagNumber(1)
+  set contact(Contact value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContact() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContact() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Contact ensureContact() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
+}
+
+class UpdateContactRequest extends $pb.GeneratedMessage {
+  factory UpdateContactRequest({
+    $core.String? accessToken,
+    $core.String? userId,
+    $core.String? nickname,
+    $core.String? notes,
+    $core.bool? clearNickname_5,
+    $core.bool? clearNotes_6,
+  }) {
+    final result = create();
+    if (accessToken != null) result.accessToken = accessToken;
+    if (userId != null) result.userId = userId;
+    if (nickname != null) result.nickname = nickname;
+    if (notes != null) result.notes = notes;
+    if (clearNickname_5 != null) result.clearNickname_5 = clearNickname_5;
+    if (clearNotes_6 != null) result.clearNotes_6 = clearNotes_6;
+    return result;
+  }
+
+  UpdateContactRequest._();
+
+  factory UpdateContactRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateContactRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateContactRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'accessToken')
+    ..aOS(2, _omitFieldNames ? '' : 'userId')
+    ..aOS(3, _omitFieldNames ? '' : 'nickname')
+    ..aOS(4, _omitFieldNames ? '' : 'notes')
+    ..aOB(5, _omitFieldNames ? '' : 'clearNickname')
+    ..aOB(6, _omitFieldNames ? '' : 'clearNotes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateContactRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateContactRequest copyWith(void Function(UpdateContactRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdateContactRequest))
+          as UpdateContactRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateContactRequest create() => UpdateContactRequest._();
+  @$core.override
+  UpdateContactRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateContactRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateContactRequest>(create);
+  static UpdateContactRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get accessToken => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set accessToken($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccessToken() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccessToken() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get userId => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set userId($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUserId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUserId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get nickname => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set nickname($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNickname() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNickname() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get notes => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set notes($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNotes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNotes() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get clearNickname_5 => $_getBF(4);
+  @$pb.TagNumber(5)
+  set clearNickname_5($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClearNickname_5() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClearNickname_5() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get clearNotes_6 => $_getBF(5);
+  @$pb.TagNumber(6)
+  set clearNotes_6($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasClearNotes_6() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearClearNotes_6() => $_clearField(6);
+}
+
+enum UpdateContactResponse_Result { contact, error, notSet }
+
+class UpdateContactResponse extends $pb.GeneratedMessage {
+  factory UpdateContactResponse({
+    Contact? contact,
+    $1.ErrorResponse? error,
+  }) {
+    final result = create();
+    if (contact != null) result.contact = contact;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  UpdateContactResponse._();
+
+  factory UpdateContactResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateContactResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, UpdateContactResponse_Result>
+      _UpdateContactResponse_ResultByTag = {
+    1: UpdateContactResponse_Result.contact,
+    2: UpdateContactResponse_Result.error,
+    0: UpdateContactResponse_Result.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateContactResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'guardyn.auth'),
+      createEmptyInstance: create)
+    ..oo(0, [1, 2])
+    ..aOM<Contact>(1, _omitFieldNames ? '' : 'contact',
+        subBuilder: Contact.create)
+    ..aOM<$1.ErrorResponse>(2, _omitFieldNames ? '' : 'error',
+        subBuilder: $1.ErrorResponse.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateContactResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateContactResponse copyWith(
+          void Function(UpdateContactResponse) updates) =>
+      super.copyWith((message) => updates(message as UpdateContactResponse))
+          as UpdateContactResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateContactResponse create() => UpdateContactResponse._();
+  @$core.override
+  UpdateContactResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateContactResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateContactResponse>(create);
+  static UpdateContactResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  UpdateContactResponse_Result whichResult() =>
+      _UpdateContactResponse_ResultByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(1)
+  @$pb.TagNumber(2)
+  void clearResult() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  Contact get contact => $_getN(0);
+  @$pb.TagNumber(1)
+  set contact(Contact value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContact() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContact() => $_clearField(1);
+  @$pb.TagNumber(1)
+  Contact ensureContact() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $1.ErrorResponse get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error($1.ErrorResponse value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $1.ErrorResponse ensureError() => $_ensure(1);
 }
 
 const $core.bool _omitFieldNames =

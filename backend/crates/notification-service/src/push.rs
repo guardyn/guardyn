@@ -1,10 +1,15 @@
 //! Push notification delivery service
 //!
-//! Handles sending push notifications via FCM and APNs.
+//! Handles sending push notifications via FCM, APNs, and WebPush.
 
 use anyhow::{Context, Result};
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
+use web_push::{
+    ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder,
+    WebPushMessageBuilder, WebPushClient as _,
+};
 
 use crate::ApnsConfig;
 
@@ -12,7 +17,20 @@ use crate::ApnsConfig;
 pub struct PushService {
     fcm_server_key: Option<String>,
     apns_config: Option<ApnsConfig>,
+    webpush_config: Option<WebPushConfig>,
     http_client: reqwest::Client,
+    webpush_client: IsahcWebPushClient,
+}
+
+/// WebPush VAPID configuration
+#[derive(Debug, Clone)]
+pub struct WebPushConfig {
+    /// VAPID private key (base64url encoded)
+    pub vapid_private_key: String,
+    /// VAPID public key (base64url encoded)  
+    pub vapid_public_key: String,
+    /// Contact email for VAPID
+    pub contact_email: String,
 }
 
 /// FCM message format
@@ -84,13 +102,34 @@ pub enum PushPlatform {
     WebPush,
 }
 
+/// WebPush subscription format (from browser Push API)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebPushSubscription {
+    pub endpoint: String,
+    pub keys: WebPushKeys,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebPushKeys {
+    /// P-256 ECDH public key (base64url encoded)
+    pub p256dh: String,
+    /// Authentication secret (base64url encoded)
+    pub auth: String,
+}
+
 impl PushService {
     /// Create a new push service
-    pub fn new(fcm_server_key: Option<String>, apns_config: Option<ApnsConfig>) -> Self {
+    pub fn new(
+        fcm_server_key: Option<String>,
+        apns_config: Option<ApnsConfig>,
+        webpush_config: Option<WebPushConfig>,
+    ) -> Self {
         Self {
             fcm_server_key,
             apns_config,
+            webpush_config,
             http_client: reqwest::Client::new(),
+            webpush_client: IsahcWebPushClient::new().expect("Failed to create WebPush client"),
         }
     }
 
@@ -99,8 +138,86 @@ impl PushService {
         match device.platform {
             PushPlatform::Fcm => self.send_fcm(device, payload).await,
             PushPlatform::Apns | PushPlatform::ApnsSandbox => self.send_apns(device, payload).await,
-            PushPlatform::WebPush => {
-                warn!("WebPush not yet implemented");
+            PushPlatform::WebPush => self.send_webpush(device, payload).await,
+        }
+    }
+
+    /// Send notification via WebPush (NOTIF-001)
+    async fn send_webpush(&self, device: &PushDevice, payload: &PushPayload) -> Result<bool> {
+        let config = match &self.webpush_config {
+            Some(cfg) => cfg,
+            None => {
+                warn!("WebPush VAPID configuration not provided");
+                return Ok(false);
+            }
+        };
+
+        // Parse the push token as subscription info
+        // Expected format: JSON with endpoint, p256dh, and auth keys
+        let subscription: WebPushSubscription = match serde_json::from_str(&device.push_token) {
+            Ok(sub) => sub,
+            Err(e) => {
+                error!("Invalid WebPush subscription format: {}", e);
+                return Ok(false);
+            }
+        };
+
+        // Build subscription info for web-push crate
+        let subscription_info = SubscriptionInfo::new(
+            subscription.endpoint,
+            subscription.keys.p256dh,
+            subscription.keys.auth,
+        );
+
+        // Create notification payload as JSON
+        let notification_json = serde_json::json!({
+            "notification_id": payload.notification_id,
+            "title": payload.title,
+            "body": payload.body,
+            "image": payload.image_url,
+            "conversation_id": payload.conversation_id,
+            "is_group": payload.is_group,
+            "message_id": payload.message_id,
+            "type": payload.notification_type,
+        });
+        let content = notification_json.to_string();
+
+        // Build VAPID signature
+        let mut sig_builder = VapidSignatureBuilder::from_base64(
+            &config.vapid_private_key,
+            &subscription_info,
+        )
+        .context("Failed to build VAPID signature")?;
+
+        sig_builder.add_claim("sub", format!("mailto:{}", config.contact_email));
+        let vapid_signature = sig_builder
+            .build()
+            .context("Failed to create VAPID signature")?;
+
+        // Build the WebPush message
+        let mut builder = WebPushMessageBuilder::new(&subscription_info);
+        builder.set_payload(ContentEncoding::Aes128Gcm, content.as_bytes());
+        builder.set_vapid_signature(vapid_signature);
+        builder.set_ttl(payload.ttl_seconds as u32);
+
+        let message = builder.build().context("Failed to build WebPush message")?;
+
+        // Send the notification
+        match self.webpush_client.send(message).await {
+            Ok(_response) => {
+                info!(
+                    "WebPush notification sent successfully: notification_id={}",
+                    payload.notification_id
+                );
+                Ok(true)
+            }
+            Err(e) => {
+                let error_str = format!("{:?}", e);
+                error!("Failed to send WebPush notification: {}", error_str);
+                // Check if subscription expired
+                if error_str.contains("410") || error_str.contains("expired") {
+                    warn!("WebPush subscription expired for device");
+                }
                 Ok(false)
             }
         }
@@ -167,10 +284,7 @@ impl PushService {
             );
             Ok(true)
         } else {
-            warn!(
-                "FCM notification failed: {:?}",
-                fcm_response.results
-            );
+            warn!("FCM notification failed: {:?}", fcm_response.results);
             Ok(false)
         }
     }
@@ -220,8 +334,18 @@ impl PushService {
             .header("authorization", format!("bearer {}", jwt))
             .header("apns-topic", &apns_config.bundle_id)
             .header("apns-push-type", "alert")
-            .header("apns-priority", if matches!(payload.priority, PushPriority::High) { "10" } else { "5" })
-            .header("apns-expiration", (chrono::Utc::now().timestamp() + payload.ttl_seconds as i64).to_string())
+            .header(
+                "apns-priority",
+                if matches!(payload.priority, PushPriority::High) {
+                    "10"
+                } else {
+                    "5"
+                },
+            )
+            .header(
+                "apns-expiration",
+                (chrono::Utc::now().timestamp() + payload.ttl_seconds as i64).to_string(),
+            )
             .json(&apns_payload)
             .send()
             .await

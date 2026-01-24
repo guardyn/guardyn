@@ -135,6 +135,15 @@ pub struct UserProfile {
     pub created_at: ::core::option::Option<super::common::Timestamp>,
     #[prost(message, optional, tag = "5")]
     pub last_seen: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to media in MediaService
+    #[prost(string, tag = "6")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "7")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional bio text
+    #[prost(string, tag = "8")]
+    pub bio: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeviceInfo {
@@ -422,6 +431,12 @@ pub struct UserSearchResult {
     pub username: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub created_at: ::core::option::Option<super::common::Timestamp>,
+    /// Reference to avatar in MediaService
+    #[prost(string, tag = "4")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional display name
+    #[prost(string, tag = "5")]
+    pub display_name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUserProfileRequest {
@@ -441,6 +456,39 @@ pub mod get_user_profile_response {
         /// Reuse existing UserProfile message
         #[prost(message, tag = "1")]
         Success(super::UserProfile),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateProfileRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Optional: new avatar media ID from MediaService
+    #[prost(string, tag = "2")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Optional: new display name
+    #[prost(string, tag = "3")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Optional: new bio
+    #[prost(string, tag = "4")]
+    pub bio: ::prost::alloc::string::String,
+    /// If true, remove current avatar
+    #[prost(bool, tag = "5")]
+    pub clear_avatar: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateProfileResponse {
+    #[prost(oneof = "update_profile_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<update_profile_response::Result>,
+}
+/// Nested message and enum types in `UpdateProfileResponse`.
+pub mod update_profile_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Profile(super::UserProfile),
         #[prost(message, tag = "2")]
         Error(super::super::common::ErrorResponse),
     }
@@ -479,6 +527,193 @@ pub struct DeleteAccountSuccess {
     /// Confirmation message
     #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Contact {
+    /// UUID of the contact relationship
+    #[prost(string, tag = "1")]
+    pub contact_id: ::prost::alloc::string::String,
+    /// UUID of the contact user
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Contact's username
+    #[prost(string, tag = "3")]
+    pub username: ::prost::alloc::string::String,
+    /// Contact's display name
+    #[prost(string, tag = "4")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Contact's avatar
+    #[prost(string, tag = "5")]
+    pub avatar_media_id: ::prost::alloc::string::String,
+    /// Custom nickname set by owner
+    #[prost(string, tag = "6")]
+    pub nickname: ::prost::alloc::string::String,
+    /// Private notes about contact
+    #[prost(string, tag = "7")]
+    pub notes: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "8")]
+    pub added_at: ::core::option::Option<super::common::Timestamp>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of user to add as contact
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Optional custom nickname
+    #[prost(string, tag = "3")]
+    pub nickname: ::prost::alloc::string::String,
+    /// Optional private notes
+    #[prost(string, tag = "4")]
+    pub notes: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddContactResponse {
+    #[prost(oneof = "add_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<add_contact_response::Result>,
+}
+/// Nested message and enum types in `AddContactResponse`.
+pub mod add_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Contact(super::Contact),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoveContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of contact user to remove
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoveContactResponse {
+    #[prost(oneof = "remove_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<remove_contact_response::Result>,
+}
+/// Nested message and enum types in `RemoveContactResponse`.
+pub mod remove_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::RemoveContactSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoveContactSuccess {
+    /// UUID of removed contact
+    #[prost(string, tag = "1")]
+    pub user_id: ::prost::alloc::string::String,
+    /// Confirmation message
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListContactsRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// Max results (default: 50, max: 100)
+    #[prost(uint32, tag = "2")]
+    pub limit: u32,
+    /// Pagination cursor
+    #[prost(string, tag = "3")]
+    pub cursor: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListContactsResponse {
+    #[prost(oneof = "list_contacts_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<list_contacts_response::Result>,
+}
+/// Nested message and enum types in `ListContactsResponse`.
+pub mod list_contacts_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::ListContactsSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListContactsSuccess {
+    #[prost(message, repeated, tag = "1")]
+    pub contacts: ::prost::alloc::vec::Vec<Contact>,
+    /// Pagination cursor for next page
+    #[prost(string, tag = "2")]
+    pub next_cursor: ::prost::alloc::string::String,
+    /// Total number of contacts
+    #[prost(uint32, tag = "3")]
+    pub total_count: u32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of contact user
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetContactResponse {
+    #[prost(oneof = "get_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<get_contact_response::Result>,
+}
+/// Nested message and enum types in `GetContactResponse`.
+pub mod get_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Contact(super::Contact),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateContactRequest {
+    /// Authentication
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    /// UUID of contact user to update
+    #[prost(string, tag = "2")]
+    pub user_id: ::prost::alloc::string::String,
+    /// New nickname (empty to keep current)
+    #[prost(string, tag = "3")]
+    pub nickname: ::prost::alloc::string::String,
+    /// New notes (empty to keep current)
+    #[prost(string, tag = "4")]
+    pub notes: ::prost::alloc::string::String,
+    /// If true, remove nickname
+    #[prost(bool, tag = "5")]
+    pub clear_nickname: bool,
+    /// If true, remove notes
+    #[prost(bool, tag = "6")]
+    pub clear_notes: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateContactResponse {
+    #[prost(oneof = "update_contact_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<update_contact_response::Result>,
+}
+/// Nested message and enum types in `UpdateContactResponse`.
+pub mod update_contact_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Contact(super::Contact),
+        #[prost(message, tag = "2")]
+        Error(super::super::common::ErrorResponse),
+    }
 }
 /// Generated client implementations.
 pub mod auth_service_client {
@@ -842,6 +1077,31 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetUserProfile"));
             self.inner.unary(req, path, codec).await
         }
+        /// Update user profile (avatar, display name, bio)
+        pub async fn update_profile(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateProfileRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateProfileResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/UpdateProfile",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "UpdateProfile"));
+            self.inner.unary(req, path, codec).await
+        }
         /// Delete user account and all associated data
         pub async fn delete_account(
             &mut self,
@@ -865,6 +1125,131 @@ pub mod auth_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("guardyn.auth.AuthService", "DeleteAccount"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Add a user to contacts
+        pub async fn add_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AddContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AddContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/AddContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "AddContact"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Remove a user from contacts
+        pub async fn remove_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RemoveContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RemoveContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/RemoveContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "RemoveContact"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// List all contacts
+        pub async fn list_contacts(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListContactsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ListContactsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/ListContacts",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "ListContacts"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Get contact by user ID
+        pub async fn get_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/GetContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "GetContact"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Update contact (nickname, notes)
+        pub async fn update_contact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateContactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateContactResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.auth.AuthService/UpdateContact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("guardyn.auth.AuthService", "UpdateContact"));
             self.inner.unary(req, path, codec).await
         }
         /// Health check

@@ -3,6 +3,11 @@
 # Logs:  docker compose -f docker-compose.dev.yml logs -f <service>
 # Stop:  docker compose -f docker-compose.dev.yml down
 # Reset: docker compose -f docker-compose.dev.yml down -v
+#
+# E2EE Configuration:
+#   By default, E2EE is DISABLED for easier development/debugging.
+#   To enable E2EE testing, set GUARDYN_E2EE_ENABLED=true in messaging-service.
+#   See docs/ENCRYPTION_ARCHITECTURE.md for details.
 
 version: "3.9"
 
@@ -18,11 +23,28 @@ x-rust-service: &rust-service
   environment: &rust-env
     RUST_LOG: debug
     RUST_BACKTRACE: 1
+    # JWT authentication (use GUARDYN_ prefix for consistency)
+    GUARDYN_AUTH__JWT_SECRET: "UNSAFE_DEV_SECRET_CHANGE_IN_PRODUCTION_32BYTES"
+    SCYLLA_CONSISTENCY: one
 
 services:
   # ═══════════════════════════════════════════════════════════════
   # DATA LAYER
   # ═══════════════════════════════════════════════════════════════
+
+  # NATS JetStream for real-time messaging
+  nats:
+    image: nats:2.10-alpine
+    container_name: guardyn-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"      # Client connections
+      - "8222:8222"      # HTTP monitoring
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redpanda:
     image: redpandadata/redpanda:v24.2.1
@@ -183,7 +205,7 @@ services:
       GUARDYN_PORT: "50051"
       GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
       GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
-      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_MESSAGING__NATS_URL: nats://nats:4222
       GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
       GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
@@ -199,7 +221,7 @@ services:
   messaging-service:
     <<: *rust-service
     container_name: guardyn-messaging
-    command: cargo watch -x 'run --bin messaging-service'
+    command: cargo watch -x 'run --bin guardyn-messaging-service'
     environment:
       <<: *rust-env
       GUARDYN_SERVICE_NAME: messaging-service
@@ -208,9 +230,16 @@ services:
       WEBSOCKET_PORT: "8081"
       GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
       GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
-      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_MESSAGING__NATS_URL: nats://nats:4222
       GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
       GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
+      # E2EE Configuration - disabled for local development (easier debugging)
+      # Set to "true" to enable end-to-end encryption testing
+      GUARDYN_E2EE_ENABLED: "false"
+      GUARDYN_E2EE_X3DH_ENABLED: "true"
+      GUARDYN_E2EE_DOUBLE_RATCHET_ENABLED: "true"
+      # MLS Configuration - disabled for local development
+      GUARDYN_MLS_ENABLED: "false"
     ports:
       - "50052:50052"
       - "8081:8081"      # WebSocket
@@ -221,13 +250,13 @@ services:
         condition: service_started
       scylladb:
         condition: service_healthy
-      redpanda:
+      nats:
         condition: service_healthy
 
   presence-service:
     <<: *rust-service
     container_name: guardyn-presence
-    command: cargo watch -x 'run --bin presence-service'
+    command: cargo watch -x 'run --bin guardyn-presence-service'
     environment:
       <<: *rust-env
       GUARDYN_SERVICE_NAME: presence-service
@@ -235,7 +264,7 @@ services:
       GUARDYN_PORT: "50053"
       GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
       GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
-      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_MESSAGING__NATS_URL: nats://nats:4222
       GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
       GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
@@ -243,25 +272,35 @@ services:
     depends_on:
       pd:
         condition: service_healthy
-      redpanda:
+      nats:
         condition: service_healthy
 
   media-service:
     <<: *rust-service
     container_name: guardyn-media
-    command: cargo watch -x 'run --bin media-service'
+    command: cargo watch -x 'run --bin guardyn-media-service'
     environment:
       <<: *rust-env
       GUARDYN_SERVICE_NAME: media-service
       GUARDYN_HOST: "0.0.0.0"
       GUARDYN_PORT: "50054"
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: guardyn
-      MINIO_SECRET_KEY: guardyn-dev-secret
-      MINIO_BUCKET: guardyn-media
+      # S3/MinIO configuration (MediaConfig::from_env() uses these)
+      S3_ENDPOINT: http://minio:9000
+      # Public endpoint for presigned URLs - use 10.0.2.2 for Android emulator
+      # This is the special IP that Android emulator uses to reach host machine
+      # The presigned URL signature MUST match the actual host the client connects to
+      S3_PUBLIC_ENDPOINT: http://10.0.2.2:9000
+      S3_ACCESS_KEY: guardyn
+      S3_SECRET_KEY: guardyn-dev-secret
+      S3_BUCKET_NAME: guardyn-media
+      S3_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: guardyn
+      AWS_SECRET_ACCESS_KEY: guardyn-dev-secret
+      # TiKV configuration (code uses TIKV_PD_ENDPOINTS)
+      TIKV_PD_ENDPOINTS: pd:2379
       GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
       GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
-      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_MESSAGING__NATS_URL: nats://nats:4222
       GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
       GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
@@ -271,11 +310,13 @@ services:
         condition: service_healthy
       scylladb:
         condition: service_healthy
+      pd:
+        condition: service_healthy
 
   notification-service:
     <<: *rust-service
     container_name: guardyn-notification
-    command: cargo watch -x 'run --bin notification-service'
+    command: cargo watch -x 'run --bin guardyn-notification-service'
     environment:
       <<: *rust-env
       GUARDYN_SERVICE_NAME: notification-service
@@ -283,7 +324,7 @@ services:
       GUARDYN_PORT: "50055"
       GUARDYN_DATABASE__TIKV_PD_ENDPOINTS: pd:2379
       GUARDYN_DATABASE__SCYLLADB_NODES: scylladb:9042
-      GUARDYN_MESSAGING__NATS_URL: nats://redpanda:9092
+      GUARDYN_MESSAGING__NATS_URL: nats://nats:4222
       GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
       GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
     ports:
@@ -291,7 +332,7 @@ services:
     depends_on:
       pd:
         condition: service_healthy
-      redpanda:
+      nats:
         condition: service_healthy
 
   # ═══════════════════════════════════════════════════════════════

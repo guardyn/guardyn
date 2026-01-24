@@ -4,8 +4,8 @@ pub mod guardyn {
     pub mod notifications {
         include!("guardyn.notifications.rs");
     }
-    
+
     pub mod common {
-        include!("common.rs");
+        include!("guardyn.common.rs");
     }
 }

@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../messaging/presentation/pages/chat_page.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/group_bloc.dart';
 import '../bloc/group_event.dart';
 import '../bloc/group_state.dart';
+import '../pages/user_profile_page.dart';
 
 /// Bottom sheet showing options for a group member (remove, make admin, etc.)
 class MemberOptionsSheet extends StatelessWidget {
   final GroupMember member;
   final String groupId;
   final bool isAdmin;
+  final bool isOwner;
 
   const MemberOptionsSheet({
     super.key,
     required this.member,
     required this.groupId,
     required this.isAdmin,
+    this.isOwner = false,
   });
 
   @override
@@ -28,6 +32,18 @@ class MemberOptionsSheet extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${member.username} removed from group'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (state is GroupMemberRoleChanged) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.newRole.toLowerCase() == 'admin'
+                    ? '${member.username} is now an admin'
+                    : '${member.username} is no longer an admin',
+              ),
               backgroundColor: Colors.green,
             ),
           );
@@ -90,56 +106,35 @@ class MemberOptionsSheet extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.person),
                 title: const Text('View Profile'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile view coming soon')),
-                  );
-                },
+                onTap: () => _openProfile(context),
               ),
 
               // Message privately
               ListTile(
                 leading: const Icon(Icons.message),
                 title: const Text('Message'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Direct message feature coming soon')),
-                  );
-                },
+                onTap: () => _startDirectMessage(context),
               ),
 
               // Admin options
               if (isAdmin) ...[
                 const Divider(),
 
-                // Make admin / Remove admin
-                if (member.role != GroupRole.admin)
-                  ListTile(
-                    leading: const Icon(Icons.star, color: Colors.amber),
-                    title: const Text('Make Admin'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Admin management coming soon')),
-                      );
-                    },
-                  )
-                else
-                  ListTile(
-                    leading: const Icon(Icons.star_border),
-                    title: const Text('Remove Admin'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Admin management coming soon')),
-                      );
-                    },
-                  ),
+                // Make admin / Remove admin (only owner can change roles)
+                if (isOwner && member.role != GroupRole.owner) ...[
+                  if (member.role != GroupRole.admin)
+                    ListTile(
+                      leading: const Icon(Icons.star, color: Colors.amber),
+                      title: const Text('Make Admin'),
+                      onTap: () => _confirmChangeRole(context, 'Admin'),
+                    )
+                  else
+                    ListTile(
+                      leading: const Icon(Icons.star_border),
+                      title: const Text('Remove Admin'),
+                      onTap: () => _confirmChangeRole(context, 'Member'),
+                    ),
+                ],
 
                 // Remove from group
                 ListTile(
@@ -153,6 +148,53 @@ class MemberOptionsSheet extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openProfile(BuildContext context) {
+    final navigator = Navigator.of(context);
+    navigator.pop(); // Close bottom sheet
+    navigator
+        .push(
+          MaterialPageRoute(
+            builder: (context) => UserProfilePage(
+              userId: member.userId,
+              username: member.username,
+              role: member.role.name,
+            ),
+          ),
+        )
+        .then((result) {
+          // If user tapped "Send Message" from profile page
+          if (result == 'start_dm') {
+            navigator.push(
+              MaterialPageRoute(
+                builder: (context) => ChatPage(
+                  conversationUserId: member.userId,
+                  conversationUserName: member.username,
+                  deviceId: '', // Will be determined by backend
+                ),
+              ),
+            );
+          }
+        });
+  }
+
+  void _startDirectMessage(BuildContext context) {
+    Navigator.pop(context); // Close bottom sheet
+    _navigateToDM(context);
+  }
+
+  void _navigateToDM(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          conversationUserId: member.userId,
+          conversationUserName: member.username,
+          deviceId: '', // Will be determined by backend
         ),
       ),
     );
@@ -180,6 +222,43 @@ class MemberOptionsSheet extends StatelessWidget {
                   ));
             },
             child: const Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmChangeRole(BuildContext context, String newRole) {
+    final isPromoting = newRole.toLowerCase() == 'admin';
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isPromoting ? 'Make Admin?' : 'Remove Admin?'),
+        content: Text(
+          isPromoting
+              ? 'Are you sure you want to make ${member.username} an admin? Admins can edit group info and remove members.'
+              : 'Are you sure you want to remove admin privileges from ${member.username}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext); // Close dialog
+              context.read<GroupBloc>().add(GroupChangeMemberRole(
+                    groupId: groupId,
+                    targetUserId: member.userId,
+                    newRole: newRole,
+                  ));
+            },
+            child: Text(
+              isPromoting ? 'Make Admin' : 'Remove Admin',
+              style: TextStyle(
+                color: isPromoting ? Colors.amber[700] : Colors.orange,
+              ),
+            ),
           ),
         ],
       ),

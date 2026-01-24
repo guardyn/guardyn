@@ -2,16 +2,18 @@
 ///
 /// Manages auto-delete configuration for conversations.
 /// Messages will be automatically deleted after the configured TTL expires.
+/// RT-003: Broadcasts config changes and schedules cleanup jobs.
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
-use proto::messaging::{
+use crate::nats::NatsClient;
+use crate::proto::messaging::{
     SetDisappearingMessagesRequest, SetDisappearingMessagesResponse, SetDisappearingMessagesSuccess,
     GetDisappearingConfigRequest, GetDisappearingConfigResponse, GetDisappearingConfigSuccess,
     DisappearingConfig,
     set_disappearing_messages_response, get_disappearing_config_response,
 };
-use proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
+use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};
@@ -27,9 +29,11 @@ pub mod ttl_presets {
 }
 
 /// Set disappearing messages configuration for a conversation
-#[instrument(skip(db, request), fields(user_id, conversation_id, ttl_seconds))]
+/// RT-003: Broadcasts config change and schedules cleanup job
+#[instrument(skip(db, nats, request), fields(user_id, conversation_id, ttl_seconds))]
 pub async fn set_disappearing_messages(
     db: Arc<DatabaseClient>,
+    nats: Arc<NatsClient>,
     request: Request<SetDisappearingMessagesRequest>,
 ) -> Result<Response<SetDisappearingMessagesResponse>, Status> {
     let req = request.into_inner();
@@ -129,8 +133,60 @@ pub async fn set_disappearing_messages(
                 "Disappearing messages config updated"
             );
             
-            // TODO: Broadcast config change to other participants
-            // TODO: Schedule background job to clean up expired messages
+            // RT-003: Broadcast config change to other participants
+            let topic = if req.is_group {
+                format!("group.{}.disappearing_config", req.conversation_id)
+            } else {
+                format!("conversation.{}.disappearing_config", req.conversation_id)
+            };
+            
+            let config_event = serde_json::json!({
+                "type": "disappearing_config_changed",
+                "conversation_id": req.conversation_id,
+                "ttl_seconds": req.ttl_seconds,
+                "set_by_user_id": user_id,
+                "is_group": req.is_group,
+                "enabled": req.ttl_seconds > 0,
+                "timestamp_seconds": now.timestamp(),
+            });
+            
+            let payload = serde_json::to_vec(&config_event).unwrap_or_default();
+            if let Err(e) = nats.publish(&topic, &payload).await {
+                warn!(
+                    "Failed to broadcast disappearing config via NATS: {} (topic={})",
+                    e, topic
+                );
+            } else {
+                info!(
+                    "Disappearing config broadcast to topic: {} (ttl={}s)",
+                    topic, req.ttl_seconds
+                );
+            }
+            
+            // RT-003: Schedule background job for message cleanup
+            // Publish to cleanup scheduler topic if TTL is enabled
+            if req.ttl_seconds > 0 {
+                let cleanup_job = serde_json::json!({
+                    "type": "schedule_cleanup",
+                    "conversation_id": req.conversation_id,
+                    "ttl_seconds": req.ttl_seconds,
+                    "is_group": req.is_group,
+                    "scheduled_at": now.timestamp(),
+                });
+                
+                let cleanup_payload = serde_json::to_vec(&cleanup_job).unwrap_or_default();
+                if let Err(e) = nats.publish("messaging.cleanup.schedule", &cleanup_payload).await {
+                    warn!(
+                        "Failed to schedule cleanup job via NATS: {} (conversation={})",
+                        e, req.conversation_id
+                    );
+                } else {
+                    info!(
+                        "Cleanup job scheduled for conversation {} (ttl={}s)",
+                        req.conversation_id, req.ttl_seconds
+                    );
+                }
+            }
             
             Ok(Response::new(SetDisappearingMessagesResponse {
                 result: Some(set_disappearing_messages_response::Result::Success(SetDisappearingMessagesSuccess {

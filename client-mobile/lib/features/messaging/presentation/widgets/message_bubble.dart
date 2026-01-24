@@ -1,7 +1,13 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_shadows.dart';
+import '../../../../shared/theme/app_spacing.dart';
 import '../../domain/entities/message.dart';
+import 'chat_media_bubble.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -13,61 +19,124 @@ class MessageBubble extends StatelessWidget {
     this.onLongPress,
   });
 
+  /// Check if message has media attachment
+  bool get hasMedia => ChatMediaBubble.hasMedia(message);
+
   @override
   Widget build(BuildContext context) {
     final isSentByMe = message.isSentByMe;
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onLongPress: onLongPress,
       child: Align(
         alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+          margin: EdgeInsets.only(
+            left: isSentByMe ? 60 : AppSpacing.space2,
+            right: isSentByMe ? AppSpacing.space2 : 60,
+            top: AppSpacing.space1,
+            bottom: AppSpacing.space1,
+          ),
           decoration: BoxDecoration(
             color: isSentByMe
-                ? theme.colorScheme.primary
-                : theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(16),
+                ? GuardynColors.guardyn500
+                : (isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.7)),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(AppRadius.xl),
+              topRight: const Radius.circular(AppRadius.xl),
+              bottomLeft: Radius.circular(isSentByMe ? AppRadius.xl : AppRadius.sm),
+              bottomRight: Radius.circular(isSentByMe ? AppRadius.sm : AppRadius.xl),
+            ),
+            border: isSentByMe
+                ? null
+                : Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : GrayColors.gray200.withOpacity(0.5),
+                  ),
+            boxShadow: AppShadows.sm,
           ),
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.7,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Message text
-              Text(
-                message.textContent,
-                style: TextStyle(
-                  color: isSentByMe
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontSize: 16,
+          child: ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(AppRadius.xl),
+              topRight: const Radius.circular(AppRadius.xl),
+              bottomLeft: Radius.circular(isSentByMe ? AppRadius.xl : AppRadius.sm),
+              bottomRight: Radius.circular(isSentByMe ? AppRadius.sm : AppRadius.xl),
+            ),
+            child: BackdropFilter(
+              filter: isSentByMe
+                  ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
+                  : ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: hasMedia ? AppSpacing.space2 : AppSpacing.space2_5,
+                  bottom: AppSpacing.space2_5,
+                  left: hasMedia ? AppSpacing.space2 : AppSpacing.space3,
+                  right: hasMedia ? AppSpacing.space2 : AppSpacing.space3,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Media attachment (if present)
+                    if (hasMedia)
+                      ChatMediaBubble(
+                        message: message,
+                        isSentByMe: isSentByMe,
+                      ),
+                    // Message text (if not empty)
+                    if (message.textContent.isNotEmpty)
+                      Padding(
+                        padding: hasMedia
+                            ? const EdgeInsets.only(
+                                left: AppSpacing.space1,
+                                right: AppSpacing.space1,
+                              )
+                            : EdgeInsets.zero,
+                        child: Text(
+                          message.textContent,
+                          style: TextStyle(
+                            color: isSentByMe
+                                ? Colors.white
+                                : (isDark ? Colors.white : GrayColors.gray900),
+                            fontSize: 15,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    SizedBox(height: hasMedia && message.textContent.isEmpty 
+                        ? AppSpacing.space0_5 
+                        : AppSpacing.space1),
+                    // Timestamp and delivery status
+                    Padding(
+                      padding: hasMedia
+                          ? const EdgeInsets.only(left: AppSpacing.space1)
+                          : EdgeInsets.zero,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatTime(message.timestamp),
+                            style: TextStyle(
+                              color: isSentByMe
+                                  ? Colors.white.withOpacity(0.7)
+                                  : GrayColors.gray500,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (isSentByMe) ...[
+                            const SizedBox(width: AppSpacing.space1),
+                            _buildDeliveryStatusIcon(message.deliveryStatus),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              // Timestamp and delivery status
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _formatTime(message.timestamp),
-                    style: TextStyle(
-                      color: isSentByMe
-                          ? theme.colorScheme.onPrimary.withOpacity(0.7)
-                          : theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                  if (isSentByMe) ...[
-                    const SizedBox(width: 4),
-                    _buildDeliveryStatusIcon(message.deliveryStatus, theme),
-                  ],
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -93,9 +162,9 @@ class MessageBubble extends StatelessWidget {
     }
   }
 
-  Widget _buildDeliveryStatusIcon(DeliveryStatus status, ThemeData theme) {
+  Widget _buildDeliveryStatusIcon(DeliveryStatus status) {
     IconData icon;
-    Color color = theme.colorScheme.onPrimary.withOpacity(0.7);
+    Color color = Colors.white.withOpacity(0.7);
 
     switch (status) {
       case DeliveryStatus.pending:
@@ -113,10 +182,10 @@ class MessageBubble extends StatelessWidget {
         break;
       case DeliveryStatus.failed:
         icon = Icons.error_outline;
-        color = Colors.redAccent;
+        color = SemanticColors.error;
         break;
     }
 
-    return Icon(icon, size: 16, color: color);
+    return Icon(icon, size: 14, color: color);
   }
 }

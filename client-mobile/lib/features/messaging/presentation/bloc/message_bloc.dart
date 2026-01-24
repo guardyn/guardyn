@@ -11,6 +11,7 @@ import '../../domain/usecases/clear_chat.dart';
 import '../../domain/usecases/decrypt_message.dart';
 import '../../domain/usecases/delete_message.dart';
 import '../../domain/usecases/get_messages.dart';
+import '../../domain/usecases/get_user_display_name.dart';
 import '../../domain/usecases/mark_as_read.dart';
 import '../../domain/usecases/receive_messages.dart';
 import '../../domain/usecases/send_message.dart';
@@ -349,13 +350,41 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   void _showMessageNotification(Message message) {
     try {
       final notificationService = getIt<NotificationService>();
+      final getUserDisplayName = getIt<GetUserDisplayName>();
+
+      // Try to get display name from cache first
+      final cachedName = getUserDisplayName.getCached(message.senderUserId);
+      if (cachedName != null) {
+        notificationService.showMessageNotification(
+          senderName: cachedName,
+          messagePreview: message.textContent.isNotEmpty
+              ? message.textContent
+              : 'New message',
+          conversationId: message.conversationId,
+        );
+        return;
+      }
+
+      // If not cached, use message's senderDisplayName (which falls back to truncated userId)
+      // and resolve the actual name asynchronously for next time
+      final senderName = message.senderDisplayName;
       notificationService.showMessageNotification(
-        senderName: message.senderUserId, // TODO: Get actual username
+        senderName: senderName,
         messagePreview: message.textContent.isNotEmpty
             ? message.textContent
             : 'New message',
         conversationId: message.conversationId,
       );
+
+      // Fetch and cache the real display name for future notifications
+      getUserDisplayName(message.senderUserId).then((result) {
+        result.fold(
+          (_) {}, // Ignore failures, we've already shown the notification
+          (displayName) {
+            // Name is now cached for future use
+          },
+        );
+      });
     } catch (e) {
       // Silently fail if notification service is not available
       // ignore: avoid_print

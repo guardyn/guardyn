@@ -45,6 +45,9 @@ dependencies:
   uuid: ^4.0.0
 
   # E2EE Cryptography - all crypto now uses CryptoPrimitives (Rust FFI / Dart fallback)
+  # Pure Dart fallback for development/testing when native libraries are not built
+  cryptography: ^2.7.0
+  pinenacl: ^0.6.0
 
   # SVG Support
   flutter_svg: ^2.0.9
@@ -67,6 +70,22 @@ dependencies:
   # Theme & Preferences
   shared_preferences: ^2.2.2
   google_fonts: ^6.2.1
+  shimmer: ^3.0.0
+
+  # Media Picking & Display
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  cached_network_image: ^3.4.1
+  video_player: ^2.9.3
+  photo_view: ^0.15.0
+
+  # File Handling
+  mime: ^2.0.0
+  path_provider: ^2.1.5
+  http: ^1.2.2
+  open_filex: ^4.6.0
+  url_launcher: ^6.2.5
+  share_plus: ^10.0.0
 
 dev_dependencies:
   flutter_test:
@@ -83,7 +102,7 @@ dev_dependencies:
   injectable_generator: ^2.4.1
 
   # Rust FFI Code Generation
-  ffigen: ^8.0.0
+  ffigen: ^20.1.1
   freezed: ^2.4.5
 
   # Testing

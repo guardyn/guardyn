@@ -72,8 +72,8 @@ spec:
           value: "104857600"  # 100MB
         - name: CHUNK_SIZE_BYTES
           value: "1048576"    # 1MB
-        # JWT secret
-        - name: JWT_SECRET
+        # JWT authentication secret (GUARDYN_ prefix for consistency)
+        - name: GUARDYN_AUTH__JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: guardyn-backend-secrets
