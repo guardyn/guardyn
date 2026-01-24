@@ -367,7 +367,7 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<EditMessageRequest>,
     ) -> Result<Response<EditMessageResponse>, Status> {
-        handlers::edit_message(self.db.clone(), request).await
+        handlers::edit_message(self.db.clone(), self.nats.clone(), request).await
     }
 
     // ========================================================================

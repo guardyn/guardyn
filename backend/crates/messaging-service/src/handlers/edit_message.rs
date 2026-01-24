@@ -2,9 +2,11 @@
 ///
 /// Allows users to edit their own messages after sending.
 /// Maintains edit version history for audit.
+/// RT-002: Broadcasts edit notifications to conversation participants via NATS.
 
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
+use crate::nats::NatsClient;
 use crate::proto::messaging::{
     EditMessageRequest, EditMessageResponse, EditMessageSuccess,
     edit_message_response,
@@ -15,9 +17,11 @@ use tonic::{Request, Response, Status};
 use tracing::{info, warn, error, instrument};
 
 /// Edit a previously sent message
-#[instrument(skip(db, request), fields(user_id, message_id))]
+/// RT-002: Broadcasts edit notification to conversation participants via NATS
+#[instrument(skip(db, nats, request), fields(user_id, message_id))]
 pub async fn edit_message(
     db: Arc<DatabaseClient>,
+    nats: Arc<NatsClient>,
     request: Request<EditMessageRequest>,
 ) -> Result<Response<EditMessageResponse>, Status> {
     let req = request.into_inner();
@@ -128,7 +132,37 @@ pub async fn edit_message(
                 "Message edited successfully"
             );
             
-            // TODO: Broadcast edit notification to conversation participants via WebSocket
+            // RT-002: Broadcast edit notification to conversation participants via NATS
+            let topic = if req.is_group {
+                format!("group.{}.message_edits", req.conversation_id)
+            } else {
+                format!("conversation.{}.message_edits", req.conversation_id)
+            };
+            
+            let edit_event = serde_json::json!({
+                "type": "message_edited",
+                "conversation_id": req.conversation_id,
+                "message_id": req.message_id,
+                "editor_user_id": user_id,
+                "edit_version": new_version,
+                "is_group": req.is_group,
+                "timestamp_seconds": now.timestamp(),
+                "timestamp_nanos": now.timestamp_subsec_nanos(),
+            });
+            
+            let payload = serde_json::to_vec(&edit_event).unwrap_or_default();
+            if let Err(e) = nats.publish(&topic, &payload).await {
+                // Log but don't fail - edit was saved successfully
+                warn!(
+                    "Failed to broadcast edit notification via NATS: {} (topic={})",
+                    e, topic
+                );
+            } else {
+                info!(
+                    "Edit notification broadcast to topic: {} for message {}",
+                    topic, req.message_id
+                );
+            }
             
             Ok(Response::new(EditMessageResponse {
                 result: Some(edit_message_response::Result::Success(EditMessageSuccess {
