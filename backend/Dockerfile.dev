@@ -20,6 +20,10 @@ RUN cargo install cargo-watch --locked
 RUN cargo install sccache --locked
 ENV RUSTC_WRAPPER=sccache
 
+# Use system OpenSSL instead of building from source
+# This fixes assembly errors with newer binutils versions
+ENV OPENSSL_NO_VENDOR=1
+
 # Set working directory
 WORKDIR /app
 
