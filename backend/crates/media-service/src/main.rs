@@ -195,7 +195,7 @@ async fn main() -> Result<()> {
     // Connect to TiKV
     let tikv_endpoints = std::env::var("TIKV_PD_ENDPOINTS")
         .unwrap_or_else(|_| "pd.data.svc.cluster.local:2379".to_string());
-    
+
     tracing::info!(endpoints = %tikv_endpoints, "Connecting to TiKV");
     let db = db::DatabaseClient::new(&tikv_endpoints).await?;
     tracing::info!("TiKV connection established");
@@ -209,9 +209,20 @@ async fn main() -> Result<()> {
     storage.ensure_bucket_exists(&media_config.bucket_name).await?;
     tracing::info!(bucket = %media_config.bucket_name, "Storage bucket ready");
 
-    // Get JWT secret
-    let jwt_secret = std::env::var("JWT_SECRET")
+    // Load JWT secret from environment (GUARDYN_AUTH__JWT_SECRET)
+    // Falls back to legacy JWT_SECRET, then to dev default
+    // MUST match auth-service configuration for token validation
+    let jwt_secret = std::env::var("GUARDYN_AUTH__JWT_SECRET")
+        .or_else(|_| std::env::var("JWT_SECRET"))
         .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
+
+    if jwt_secret.len() < 32 {
+        tracing::error!("JWT secret is too short (< 32 bytes) - this is insecure!");
+    }
+
+    if jwt_secret.contains("DEV") || jwt_secret.contains("development") || jwt_secret.contains("UNSAFE") {
+        tracing::warn!("Using development JWT secret - DO NOT USE IN PRODUCTION");
+    }
 
     // Create service
     let service = MediaServiceImpl::new(db, storage, jwt_secret, media_config).await;
