@@ -873,7 +873,7 @@ impl DatabaseClient {
                         user_id: other_user_id.clone(),
                         username: other_user_id, // Will need to fetch actual username from auth service
                         last_message: Some(message.clone()),
-                        unread_count: 0, // TODO: Calculate actual unread count
+                        unread_count: 0, // Will be calculated below
                         updated_at: message.server_timestamp,
                     });
 
@@ -883,6 +883,20 @@ impl DatabaseClient {
             }
 
         let mut conversations: Vec<_> = conversations_map.into_values().collect();
+
+        // RT-004: Calculate actual unread count for each conversation
+        for conv in &mut conversations {
+            match self.get_unread_count(&conv.conversation_id, user_id).await {
+                Ok(count) => conv.unread_count = count as u32,
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to get unread count for conversation {}: {}",
+                        conv.conversation_id, e
+                    );
+                    // Keep default 0 on error
+                }
+            }
+        }
 
         // Sort by last activity
         conversations.sort_by(|a, b| {
@@ -1946,6 +1960,60 @@ impl DatabaseClient {
         }
 
         Ok(receipts)
+    }
+
+    /// RT-004: Get unread message count for a user in a conversation
+    /// Counts messages where server_timestamp > last_read_message_timestamp
+    pub async fn get_unread_count(
+        &self,
+        conversation_id: &str,
+        user_id: &str,
+    ) -> Result<i32> {
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
+
+        // First, get the last read message timestamp for this user
+        let read_receipt_rows = self.scylla_query(
+            "SELECT last_read_message_id, timestamp 
+             FROM guardyn.read_receipts 
+             WHERE conversation_id = ? AND user_id = ?",
+            (conversation_uuid, user_id.to_string()),
+        ).await?;
+
+        let last_read_timestamp = if let Some(rows) = read_receipt_rows.rows {
+            rows.into_iter().next()
+                .and_then(|row| {
+                    row.columns[1].as_ref()
+                        .and_then(|v| v.as_bigint())
+                })
+                .unwrap_or(0)
+        } else {
+            0 // No read receipt means all messages are unread
+        };
+
+        // Count messages after the last read timestamp where user is recipient
+        let count_rows = self.scylla_query(
+            "SELECT COUNT(*) FROM guardyn.messages 
+             WHERE conversation_id = ? 
+             AND recipient_user_id = ?
+             AND server_timestamp > ?
+             AND is_deleted = false
+             ALLOW FILTERING",
+            (conversation_uuid, user_id.to_string(), last_read_timestamp),
+        ).await?;
+
+        let count = if let Some(rows) = count_rows.rows {
+            rows.into_iter().next()
+                .and_then(|row| {
+                    row.columns[0].as_ref()
+                        .and_then(|v| v.as_bigint())
+                })
+                .unwrap_or(0) as i32
+        } else {
+            0
+        };
+
+        Ok(count)
     }
 
     // ========================================================================
