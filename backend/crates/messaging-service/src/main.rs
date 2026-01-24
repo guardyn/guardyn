@@ -18,6 +18,7 @@ mod mls_manager;
 mod auth_client;
 mod config;
 mod websocket;
+mod event_consumer;
 
 use guardyn_common::{config::ServiceConfig, observability};
 use tonic::{transport::Server, Request, Response, Status};
@@ -475,6 +476,30 @@ async fn main() -> Result<()> {
 
     let db = Arc::new(db);
     let nats = Arc::new(nats);
+
+    // Start event consumer for cross-service events (user deletion, etc.)
+    let event_consumer_enabled = std::env::var("ENABLE_EVENT_CONSUMER")
+        .unwrap_or_else(|_| "true".to_string())
+        .to_lowercase() == "true";
+
+    if event_consumer_enabled {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
+        
+        match event_consumer::EventConsumer::new(db.clone(), shutdown_rx) {
+            Ok(consumer) => {
+                tracing::info!("Starting event consumer for cross-service events");
+                tokio::spawn(async move {
+                    consumer.run().await;
+                });
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "Failed to create event consumer - cross-service events disabled"
+                );
+            }
+        }
+    }
 
     // Load service configuration
     let messaging_config = config::MessagingConfig::from_env();

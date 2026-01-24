@@ -14,7 +14,7 @@ name = "list-users"
 path = "src/bin/list_users.rs"
 
 [dependencies]
-guardyn-common = { path = "../common" }
+guardyn-common = { path = "../common", features = ["kafka"] }
 guardyn-crypto = { path = "../crypto" }
 
 tokio.workspace = true

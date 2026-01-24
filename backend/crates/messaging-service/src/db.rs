@@ -63,6 +63,16 @@ impl DatabaseClient {
         })
     }
 
+    /// Get TiKV client reference
+    pub fn tikv(&self) -> Arc<RawClient> {
+        Arc::clone(&self.tikv)
+    }
+
+    /// Get ScyllaDB session reference
+    pub fn scylla(&self) -> Arc<Session> {
+        Arc::clone(&self.scylla)
+    }
+
     /// Initialize ScyllaDB keyspace and tables
     ///
     /// Uses SCYLLA_REPLICATION_FACTOR env var (default: 3)

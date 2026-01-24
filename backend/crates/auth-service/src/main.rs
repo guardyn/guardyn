@@ -12,9 +12,10 @@ mod models;
 mod jwt;
 mod db;
 
-use guardyn_common::{config::ServiceConfig, observability};
+use guardyn_common::{config::ServiceConfig, observability, kafka::{KafkaProducer, KafkaConfig}};
 use tonic::{transport::Server, Request, Response, Status};
 use anyhow::Result;
+use std::sync::Arc;
 
 // Import generated protobuf code - pub to make available to handlers
 pub mod proto {
@@ -49,11 +50,20 @@ use proto::common::HealthStatus;
 pub struct AuthServiceImpl {
     db: db::DatabaseClient,
     jwt_secret: String,
+    event_producer: Option<Arc<KafkaProducer>>,
 }
 
 impl AuthServiceImpl {
     pub fn new(db: db::DatabaseClient, jwt_secret: String) -> Self {
-        Self { db, jwt_secret }
+        Self { db, jwt_secret, event_producer: None }
+    }
+
+    pub fn with_events(db: db::DatabaseClient, jwt_secret: String, producer: KafkaProducer) -> Self {
+        Self {
+            db,
+            jwt_secret,
+            event_producer: Some(Arc::new(producer)),
+        }
     }
 }
 
@@ -250,8 +260,21 @@ async fn main() -> Result<()> {
         tracing::warn!("Using development JWT secret - DO NOT USE IN PRODUCTION");
     }
 
-    // Create service instance
-    let auth_service = AuthServiceImpl::new(db, jwt_secret);
+    // Initialize Kafka producer for cross-service events
+    let kafka_config = KafkaConfig::from_env();
+    let auth_service = match KafkaProducer::new(&kafka_config) {
+        Ok(producer) => {
+            tracing::info!("Kafka producer initialized for cross-service events");
+            AuthServiceImpl::with_events(db, jwt_secret, producer)
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to create Kafka producer - cross-service events disabled"
+            );
+            AuthServiceImpl::new(db, jwt_secret)
+        }
+    };
 
     // Build gRPC server
     let addr = format!("{}:{}", config.host, config.port).parse()?;
