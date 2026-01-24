@@ -3,6 +3,11 @@
 # Logs:  docker compose -f docker-compose.dev.yml logs -f <service>
 # Stop:  docker compose -f docker-compose.dev.yml down
 # Reset: docker compose -f docker-compose.dev.yml down -v
+#
+# E2EE Configuration:
+#   By default, E2EE is DISABLED for easier development/debugging.
+#   To enable E2EE testing, set GUARDYN_E2EE_ENABLED=true in messaging-service.
+#   See docs/ENCRYPTION_ARCHITECTURE.md for details.
 
 version: "3.9"
 
@@ -227,6 +232,13 @@ services:
       GUARDYN_MESSAGING__NATS_URL: nats://nats:4222
       GUARDYN_OBSERVABILITY__OTLP_ENDPOINT: ""
       GUARDYN_OBSERVABILITY__LOG_LEVEL: debug
+      # E2EE Configuration - disabled for local development (easier debugging)
+      # Set to "true" to enable end-to-end encryption testing
+      GUARDYN_E2EE_ENABLED: "false"
+      GUARDYN_E2EE_X3DH_ENABLED: "true"
+      GUARDYN_E2EE_DOUBLE_RATCHET_ENABLED: "true"
+      # MLS Configuration - disabled for local development
+      GUARDYN_MLS_ENABLED: "false"
     ports:
       - "50052:50052"
       - "8081:8081"      # WebSocket

@@ -28,27 +28,26 @@ impl MlsConfig {
     /// Load MLS configuration from environment variables
     ///
     /// Environment variables:
-    /// - ENABLE_MLS: Enable MLS group encryption (default: false)
-    /// - MLS_MAX_GROUP_SIZE: Maximum group size (default: 256)
-    /// - MLS_KEY_PACKAGE_TTL_DAYS: Key package TTL (default: 30)
-    /// - MLS_CIPHERSUITE: Ciphersuite identifier (default: MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+    /// - GUARDYN_MLS_ENABLED: Enable MLS group encryption (default: false)
+    /// - GUARDYN_MLS_MAX_GROUP_SIZE: Maximum group size (default: 256)
+    /// - GUARDYN_MLS_KEY_PACKAGE_TTL_DAYS: Key package TTL (default: 30)
+    /// - GUARDYN_MLS_CIPHERSUITE: Ciphersuite identifier (default: MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
     pub fn from_env() -> Self {
-        let enabled = env::var("ENABLE_MLS")
+        let enabled = env::var("GUARDYN_MLS_ENABLED")
             .unwrap_or_else(|_| "false".to_string())
-            .parse::<bool>()
-            .unwrap_or(false);
+            .to_lowercase() == "true";
         
-        let max_group_size = env::var("MLS_MAX_GROUP_SIZE")
+        let max_group_size = env::var("GUARDYN_MLS_MAX_GROUP_SIZE")
             .unwrap_or_else(|_| "256".to_string())
             .parse::<usize>()
             .unwrap_or(256);
         
-        let key_package_ttl_days = env::var("MLS_KEY_PACKAGE_TTL_DAYS")
+        let key_package_ttl_days = env::var("GUARDYN_MLS_KEY_PACKAGE_TTL_DAYS")
             .unwrap_or_else(|_| "30".to_string())
             .parse::<u32>()
             .unwrap_or(30);
         
-        let ciphersuite = env::var("MLS_CIPHERSUITE")
+        let ciphersuite = env::var("GUARDYN_MLS_CIPHERSUITE")
             .unwrap_or_else(|_| "MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519".to_string());
         
         Self {
@@ -87,27 +86,24 @@ impl E2eeConfig {
     /// Load E2EE configuration from environment variables
     ///
     /// Environment variables:
-    /// - ENABLE_E2EE: Enable E2EE for 1-on-1 chats (default: false)
-    /// - E2EE_X3DH_ENABLED: Enable X3DH (default: true)
-    /// - E2EE_DOUBLE_RATCHET_ENABLED: Enable Double Ratchet (default: true)
-    /// - E2EE_MAX_SKIPPED_KEYS: Max skipped message keys (default: 1000)
+    /// - GUARDYN_E2EE_ENABLED: Enable E2EE for 1-on-1 chats (default: false)
+    /// - GUARDYN_E2EE_X3DH_ENABLED: Enable X3DH (default: true when E2EE enabled)
+    /// - GUARDYN_E2EE_DOUBLE_RATCHET_ENABLED: Enable Double Ratchet (default: true)
+    /// - GUARDYN_E2EE_MAX_SKIPPED_KEYS: Max skipped message keys (default: 1000)
     pub fn from_env() -> Self {
-        let enabled = env::var("ENABLE_E2EE")
+        let enabled = env::var("GUARDYN_E2EE_ENABLED")
             .unwrap_or_else(|_| "false".to_string())
-            .parse::<bool>()
-            .unwrap_or(false);
+            .to_lowercase() == "true";
         
-        let x3dh_enabled = env::var("E2EE_X3DH_ENABLED")
+        let x3dh_enabled = env::var("GUARDYN_E2EE_X3DH_ENABLED")
             .unwrap_or_else(|_| "true".to_string())
-            .parse::<bool>()
-            .unwrap_or(true);
+            .to_lowercase() == "true";
         
-        let double_ratchet_enabled = env::var("E2EE_DOUBLE_RATCHET_ENABLED")
+        let double_ratchet_enabled = env::var("GUARDYN_E2EE_DOUBLE_RATCHET_ENABLED")
             .unwrap_or_else(|_| "true".to_string())
-            .parse::<bool>()
-            .unwrap_or(true);
+            .to_lowercase() == "true";
         
-        let max_skipped_message_keys = env::var("E2EE_MAX_SKIPPED_KEYS")
+        let max_skipped_message_keys = env::var("GUARDYN_E2EE_MAX_SKIPPED_KEYS")
             .unwrap_or_else(|_| "1000".to_string())
             .parse::<usize>()
             .unwrap_or(1000);
@@ -213,8 +209,8 @@ mod tests {
     #[test]
     fn test_mls_config_defaults() {
         // Clear environment variables for test
-        env::remove_var("ENABLE_MLS");
-        env::remove_var("MLS_MAX_GROUP_SIZE");
+        env::remove_var("GUARDYN_MLS_ENABLED");
+        env::remove_var("GUARDYN_MLS_MAX_GROUP_SIZE");
         
         let config = MlsConfig::from_env();
         
@@ -225,9 +221,9 @@ mod tests {
     
     #[test]
     fn test_mls_config_from_env() {
-        env::set_var("ENABLE_MLS", "true");
-        env::set_var("MLS_MAX_GROUP_SIZE", "512");
-        env::set_var("MLS_KEY_PACKAGE_TTL_DAYS", "60");
+        env::set_var("GUARDYN_MLS_ENABLED", "true");
+        env::set_var("GUARDYN_MLS_MAX_GROUP_SIZE", "512");
+        env::set_var("GUARDYN_MLS_KEY_PACKAGE_TTL_DAYS", "60");
         
         let config = MlsConfig::from_env();
         
@@ -236,14 +232,14 @@ mod tests {
         assert_eq!(config.key_package_ttl_days, 60);
         
         // Cleanup
-        env::remove_var("ENABLE_MLS");
-        env::remove_var("MLS_MAX_GROUP_SIZE");
-        env::remove_var("MLS_KEY_PACKAGE_TTL_DAYS");
+        env::remove_var("GUARDYN_MLS_ENABLED");
+        env::remove_var("GUARDYN_MLS_MAX_GROUP_SIZE");
+        env::remove_var("GUARDYN_MLS_KEY_PACKAGE_TTL_DAYS");
     }
     
     #[test]
     fn test_e2ee_config_defaults() {
-        env::remove_var("ENABLE_E2EE");
+        env::remove_var("GUARDYN_E2EE_ENABLED");
         
         let config = E2eeConfig::from_env();
         

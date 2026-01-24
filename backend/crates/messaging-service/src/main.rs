@@ -87,6 +87,7 @@ use proto::common::HealthStatus;
 pub struct MessagingServiceImpl {
     db: Arc<db::DatabaseClient>,
     nats: Arc<nats::NatsClient>,
+    config: config::MessagingConfig,
 }
 
 #[tonic::async_trait]
@@ -95,13 +96,8 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SendMessageRequest>,
     ) -> Result<Response<SendMessageResponse>, Status> {
-        // TODO: Enable E2EE by default after testing
-        // For gradual rollout, check env var ENABLE_E2EE=true
-        let enable_e2ee = std::env::var("ENABLE_E2EE")
-            .unwrap_or_else(|_| "false".to_string())
-            .to_lowercase() == "true";
-
-        if enable_e2ee {
+        // Use E2EE configuration from service config
+        if self.config.e2ee.enabled {
             tracing::info!("E2EE enabled, using send_message_e2ee handler");
             handlers::send_message_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
         } else {
@@ -116,12 +112,8 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<ReceiveMessagesRequest>,
     ) -> Result<Response<Self::ReceiveMessagesStream>, Status> {
-        // TODO: Enable E2EE by default after testing
-        let enable_e2ee = std::env::var("ENABLE_E2EE")
-            .unwrap_or_else(|_| "false".to_string())
-            .to_lowercase() == "true";
-
-        if enable_e2ee {
+        // Use E2EE configuration from service config
+        if self.config.e2ee.enabled {
             tracing::info!("E2EE enabled, using receive_messages_e2ee handler");
             handlers::receive_messages_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
         } else {
@@ -484,10 +476,15 @@ async fn main() -> Result<()> {
     let db = Arc::new(db);
     let nats = Arc::new(nats);
 
+    // Load service configuration
+    let messaging_config = config::MessagingConfig::from_env();
+    messaging_config.print_summary();
+
     // Create gRPC service
     let service = MessagingServiceImpl {
         db: db.clone(),
         nats: nats.clone(),
+        config: messaging_config.clone(),
     };
 
     // Start WebSocket server if enabled
