@@ -37,6 +37,7 @@ pub use mls::{MlsGroupManager, create_test_credential};
 pub use pqxdh::{HybridKeyBundle, HybridSharedSecret, generate_hybrid_key_bundle};
 pub use padding::{pad_message, unpad_message, next_padme_length};
 pub use sealed_sender::{SealedSender, SealedSenderEnvelope, SenderCertificate};
+pub use key_storage::{KeyStorage, KeyMetadata, KeyType, create_test_storage};
 
 use thiserror::Error;
 
