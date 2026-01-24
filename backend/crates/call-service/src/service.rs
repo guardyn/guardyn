@@ -23,6 +23,7 @@ pub struct CallServiceImpl {
     db: Arc<CallDb>,
     session_mgr: Arc<CallSessionManager>,
     nats_client: Arc<CallNatsClient>,
+    auth_service_url: String,
     jwt_secret: String,
     ice_servers: Vec<IceServerConfig>,
 }
@@ -33,6 +34,7 @@ impl CallServiceImpl {
         db: Arc<CallDb>,
         session_mgr: Arc<CallSessionManager>,
         nats_client: Arc<CallNatsClient>,
+        auth_service_url: String,
         jwt_secret: String,
         ice_servers: Vec<IceServerConfig>,
     ) -> Self {
@@ -40,6 +42,7 @@ impl CallServiceImpl {
             db,
             session_mgr,
             nats_client,
+            auth_service_url,
             jwt_secret,
             ice_servers,
         }
@@ -58,6 +61,7 @@ impl CallService for CallServiceImpl {
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
+            &self.auth_service_url,
         )
         .await;
         Ok(Response::new(response))
@@ -73,6 +77,7 @@ impl CallService for CallServiceImpl {
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
+            &self.auth_service_url,
         )
         .await;
         Ok(Response::new(response))
@@ -116,6 +121,7 @@ impl CallService for CallServiceImpl {
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
+            &self.auth_service_url,
         )
         .await;
         Ok(Response::new(response))

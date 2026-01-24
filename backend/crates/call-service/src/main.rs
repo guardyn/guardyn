@@ -2,6 +2,7 @@
 //!
 //! Provides signaling for WebRTC calls with SFrame end-to-end encryption.
 
+mod auth_client;
 mod db;
 mod generated;
 mod handlers;
@@ -49,6 +50,7 @@ async fn main() -> Result<()> {
         Arc::new(db),
         Arc::new(session_manager),
         Arc::new(nats_client),
+        config.auth_service_url.clone(),
         config.jwt_secret.clone(),
         config.ice_servers.clone(),
     );
@@ -70,6 +72,7 @@ pub struct Config {
     pub listen_addr: String,
     pub scylla_hosts: Vec<String>,
     pub nats_url: String,
+    pub auth_service_url: String,
     pub jwt_secret: String,
     pub ice_servers: Vec<IceServerConfig>,
 }
@@ -94,6 +97,8 @@ fn load_config() -> Result<Config> {
             .collect(),
         nats_url: std::env::var("NATS_URL")
             .unwrap_or_else(|_| "nats://nats.messaging.svc.cluster.local:4222".to_string()),
+        auth_service_url: std::env::var("AUTH_SERVICE_URL")
+            .unwrap_or_else(|_| "http://auth-service.apps.svc.cluster.local:50051".to_string()),
         jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "development-secret-change-in-production".to_string()),
         ice_servers,
     })

@@ -4,6 +4,7 @@ use anyhow::Result;
 use chrono::Utc;
 use tracing::{debug, warn};
 
+use crate::auth_client::AuthClient;
 use crate::db::{CallDb, CallParticipantRecord, CallRecord, UserCallHistoryEntry};
 use crate::generated::guardyn::calls::*;
 use crate::session::{CallSessionManager, SessionParticipant};
@@ -74,6 +75,7 @@ pub async fn initiate_call(
     request: InitiateCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
+    auth_service_url: &str,
 ) -> InitiateCallResponse {
     let user_id = match validate_token(&request.access_token, jwt_secret) {
         Ok(id) => id,
@@ -97,6 +99,15 @@ pub async fn initiate_call(
         };
     }
 
+    // Get display name from auth service
+    let display_name = match AuthClient::new(auth_service_url).await {
+        Ok(mut client) => client.get_display_name(&user_id).await,
+        Err(e) => {
+            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            user_id.clone()
+        }
+    };
+
     // Determine if this is a group call
     let (is_group, group_id) = match &request.target {
         Some(initiate_call_request::Target::GroupId(gid)) => (true, Some(gid.clone())),
@@ -117,7 +128,7 @@ pub async fn initiate_call(
         is_group,
         group_id.clone(),
         &user_id,
-        &user_id, // TODO: Get display name from user service
+        &display_name,
     );
 
     // Persist to database
@@ -143,7 +154,7 @@ pub async fn initiate_call(
     let participant = CallParticipantRecord {
         call_id: call_id.clone(),
         user_id: user_id.clone(),
-        display_name: user_id.clone(),
+        display_name: display_name.clone(),
         is_muted: false,
         has_video: request.call_type == 2,
         is_screen_sharing: false,
@@ -179,6 +190,7 @@ pub async fn accept_call(
     request: AcceptCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
+    auth_service_url: &str,
 ) -> AcceptCallResponse {
     let user_id = match validate_token(&request.access_token, jwt_secret) {
         Ok(id) => id,
@@ -189,6 +201,15 @@ pub async fn accept_call(
                     "Invalid or expired token",
                 ))),
             };
+        }
+    };
+
+    // Get display name from auth service
+    let display_name = match AuthClient::new(auth_service_url).await {
+        Ok(mut client) => client.get_display_name(&user_id).await,
+        Err(e) => {
+            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            user_id.clone()
         }
     };
 
@@ -215,7 +236,7 @@ pub async fn accept_call(
     let (sframe_key_id, sframe_key) = match session_mgr.add_participant(
         &request.call_id,
         &user_id,
-        &user_id,
+        &display_name,
         has_video,
     ) {
         Some(keys) => keys,
@@ -236,7 +257,7 @@ pub async fn accept_call(
     let participant = CallParticipantRecord {
         call_id: request.call_id.clone(),
         user_id: user_id.clone(),
-        display_name: user_id.clone(),
+        display_name: display_name.clone(),
         is_muted: false,
         has_video,
         is_screen_sharing: false,
@@ -386,6 +407,7 @@ pub async fn join_call(
     request: JoinCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
+    auth_service_url: &str,
 ) -> JoinCallResponse {
     let user_id = match validate_token(&request.access_token, jwt_secret) {
         Ok(id) => id,
@@ -396,6 +418,15 @@ pub async fn join_call(
                     "Invalid or expired token",
                 ))),
             };
+        }
+    };
+
+    // Get display name from auth service
+    let display_name = match AuthClient::new(auth_service_url).await {
+        Ok(mut client) => client.get_display_name(&user_id).await,
+        Err(e) => {
+            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            user_id.clone()
         }
     };
 
@@ -436,7 +467,7 @@ pub async fn join_call(
     let (sframe_key_id, sframe_key) = match session_mgr.add_participant(
         &request.call_id,
         &user_id,
-        &user_id,
+        &display_name,
         has_video,
     ) {
         Some(keys) => keys,
@@ -461,7 +492,7 @@ pub async fn join_call(
     let participant = CallParticipantRecord {
         call_id: request.call_id.clone(),
         user_id: user_id.clone(),
-        display_name: user_id.clone(),
+        display_name: display_name.clone(),
         is_muted: false,
         has_video,
         is_screen_sharing: false,
