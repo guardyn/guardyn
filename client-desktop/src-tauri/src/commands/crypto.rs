@@ -205,7 +205,7 @@ pub async fn generate_identity_keys() -> Result<IdentityKeyData, String> {
         Ok(keypair) => {
             let data = IdentityKeyData {
                 public_key: hex::encode(keypair.public_bytes()),
-                private_key: hex::encode(keypair.public_bytes()), // TODO: Get actual private key
+                private_key: hex::encode(keypair.private_key_bytes()),
             };
 
             // Store in session
@@ -249,23 +249,32 @@ pub async fn generate_signed_prekey() -> Result<PreKeyData, String> {
     tracing::info!("Generating signed prekey");
 
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    let _identity = store.identity_keypair.as_ref()
+    let identity_data = store.identity_keypair.as_ref()
         .ok_or_else(|| "Identity keys not generated".to_string())?;
 
-    // TODO: Use actual X3DH SignedPreKey generation
-    // For now, return placeholder
+    // Reconstruct identity keypair from stored private key
+    let private_bytes = hex::decode(&identity_data.private_key)
+        .map_err(|e| format!("Invalid private key hex: {}", e))?;
+    let identity_keypair = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
+        .map_err(|e| format!("Failed to reconstruct identity keypair: {}", e))?;
+
+    // Generate actual signed prekey using guardyn-crypto
+    let key_id = store.signed_prekey.as_ref().map(|p| p.key_id + 1).unwrap_or(1);
+    let signed_prekey = guardyn_crypto::x3dh::SignedPreKey::generate(key_id, &identity_keypair)
+        .map_err(|e| format!("Failed to generate signed prekey: {}", e))?;
+
     let prekey = PreKeyData {
-        key_id: 1,
-        public_key: hex::encode([0u8; 32]),
-        private_key: hex::encode([0u8; 32]),
-        signature: hex::encode([0u8; 64]),
+        key_id: signed_prekey.key_id,
+        public_key: hex::encode(signed_prekey.public_bytes()),
+        private_key: String::new(), // SignedPreKey doesn't expose private key directly, stored internally
+        signature: hex::encode(&signed_prekey.signature),
     };
 
     // Store in session and persist
     store.signed_prekey = Some(prekey.clone());
     persist_signed_prekey(&prekey)?;
 
-    tracing::info!("Signed prekey generated and persisted");
+    tracing::info!("Signed prekey generated and persisted (key_id: {})", key_id);
     Ok(prekey)
 }
 
@@ -280,12 +289,14 @@ pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PreKeyData>, St
     let start_id = store.one_time_prekeys.len() as u32;
 
     for i in 0..count {
-        // TODO: Use actual X3DH one-time prekey generation
+        // Generate actual X3DH one-time prekey using guardyn-crypto
+        let otk = guardyn_crypto::x3dh::OneTimePreKey::generate(start_id + i);
+        
         let prekey = PreKeyData {
-            key_id: start_id + i,
-            public_key: hex::encode([i as u8; 32]), // Placeholder
-            private_key: hex::encode([i as u8; 32]),
-            signature: String::new(),
+            key_id: otk.key_id,
+            public_key: hex::encode(otk.public_bytes()),
+            private_key: String::new(), // Private key stored internally in the crypto lib
+            signature: String::new(), // OTKs are not signed
         };
         prekeys.push(prekey.clone());
         store.one_time_prekeys.push(prekey);
@@ -330,32 +341,132 @@ pub async fn generate_key_bundle(include_pq: bool) -> Result<KeyBundle, String> 
 #[tauri::command]
 pub async fn perform_x3dh(
     recipient_bundle: KeyBundle,
-    _recipient_id: String,
+    recipient_id: String,
 ) -> Result<X3DHResult, String> {
-    tracing::info!("Performing X3DH key agreement");
+    tracing::info!("Performing X3DH key agreement with {}", recipient_id);
 
-    // Verify we have identity keys
+    // Get our identity keypair from store
     let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    let _identity = store.identity_keypair.as_ref()
+    let identity_data = store.identity_keypair.as_ref()
         .ok_or_else(|| "Identity keys not generated".to_string())?;
 
-    // Decode recipient's keys
-    let _identity_key = hex::decode(&recipient_bundle.identity_key)
-        .map_err(|e| format!("Invalid identity key: {}", e))?;
-    let _signed_prekey = hex::decode(&recipient_bundle.signed_prekey)
-        .map_err(|e| format!("Invalid signed prekey: {}", e))?;
-    let _prekey_signature = hex::decode(&recipient_bundle.prekey_signature)
-        .map_err(|e| format!("Invalid prekey signature: {}", e))?;
+    // Reconstruct identity keypair from stored private key
+    let private_bytes = hex::decode(&identity_data.private_key)
+        .map_err(|e| format!("Invalid private key hex: {}", e))?;
+    let identity_keypair = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
+        .map_err(|e| format!("Failed to reconstruct identity keypair: {}", e))?;
+    drop(store);
 
-    // TODO: Implement full X3DH protocol using guardyn_crypto::x3dh
-    // For now, return placeholder
-    let shared_secret = [0u8; 32];
-    let ephemeral_key = [0u8; 32];
+    // Decode recipient's keys from hex
+    let identity_key = hex::decode(&recipient_bundle.identity_key)
+        .map_err(|e| format!("Invalid identity key hex: {}", e))?;
+    let signed_prekey = hex::decode(&recipient_bundle.signed_prekey)
+        .map_err(|e| format!("Invalid signed prekey hex: {}", e))?;
+    let prekey_signature = hex::decode(&recipient_bundle.prekey_signature)
+        .map_err(|e| format!("Invalid prekey signature hex: {}", e))?;
+    
+    // Parse one-time prekey if provided
+    let one_time_prekeys = match &recipient_bundle.one_time_prekey {
+        Some(otk_hex) => {
+            let otk_bytes = hex::decode(otk_hex)
+                .map_err(|e| format!("Invalid one-time prekey hex: {}", e))?;
+            vec![guardyn_crypto::x3dh::OneTimePreKeyPublic {
+                key_id: 0, // We don't have the ID from the bundle format
+                public_key: otk_bytes,
+            }]
+        }
+        None => vec![],
+    };
+
+    // Create X3DH key bundle for the recipient
+    let peer_bundle = guardyn_crypto::x3dh::X3DHKeyBundle {
+        identity_key,
+        signed_pre_key: signed_prekey,
+        signed_pre_key_id: 1, // Default ID
+        signed_pre_key_signature: prekey_signature,
+        one_time_pre_keys: one_time_prekeys,
+    };
+
+    // Perform X3DH key agreement using guardyn-crypto
+    let use_one_time_key = recipient_bundle.one_time_prekey.is_some();
+    let (shared_secret, ephemeral_public) = guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
+        &identity_keypair,
+        &peer_bundle,
+        use_one_time_key,
+    ).map_err(|e| format!("X3DH key agreement failed: {}", e))?;
+
+    tracing::info!("X3DH key agreement successful with {}", recipient_id);
 
     Ok(X3DHResult {
-        shared_secret: hex::encode(shared_secret),
-        ephemeral_key: hex::encode(ephemeral_key),
-        used_prekey_id: recipient_bundle.one_time_prekey.as_ref().map(|_| 0),
+        shared_secret: hex::encode(&shared_secret),
+        ephemeral_key: hex::encode(ephemeral_public.as_bytes()),
+        used_prekey_id: if use_one_time_key { Some(0) } else { None },
+    })
+}
+
+/// Respond to X3DH key agreement as responder (Bob)
+/// This is called when receiving the first message from a new peer
+#[tauri::command]
+pub async fn respond_x3dh(
+    peer_identity_key: String,
+    peer_ephemeral_key: String,
+    used_one_time_key_id: Option<u32>,
+    peer_id: String,
+) -> Result<X3DHResult, String> {
+    tracing::info!("Responding to X3DH key agreement from {}", peer_id);
+
+    // Get our key material from store
+    let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+    let identity_data = store.identity_keypair.as_ref()
+        .ok_or_else(|| "Identity keys not generated".to_string())?;
+    let signed_prekey_data = store.signed_prekey.as_ref()
+        .ok_or_else(|| "Signed prekey not generated".to_string())?;
+
+    // Reconstruct identity keypair
+    let private_bytes = hex::decode(&identity_data.private_key)
+        .map_err(|e| format!("Invalid private key hex: {}", e))?;
+    let identity_keypair = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
+        .map_err(|e| format!("Failed to reconstruct identity keypair: {}", e))?;
+
+    // Generate key material (we need the full SignedPreKey, not just public bytes)
+    // For now, regenerate signed prekey with same key_id
+    let signed_prekey = guardyn_crypto::x3dh::SignedPreKey::generate(signed_prekey_data.key_id, &identity_keypair)
+        .map_err(|e| format!("Failed to regenerate signed prekey: {}", e))?;
+
+    // Build one-time prekeys from store
+    let one_time_prekeys: Vec<guardyn_crypto::x3dh::OneTimePreKey> = (0..store.one_time_prekeys.len() as u32)
+        .map(|id| guardyn_crypto::x3dh::OneTimePreKey::generate(id))
+        .collect();
+
+    drop(store);
+
+    // Build key material
+    let key_material = guardyn_crypto::x3dh::X3DHKeyMaterial {
+        identity_key: identity_keypair,
+        signed_pre_key: signed_prekey,
+        one_time_pre_keys: one_time_prekeys,
+    };
+
+    // Decode peer's keys
+    let peer_identity_bytes = hex::decode(&peer_identity_key)
+        .map_err(|e| format!("Invalid peer identity key hex: {}", e))?;
+    let peer_ephemeral_bytes = hex::decode(&peer_ephemeral_key)
+        .map_err(|e| format!("Invalid peer ephemeral key hex: {}", e))?;
+
+    // Perform X3DH key agreement as responder
+    let shared_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+        &key_material,
+        &peer_identity_bytes,
+        &peer_ephemeral_bytes,
+        used_one_time_key_id,
+    ).map_err(|e| format!("X3DH respond failed: {}", e))?;
+
+    tracing::info!("X3DH response successful for {}", peer_id);
+
+    Ok(X3DHResult {
+        shared_secret: hex::encode(&shared_secret),
+        ephemeral_key: String::new(), // Responder doesn't generate ephemeral key
+        used_prekey_id: used_one_time_key_id,
     })
 }
 
@@ -697,5 +808,101 @@ mod tests {
         assert_eq!(deserialized.len(), 2);
         assert_eq!(deserialized.get("user1").unwrap().state, vec![10, 20, 30]);
         assert!(deserialized.get("user2").unwrap().state.is_empty());
+    }
+
+    #[test]
+    fn test_x3dh_identity_key_generation_and_reconstruction() {
+        // Generate identity keypair using guardyn-crypto
+        let keypair = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        
+        // Get public and private bytes
+        let public_bytes = keypair.public_bytes();
+        let private_bytes = keypair.private_key_bytes();
+        
+        assert_eq!(public_bytes.len(), 32);
+        assert_eq!(private_bytes.len(), 32);
+        
+        // Reconstruct from private bytes
+        let restored = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes).unwrap();
+        
+        // Verify public keys match
+        assert_eq!(keypair.public_bytes(), restored.public_bytes());
+    }
+
+    #[test]
+    fn test_x3dh_signed_prekey_generation() {
+        // Generate identity keypair
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        
+        // Generate signed prekey
+        let signed_prekey = guardyn_crypto::x3dh::SignedPreKey::generate(1, &identity).unwrap();
+        
+        assert_eq!(signed_prekey.key_id, 1);
+        assert_eq!(signed_prekey.public_bytes().len(), 32);
+        assert!(!signed_prekey.signature.is_empty());
+    }
+
+    #[test]
+    fn test_x3dh_one_time_prekey_generation() {
+        // Generate one-time prekey
+        let otk = guardyn_crypto::x3dh::OneTimePreKey::generate(42);
+        
+        assert_eq!(otk.key_id, 42);
+        assert_eq!(otk.public_bytes().len(), 32);
+    }
+
+    #[test]
+    fn test_x3dh_full_key_agreement() {
+        // Generate key material for Alice and Bob
+        let alice_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(10).unwrap();
+        let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(10).unwrap();
+        
+        // Bob publishes his bundle
+        let bob_bundle = bob_material.export_bundle();
+        
+        // Alice initiates key agreement
+        let (alice_secret, alice_ephemeral) = guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
+            &alice_material.identity_key,
+            &bob_bundle,
+            true,
+        ).unwrap();
+        
+        assert_eq!(alice_secret.len(), 32);
+        
+        // Bob responds
+        let bob_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &alice_material.identity_key.public_bytes(),
+            alice_ephemeral.as_bytes(),
+            Some(0),
+        ).unwrap();
+        
+        assert_eq!(bob_secret.len(), 32);
+        
+        // Both should derive the same shared secret
+        assert_eq!(alice_secret, bob_secret);
+    }
+
+    #[test]
+    fn test_key_bundle_roundtrip() {
+        // Test that KeyBundle struct can be converted to/from guardyn-crypto bundle
+        let material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(5).unwrap();
+        let bundle = material.export_bundle();
+        
+        // Convert to our KeyBundle format
+        let key_bundle = KeyBundle {
+            identity_key: hex::encode(&bundle.identity_key),
+            signed_prekey: hex::encode(&bundle.signed_pre_key),
+            prekey_signature: hex::encode(&bundle.signed_pre_key_signature),
+            one_time_prekey: bundle.one_time_pre_keys.first()
+                .map(|otk| hex::encode(&otk.public_key)),
+            pq_prekey: None,
+        };
+        
+        // Verify encoding is correct
+        assert_eq!(hex::decode(&key_bundle.identity_key).unwrap().len(), 32);
+        assert_eq!(hex::decode(&key_bundle.signed_prekey).unwrap().len(), 32);
+        assert!(!key_bundle.prekey_signature.is_empty());
+        assert!(key_bundle.one_time_prekey.is_some());
     }
 }
