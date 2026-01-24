@@ -86,23 +86,17 @@ class PresenceRepositoryImpl implements PresenceRepository {
         return const Left(AuthFailure('No access token found'));
       }
 
-      // For now, fetch each user individually
-      // TODO: Implement bulk presence RPC when backend supports it
+      // Use bulk presence RPC for efficient batch retrieval
+      final presenceModels = await remoteDatasource.getBulkStatus(
+        accessToken: accessToken,
+        userIds: userIds,
+      );
+
       final result = <String, PresenceInfo>{};
-      for (final userId in userIds) {
-        try {
-          final presenceModel = await remoteDatasource.getUserPresence(
-            accessToken: accessToken,
-            userId: userId,
-          );
-          final presenceInfo = presenceModel.toEntity();
-          result[userId] = presenceInfo;
-          _presenceCache[userId] = presenceInfo;
-        } catch (e) {
-          // If we fail to get one user's presence, continue with others
-          _logger.w('Failed to get presence for $userId: $e');
-          result[userId] = PresenceInfo.offline(userId);
-        }
+      for (final model in presenceModels) {
+        final presenceInfo = model.toEntity();
+        result[model.userId] = presenceInfo;
+        _presenceCache[model.userId] = presenceInfo;
       }
 
       return Right(result);
