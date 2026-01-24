@@ -2,7 +2,7 @@
 //!
 //! Exposes guardyn-crypto functionality to the frontend.
 //! Implements X3DH key agreement, Double Ratchet sessions, and message encryption.
-//! 
+//!
 //! Keys are persisted to secure storage (OS keychain/credential manager).
 
 use crate::services::SecureStorage;
@@ -51,34 +51,39 @@ static SESSION_STORE: LazyLock<Mutex<SessionStore>> = LazyLock::new(|| {
     Mutex::new(store)
 });
 
+/// Global storage for Double Ratchet states (cannot be Clone, stored separately)
+/// Key is peer_id, value is the serialized Double Ratchet state
+static RATCHET_STORE: LazyLock<Mutex<HashMap<String, guardyn_crypto::DoubleRatchet>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
 /// Load keys from secure storage into the session store
 fn load_from_secure_storage(store: &mut SessionStore) -> Result<(), String> {
     let storage = SecureStorage::default_instance();
-    
+
     // Load identity keypair
     if let Ok(keypair) = storage.get_identity_keypair() {
         tracing::info!("Loaded identity keypair from secure storage");
         store.identity_keypair = Some(keypair);
     }
-    
+
     // Load signed prekey
     if let Ok(prekey) = storage.get_signed_prekey() {
         tracing::info!("Loaded signed prekey from secure storage");
         store.signed_prekey = Some(prekey);
     }
-    
+
     // Load one-time prekeys
     if let Ok(prekeys) = storage.get_one_time_prekeys() {
         tracing::info!("Loaded {} one-time prekeys from secure storage", prekeys.len());
         store.one_time_prekeys = prekeys;
     }
-    
+
     // Load sessions
     if let Ok(sessions) = storage.get_sessions() {
         tracing::info!("Loaded {} sessions from secure storage", sessions.len());
         store.sessions = sessions;
     }
-    
+
     store.loaded_from_storage = true;
     Ok(())
 }
@@ -291,7 +296,7 @@ pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PreKeyData>, St
     for i in 0..count {
         // Generate actual X3DH one-time prekey using guardyn-crypto
         let otk = guardyn_crypto::x3dh::OneTimePreKey::generate(start_id + i);
-        
+
         let prekey = PreKeyData {
             key_id: otk.key_id,
             public_key: hex::encode(otk.public_bytes()),
@@ -364,7 +369,7 @@ pub async fn perform_x3dh(
         .map_err(|e| format!("Invalid signed prekey hex: {}", e))?;
     let prekey_signature = hex::decode(&recipient_bundle.prekey_signature)
         .map_err(|e| format!("Invalid prekey signature hex: {}", e))?;
-    
+
     // Parse one-time prekey if provided
     let one_time_prekeys = match &recipient_bundle.one_time_prekey {
         Some(otk_hex) => {
@@ -475,16 +480,33 @@ pub async fn respond_x3dh(
 // =============================================================================
 
 /// Initialize a Double Ratchet session with a peer
+///
+/// Both initiator and responder start with init_bob - the DH ratchet step
+/// is performed automatically when the first message is exchanged.
+/// The initiator should send their public key with the first message header.
 #[tauri::command]
 pub async fn init_session(
     peer_id: String,
     shared_secret: String,
-    _is_initiator: bool,
+    is_initiator: bool,
+    _peer_public_key: Option<String>,
 ) -> Result<SessionInfo, String> {
-    tracing::info!("Initializing session with peer: {}", peer_id);
+    tracing::info!("Initializing Double Ratchet session with peer: {} (initiator: {})", peer_id, is_initiator);
 
-    let _secret_bytes = hex::decode(&shared_secret)
+    let secret_bytes = hex::decode(&shared_secret)
         .map_err(|e| format!("Invalid shared secret: {}", e))?;
+
+    if secret_bytes.len() != 32 {
+        return Err("Shared secret must be 32 bytes".to_string());
+    }
+
+    // Initialize Double Ratchet
+    // Both roles start with init_bob - the DH ratchet is performed on first message
+    let ratchet = guardyn_crypto::DoubleRatchet::init_bob(&secret_bytes)
+        .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?;
+
+    // Serialize ratchet state for persistence
+    let ratchet_state = ratchet.serialize();
 
     let session = SessionData {
         peer_id: peer_id.clone(),
@@ -494,17 +516,21 @@ pub async fn init_session(
             .as_secs(),
         messages_sent: 0,
         messages_received: 0,
-        state: Vec::new(), // TODO: Serialize Double Ratchet state
+        state: ratchet_state, // Store serialized Double Ratchet state
     };
 
-    // Store session in memory
+    // Store ratchet in memory
+    {
+        let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
+        ratchet_store.insert(peer_id.clone(), ratchet);
+    }
+
+    // Store session metadata and persist
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     store.sessions.insert(peer_id.clone(), session.clone());
-
-    // Persist all sessions to secure storage
     persist_sessions(&store.sessions)?;
 
-    tracing::info!("Session established and persisted with peer: {}", peer_id);
+    tracing::info!("Double Ratchet session established and persisted with peer: {}", peer_id);
     Ok(SessionInfo {
         peer_id: session.peer_id,
         established_at: session.established_at,
@@ -547,13 +573,13 @@ pub async fn list_sessions() -> Result<Vec<SessionInfo>, String> {
 pub async fn delete_session(peer_id: String) -> Result<bool, String> {
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     let removed = store.sessions.remove(&peer_id).is_some();
-    
+
     if removed {
         // Persist updated sessions to secure storage
         persist_sessions(&store.sessions)?;
         tracing::info!("Session with peer {} deleted and persisted", peer_id);
     }
-    
+
     Ok(removed)
 }
 
@@ -569,29 +595,45 @@ pub async fn encrypt_message(
 ) -> Result<EncryptedMessage, String> {
     tracing::debug!("Encrypting message for {} ({} bytes)", recipient_id, plaintext.len());
 
-    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    let session = store.sessions.get_mut(&recipient_id)
-        .ok_or_else(|| format!("No session with peer: {}", recipient_id))?;
-
     // Apply PADMÉ padding for traffic analysis protection
     let padded = guardyn_crypto::pad_message(plaintext.as_bytes())
         .map_err(|e| format!("Padding failed: {}", e))?;
 
-    // TODO: Encrypt with Double Ratchet
-    // For now, return base64-encoded padded message
-    session.messages_sent += 1;
+    // Get Double Ratchet for this peer
+    let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
+    let ratchet = ratchet_store.get_mut(&recipient_id)
+        .ok_or_else(|| format!("No Double Ratchet session with peer: {}", recipient_id))?;
 
-    // Clone sessions for persistence (outside of mutable borrow)
+    // Encrypt with Double Ratchet
+    let associated_data = recipient_id.as_bytes();
+    let encrypted = ratchet.encrypt(&padded, associated_data)
+        .map_err(|e| format!("Double Ratchet encryption failed: {}", e))?;
+
+    // Serialize encrypted message
+    let encrypted_bytes = encrypted.to_bytes();
+    drop(ratchet_store);
+
+    // Update session metadata
+    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+    if let Some(session) = store.sessions.get_mut(&recipient_id) {
+        session.messages_sent += 1;
+        // Update serialized ratchet state
+        if let Ok(ratchet_store) = RATCHET_STORE.lock() {
+            if let Some(ratchet) = ratchet_store.get(&recipient_id) {
+                session.state = ratchet.serialize();
+            }
+        }
+    }
+
+    // Persist updated sessions
     let sessions_clone = store.sessions.clone();
     drop(store);
-
-    // Persist updated session (message counter changed)
     persist_sessions(&sessions_clone)?;
 
     Ok(EncryptedMessage {
-        ciphertext: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &padded),
-        nonce: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &[0u8; 12]),
-        header: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, b"placeholder"),
+        ciphertext: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &encrypted_bytes),
+        nonce: String::new(), // Nonce is included in encrypted message
+        header: String::new(), // Header is included in encrypted message
     })
 }
 
@@ -599,34 +641,50 @@ pub async fn encrypt_message(
 #[tauri::command]
 pub async fn decrypt_message(
     ciphertext: String,
-    nonce: String,
+    _nonce: String, // Nonce is now embedded in ciphertext
     sender_id: String,
 ) -> Result<String, String> {
     tracing::debug!("Decrypting message from {}", sender_id);
 
-    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    let session = store.sessions.get_mut(&sender_id)
-        .ok_or_else(|| format!("No session with peer: {}", sender_id))?;
-
-    // Decode base64
-    let padded = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &ciphertext)
+    // Decode base64 ciphertext
+    let encrypted_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &ciphertext)
         .map_err(|e| format!("Invalid ciphertext base64: {}", e))?;
-    let _nonce_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &nonce)
-        .map_err(|e| format!("Invalid nonce base64: {}", e))?;
 
-    // TODO: Decrypt with Double Ratchet
+    // Parse encrypted message
+    let encrypted_msg = guardyn_crypto::double_ratchet::EncryptedMessage::from_bytes(&encrypted_bytes)
+        .map_err(|e| format!("Failed to parse encrypted message: {}", e))?;
+
+    // Get Double Ratchet for this peer
+    let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
+    let ratchet = ratchet_store.get_mut(&sender_id)
+        .ok_or_else(|| format!("No Double Ratchet session with peer: {}", sender_id))?;
+
+    // Decrypt with Double Ratchet
+    let associated_data = sender_id.as_bytes();
+    let padded = ratchet.decrypt(&encrypted_msg, associated_data)
+        .map_err(|e| format!("Double Ratchet decryption failed: {}", e))?;
+
+    drop(ratchet_store);
 
     // Remove PADMÉ padding
     let plaintext = guardyn_crypto::unpad_message(&padded)
         .map_err(|e| format!("Unpadding failed: {}", e))?;
 
-    session.messages_received += 1;
+    // Update session metadata
+    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+    if let Some(session) = store.sessions.get_mut(&sender_id) {
+        session.messages_received += 1;
+        // Update serialized ratchet state
+        if let Ok(ratchet_store) = RATCHET_STORE.lock() {
+            if let Some(ratchet) = ratchet_store.get(&sender_id) {
+                session.state = ratchet.serialize();
+            }
+        }
+    }
 
-    // Clone sessions for persistence (outside of mutable borrow)
+    // Persist updated sessions
     let sessions_clone = store.sessions.clone();
     drop(store);
-
-    // Persist updated session (message counter changed)
     persist_sessions(&sessions_clone)?;
 
     String::from_utf8(plaintext).map_err(|e| format!("Invalid UTF-8: {}", e))
@@ -711,7 +769,7 @@ mod tests {
         // Serialize for storage (private_key is included when non-empty)
         let json = serde_json::to_string(&prekey).unwrap();
         assert!(json.contains("pubkey"));
-        
+
         // When private_key is populated, it should serialize for storage
         if !prekey.private_key.is_empty() {
             let full_json = serde_json::json!({
@@ -740,7 +798,7 @@ mod tests {
         let json = serde_json::to_string(&session).unwrap();
         assert!(json.contains("peer123"));
         assert!(json.contains("1234567890"));
-        
+
         // Deserialize and verify state is preserved
         let deserialized: SessionData = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.peer_id, "peer123");
@@ -760,7 +818,7 @@ mod tests {
         let json = serde_json::to_string(&session).unwrap();
         // Empty state should not appear in JSON
         assert!(!json.contains("\"state\""));
-        
+
         // Deserialize and verify state defaults to empty
         let deserialized: SessionData = serde_json::from_str(&json).unwrap();
         assert!(deserialized.state.is_empty());
@@ -775,7 +833,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&keypair).unwrap();
-        
+
         // Verify JSON structure
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(parsed.get("public_key").is_some());
@@ -802,7 +860,7 @@ mod tests {
 
         // Serialize entire sessions map
         let json = serde_json::to_string(&sessions).unwrap();
-        
+
         // Deserialize and verify
         let deserialized: HashMap<String, SessionData> = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.len(), 2);
@@ -814,17 +872,17 @@ mod tests {
     fn test_x3dh_identity_key_generation_and_reconstruction() {
         // Generate identity keypair using guardyn-crypto
         let keypair = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
-        
+
         // Get public and private bytes
         let public_bytes = keypair.public_bytes();
         let private_bytes = keypair.private_key_bytes();
-        
+
         assert_eq!(public_bytes.len(), 32);
         assert_eq!(private_bytes.len(), 32);
-        
+
         // Reconstruct from private bytes
         let restored = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes).unwrap();
-        
+
         // Verify public keys match
         assert_eq!(keypair.public_bytes(), restored.public_bytes());
     }
@@ -833,10 +891,10 @@ mod tests {
     fn test_x3dh_signed_prekey_generation() {
         // Generate identity keypair
         let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
-        
+
         // Generate signed prekey
         let signed_prekey = guardyn_crypto::x3dh::SignedPreKey::generate(1, &identity).unwrap();
-        
+
         assert_eq!(signed_prekey.key_id, 1);
         assert_eq!(signed_prekey.public_bytes().len(), 32);
         assert!(!signed_prekey.signature.is_empty());
@@ -846,7 +904,7 @@ mod tests {
     fn test_x3dh_one_time_prekey_generation() {
         // Generate one-time prekey
         let otk = guardyn_crypto::x3dh::OneTimePreKey::generate(42);
-        
+
         assert_eq!(otk.key_id, 42);
         assert_eq!(otk.public_bytes().len(), 32);
     }
@@ -856,19 +914,19 @@ mod tests {
         // Generate key material for Alice and Bob
         let alice_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(10).unwrap();
         let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(10).unwrap();
-        
+
         // Bob publishes his bundle
         let bob_bundle = bob_material.export_bundle();
-        
+
         // Alice initiates key agreement
         let (alice_secret, alice_ephemeral) = guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
             &alice_material.identity_key,
             &bob_bundle,
             true,
         ).unwrap();
-        
+
         assert_eq!(alice_secret.len(), 32);
-        
+
         // Bob responds
         let bob_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
             &bob_material,
@@ -876,9 +934,9 @@ mod tests {
             alice_ephemeral.as_bytes(),
             Some(0),
         ).unwrap();
-        
+
         assert_eq!(bob_secret.len(), 32);
-        
+
         // Both should derive the same shared secret
         assert_eq!(alice_secret, bob_secret);
     }
@@ -888,7 +946,7 @@ mod tests {
         // Test that KeyBundle struct can be converted to/from guardyn-crypto bundle
         let material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(5).unwrap();
         let bundle = material.export_bundle();
-        
+
         // Convert to our KeyBundle format
         let key_bundle = KeyBundle {
             identity_key: hex::encode(&bundle.identity_key),
@@ -898,11 +956,86 @@ mod tests {
                 .map(|otk| hex::encode(&otk.public_key)),
             pq_prekey: None,
         };
-        
+
         // Verify encoding is correct
         assert_eq!(hex::decode(&key_bundle.identity_key).unwrap().len(), 32);
         assert_eq!(hex::decode(&key_bundle.signed_prekey).unwrap().len(), 32);
         assert!(!key_bundle.prekey_signature.is_empty());
         assert!(key_bundle.one_time_prekey.is_some());
+    }
+
+    #[test]
+    fn test_double_ratchet_basic_encryption() {
+        // Test basic Double Ratchet encrypt/decrypt cycle
+        let shared_secret = [42u8; 32];
+
+        // Bob initializes first
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let bob_public = bob.public_key();
+
+        // Alice initializes with Bob's public key
+        let mut alice = guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
+
+        // Alice encrypts a message
+        let plaintext = b"Hello from Alice!";
+        let encrypted = alice.encrypt(plaintext, b"alice->bob").unwrap();
+
+        // Verify encrypted message is not plaintext
+        assert_ne!(&encrypted.ciphertext[..], plaintext);
+
+        // Bob decrypts the message
+        let decrypted = bob.decrypt(&encrypted, b"alice->bob").unwrap();
+        assert_eq!(&decrypted[..], plaintext);
+    }
+
+    #[test]
+    fn test_double_ratchet_bidirectional() {
+        // Test bidirectional message exchange
+        let shared_secret = [99u8; 32];
+
+        // Bob initializes first
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let bob_public = bob.public_key();
+
+        // Alice initializes with Bob's public key
+        let mut alice = guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
+
+        // Alice -> Bob
+        let msg1 = alice.encrypt(b"Message 1", b"ad").unwrap();
+        let dec1 = bob.decrypt(&msg1, b"ad").unwrap();
+        assert_eq!(&dec1[..], b"Message 1");
+
+        // Bob -> Alice
+        let msg2 = bob.encrypt(b"Reply 1", b"ad").unwrap();
+        let dec2 = alice.decrypt(&msg2, b"ad").unwrap();
+        assert_eq!(&dec2[..], b"Reply 1");
+
+        // Alice -> Bob (second message)
+        let msg3 = alice.encrypt(b"Message 2", b"ad").unwrap();
+        let dec3 = bob.decrypt(&msg3, b"ad").unwrap();
+        assert_eq!(&dec3[..], b"Message 2");
+    }
+
+    #[test]
+    fn test_double_ratchet_serialization() {
+        // Test that ratchet state can be serialized and deserialized
+        let shared_secret = [123u8; 32];
+
+        // Create ratchet as Bob first, then as Alice
+        let bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let bob_public = bob.public_key();
+        let alice = guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
+
+        // Serialize Alice's ratchet
+        let bytes = alice.serialize();
+        assert!(!bytes.is_empty());
+
+        // Deserialize
+        let restored = guardyn_crypto::DoubleRatchet::deserialize(&bytes).unwrap();
+
+        // Verify by encrypting a message with restored ratchet
+        let mut restored = restored;
+        let encrypted = restored.encrypt(b"Test message", b"ad").unwrap();
+        assert!(!encrypted.ciphertext.is_empty());
     }
 }
