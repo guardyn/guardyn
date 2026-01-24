@@ -13,8 +13,7 @@ pub async fn mark_as_read(
     db: Arc<DatabaseClient>,
 ) -> Result<Response<MarkAsReadResponse>, Status> {
     // Validate JWT token
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     if crate::jwt::validate_and_extract(&request.access_token, &jwt_secret).is_err() {
         return Ok(Response::new(MarkAsReadResponse {

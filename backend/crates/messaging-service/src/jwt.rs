@@ -52,9 +52,11 @@ pub fn validate_token(token: &str, secret: &str) -> Result<Claims> {
 }
 
 /// Get JWT secret from environment
+/// Reads from GUARDYN_AUTH__JWT_SECRET first (preferred), then falls back to JWT_SECRET.
+/// This ensures consistency with auth-service which signs the tokens.
 fn get_jwt_secret() -> String {
-    std::env::var("JWT_SECRET")
-        .or_else(|_| std::env::var("GUARDYN_JWT_SECRET"))
+    std::env::var("GUARDYN_AUTH__JWT_SECRET")
+        .or_else(|_| std::env::var("JWT_SECRET"))
         .unwrap_or_else(|_| "development-secret-change-in-production".to_string())
 }
 

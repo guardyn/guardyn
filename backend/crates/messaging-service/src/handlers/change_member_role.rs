@@ -20,8 +20,7 @@ pub async fn change_member_role(
     db: Arc<DatabaseClient>,
 ) -> Result<Response<ChangeMemberRoleResponse>, Status> {
     // Validate token
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     let (user_id, _device_id, _username) =
         match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {

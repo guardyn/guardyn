@@ -24,8 +24,7 @@ pub async fn block_user(
     );
 
     // Validate JWT token and extract user_id
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     let user_id = match crate::jwt::validate_and_extract(&req.access_token, &jwt_secret) {
         Ok((uid, _device_id, _username)) => uid,
@@ -109,8 +108,7 @@ pub async fn unblock_user(
     );
 
     // Validate JWT token and extract user_id
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     let user_id = match crate::jwt::validate_and_extract(&req.access_token, &jwt_secret) {
         Ok((uid, _device_id, _username)) => uid,
@@ -178,8 +176,7 @@ pub async fn get_blocked_users(
     );
 
     // Validate JWT token and extract user_id
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     let user_id = match crate::jwt::validate_and_extract(&req.access_token, &jwt_secret) {
         Ok((uid, _device_id, _username)) => uid,

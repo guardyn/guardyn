@@ -17,8 +17,7 @@ pub async fn send_typing_indicator(
     nats: Arc<NatsClient>,
 ) -> Result<Response<TypingIndicatorResponse>, Status> {
     // Validate JWT token
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     let (user_id, _device_id, username) =
         match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {

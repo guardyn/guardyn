@@ -25,8 +25,7 @@ pub async fn add_group_member_mls(
     auth_service_url: String,
 ) -> Result<Response<AddGroupMemberResponse>, Status> {
     // Validate JWT token and extract user_id (requester)
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "default-jwt-secret-change-in-production".to_string());
+    let jwt_secret = crate::config::get_jwt_secret();
 
     let (requester_user_id, requester_device_id, _username) =
         match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {

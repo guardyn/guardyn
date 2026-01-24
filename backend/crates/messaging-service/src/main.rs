@@ -523,8 +523,7 @@ async fn main() -> Result<()> {
             .parse()
             .unwrap_or(8081);
 
-        let jwt_secret = std::env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
+        let jwt_secret = config::get_jwt_secret();
 
         let ws_config = websocket::server::WebSocketServerConfig {
             port: ws_port,

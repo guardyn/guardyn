@@ -175,9 +175,15 @@ async fn main() -> Result<()> {
 
     tracing::info!("Starting Presence Service");
 
-    // Load configuration from environment
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "development-secret-change-in-production".to_string());
+    // Load JWT secret from environment (GUARDYN_AUTH__JWT_SECRET)
+    // Falls back to legacy JWT_SECRET, then to dev default
+    // MUST match auth-service configuration for token validation
+    let jwt_secret = std::env::var("GUARDYN_AUTH__JWT_SECRET")
+        .or_else(|_| std::env::var("JWT_SECRET"))
+        .unwrap_or_else(|_| {
+            tracing::warn!("Using default JWT secret - DO NOT USE IN PRODUCTION");
+            "development-secret-change-in-production".to_string()
+        });
 
     let tikv_pd_endpoints = std::env::var("TIKV_PD_ENDPOINTS")
         .or_else(|_| std::env::var("GUARDYN_DATABASE__TIKV_PD_ENDPOINTS"))
