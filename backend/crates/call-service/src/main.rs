@@ -5,6 +5,7 @@
 mod db;
 mod generated;
 mod handlers;
+mod nats;
 mod service;
 mod session;
 
@@ -17,6 +18,7 @@ use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 use crate::db::CallDb;
+use crate::nats::CallNatsClient;
 use crate::service::CallServiceImpl;
 use crate::session::CallSessionManager;
 
@@ -40,13 +42,13 @@ async fn main() -> Result<()> {
     let session_manager = CallSessionManager::new();
 
     // Connect to NATS for event distribution
-    let nats_client = async_nats::connect(&config.nats_url).await?;
+    let nats_client = CallNatsClient::new(&config.nats_url).await?;
 
     // Create service implementation
     let call_service = CallServiceImpl::new(
         Arc::new(db),
         Arc::new(session_manager),
-        nats_client,
+        Arc::new(nats_client),
         config.jwt_secret.clone(),
         config.ice_servers.clone(),
     );
