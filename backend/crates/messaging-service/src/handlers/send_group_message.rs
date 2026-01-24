@@ -79,8 +79,36 @@ pub async fn send_group_message(
         }
     }
 
-    // TODO: Verify sender is a member of the group
-    // For MVP, we skip this check
+    // Verify sender is a member of the group
+    let members = match db.get_group_members(&request.group_id).await {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::error!("Failed to fetch group members: {}", e);
+            return Ok(Response::new(SendGroupMessageResponse {
+                result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                    code: 13, // INTERNAL
+                    message: "Failed to verify membership".to_string(),
+                    details: Default::default(),
+                })),
+            }));
+        }
+    };
+
+    let is_member = members.iter().any(|m| m.user_id == sender_user_id);
+    if !is_member {
+        tracing::warn!(
+            "User {} attempted to send message to group {} without membership",
+            sender_user_id,
+            request.group_id
+        );
+        return Ok(Response::new(SendGroupMessageResponse {
+            result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                code: 7, // PERMISSION_DENIED
+                message: "Not a member of this group".to_string(),
+                details: Default::default(),
+            })),
+        }));
+    }
 
     tracing::info!("Generating message_id for group message");
 

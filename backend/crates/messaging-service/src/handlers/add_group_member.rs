@@ -90,6 +90,43 @@ pub async fn add_group_member(
     // Check if member is already in group
     match db.get_group_members(&request.group_id).await {
         Ok(existing_members) => {
+            // First verify requester has permission to add members
+            let requester_member = existing_members.iter().find(|m| m.user_id == requester_user_id);
+            match requester_member {
+                None => {
+                    tracing::warn!(
+                        "User {} attempted to add member to group {} without membership",
+                        requester_user_id,
+                        request.group_id
+                    );
+                    return Ok(Response::new(AddGroupMemberResponse {
+                        result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                            code: 7, // PERMISSION_DENIED
+                            message: "Not a member of this group".to_string(),
+                            details: Default::default(),
+                        })),
+                    }));
+                }
+                Some(member) if member.role == crate::models::GroupRole::Owner || member.role == crate::models::GroupRole::Admin => {
+                    // Has permission, continue
+                }
+                Some(_) => {
+                    tracing::warn!(
+                        "User {} attempted to add member to group {} without admin/owner permission",
+                        requester_user_id,
+                        request.group_id
+                    );
+                    return Ok(Response::new(AddGroupMemberResponse {
+                        result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                            code: 7, // PERMISSION_DENIED
+                            message: "Only owners and admins can add members".to_string(),
+                            details: Default::default(),
+                        })),
+                    }));
+                }
+            }
+
+            // Check if target user is already a member
             if existing_members.iter().any(|m| m.user_id == request.member_user_id) {
                 return Ok(Response::new(AddGroupMemberResponse {
                     result: Some(add_group_member_response::Result::Error(ErrorResponse {
