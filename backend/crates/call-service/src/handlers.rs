@@ -762,17 +762,35 @@ pub async fn get_call_history(
         }
     };
 
-    let limit = if request.limit > 0 { request.limit } else { 50 };
+    let limit = if request.limit > 0 && request.limit <= 100 { 
+        request.limit 
+    } else { 
+        50 
+    };
+
+    // Parse cursor - format: "ts:{timestamp_millis}"
+    let before_timestamp: Option<i64> = if request.cursor.is_empty() {
+        None
+    } else if let Some(ts_str) = request.cursor.strip_prefix("ts:") {
+        ts_str.parse().ok()
+    } else {
+        None
+    };
 
     // Fetch limit + 1 to determine if there are more results
-    match db.get_call_history(&user_id, limit + 1).await {
+    match db.get_call_history(&user_id, limit + 1, before_timestamp).await {
         Ok(history) => {
             // Check if there are more results
             let has_more = history.len() > limit as usize;
 
-            let calls: Vec<CallHistoryEntry> = history
+            // Take only the requested limit
+            let history_limited: Vec<_> = history.into_iter().take(limit as usize).collect();
+            
+            // Get the timestamp of the last entry for the cursor
+            let last_timestamp = history_limited.last().map(|h| h.started_at.timestamp_millis());
+
+            let calls: Vec<CallHistoryEntry> = history_limited
                 .into_iter()
-                .take(limit as usize)
                 .map(|h| CallHistoryEntry {
                     call_id: h.call_id,
                     call_type: h.call_type,
@@ -790,9 +808,11 @@ pub async fn get_call_history(
                 })
                 .collect();
 
-            // Generate next cursor if there are more results
+            // Generate next cursor using the timestamp of the last entry
             let next_cursor = if has_more {
-                format!("offset:{}", limit)
+                last_timestamp
+                    .map(|ts| format!("ts:{}", ts))
+                    .unwrap_or_default()
             } else {
                 String::new()
             };
