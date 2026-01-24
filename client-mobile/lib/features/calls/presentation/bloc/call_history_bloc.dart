@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../domain/repositories/call_repository.dart';
 import '../../domain/usecases/get_call_history.dart';
 
 // =============================================================================
@@ -166,10 +167,14 @@ class CallHistoryError extends CallHistoryState {
 @injectable
 class CallHistoryBloc extends Bloc<CallHistoryEvent, CallHistoryState> {
   final GetCallHistory _getCallHistory;
+  final CallRepository _callRepository;
   static const _pageSize = 20;
 
-  CallHistoryBloc({required GetCallHistory getCallHistory})
-      : _getCallHistory = getCallHistory,
+  CallHistoryBloc({
+    required GetCallHistory getCallHistory,
+    required CallRepository callRepository,
+  })  : _getCallHistory = getCallHistory,
+        _callRepository = callRepository,
         super(const CallHistoryInitial()) {
     on<LoadCallHistoryEvent>(_onLoadHistory);
     on<LoadMoreCallsEvent>(_onLoadMore);
@@ -262,19 +267,43 @@ class CallHistoryBloc extends Bloc<CallHistoryEvent, CallHistoryState> {
         currentState.calls.where((c) => c.id != event.callId).toList();
     emit(currentState.copyWith(calls: updated));
 
-    // TODO: Call repository to delete
+    // Call repository to delete
+    final result = await _callRepository.deleteCallFromHistory(event.callId);
+    result.fold(
+      (failure) {
+        // Revert on failure
+        emit(currentState);
+      },
+      (_) {
+        // Success - already updated optimistically
+      },
+    );
   }
 
   Future<void> _onClear(
     ClearHistoryEvent event,
     Emitter<CallHistoryState> emit,
   ) async {
+    final currentState = state;
+    
     emit(const CallHistoryLoaded(
       calls: [],
       filter: CallHistoryFilter.all,
       hasMore: false,
     ));
 
-    // TODO: Call repository to clear
+    // Call repository to clear
+    final result = await _callRepository.clearCallHistory();
+    result.fold(
+      (failure) {
+        // Revert on failure
+        if (currentState is CallHistoryLoaded) {
+          emit(currentState);
+        }
+      },
+      (_) {
+        // Success - already cleared optimistically
+      },
+    );
   }
 }

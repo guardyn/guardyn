@@ -473,6 +473,7 @@ void _registerCallsDependencies() {
   getIt.registerFactory<CallHistoryBloc>(
     () => CallHistoryBloc(
       getCallHistory: getIt<GetCallHistory>(),
+      callRepository: getIt<CallRepository>(),
     ),
   );
 }
