@@ -2,7 +2,7 @@
 //!
 //! Manages global application state using thread-safe primitives.
 
-use crate::commands::settings::UserSettings;
+use crate::commands::settings::{load_settings_from_disk, UserSettings};
 use crate::grpc::{GrpcClient, GrpcConfig};
 use crate::services::{AuthClient, CallsClient, MediaClient, MessagingClient, PresenceClient};
 use crate::webrtc::CallManager;
@@ -39,7 +39,7 @@ impl AppState {
                 authenticated: false,
                 user_id: None,
                 access_token: None,
-                settings: UserSettings::default(),
+                settings: load_settings_from_disk(),
             })),
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
