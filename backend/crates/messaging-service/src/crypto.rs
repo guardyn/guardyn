@@ -4,10 +4,9 @@
 
 use anyhow::{Context, Result, anyhow};
 use guardyn_crypto::{
-    x3dh::{X3DHProtocol, X3DHKeyBundle, IdentityKeyPair},
+    x3dh::{X3DHProtocol, X3DHKeyBundle, X3DHKeyMaterial, X3DHPrekeyMessage, IdentityKeyPair},
     double_ratchet::DoubleRatchet,
 };
-use crate::models::RatchetSession;
 use std::sync::Arc;
 
 // Import generated proto types
@@ -150,22 +149,64 @@ impl CryptoManager {
 
     /// Initialize Double Ratchet session as receiver (Bob)
     ///
+    /// This is called when receiving the first message from a new sender.
+    /// The message contains X3DH prekey data that allows Bob to complete
+    /// the key agreement and establish a Double Ratchet session.
+    ///
     /// Steps:
-    /// 1. Use received X3DH key agreement data
+    /// 1. Parse X3DHPrekeyMessage from received data
     /// 2. Perform X3DH key agreement (responder side)
     /// 3. Initialize Double Ratchet with shared secret
+    ///
+    /// # Arguments
+    /// * `x3dh_prekey_base64` - Base64-encoded X3DHPrekeyMessage from the first message
+    /// * `local_key_material` - Bob's key material (identity, signed pre-key, one-time keys)
+    ///
+    /// # Returns
+    /// A tuple of (DoubleRatchet session, session_id for storage)
     pub fn init_receiver_session(
         &self,
         local_user_id: &str,
         local_device_id: &str,
         remote_user_id: &str,
         remote_device_id: &str,
-        x3dh_data: &[u8],
-        local_key_bundle: &X3DHKeyBundle,
+        x3dh_prekey_base64: &str,
+        local_key_material: &X3DHKeyMaterial,
     ) -> Result<DoubleRatchet> {
-        // Parse X3DH ephemeral key from message
-        // TODO: Implement X3DH responder side
-        Err(anyhow!("X3DH responder not yet implemented"))
+        // Parse X3DH prekey message from base64
+        let prekey_msg = X3DHPrekeyMessage::from_base64(x3dh_prekey_base64)
+            .map_err(|e| anyhow!("Failed to parse X3DH prekey message: {}", e))?;
+
+        tracing::debug!(
+            "Received X3DH prekey from {} (OTK used: {:?})",
+            remote_user_id,
+            prekey_msg.used_one_time_key_id
+        );
+
+        // Perform X3DH key agreement as responder (Bob)
+        let shared_secret = X3DHProtocol::respond_key_agreement(
+            local_key_material,
+            &prekey_msg.sender_identity_key,
+            &prekey_msg.ephemeral_key,
+            prekey_msg.used_one_time_key_id,
+        ).map_err(|e| anyhow!("X3DH responder key agreement failed: {}", e))?;
+
+        tracing::debug!(
+            "X3DH responder completed, shared secret derived ({} bytes)",
+            shared_secret.len()
+        );
+
+        // Initialize Double Ratchet as Bob (receiver of first message)
+        let ratchet = DoubleRatchet::init_bob(&shared_secret)
+            .context("Failed to initialize Double Ratchet as receiver")?;
+
+        tracing::info!(
+            "E2EE session established: {} -> {} (receiver)",
+            remote_user_id,
+            local_user_id
+        );
+
+        Ok(ratchet)
     }
 
     /// Serialize Double Ratchet state for storage

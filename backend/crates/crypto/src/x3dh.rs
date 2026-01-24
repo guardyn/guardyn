@@ -185,6 +185,100 @@ pub struct OneTimePreKeyPublic {
     pub public_key: Vec<u8>,
 }
 
+/// X3DH prekey message sent with first message to establish session
+///
+/// This is included in the first encrypted message from Alice to Bob,
+/// allowing Bob to complete the X3DH key agreement on his side.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct X3DHPrekeyMessage {
+    /// Sender's Ed25519 identity public key (32 bytes)
+    pub sender_identity_key: Vec<u8>,
+    /// Ephemeral X25519 public key generated for this exchange (32 bytes)
+    pub ephemeral_key: Vec<u8>,
+    /// ID of the one-time prekey used (if any)
+    pub used_one_time_key_id: Option<u32>,
+}
+
+impl X3DHPrekeyMessage {
+    /// Create a new X3DH prekey message
+    pub fn new(
+        sender_identity_key: Vec<u8>,
+        ephemeral_key: Vec<u8>,
+        used_one_time_key_id: Option<u32>,
+    ) -> Self {
+        Self {
+            sender_identity_key,
+            ephemeral_key,
+            used_one_time_key_id,
+        }
+    }
+
+    /// Serialize to bytes (for transmission)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // Simple format: identity_key (32) + ephemeral_key (32) + otk_flag (1) + otk_id (4 if present)
+        let mut bytes = Vec::with_capacity(69);
+        bytes.extend_from_slice(&self.sender_identity_key);
+        bytes.extend_from_slice(&self.ephemeral_key);
+        
+        match self.used_one_time_key_id {
+            Some(id) => {
+                bytes.push(1); // flag: OTK used
+                bytes.extend_from_slice(&id.to_le_bytes());
+            }
+            None => {
+                bytes.push(0); // flag: no OTK
+            }
+        }
+        bytes
+    }
+
+    /// Deserialize from bytes
+    pub fn from_bytes(bytes: &[u8]) -> crate::Result<Self> {
+        if bytes.len() < 65 {
+            return Err(crate::CryptoError::Protocol(
+                "X3DH prekey message too short".into()
+            ));
+        }
+
+        let sender_identity_key = bytes[0..32].to_vec();
+        let ephemeral_key = bytes[32..64].to_vec();
+        let otk_flag = bytes[64];
+
+        let used_one_time_key_id = if otk_flag == 1 {
+            if bytes.len() < 69 {
+                return Err(crate::CryptoError::Protocol(
+                    "X3DH prekey message missing OTK ID".into()
+                ));
+            }
+            let id_bytes: [u8; 4] = bytes[65..69].try_into()
+                .map_err(|_| crate::CryptoError::Protocol("Invalid OTK ID bytes".into()))?;
+            Some(u32::from_le_bytes(id_bytes))
+        } else {
+            None
+        };
+
+        Ok(Self {
+            sender_identity_key,
+            ephemeral_key,
+            used_one_time_key_id,
+        })
+    }
+
+    /// Encode to base64 for transmission in proto messages
+    pub fn to_base64(&self) -> String {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        STANDARD.encode(self.to_bytes())
+    }
+
+    /// Decode from base64
+    pub fn from_base64(s: &str) -> crate::Result<Self> {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let bytes = STANDARD.decode(s)
+            .map_err(|e| crate::CryptoError::Protocol(format!("Invalid base64: {}", e)))?;
+        Self::from_bytes(&bytes)
+    }
+}
+
 /// Complete key material for a device
 pub struct X3DHKeyMaterial {
     pub identity_key: IdentityKeyPair,
@@ -509,5 +603,108 @@ mod tests {
         ).unwrap();
 
         assert_eq!(alice_shared_secret, bob_shared_secret);
+    }
+
+    #[test]
+    fn test_x3dh_prekey_message_serialization() {
+        let sender_identity = vec![1u8; 32];
+        let ephemeral_key = vec![2u8; 32];
+        
+        // Test without OTK
+        let msg = X3DHPrekeyMessage::new(
+            sender_identity.clone(),
+            ephemeral_key.clone(),
+            None,
+        );
+        
+        let bytes = msg.to_bytes();
+        assert_eq!(bytes.len(), 65); // 32 + 32 + 1
+        
+        let decoded = X3DHPrekeyMessage::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.sender_identity_key, sender_identity);
+        assert_eq!(decoded.ephemeral_key, ephemeral_key);
+        assert_eq!(decoded.used_one_time_key_id, None);
+    }
+
+    #[test]
+    fn test_x3dh_prekey_message_with_otk() {
+        let sender_identity = vec![3u8; 32];
+        let ephemeral_key = vec![4u8; 32];
+        
+        // Test with OTK
+        let msg = X3DHPrekeyMessage::new(
+            sender_identity.clone(),
+            ephemeral_key.clone(),
+            Some(42),
+        );
+        
+        let bytes = msg.to_bytes();
+        assert_eq!(bytes.len(), 69); // 32 + 32 + 1 + 4
+        
+        let decoded = X3DHPrekeyMessage::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.sender_identity_key, sender_identity);
+        assert_eq!(decoded.ephemeral_key, ephemeral_key);
+        assert_eq!(decoded.used_one_time_key_id, Some(42));
+    }
+
+    #[test]
+    fn test_x3dh_prekey_message_base64() {
+        let sender_identity = vec![5u8; 32];
+        let ephemeral_key = vec![6u8; 32];
+        
+        let msg = X3DHPrekeyMessage::new(
+            sender_identity.clone(),
+            ephemeral_key.clone(),
+            Some(123),
+        );
+        
+        let base64 = msg.to_base64();
+        let decoded = X3DHPrekeyMessage::from_base64(&base64).unwrap();
+        
+        assert_eq!(decoded.sender_identity_key, sender_identity);
+        assert_eq!(decoded.ephemeral_key, ephemeral_key);
+        assert_eq!(decoded.used_one_time_key_id, Some(123));
+    }
+
+    #[test]
+    fn test_x3dh_full_flow_with_prekey_message() {
+        // Generate key material for both parties
+        let alice_material = X3DHKeyMaterial::generate(10).unwrap();
+        let bob_material = X3DHKeyMaterial::generate(10).unwrap();
+        let bob_bundle = bob_material.export_bundle();
+
+        // Alice initiates key agreement
+        let (alice_shared_secret, alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
+            &alice_material.identity_key,
+            &bob_bundle,
+            true, // Use one-time key
+        ).unwrap();
+
+        // Alice creates prekey message to send with first encrypted message
+        let prekey_msg = X3DHPrekeyMessage::new(
+            alice_material.identity_key.public_bytes(),
+            alice_ephemeral.as_bytes().to_vec(),
+            Some(0), // First OTK
+        );
+
+        // Serialize for transmission
+        let prekey_base64 = prekey_msg.to_base64();
+
+        // --- Message transmitted over network ---
+
+        // Bob receives and parses prekey message
+        let received_prekey = X3DHPrekeyMessage::from_base64(&prekey_base64).unwrap();
+
+        // Bob performs X3DH key agreement
+        let bob_shared_secret = X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &received_prekey.sender_identity_key,
+            &received_prekey.ephemeral_key,
+            received_prekey.used_one_time_key_id,
+        ).unwrap();
+
+        // Both parties should have identical shared secrets
+        assert_eq!(alice_shared_secret, bob_shared_secret,
+            "X3DH key agreement should produce identical shared secrets");
     }
 }
