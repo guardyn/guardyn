@@ -24,21 +24,63 @@ pub async fn handle(
         }
     };
     
+    let sessions_invalidated: u32;
+    
     // Logout all devices or just current?
     if req.all_devices {
-        // TODO: Implement logout from all devices
-        // Need to scan all sessions for user_id
-        tracing::warn!("Logout from all devices not yet implemented");
+        // Delete all sessions for this user
+        match service.db.delete_all_user_sessions(&claims.sub).await {
+            Ok(count) => {
+                tracing::info!(
+                    user_id = %claims.sub,
+                    device_id = %claims.device_id,
+                    sessions = count,
+                    "Logged out from all devices"
+                );
+                sessions_invalidated = count;
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to delete all user sessions");
+                let error = ErrorResponse {
+                    code: error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to logout from all devices".to_string(),
+                    details: std::collections::HashMap::new(),
+                };
+                return Ok(Response::new(LogoutResponse {
+                    result: Some(logout_response::Result::Error(error)),
+                }));
+            }
+        }
     } else {
-        // Delete current session (identified by device_id)
-        // We don't have session token directly, so this is a simplified implementation
-        // In production, you'd track session_token -> access_token mapping
-        tracing::info!("Logging out device {} for user {}", claims.device_id, claims.sub);
+        // Delete current session only
+        // The session is identified by device_id in production
+        // For now, we'll delete session associated with current device
+        match service.db.delete_session_by_device(&claims.sub, &claims.device_id).await {
+            Ok(deleted) => {
+                sessions_invalidated = if deleted { 1 } else { 0 };
+                tracing::info!(
+                    user_id = %claims.sub,
+                    device_id = %claims.device_id,
+                    "Logged out from current device"
+                );
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to delete session");
+                let error = ErrorResponse {
+                    code: error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to logout".to_string(),
+                    details: std::collections::HashMap::new(),
+                };
+                return Ok(Response::new(LogoutResponse {
+                    result: Some(logout_response::Result::Error(error)),
+                }));
+            }
+        }
     }
     
     Ok(Response::new(LogoutResponse {
         result: Some(logout_response::Result::Success(LogoutSuccess {
-            sessions_invalidated: 1,
+            sessions_invalidated,
         })),
     }))
 }

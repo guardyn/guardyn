@@ -252,7 +252,11 @@ impl DatabaseClient {
 
         // Store session in user index
         let user_key = format!("/sessions/user/{}/{}", session.user_id, session.session_token).into_bytes();
-        self.client.put(user_key, session_value).await?;
+        self.client.put(user_key, session_value.clone()).await?;
+
+        // Store session in device index (for single-device logout)
+        let device_key = format!("/sessions/device/{}/{}/{}", session.user_id, session.device_id, session.session_token).into_bytes();
+        self.client.put(device_key, session_value).await?;
 
         Ok(())
     }
@@ -270,22 +274,103 @@ impl DatabaseClient {
         Ok(Some(session))
     }
 
-    /// Delete session
+    /// Delete session by token
     pub async fn delete_session(&self, token: &str) -> Result<()> {
-        // Get session to find user_id
+        // Get session to find user_id and device_id
         let session = match self.get_session(token).await? {
             Some(s) => s,
             None => return Ok(()), // Already deleted
         };
 
-        // Delete from both indexes
+        // Delete from all three indexes
         let token_key = format!("/sessions/{}", token).into_bytes();
         self.client.delete(token_key).await?;
 
         let user_key = format!("/sessions/user/{}/{}", session.user_id, token).into_bytes();
         self.client.delete(user_key).await?;
 
+        let device_key = format!("/sessions/device/{}/{}/{}", session.user_id, session.device_id, token).into_bytes();
+        self.client.delete(device_key).await?;
+
         Ok(())
+    }
+
+    /// Delete session by device (for single-device logout)
+    ///
+    /// Returns true if a session was deleted, false if no session found.
+    pub async fn delete_session_by_device(&self, user_id: &str, device_id: &str) -> Result<bool> {
+        let prefix = format!("/sessions/device/{}/{}/", user_id, device_id);
+        let start_key = prefix.as_bytes().to_vec();
+        let end_key = format!("{}~", prefix).as_bytes().to_vec();
+
+        // Scan for session(s) on this device
+        let sessions = self.client.scan(start_key..end_key, 10).await?;
+
+        if sessions.is_empty() {
+            return Ok(false);
+        }
+
+        for kv in sessions {
+            let key_bytes: &[u8] = (&kv.0).into();
+            let key_str = String::from_utf8_lossy(key_bytes);
+            if let Some(token) = key_str.strip_prefix(&prefix) {
+                // Delete from all three indexes
+                let token_key = format!("/sessions/{}", token).into_bytes();
+                self.client.delete(token_key).await?;
+
+                let user_key = format!("/sessions/user/{}/{}", user_id, token).into_bytes();
+                self.client.delete(user_key).await?;
+
+                self.client.delete(kv.0.clone()).await?;
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Delete all sessions for a user (logout from all devices)
+    ///
+    /// Returns the number of sessions deleted.
+    pub async fn delete_all_user_sessions(&self, user_id: &str) -> Result<u32> {
+        let prefix = format!("/sessions/user/{}/", user_id);
+        let start_key = prefix.as_bytes().to_vec();
+        let end_key = format!("{}~", prefix).as_bytes().to_vec(); // ~ is after / in ASCII
+
+        // Scan for all session tokens for this user (limit 100 sessions per user)
+        let sessions = self.client.scan(start_key..end_key, 100).await?;
+
+        let mut deleted_count = 0u32;
+
+        for kv in sessions {
+            // Extract session token from key and parse session data
+            let key_bytes: &[u8] = (&kv.0).into();
+            let key_str = String::from_utf8_lossy(key_bytes);
+            if let Some(token) = key_str.strip_prefix(&prefix) {
+                // Parse session to get device_id
+                if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
+                    // Delete from device index
+                    let device_key = format!("/sessions/device/{}/{}/{}", user_id, session.device_id, token).into_bytes();
+                    self.client.delete(device_key).await?;
+                }
+
+                // Delete from main index
+                let token_key = format!("/sessions/{}", token).into_bytes();
+                self.client.delete(token_key).await?;
+
+                // Delete from user index
+                self.client.delete(kv.0.clone()).await?;
+
+                deleted_count += 1;
+            }
+        }
+
+        tracing::info!(
+            user_id = user_id,
+            deleted = deleted_count,
+            "Deleted all user sessions"
+        );
+
+        Ok(deleted_count)
     }
 
     /// Store key bundle
@@ -437,11 +522,14 @@ impl DatabaseClient {
 
         let session_keys = self.client.scan(start_key..end_key, 1000).await?;
         for kv in session_keys {
-            // Get the session token from the value to also delete from main sessions index
-            let session_token = String::from_utf8_lossy(&kv.1);
+            // Get the session to also delete from main sessions index and device index
             if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
                 let token_key = format!("/sessions/{}", session.session_token).into_bytes();
                 let _ = self.client.delete(token_key).await;
+
+                // Delete from device index
+                let device_key = format!("/sessions/device/{}/{}/{}", user_id, session.device_id, session.session_token).into_bytes();
+                let _ = self.client.delete(device_key).await;
             }
 
             let key_bytes: Vec<u8> = kv.0.into();
