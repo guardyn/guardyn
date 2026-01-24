@@ -1175,18 +1175,64 @@ impl DatabaseClient {
     }
 
     /// Reset unread count for a conversation
+    /// RT-005: Properly resets unread count by updating the read receipt
+    /// to the latest message in the conversation
     pub async fn reset_unread_count(&self, user_id: &str, conversation_id: &str) -> Result<()> {
-        // Since last_message_time is part of the clustering key, we can't just UPDATE
-        // For MVP, we'll need to read and rewrite the row
-        // In production, consider a separate table for unread counts
+        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
+            .context("Invalid conversation_id UUID")?;
 
         tracing::debug!(
             "Reset unread count requested for user {} conversation {}",
             user_id, conversation_id
         );
 
-        // TODO: Implement proper unread count reset
-        // This requires finding the row by conversation_id and rewriting it
+        // RT-005: Find the latest message in the conversation where user is recipient
+        let latest_message_rows = self.scylla_query(
+            "SELECT message_id, server_timestamp FROM guardyn.messages 
+             WHERE conversation_id = ? AND recipient_user_id = ?
+             ORDER BY server_timestamp DESC
+             LIMIT 1
+             ALLOW FILTERING",
+            (conversation_uuid, user_id.to_string()),
+        ).await?;
+
+        let (latest_message_id, latest_timestamp) = if let Some(rows) = latest_message_rows.rows {
+            rows.into_iter().next()
+                .map(|row| {
+                    let message_id: uuid::Uuid = row.columns[0].as_ref()
+                        .and_then(|v| v.as_uuid())
+                        .unwrap_or_default();
+                    let timestamp: i64 = row.columns[1].as_ref()
+                        .and_then(|v| v.as_cql_timestamp())
+                        .map(|ts| ts.0)
+                        .unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
+                    (message_id, timestamp)
+                })
+                .unwrap_or_else(|| (uuid::Uuid::nil(), chrono::Utc::now().timestamp_millis()))
+        } else {
+            // No messages, use current timestamp
+            (uuid::Uuid::nil(), chrono::Utc::now().timestamp_millis())
+        };
+
+        // Update the read receipt to mark all messages as read
+        self.scylla_query(
+            "INSERT INTO guardyn.read_receipts (
+                conversation_id, user_id, last_read_message_id, timestamp, is_group
+            ) VALUES (?, ?, ?, ?, false)",
+            (conversation_uuid, user_id.to_string(), latest_message_id, latest_timestamp, false),
+        ).await.context("Failed to update read receipt")?;
+
+        // Also update the conversations table for backward compatibility
+        self.scylla_query(
+            "UPDATE guardyn.conversations SET unread_count = 0 
+             WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
+            (user_id.to_string(), conversation_uuid),
+        ).await.ok(); // Ignore errors for legacy table update
+
+        tracing::info!(
+            "Reset unread count for user {} in conversation {} (latest_message: {})",
+            user_id, conversation_id, latest_message_id
+        );
 
         Ok(())
     }
