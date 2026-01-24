@@ -142,7 +142,7 @@ bash infra/scripts/build-and-deploy-services.sh
 ### Frontend Development (Flutter)
 
 ```bash
-cd client
+cd client-mobile
 
 # Get dependencies
 flutter pub get
@@ -170,10 +170,10 @@ cd backend && cargo test
 just test-messaging
 
 # Flutter tests
-cd client && flutter test
+cd client-mobile && flutter test
 
 # Integration tests
-cd client && flutter test integration_test
+cd client-mobile && flutter test integration_test
 ```
 
 ---
@@ -193,11 +193,15 @@ guardyn/
 │   │   └── e2e-tests/       # Integration tests
 │   └── proto/               # Protocol Buffers definitions
 │
-├── client-mobile/           # Flutter multi-platform client
+├── client-mobile/           # Flutter mobile client (iOS/Android)
 │   ├── lib/
 │   │   ├── core/           # DI, routing, theme
 │   │   ├── features/       # Feature modules (auth, messaging, etc.)
 │   │   └── shared/         # Shared widgets, utils
+│
+├── client-desktop/          # Tauri desktop client (Windows/macOS/Linux)
+│   ├── src/                # SolidJS frontend
+│   └── src-tauri/          # Rust backend
 │   └── test/               # Unit and widget tests
 │
 ├── infra/                   # Infrastructure as Code
@@ -313,7 +317,7 @@ cd backend && cargo clean
 cd backend && cargo build --bin auth-service
 
 # Clear Flutter cache
-cd client && flutter clean && flutter pub get
+cd client-mobile && flutter clean && flutter pub get
 ```
 
 ### Cluster Issues

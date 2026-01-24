@@ -1,8 +1,22 @@
 # Guardyn Local Development Environment
 
-This directory contains Docker Compose configuration for rapid local development.
+> **Version:** 1.0.1 | **Last Updated:** 2026-01-24
+
+Fast local development with Docker Compose. No Kubernetes required!
 
 ## Quick Start
+
+### Using Justfile (Recommended)
+
+```bash
+just dc-up      # Start all services (~30 seconds)
+just dc-down    # Stop all services
+just dc-logs    # View logs (all services)
+just dc-ps      # Check status
+just dc-reset   # Reset all data (removes volumes)
+```
+
+### Using Docker Compose Directly
 
 ```bash
 # From project root
@@ -28,6 +42,7 @@ docker compose -f docker-compose.dev.yml down -v
 | Service      | Port(s)                                              | Description                        |
 | ------------ | ---------------------------------------------------- | ---------------------------------- |
 | **Redpanda** | 19092 (Kafka), 18081 (Schema Registry), 9644 (Admin) | Event streaming (Kafka-compatible) |
+| **NATS**     | 4222 (Client), 8222 (Monitoring)                     | Real-time messaging (JetStream)    |
 | **TiKV**     | 20160                                                | Distributed transactional KV store |
 | **PD**       | 2379                                                 | TiKV Placement Driver              |
 | **ScyllaDB** | 9042 (CQL)                                           | High-performance wide-column DB    |
@@ -75,11 +90,11 @@ docker compose -f docker-compose.dev.yml up -d --build auth-service
 
 ### Access Redpanda Console
 
-Open http://localhost:8088 to view Kafka topics, consumer groups, and messages.
+Open <http://localhost:8088> to view Kafka topics, consumer groups, and messages.
 
 ### Access MinIO Console
 
-Open http://localhost:9001 with credentials:
+Open <http://localhost:9001> with credentials:
 
 - **Username:** guardyn
 - **Password:** guardyn-dev-secret
@@ -152,7 +167,7 @@ services:
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │              Client (Flutter Mobile / Tauri Desktop)             │
 └─────────────────────────────────────────────────────────────────┘
