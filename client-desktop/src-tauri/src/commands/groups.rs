@@ -118,16 +118,33 @@ pub async fn get_group_members(
 
     match state.messaging().get_group_by_id(group_id).await {
         Ok(group) => {
+            // Collect all user IDs for bulk presence query
+            let user_ids: Vec<String> = group.members.iter()
+                .map(|m| m.user_id.clone())
+                .collect();
+            
+            // Fetch online status from presence service
+            let presence_map = match state.presence().get_bulk_status(user_ids).await {
+                Ok(map) => map,
+                Err(e) => {
+                    tracing::warn!("Failed to get presence status: {:?}. Using offline as default.", e);
+                    std::collections::HashMap::new()
+                }
+            };
+            
             let members: Vec<GroupMember> = group
                 .members
                 .into_iter()
-                .map(|m| GroupMember {
-                    user_id: m.user_id,
-                    username: m.username.clone(),
-                    display_name: m.display_name.or(Some(m.username)),
-                    role: m.role,
-                    avatar_url: m.avatar_media_id.map(|id| format!("/api/media/{}", id)),
-                    is_online: false, // TODO: Get from presence service
+                .map(|m| {
+                    let is_online = presence_map.get(&m.user_id).copied().unwrap_or(false);
+                    GroupMember {
+                        user_id: m.user_id,
+                        username: m.username.clone(),
+                        display_name: m.display_name.or(Some(m.username)),
+                        role: m.role,
+                        avatar_url: m.avatar_media_id.map(|id| format!("/api/media/{}", id)),
+                        is_online,
+                    }
                 })
                 .collect();
             Ok(members)

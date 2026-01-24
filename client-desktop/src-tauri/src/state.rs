@@ -4,7 +4,7 @@
 
 use crate::commands::settings::UserSettings;
 use crate::grpc::{GrpcClient, GrpcConfig};
-use crate::services::{AuthClient, CallsClient, MediaClient, MessagingClient};
+use crate::services::{AuthClient, CallsClient, MediaClient, MessagingClient, PresenceClient};
 use crate::webrtc::CallManager;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -17,6 +17,7 @@ pub struct AppState {
     messaging_client: Arc<MessagingClient>,
     calls_client: Arc<CallsClient>,
     media_client: Arc<MediaClient>,
+    presence_client: Arc<PresenceClient>,
     call_manager: Arc<CallManager>,
 }
 
@@ -42,6 +43,7 @@ impl AppState {
             })),
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
+            presence_client: Arc::new(PresenceClient::new(Arc::clone(&grpc))),
             call_manager: Arc::new(CallManager::new(Arc::clone(&calls_client))),
             calls_client,
             media_client: Arc::new(MediaClient::new(Arc::clone(&grpc))),
@@ -72,6 +74,11 @@ impl AppState {
     /// Get the media client
     pub fn media(&self) -> &Arc<MediaClient> {
         &self.media_client
+    }
+
+    /// Get the presence client
+    pub fn presence(&self) -> &Arc<PresenceClient> {
+        &self.presence_client
     }
 
     /// Get the call manager
@@ -144,6 +151,7 @@ impl Clone for AppState {
             inner: Arc::clone(&self.inner),
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
             messaging_client: Arc::new(MessagingClient::new(Arc::clone(&grpc))),
+            presence_client: Arc::new(PresenceClient::new(Arc::clone(&grpc))),
             call_manager: Arc::new(CallManager::new(Arc::clone(&calls_client))),
             calls_client,
             media_client: Arc::new(MediaClient::new(Arc::clone(&grpc))),
