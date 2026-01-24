@@ -1,5 +1,7 @@
 # MVP Discovery Package
 
+> **Status**: ✅ MVP COMPLETE (January 24, 2026) — All features implemented and deployed.
+
 ## 1. Personas and Core User Stories
 
 - **Everyday Communicator**
@@ -25,17 +27,19 @@
 
 ## 2. Prioritized MVP Story Backlog
 
-| Priority | Epic               | Story                         | Acceptance Criteria                                                           |
-| -------- | ------------------ | ----------------------------- | ----------------------------------------------------------------------------- |
-| P0       | Messaging Core     | Create E2EE 1:1 chat          | Contacts discoverable, keys exchanged, delivery < 500 ms on reference network |
-| P0       | Sync & Identity    | Multi-device enrollment       | New device onboarding with key verification, protects against MITM            |
-| P0       | Audio/Video Calls  | Initiate secure voice call    | Call setup < 2 s, voice latency < 150 ms end-to-end                           |
-| P0       | Media Handling     | Share encrypted media         | Upload/download within 3 s for 10 MB file, decrypt client-side                |
-| P1       | Group Messaging    | Small group MLS-backed chat   | Max 32 members, state consistent across members                               |
-| P1       | Presence           | Real-time presence indicators | Presence updates propagate within 1 s                                         |
-| P1       | Moderation         | Admin audit log export        | Logs signed, exportable as JSON/CSV                                           |
-| P2       | Broadcasting       | Start low-latency stream      | < 2 s glass-to-glass, concurrent viewers 100                                  |
-| P2       | Monetization hooks | Enable tipping                | Off-chain ledger with 3rd party integration, settlement via API               |
+> **All P0 and P1 stories completed as of January 24, 2026.**
+
+| Priority | Epic | Story | Acceptance Criteria | Status |
+| -------- | ---- | ----- | ------------------- | ------ |
+| P0 | Messaging Core | Create E2EE 1:1 chat | Contacts discoverable, keys exchanged, delivery < 500 ms on reference network | ✅ Done |
+| P0 | Sync & Identity | Multi-device enrollment | New device onboarding with key verification, protects against MITM | ✅ Done |
+| P0 | Audio/Video Calls | Initiate secure voice call | Call setup < 2 s, voice latency < 150 ms end-to-end | ✅ Done |
+| P0 | Media Handling | Share encrypted media | Upload/download within 3 s for 10 MB file, decrypt client-side | ✅ Done |
+| P1 | Group Messaging | Small group MLS-backed chat | Max 32 members, state consistent across members | ✅ Done |
+| P1 | Presence | Real-time presence indicators | Presence updates propagate within 1 s | ✅ Done |
+| P1 | Moderation | Admin audit log export | Logs signed, exportable as JSON/CSV | ✅ Done |
+| P2 | Broadcasting | Start low-latency stream | < 2 s glass-to-glass, concurrent viewers 100 | 🚧 v1.1 |
+| P2 | Monetization hooks | Enable tipping | Off-chain ledger with 3rd party integration, settlement via API | 📋 Planned |
 
 ## 3. UX Wireframe Blueprint (Textual)
 
@@ -58,19 +62,23 @@
 
 ## 5. Audit and Certification Alignment
 
+> **Pre-audit preparation complete. External audit scheduled for Q2 2026.**
+
 - **External Auditors**: Cure53 (application security), Symbolic Software (cryptography), Fallible (mobile hardening).
 - **Deliverables**: architecture dossiers, formal proofs (TLA+, ProVerif, Verifpal outputs), reproducible build scripts (Nix), SBOM (SPDX) per release, test coverage reports.
 - **Compliance Targets**: GDPR/DSGVO readiness, SOC 2 Type I controls for beta, ISO/IEC 27001 roadmap.
 - **Schedule**:
-  - Pre-alpha: internal security review + automated scans complete.
-  - Alpha: deliver reproducible build artifact and protocol proofs to auditors.
-  - Beta: pen-test window (6 weeks), bug bounty launch (HackerOne).
-  - GA: compliance attestation, publish transparency report.
+  - ✅ Pre-alpha: internal security review + automated scans complete.
+  - ✅ Alpha: deliver reproducible build artifact and protocol proofs to auditors.
+  - 🚧 Beta: pen-test window (6 weeks), bug bounty launch (HackerOne).
+  - 📋 GA: compliance attestation, publish transparency report.
 
 ## 6. Immediate Discovery Actions
 
-1. Validate personas and backlog with stakeholder interviews delivering prioritized requirements.
-2. Produce low-fidelity wireframes for each screen and test with 5 target users per persona.
-3. Finalize crypto protocol specification doc and align with security auditors for early feedback.
-4. Draft audit engagement plan with timelines, deliverables, and budget approvals.
-5. Feed backlog into issue tracker, mapping each story to epics and OKR owners.
+> **All discovery actions completed (January 2026).**
+
+1. ✅ Validate personas and backlog with stakeholder interviews delivering prioritized requirements.
+2. ✅ Produce low-fidelity wireframes for each screen and test with 5 target users per persona.
+3. ✅ Finalize crypto protocol specification doc and align with security auditors for early feedback.
+4. ✅ Draft audit engagement plan with timelines, deliverables, and budget approvals.
+5. ✅ Feed backlog into issue tracker, mapping each story to epics and OKR owners.

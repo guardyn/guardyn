@@ -4,6 +4,50 @@ All notable changes to Guardyn will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-01-24
+
+### ✅ ALL TECHNICAL DEBT RESOLVED
+
+This patch release completes all outstanding technical debt from the production-readiness phase. **57 items totaling 228 hours of development work.**
+
+#### 🔴 P0 Security Critical (6 items, 27h)
+
+- **SEC-001**: X3DH responder fully implemented (was returning error)
+- **SEC-002**: Key storage stub replaced with persistent secure storage
+- **SEC-003**: Production key loading from secure storage (not generated)
+- **SEC-004**: JWT secrets moved from hardcoded to environment configuration
+- **SEC-005**: "Logout from all devices" fully implemented
+- **SEC-006**: Cross-service data deletion on account delete
+
+#### 🟠 P1 Core Functionality (13 items, 40h)
+
+- **FUNC-001 to FUNC-003**: Username/avatar fetched from auth service for groups
+- **FUNC-004 to FUNC-005**: Last message fetched from ScyllaDB for group list
+- **FUNC-006 to FUNC-008**: Authorization checks for group operations
+- **MLS-001 to MLS-005**: Full MLS group state management in TiKV
+- **PAG-001 to PAG-004**: Cursor-based pagination for all list endpoints
+- **NOTIF-001**: WebPush notifications fully implemented
+
+#### 🟡 P2 Enhancement (22 items, 95h)
+
+- **RT-001 to RT-005**: Real-time broadcasts (read receipts, edits, typing, unread counts)
+- **CALL-001 to CALL-005**: WebRTC call signaling via NATS distribution
+- **DESK-001 to DESK-010**: Desktop call implementation with screen capture
+
+#### 🟢 P3 Polish (16 items, 66h)
+
+- **FLT-001 to FLT-007**: Flutter client features (contacts, block, call history, media)
+- **FLT-WR-001 to FLT-WR-003**: WebRTC peer connection and media handling
+- **DESK-011 to DESK-012**: Presence integration and settings persistence
+
+### Changed
+
+- Updated all documentation to reflect v1.0.1 status
+- Archived completed implementation plans to `_local/done/`
+- Updated IMPLEMENTATION_PLAN.md with completion summary
+
+---
+
 ## [1.0.0] - 2026-01-17
 
 ### 🎉 MAJOR RELEASE: Production-Ready Secure Messenger
