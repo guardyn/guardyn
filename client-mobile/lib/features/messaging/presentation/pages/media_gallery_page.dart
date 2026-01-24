@@ -1,6 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/entities/message.dart';
 import '../bloc/message_bloc.dart';
@@ -421,11 +428,17 @@ class LinkTile extends StatelessWidget {
         ],
       ),
       isThreeLine: true,
-      onTap: () {
-        // TODO: Open URL in browser
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Opening: $url')),
-        );
+      onTap: () async {
+        final uri = Uri.tryParse(url);
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not open: $url')),
+            );
+          }
+        }
       },
     );
   }
@@ -436,16 +449,98 @@ class LinkTile extends StatelessWidget {
 // ============================================================================
 
 /// Document tile widget for list display
-class DocumentTile extends StatelessWidget {
+class DocumentTile extends StatefulWidget {
   final Message message;
 
   const DocumentTile({super.key, required this.message});
 
   @override
+  State<DocumentTile> createState() => _DocumentTileState();
+}
+
+class _DocumentTileState extends State<DocumentTile> {
+  bool _isDownloading = false;
+  String? _localPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLocalFile();
+  }
+
+  Future<void> _checkLocalFile() async {
+    final fileName = widget.message.metadata['file_name'] ??
+        widget.message.textContent.split('/').last;
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/downloads/$fileName');
+    if (await file.exists()) {
+      setState(() => _localPath = file.path);
+    }
+  }
+
+  Future<void> _downloadFile() async {
+    final fileName = widget.message.metadata['file_name'] ??
+        widget.message.textContent.split('/').last;
+    final fileUrl = widget.message.metadata['file_url'] ??
+        widget.message.textContent;
+
+    setState(() => _isDownloading = true);
+
+    try {
+      final response = await http.get(Uri.parse(fileUrl));
+      if (response.statusCode == 200) {
+        final dir = await getApplicationDocumentsDirectory();
+        final downloadDir = Directory('${dir.path}/downloads');
+        if (!await downloadDir.exists()) {
+          await downloadDir.create(recursive: true);
+        }
+        final file = File('${downloadDir.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+        
+        if (mounted) {
+          setState(() {
+            _isDownloading = false;
+            _localPath = file.path;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Downloaded: $fileName')),
+          );
+        }
+      } else {
+        throw Exception('Failed to download file');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openFile() async {
+    if (_localPath != null) {
+      final result = await OpenFilex.open(_localPath!);
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open file: ${result.message}')),
+        );
+      }
+    } else {
+      // Download first, then open
+      await _downloadFile();
+      if (_localPath != null) {
+        await OpenFilex.open(_localPath!);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final fileName =
-        message.metadata['file_name'] ?? message.textContent.split('/').last;
-    final fileSize = message.metadata['file_size'];
+    final fileName = widget.message.metadata['file_name'] ??
+        widget.message.textContent.split('/').last;
+    final fileSize = widget.message.metadata['file_size'];
 
     return ListTile(
       leading: CircleAvatar(
@@ -461,32 +556,31 @@ class DocumentTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        _formatFileInfo(fileSize, message.timestamp),
+        _formatFileInfo(fileSize, widget.message.timestamp),
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.outline,
             ),
       ),
-      trailing: IconButton(
-        icon: const Icon(Icons.download),
-        onPressed: () {
-          // TODO: Download file
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Downloading: $fileName')),
-          );
-        },
-      ),
-      onTap: () {
-        // TODO: Open file
-      },
+      trailing: _isDownloading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : IconButton(
+              icon: Icon(_localPath != null ? Icons.folder_open : Icons.download),
+              onPressed: _isDownloading ? null : _downloadFile,
+            ),
+      onTap: _isDownloading ? null : _openFile,
     );
   }
 
   IconData _getFileIcon() {
-    if (message.messageType == MessageType.audio) {
+    if (widget.message.messageType == MessageType.audio) {
       return Icons.audiotrack;
     }
 
-    final fileName = message.metadata['file_name']?.toLowerCase() ?? '';
+    final fileName = widget.message.metadata['file_name']?.toLowerCase() ?? '';
     if (fileName.endsWith('.pdf')) return Icons.picture_as_pdf;
     if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
       return Icons.description;
@@ -531,6 +625,7 @@ class MediaViewerDialog extends StatefulWidget {
 class _MediaViewerDialogState extends State<MediaViewerDialog> {
   late PageController _pageController;
   late int _currentIndex;
+  bool _isDownloading = false;
 
   @override
   void initState() {
@@ -543,6 +638,89 @@ class _MediaViewerDialogState extends State<MediaViewerDialog> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Message get _currentMessage => widget.messages[_currentIndex];
+
+  Future<void> _shareMedia() async {
+    final message = _currentMessage;
+    final mediaUrl = message.metadata['url'];
+    if (mediaUrl == null || mediaUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No media to share')),
+      );
+      return;
+    }
+
+    try {
+      // Download file to temp directory first
+      final response = await http.get(Uri.parse(mediaUrl));
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        final fileName = mediaUrl.split('/').last.split('?').first;
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: message.textContent,
+        );
+      } else {
+        throw Exception('Failed to download media');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadMedia() async {
+    final message = _currentMessage;
+    final mediaUrl = message.metadata['url'];
+    if (mediaUrl == null || mediaUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No media to download')),
+      );
+      return;
+    }
+
+    setState(() => _isDownloading = true);
+
+    try {
+      final response = await http.get(Uri.parse(mediaUrl));
+      if (response.statusCode == 200) {
+        final directory = await getApplicationDocumentsDirectory();
+        final downloadDir = Directory('${directory.path}/Downloads');
+        if (!await downloadDir.exists()) {
+          await downloadDir.create(recursive: true);
+        }
+
+        final fileName = mediaUrl.split('/').last.split('?').first;
+        final file = File('${downloadDir.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Saved to ${file.path}')),
+          );
+        }
+      } else {
+        throw Exception('Failed to download');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to download: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+      }
+    }
   }
 
   @override
@@ -581,16 +759,25 @@ class _MediaViewerDialogState extends State<MediaViewerDialog> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.share, color: Colors.white),
-                  onPressed: () {
-                    // TODO: Share media
-                  },
+                  onPressed: _shareMedia,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.download, color: Colors.white),
-                  onPressed: () {
-                    // TODO: Download media
-                  },
-                ),
+                if (_isDownloading)
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.download, color: Colors.white),
+                    onPressed: _downloadMedia,
+                  ),
               ],
             ),
           ),
