@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/auth/token_manager.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
@@ -38,7 +38,6 @@ class GroupChatPage extends StatefulWidget {
 
 class _GroupChatPageState extends State<GroupChatPage> {
   final ScrollController _scrollController = ScrollController();
-  final _secureStorage = const FlutterSecureStorage();
   late GroupBloc _groupBloc;
   late MediaBloc _mediaBloc;
   bool _isUploadingMedia = false;
@@ -58,7 +57,9 @@ class _GroupChatPageState extends State<GroupChatPage> {
     _groupBloc.add(GroupSetActive(widget.groupId));
 
     // Connect WebSocket for real-time messaging
-    final accessToken = await _secureStorage.read(key: 'access_token');
+    // Get valid access token using TokenManager (handles auto-refresh)
+    final tokenManager = getIt<TokenManager>();
+    final accessToken = await tokenManager.getValidAccessToken();
     if (accessToken != null && accessToken.isNotEmpty) {
       _groupBloc.add(GroupConnectWebSocket(accessToken: accessToken));
       _groupBloc.add(GroupSubscribeWebSocket(groupId: widget.groupId));

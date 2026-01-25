@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/auth/token_manager.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/conversation_utils.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -77,9 +78,12 @@ class _ChatPageState extends State<ChatPage> {
 
   /// Initialize chat: load messages and connect WebSocket
   Future<void> _initializeChat() async {
-    // Get tokens and user ID
+    // Get user ID from secure storage
     final currentUserId = await _secureStorage.read(key: 'user_id');
-    final accessToken = await _secureStorage.read(key: 'access_token');
+    
+    // Get valid access token using TokenManager (handles auto-refresh)
+    final tokenManager = getIt<TokenManager>();
+    final accessToken = await tokenManager.getValidAccessToken();
 
     if (currentUserId != null && currentUserId.isNotEmpty) {
       // Generate deterministic conversation ID matching backend

@@ -62,6 +62,7 @@ fn main() {
             commands::auth::logout,
             commands::auth::get_current_user,
             commands::auth::get_ws_config,
+            commands::auth::refresh_token,
             // Messaging commands
             commands::messaging::send_message,
             commands::messaging::get_conversations,

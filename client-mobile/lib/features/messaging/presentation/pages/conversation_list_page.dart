@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../../core/auth/token_manager.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/grpc_clients.dart';
 import '../../../../generated/messaging.pb.dart' as proto;
@@ -24,7 +24,6 @@ class ConversationListPage extends StatefulWidget {
 }
 
 class _ConversationListPageState extends State<ConversationListPage> {
-  final _secureStorage = const FlutterSecureStorage();
   List<proto.Conversation> _conversations = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -42,7 +41,9 @@ class _ConversationListPageState extends State<ConversationListPage> {
     });
 
     try {
-      final accessToken = await _secureStorage.read(key: 'access_token');
+      // Get valid access token using TokenManager (handles auto-refresh)
+      final tokenManager = getIt<TokenManager>();
+      final accessToken = await tokenManager.getValidAccessToken();
       if (accessToken == null || accessToken.isEmpty) {
         setState(() {
           _errorMessage = 'Not authenticated';

@@ -26,6 +26,8 @@ struct AppStateInner {
     user_id: Option<String>,
     device_id: Option<String>,
     access_token: Option<String>,
+    refresh_token: Option<String>,
+    token_expires_at: Option<std::time::Instant>,
     settings: UserSettings,
 }
 
@@ -41,6 +43,8 @@ impl AppState {
                 user_id: None,
                 device_id: None,
                 access_token: None,
+                refresh_token: None,
+                token_expires_at: None,
                 settings: load_settings_from_disk(),
             })),
             auth_client: Arc::new(AuthClient::new(Arc::clone(&grpc))),
@@ -128,6 +132,37 @@ impl AppState {
         self.inner.write().access_token = token;
     }
 
+    /// Get refresh token
+    pub fn refresh_token(&self) -> Option<String> {
+        self.inner.read().refresh_token.clone()
+    }
+
+    /// Set refresh token
+    pub fn set_refresh_token(&self, token: Option<String>) {
+        self.inner.write().refresh_token = token;
+    }
+
+    /// Get token expiration time
+    pub fn token_expires_at(&self) -> Option<std::time::Instant> {
+        self.inner.read().token_expires_at
+    }
+
+    /// Set token expiration time
+    pub fn set_token_expires_at(&self, expires_at: Option<std::time::Instant>) {
+        self.inner.write().token_expires_at = expires_at;
+    }
+
+    /// Check if access token is expired or about to expire (within 2 minutes)
+    pub fn is_token_expired(&self) -> bool {
+        match self.token_expires_at() {
+            Some(expires_at) => {
+                let buffer = std::time::Duration::from_secs(120); // 2 minutes buffer
+                std::time::Instant::now() + buffer >= expires_at
+            }
+            None => true, // No expiration info means assume expired
+        }
+    }
+
     /// Clear session data (on logout)
     pub fn clear_session(&self) {
         let mut state = self.inner.write();
@@ -135,6 +170,8 @@ impl AppState {
         state.user_id = None;
         state.device_id = None;
         state.access_token = None;
+        state.refresh_token = None;
+        state.token_expires_at = None;
     }
 
     /// Get user settings

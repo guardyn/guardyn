@@ -102,6 +102,12 @@ pub async fn login(
             state.set_user_id(Some(result.user_id.clone()));
             state.set_device_id(Some(result.device_id.clone()));
             state.set_access_token(Some(result.access_token.clone()));
+            state.set_refresh_token(Some(result.refresh_token.clone()));
+            
+            // Set token expiration time
+            let expires_at = std::time::Instant::now() 
+                + std::time::Duration::from_secs(result.access_token_expires_in as u64);
+            state.set_token_expires_at(Some(expires_at));
 
             // Update gRPC client with auth token
             state.grpc().set_auth_token(result.access_token.clone());
@@ -178,6 +184,12 @@ pub async fn register(
             state.set_user_id(Some(result.user_id.clone()));
             state.set_device_id(Some(result.device_id.clone()));
             state.set_access_token(Some(result.access_token.clone()));
+            state.set_refresh_token(Some(result.refresh_token.clone()));
+            
+            // Set token expiration time
+            let expires_at = std::time::Instant::now() 
+                + std::time::Duration::from_secs(result.access_token_expires_in as u64);
+            state.set_token_expires_at(Some(expires_at));
 
             // Update gRPC client with auth token
             state.grpc().set_auth_token(result.access_token.clone());
@@ -255,10 +267,102 @@ pub struct WebSocketConfig {
     pub user_id: Option<String>,
 }
 
+/// Refresh access token response
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RefreshTokenResponse {
+    pub success: bool,
+    pub access_token: Option<String>,
+    pub expires_in: Option<u32>,
+    pub error: Option<String>,
+}
+
+/// Refresh the access token using the stored refresh token
+#[tauri::command]
+pub async fn refresh_token(state: State<'_, AppState>) -> Result<RefreshTokenResponse, String> {
+    tracing::info!("Refreshing access token");
+
+    let refresh_token = match state.refresh_token() {
+        Some(token) => token,
+        None => {
+            tracing::warn!("No refresh token available");
+            return Ok(RefreshTokenResponse {
+                success: false,
+                access_token: None,
+                expires_in: None,
+                error: Some("No refresh token available".to_string()),
+            });
+        }
+    };
+
+    match state.auth().refresh_token(refresh_token).await {
+        Ok(tokens) => {
+            // Update stored tokens
+            state.set_access_token(Some(tokens.access_token.clone()));
+            state.set_refresh_token(Some(tokens.refresh_token));
+            
+            // Set expiration time
+            let expires_at = std::time::Instant::now() 
+                + std::time::Duration::from_secs(tokens.access_token_expires_in as u64);
+            state.set_token_expires_at(Some(expires_at));
+
+            // Update gRPC client with new auth token
+            state.grpc().set_auth_token(tokens.access_token.clone());
+
+            tracing::info!("Token refreshed successfully");
+
+            Ok(RefreshTokenResponse {
+                success: true,
+                access_token: Some(tokens.access_token),
+                expires_in: Some(tokens.access_token_expires_in),
+                error: None,
+            })
+        }
+        Err(e) => {
+            tracing::error!("Token refresh failed: {:?}", e);
+            
+            // Clear session on refresh failure
+            state.set_authenticated(false);
+            state.clear_session();
+            state.grpc().clear_auth_token();
+
+            Ok(RefreshTokenResponse {
+                success: false,
+                access_token: None,
+                expires_in: None,
+                error: Some(e.to_string()),
+            })
+        }
+    }
+}
+
 /// Get WebSocket connection configuration
 /// Returns the token and device ID needed for WebSocket authentication
+/// Automatically refreshes token if expired
 #[tauri::command]
 pub async fn get_ws_config(state: State<'_, AppState>) -> Result<WebSocketConfig, String> {
+    // Check if token needs refresh
+    if state.is_token_expired() {
+        tracing::info!("Token expired, attempting refresh before WebSocket connection");
+        if let Some(refresh_token) = state.refresh_token() {
+            match state.auth().refresh_token(refresh_token).await {
+                Ok(tokens) => {
+                    state.set_access_token(Some(tokens.access_token.clone()));
+                    state.set_refresh_token(Some(tokens.refresh_token));
+                    let expires_at = std::time::Instant::now() 
+                        + std::time::Duration::from_secs(tokens.access_token_expires_in as u64);
+                    state.set_token_expires_at(Some(expires_at));
+                    state.grpc().set_auth_token(tokens.access_token);
+                    tracing::info!("Token refreshed for WebSocket connection");
+                }
+                Err(e) => {
+                    tracing::error!("Failed to refresh token for WebSocket: {:?}", e);
+                    // Continue with expired token - WebSocket will fail and client can handle
+                }
+            }
+        }
+    }
+
     // Get WebSocket URL from environment or use default for local development
     let ws_host = std::env::var("WS_HOST").unwrap_or_else(|_| "localhost".to_string());
     let ws_port = std::env::var("WS_PORT").unwrap_or_else(|_| "8081".to_string());

@@ -62,6 +62,7 @@ const Chat: Component<ChatPageProps> = () => {
   const replyingTo = () => getReplyingTo();
 
   onMount(async () => {
+    console.log('[Chat] onMount started');
     try {
       // Get WebSocket configuration from Tauri backend
       const wsConfig = await invoke<{
@@ -74,9 +75,14 @@ const Chat: Component<ChatPageProps> = () => {
       console.log('[Chat] WebSocket config:', {
         url: wsConfig.url,
         hasToken: !!wsConfig.token,
+        tokenPreview: wsConfig.token ? wsConfig.token.substring(0, 20) + '...' : 'null',
         deviceId: wsConfig.device_id,
         userId: wsConfig.user_id,
       });
+
+      if (!wsConfig.token) {
+        console.warn('[Chat] No token available - WebSocket connection will fail');
+      }
 
       // Initialize WebSocket with real configuration
       const ws = initWebSocket({
@@ -95,11 +101,27 @@ const Chat: Component<ChatPageProps> = () => {
         });
 
         // Listen for incoming messages
-        ws.onMessage((data: MessagePayload) => {
+        ws.onMessage(async (data: MessagePayload) => {
           console.log('[Chat] Received message:', data);
+          
+          const convId = data.conversation_id || 'unknown';
+          
+          // Check if we have this conversation already
+          const existingConv = conversations().find(c => c.id === convId);
+          if (!existingConv) {
+            // New conversation! Refresh the list
+            console.log('[Chat] New conversation detected, refreshing list...');
+            try {
+              const convs = await invoke<Conversation[]>('get_conversations');
+              setConversations(convs);
+            } catch (err) {
+              console.error('Failed to refresh conversations:', err);
+            }
+          }
+          
           addMessage({
             id: data.message_id || crypto.randomUUID(),
-            conversationId: data.conversation_id || selectedConversation() || 'demo',
+            conversationId: convId,
             senderId: data.sender_id || 'other',
             senderName: data.sender_id || 'User',
             content: data.content,
@@ -117,16 +139,26 @@ const Chat: Component<ChatPageProps> = () => {
           }
         });
 
-        // Connect WebSocket
-        ws.connect();
+        // Connect WebSocket with error handling
+        try {
+          console.log('[Chat] Attempting WebSocket connection...');
+          await ws.connect();
+          console.log('[Chat] WebSocket connected successfully');
+        } catch (wsError) {
+          console.error('[Chat] WebSocket connection failed:', wsError);
+          // Continue anyway - we can still load conversations from backend
+        }
       }
 
       // Load conversations from Tauri backend
+      console.log('[Chat] Loading conversations from Tauri backend...');
       const convs = await invoke<Conversation[]>('get_conversations');
+      console.log('[Chat] Loaded conversations:', convs?.length || 0, convs);
       setConversations(convs);
     } catch (err) {
-      console.error('Failed to load conversations:', err);
+      console.error('[Chat] Failed to load conversations:', err);
     } finally {
+      console.log('[Chat] onMount completed');
       setLoading(false);
     }
   });

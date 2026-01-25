@@ -497,11 +497,15 @@ export class WebSocketClient {
   // ---------------------------------------------------------------------------
 
   private handleMessage(data: string): void {
+    console.log('[WS] Raw message received:', data.substring(0, 200));
+    
     const message = parseWsMessage(data);
     if (!message) {
       console.warn('[WS] Failed to parse message:', data);
       return;
     }
+
+    console.log('[WS] Parsed message type:', message.type);
 
     // Handle pong for latency measurement
     if (message.type === WsMessageType.PONG) {
