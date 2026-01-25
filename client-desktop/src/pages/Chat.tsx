@@ -5,20 +5,20 @@ import { stopMockGenerator } from '../api/websocket.mock';
 import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
-    addMessage,
-    addTypingUser,
-    clearReplyingTo,
-    deleteMessage as deleteMessageFromStore,
-    forwardMessage,
-    getActiveMessages,
-    getActiveTypingUsers,
-    getMessageById,
-    getReplyingTo,
-    removeTypingUser,
-    setActiveConversation,
-    setReplyingTo,
-    toggleReaction,
-    type Message as StoreMessage
+  addMessage,
+  addTypingUser,
+  clearReplyingTo,
+  deleteMessage as deleteMessageFromStore,
+  forwardMessage,
+  getActiveMessages,
+  getActiveTypingUsers,
+  getMessageById,
+  getReplyingTo,
+  removeTypingUser,
+  setActiveConversation,
+  setReplyingTo,
+  toggleReaction,
+  type Message as StoreMessage
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
 
@@ -60,7 +60,7 @@ const Chat: Component<ChatPageProps> = () => {
   const messages = () => getActiveMessages();
   const typingUsers = () => getActiveTypingUsers();
   const replyingTo = () => getReplyingTo();
-  
+
   // Get selected conversation object
   const selectedConv = () => conversations().find(c => c.id === selectedConversation());
   const isGroupChat = () => selectedConv()?.is_group ?? false;
@@ -107,9 +107,9 @@ const Chat: Component<ChatPageProps> = () => {
         // Listen for incoming messages
         ws.onMessage(async (data: MessagePayload) => {
           console.log('[Chat] Received message:', data);
-          
+
           const convId = data.conversation_id || 'unknown';
-          
+
           // Check if we have this conversation already
           let conv = conversations().find(c => c.id === convId);
           if (!conv) {
@@ -123,10 +123,10 @@ const Chat: Component<ChatPageProps> = () => {
               console.error('Failed to refresh conversations:', err);
             }
           }
-          
+
           // For 1-to-1 chats, use conversation name as sender name
           const senderDisplayName = conv?.name || 'User';
-          
+
           addMessage({
             id: data.message_id || crypto.randomUUID(),
             conversationId: convId,
@@ -192,7 +192,7 @@ const Chat: Component<ChatPageProps> = () => {
       // Get conversation name for sender display
       const conv = conversations().find(c => c.id === id);
       const partnerName = conv?.name || 'User';
-      
+
       // Add backend messages to store
       msgs.forEach(msg => {
         addMessage({
@@ -219,7 +219,7 @@ const Chat: Component<ChatPageProps> = () => {
     // Get recipient ID from the conversation
     const conversation = conversations().find(c => c.id === convId);
     const recipientId = conversation?.participant_ids?.[0];
-    
+
     if (!recipientId) {
       console.error('No recipient found for conversation:', convId);
       return;
