@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/auth/token_manager.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/conversation_utils.dart';
+import '../../../../core/utils/permissions.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_spacing.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
@@ -211,7 +212,20 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   /// Initiate a voice or video call with the conversation partner
-  void _initiateCall(CallType type) {
+  Future<void> _initiateCall(CallType type) async {
+    // Request permissions before starting the call
+    final hasPermission = await PermissionUtils.requestCallPermissions(
+      context,
+      isVideoCall: type == CallType.video,
+    );
+
+    if (!hasPermission) {
+      // User denied permissions, don't proceed
+      return;
+    }
+
+    if (!mounted) return;
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BlocProvider(

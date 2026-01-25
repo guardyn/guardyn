@@ -1,5 +1,7 @@
+import { useNavigate } from '@solidjs/router';
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { initiateCall } from '../api/calls';
 import { destroyWebSocket, getWebSocket, initWebSocket, type MessagePayload, type TypingPayload } from '../api/websocket';
 import { stopMockGenerator } from '../api/websocket.mock';
 import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
@@ -25,6 +27,7 @@ import type { Conversation } from '../types';
 interface ChatPageProps {}
 
 const Chat: Component<ChatPageProps> = () => {
+  const navigate = useNavigate();
   const [conversations, setConversations] = createSignal<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = createSignal<string | null>(null);
   const [loading, setLoading] = createSignal(true);
@@ -406,6 +409,36 @@ const Chat: Component<ChatPageProps> = () => {
     setReactionMenu(prev => ({ ...prev, isOpen: false }));
   };
 
+  // Initiate voice or video call
+  const handleInitiateCall = async (callType: 'voice' | 'video') => {
+    const conv = selectedConv();
+    if (!conv) return;
+
+    // Get the other user's ID from the conversation
+    const calleeUserId = conv.participant_ids?.[0];
+    if (!calleeUserId) {
+      console.error('No callee user ID found for conversation:', conv.id);
+      return;
+    }
+
+    try {
+      console.log(`[Chat] Initiating ${callType} call to:`, calleeUserId);
+      const result = await initiateCall({
+        callee_user_id: calleeUserId,
+        call_type: callType,
+      });
+
+      if (result.success && result.call_id) {
+        console.log('[Chat] Call initiated, navigating to call page:', result.call_id);
+        navigate(`/call/${result.call_id}`);
+      } else {
+        console.error('[Chat] Failed to initiate call:', result.error);
+      }
+    } catch (error) {
+      console.error('[Chat] Error initiating call:', error);
+    }
+  };
+
   return (
     <div class="flex h-full">
       {/* Conversations list */}
@@ -483,6 +516,49 @@ const Chat: Component<ChatPageProps> = () => {
             </div>
           }
         >
+          {/* Chat header with call buttons */}
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-guardyn-600 flex items-center justify-center text-white font-medium">
+                {selectedConv()?.name?.[0] || 'C'}
+              </div>
+              <div class="ml-3">
+                <p class="font-medium text-gray-900 dark:text-white">
+                  {selectedConv()?.name || 'Conversation'}
+                </p>
+                <Show when={typingUsers().length > 0} fallback={
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    {isConnected() ? 'Online' : 'Offline'}
+                  </p>
+                }>
+                  <p class="text-xs text-guardyn-500">typing...</p>
+                </Show>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              {/* Voice call button */}
+              <button
+                onClick={() => handleInitiateCall('voice')}
+                class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Voice call"
+              >
+                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </button>
+              {/* Video call button */}
+              <button
+                onClick={() => handleInitiateCall('video')}
+                class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Video call"
+              >
+                <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
           {/* Messages */}
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <For each={messages()}>
