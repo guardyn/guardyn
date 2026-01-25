@@ -31,6 +31,14 @@ import 'package:guardyn_client/features/calls/presentation/bloc/call_bloc.dart'
     as _i785;
 import 'package:guardyn_client/features/calls/presentation/bloc/call_history_bloc.dart'
     as _i930;
+import 'package:guardyn_client/features/contacts/data/datasources/contacts_remote_datasource.dart'
+    as _i395;
+import 'package:guardyn_client/features/contacts/data/repositories/contacts_repository_impl.dart'
+    as _i5;
+import 'package:guardyn_client/features/contacts/domain/repositories/contacts_repository.dart'
+    as _i530;
+import 'package:guardyn_client/features/contacts/presentation/bloc/contacts_bloc.dart'
+    as _i286;
 import 'package:guardyn_client/features/groups/data/datasources/group_remote_datasource.dart'
     as _i747;
 import 'package:guardyn_client/features/groups/data/repositories/group_repository_impl.dart'
@@ -39,6 +47,8 @@ import 'package:guardyn_client/features/groups/domain/repositories/group_reposit
     as _i598;
 import 'package:guardyn_client/features/groups/domain/usecases/add_group_member.dart'
     as _i981;
+import 'package:guardyn_client/features/groups/domain/usecases/change_member_role.dart'
+    as _i339;
 import 'package:guardyn_client/features/groups/domain/usecases/create_group.dart'
     as _i238;
 import 'package:guardyn_client/features/groups/domain/usecases/delete_group.dart'
@@ -55,6 +65,8 @@ import 'package:guardyn_client/features/groups/domain/usecases/remove_group_memb
     as _i387;
 import 'package:guardyn_client/features/groups/domain/usecases/send_group_message.dart'
     as _i969;
+import 'package:guardyn_client/features/groups/domain/usecases/send_group_typing_indicator.dart'
+    as _i814;
 import 'package:guardyn_client/features/groups/domain/usecases/update_group.dart'
     as _i319;
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart'
@@ -99,6 +111,8 @@ import 'package:guardyn_client/features/messaging/domain/usecases/delete_message
     as _i273;
 import 'package:guardyn_client/features/messaging/domain/usecases/get_messages.dart'
     as _i11;
+import 'package:guardyn_client/features/messaging/domain/usecases/get_user_display_name.dart'
+    as _i318;
 import 'package:guardyn_client/features/messaging/domain/usecases/mark_as_read.dart'
     as _i892;
 import 'package:guardyn_client/features/messaging/domain/usecases/mute_conversation.dart'
@@ -152,6 +166,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i526.PresenceRemoteDatasource>(
       () => _i526.PresenceRemoteDatasource(gh<_i231.GrpcClients>()),
     );
+    gh.factory<_i395.ContactsRemoteDatasource>(
+      () => _i395.ContactsRemoteDatasource(gh<_i231.GrpcClients>()),
+    );
     gh.factory<_i380.MuteConversationRepository>(
       () => _i421.NotificationRepositoryImpl(
         gh<_i744.NotificationRemoteDatasource>(),
@@ -191,20 +208,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i148.RejectCall>(
       () => _i148.RejectCall(gh<_i516.CallRepository>()),
     );
-    gh.lazySingleton<_i598.GroupRepository>(
-      () => _i417.GroupRepositoryImpl(
-        gh<_i747.GroupRemoteDatasource>(),
+    gh.factory<_i530.ContactsRepository>(
+      () => _i5.ContactsRepositoryImpl(
+        gh<_i395.ContactsRemoteDatasource>(),
         gh<_i879.SecureStorage>(),
       ),
+    );
+    gh.factory<_i286.ContactsBloc>(
+      () => _i286.ContactsBloc(gh<_i530.ContactsRepository>()),
     );
     gh.factory<_i5.PresenceRepository>(
       () => _i241.PresenceRepositoryImpl(
         gh<_i526.PresenceRemoteDatasource>(),
         gh<_i879.SecureStorage>(),
       ),
-    );
-    gh.factory<_i930.CallHistoryBloc>(
-      () => _i930.CallHistoryBloc(getCallHistory: gh<_i975.GetCallHistory>()),
     );
     gh.factory<_i703.ManageMediaCache>(
       () => _i703.ManageMediaCache(gh<_i573.MediaRepository>()),
@@ -226,6 +243,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i155.GetMediaMetadata>(
       () => _i155.GetMediaMetadata(gh<_i573.MediaRepository>()),
+    );
+    gh.lazySingleton<_i598.GroupRepository>(
+      () => _i417.GroupRepositoryImpl(
+        gh<_i747.GroupRemoteDatasource>(),
+        gh<_i879.SecureStorage>(),
+        gh<_i318.GetUserDisplayName>(),
+      ),
     );
     gh.factory<_i785.CallBloc>(
       () => _i785.CallBloc(
@@ -292,6 +316,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i144.DeleteGroup>(
       () => _i144.DeleteGroup(gh<_i598.GroupRepository>()),
     );
+    gh.factory<_i339.ChangeMemberRole>(
+      () => _i339.ChangeMemberRole(gh<_i598.GroupRepository>()),
+    );
+    gh.factory<_i814.SendGroupTypingIndicator>(
+      () => _i814.SendGroupTypingIndicator(gh<_i598.GroupRepository>()),
+    );
     gh.factory<_i319.UpdateGroup>(
       () => _i319.UpdateGroup(gh<_i598.GroupRepository>()),
     );
@@ -326,6 +356,12 @@ extension GetItInjectableX on _i174.GetIt {
         presenceRepository: gh<_i5.PresenceRepository>(),
       ),
     );
+    gh.factory<_i930.CallHistoryBloc>(
+      () => _i930.CallHistoryBloc(
+        getCallHistory: gh<_i975.GetCallHistory>(),
+        callRepository: gh<_i516.CallRepository>(),
+      ),
+    );
     gh.factory<_i248.MessageBloc>(
       () => _i248.MessageBloc(
         sendMessage: gh<_i1073.SendMessage>(),
@@ -349,6 +385,8 @@ extension GetItInjectableX on _i174.GetIt {
         removeGroupMember: gh<_i387.RemoveGroupMember>(),
         leaveGroup: gh<_i604.LeaveGroup>(),
         updateGroup: gh<_i319.UpdateGroup>(),
+        sendGroupTypingIndicator: gh<_i814.SendGroupTypingIndicator>(),
+        changeMemberRole: gh<_i339.ChangeMemberRole>(),
       ),
     );
     return this;

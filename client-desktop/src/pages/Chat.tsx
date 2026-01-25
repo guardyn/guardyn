@@ -6,6 +6,7 @@ import { destroyWebSocket, getWebSocket, initWebSocket, type MessagePayload, typ
 import { stopMockGenerator } from '../api/websocket.mock';
 import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
+import { CallAudioService } from '../services/callAudioService';
 import {
   addMessage,
   addTypingUser,
@@ -423,6 +424,10 @@ const Chat: Component<ChatPageProps> = () => {
 
     try {
       console.log(`[Chat] Initiating ${callType} call to:`, calleeUserId);
+
+      // Start playing dial tone
+      CallAudioService.playDialTone();
+
       const result = await initiateCall({
         callee_user_id: calleeUserId,
         call_type: callType,
@@ -432,9 +437,13 @@ const Chat: Component<ChatPageProps> = () => {
         console.log('[Chat] Call initiated, navigating to call page:', result.call_id);
         navigate(`/call/${result.call_id}`);
       } else {
+        // Stop dial tone on failure
+        CallAudioService.stopDialTone();
         console.error('[Chat] Failed to initiate call:', result.error);
       }
     } catch (error) {
+      // Stop dial tone on error
+      CallAudioService.stopDialTone();
       console.error('[Chat] Error initiating call:', error);
     }
   };

@@ -24,6 +24,9 @@ pub mod subjects {
     /// SFrame key distribution: calls.{call_id}.sframe.{target_user_id}
     pub const SFRAME_SUFFIX: &str = "sframe";
 
+    /// Incoming call notifications: calls.incoming.{user_id}
+    pub const INCOMING_PREFIX: &str = "calls.incoming";
+
     /// Format ICE candidate subject
     pub fn ice_candidate(call_id: &str, target_user_id: &str) -> String {
         format!("{}.{}.{}.{}", ICE_PREFIX, call_id, ICE_SUFFIX, target_user_id)
@@ -42,6 +45,11 @@ pub mod subjects {
     /// Format SFrame key subject
     pub fn sframe_key(call_id: &str, target_user_id: &str) -> String {
         format!("{}.{}.{}.{}", ICE_PREFIX, call_id, SFRAME_SUFFIX, target_user_id)
+    }
+
+    /// Format incoming call notification subject for a user
+    pub fn incoming_call(user_id: &str) -> String {
+        format!("{}.{}", INCOMING_PREFIX, user_id)
     }
 }
 
@@ -86,6 +94,19 @@ pub struct CallEventEnvelope {
     pub call_id: String,
     pub event_type: CallEventType,
     pub payload: serde_json::Value,
+    pub timestamp: i64,
+}
+
+/// Incoming call notification envelope for NATS transmission
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IncomingCallEnvelope {
+    pub call_id: String,
+    pub call_type: i32, // CallType enum value
+    pub is_group_call: bool,
+    pub group_id: Option<String>,
+    pub caller_id: String,
+    pub caller_display_name: String,
+    pub caller_avatar_url: Option<String>,
     pub timestamp: i64,
 }
 
@@ -223,6 +244,53 @@ impl CallNatsClient {
         );
 
         Ok(())
+    }
+
+    /// Publish incoming call notification to target user
+    pub async fn publish_incoming_call(&self, target_user_id: &str, envelope: &IncomingCallEnvelope) -> Result<()> {
+        let subject = subjects::incoming_call(target_user_id);
+        let payload = serde_json::to_vec(envelope)?;
+
+        self.context
+            .publish(subject.clone(), payload.into())
+            .await
+            .context("Failed to publish incoming call notification")?
+            .await
+            .context("Failed to confirm incoming call publication")?;
+
+        info!(
+            "Published incoming call notification for call {} to user {}",
+            envelope.call_id, target_user_id
+        );
+
+        Ok(())
+    }
+
+    /// Subscribe to incoming call notifications for a user
+    pub async fn subscribe_incoming_calls(
+        &self,
+        user_id: &str,
+    ) -> Result<PullConsumer> {
+        let subject = subjects::incoming_call(user_id);
+        let consumer_name = format!("incoming-{}", user_id);
+
+        let consumer = self.calls_stream
+            .get_or_create_consumer(&consumer_name, jetstream::consumer::pull::Config {
+                durable_name: Some(consumer_name.clone()),
+                filter_subject: subject.clone(),
+                deliver_policy: jetstream::consumer::DeliverPolicy::New,
+                ack_policy: jetstream::consumer::AckPolicy::Explicit,
+                ..Default::default()
+            })
+            .await
+            .context("Failed to create incoming call consumer")?;
+
+        info!(
+            "Created incoming call consumer {} for user {}",
+            consumer_name, user_id
+        );
+
+        Ok(consumer)
     }
 
     /// Subscribe to ICE candidates for a specific user in a call
@@ -464,6 +532,40 @@ impl CallNatsClient {
                 }
                 Err(e) => {
                     error!("Error receiving SFrame key message: {}", e);
+                }
+            }
+        }
+
+        Ok(envelopes)
+    }
+
+    /// Fetch incoming call notifications from consumer
+    pub async fn fetch_incoming_calls(
+        &self,
+        consumer: &PullConsumer,
+        batch_size: usize,
+    ) -> Result<Vec<IncomingCallEnvelope>> {
+        let mut messages = consumer
+            .batch()
+            .max_messages(batch_size)
+            .messages()
+            .await
+            .context("Failed to fetch incoming call notifications")?;
+
+        let mut envelopes = Vec::new();
+
+        while let Some(msg) = messages.next().await {
+            match msg {
+                Ok(msg) => {
+                    if let Ok(envelope) = serde_json::from_slice::<IncomingCallEnvelope>(&msg.payload) {
+                        envelopes.push(envelope);
+                        if let Err(e) = msg.ack().await {
+                            warn!("Failed to ack incoming call message: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Error receiving incoming call message: {}", e);
                 }
             }
         }

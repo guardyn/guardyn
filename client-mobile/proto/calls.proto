@@ -52,9 +52,6 @@ service CallService {
   // Stream call events (participant joined/left, state changes)
   rpc StreamCallEvents(StreamCallEventsRequest) returns (stream CallEvent);
 
-  // Subscribe to incoming call notifications for the current user
-  rpc SubscribeToIncomingCalls(SubscribeToIncomingCallsRequest) returns (stream IncomingCallNotification);
-
   // Exchange SFrame encryption keys
   rpc ExchangeSFrameKey(ExchangeSFrameKeyRequest) returns (ExchangeSFrameKeyResponse);
 
@@ -450,41 +447,6 @@ message CallHistoryEntry {
 message StreamCallEventsRequest {
   string access_token = 1;
   string call_id = 2;
-}
-
-// ============================================================================
-// Incoming Call Subscription
-// ============================================================================
-
-// Request to subscribe to incoming call notifications
-message SubscribeToIncomingCallsRequest {
-  string access_token = 1;
-}
-
-// Notification about an incoming call
-message IncomingCallNotification {
-  // Unique call ID
-  string call_id = 1;
-
-  // Type of call (voice or video)
-  CallType call_type = 2;
-
-  // Whether this is a group call
-  bool is_group_call = 3;
-
-  // Group ID if it's a group call
-  optional string group_id = 4;
-
-  // Caller information
-  string caller_id = 5;
-  string caller_display_name = 6;
-  optional string caller_avatar_url = 7;
-
-  // ICE servers for WebRTC connection
-  repeated IceServer ice_servers = 8;
-
-  // When the call was initiated
-  common.Timestamp created_at = 9;
 }
 
 message CallEvent {

@@ -7,6 +7,7 @@ use tracing::{debug, warn};
 use crate::auth_client::AuthClient;
 use crate::db::{CallDb, CallParticipantRecord, CallRecord, UserCallHistoryEntry};
 use crate::generated::guardyn::calls::*;
+use crate::nats::{CallNatsClient, IncomingCallEnvelope};
 use crate::session::{CallSessionManager, SessionParticipant};
 use crate::IceServerConfig;
 
@@ -72,6 +73,7 @@ fn to_proto_participant(p: &SessionParticipant) -> CallParticipant {
 pub async fn initiate_call(
     db: &CallDb,
     session_mgr: &CallSessionManager,
+    nats_client: &CallNatsClient,
     request: InitiateCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
@@ -98,6 +100,12 @@ pub async fn initiate_call(
             ))),
         };
     }
+
+    // Get target user ID for 1-on-1 calls
+    let target_user_id = match &request.target {
+        Some(initiate_call_request::Target::UserId(uid)) => Some(uid.clone()),
+        _ => None,
+    };
 
     // Get display name from auth service
     let display_name = match AuthClient::new(auth_service_url).await {
@@ -136,7 +144,7 @@ pub async fn initiate_call(
         call_id: call_id.clone(),
         call_type: request.call_type,
         is_group_call: is_group,
-        group_id,
+        group_id: group_id.clone(),
         initiator_id: user_id.clone(),
         state: 1, // INITIATING
         end_reason: None,
@@ -164,6 +172,24 @@ pub async fn initiate_call(
 
     if let Err(e) = db.add_participant(&participant).await {
         warn!("Failed to persist participant: {}", e);
+    }
+
+    // Notify callee about incoming call (for 1-on-1 calls)
+    if let Some(ref target_uid) = target_user_id {
+        let incoming_envelope = IncomingCallEnvelope {
+            call_id: call_id.clone(),
+            call_type: request.call_type,
+            is_group_call: false,
+            group_id: None,
+            caller_id: user_id.clone(),
+            caller_display_name: display_name.clone(),
+            caller_avatar_url: None, // TODO: Get from auth service
+            timestamp: Utc::now().timestamp(),
+        };
+
+        if let Err(e) = nats_client.publish_incoming_call(target_uid, &incoming_envelope).await {
+            warn!("Failed to notify callee about incoming call: {}", e);
+        }
     }
 
     debug!("Created call {} initiated by {}", call_id, user_id);

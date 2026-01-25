@@ -58,6 +58,7 @@ impl CallService for CallServiceImpl {
         let response = handlers::initiate_call(
             &self.db,
             &self.session_mgr,
+            &self.nats_client,
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
@@ -376,6 +377,84 @@ impl CallService for CallServiceImpl {
         let response =
             handlers::get_call_history(&self.db, request.into_inner(), &self.jwt_secret).await;
         Ok(Response::new(response))
+    }
+
+    type SubscribeToIncomingCallsStream =
+        Pin<Box<dyn Stream<Item = Result<IncomingCallNotification, Status>> + Send + 'static>>;
+
+    async fn subscribe_to_incoming_calls(
+        &self,
+        request: Request<SubscribeToIncomingCallsRequest>,
+    ) -> Result<Response<Self::SubscribeToIncomingCallsStream>, Status> {
+        let req = request.into_inner();
+
+        // Validate token and get user ID
+        let user_id = match handlers::validate_token(&req.access_token, &self.jwt_secret) {
+            Ok(id) => id,
+            Err(_) => return Err(Status::unauthenticated("Invalid or expired token")),
+        };
+
+        debug!("User {} subscribing to incoming calls", user_id);
+
+        // Create channel for incoming call notifications
+        let (tx, rx) = mpsc::channel::<Result<IncomingCallNotification, Status>>(100);
+
+        // Subscribe to NATS for incoming call notifications
+        let nats_client = Arc::clone(&self.nats_client);
+        let user_id_clone = user_id.clone();
+        let ice_servers = self.ice_servers.clone();
+
+        tokio::spawn(async move {
+            // Subscribe to incoming calls for this user
+            let consumer = match nats_client.subscribe_incoming_calls(&user_id_clone).await {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!("Failed to subscribe to incoming calls: {}", e);
+                    return;
+                }
+            };
+
+            // Poll for incoming call notifications
+            loop {
+                if tx.is_closed() {
+                    debug!("Incoming call stream closed for user {}", user_id_clone);
+                    break;
+                }
+
+                // Fetch incoming call notifications
+                if let Ok(notifications) = nats_client.fetch_incoming_calls(&consumer, 10).await {
+                    for notification in notifications {
+                        let proto_notification = IncomingCallNotification {
+                            call_id: notification.call_id,
+                            call_type: notification.call_type,
+                            is_group_call: notification.is_group_call,
+                            group_id: notification.group_id,
+                            caller_id: notification.caller_id,
+                            caller_display_name: notification.caller_display_name,
+                            caller_avatar_url: notification.caller_avatar_url,
+                            ice_servers: ice_servers.iter().map(|c| IceServer {
+                                urls: c.urls.clone(),
+                                username: c.username.clone().unwrap_or_default(),
+                                credential: c.credential.clone().unwrap_or_default(),
+                            }).collect(),
+                            created_at: Some(crate::generated::guardyn::common::Timestamp {
+                                seconds: notification.timestamp,
+                                nanos: 0,
+                            }),
+                        };
+                        if tx.send(Ok(proto_notification)).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+
+                // Small delay between polling
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            }
+        });
+
+        let stream = ReceiverStream::new(rx);
+        Ok(Response::new(Box::pin(stream)))
     }
 
     type StreamCallEventsStream =

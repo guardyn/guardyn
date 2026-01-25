@@ -1,6 +1,6 @@
 /// Call Repository Implementation
 ///
-/// Implements CallRepository interface with WebRTC and Signaling data sources.
+/// Implements CallRepository interface with WebRTC and gRPC data sources.
 /// Orchestrates the complete call flow from initiation to termination.
 library;
 
@@ -8,20 +8,23 @@ import 'dart:async';
 
 import 'package:dartz/dartz.dart';
 import 'package:logger/logger.dart';
-import 'package:uuid/uuid.dart';
 
+import '../../../../core/auth/token_manager.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/services/user_provider.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/call_repository.dart';
 import '../datasources/datasources.dart';
+import '../services/call_audio_service.dart';
 
 /// Call Repository Implementation
 class CallRepositoryImpl implements CallRepository {
   final WebRTCDataSource _webrtcDataSource;
   final SignalingDataSource _signalingDataSource;
+  final CallRemoteDatasource _callRemoteDatasource;
+  final CallAudioService _callAudioService;
+  final TokenManager _tokenManager;
   final Logger _logger;
-  final Uuid _uuid;
 
   /// User provider for getting current user ID
   final UserProvider _userProvider;
@@ -39,6 +42,7 @@ class CallRepositoryImpl implements CallRepository {
   /// Subscriptions to data source events
   StreamSubscription? _webrtcSubscription;
   StreamSubscription? _signalingSubscription;
+  StreamSubscription<IncomingCallData>? _incomingCallsSubscription;
 
   /// Timer for call duration tracking
   Timer? _durationTimer;
@@ -46,14 +50,18 @@ class CallRepositoryImpl implements CallRepository {
   CallRepositoryImpl({
     required WebRTCDataSource webrtcDataSource,
     required SignalingDataSource signalingDataSource,
+    required CallRemoteDatasource callRemoteDatasource,
+    required CallAudioService callAudioService,
+    required TokenManager tokenManager,
     required Logger logger,
     required UserProvider userProvider,
-    Uuid? uuid,
   })  : _webrtcDataSource = webrtcDataSource,
         _signalingDataSource = signalingDataSource,
+       _callRemoteDatasource = callRemoteDatasource,
+       _callAudioService = callAudioService,
+       _tokenManager = tokenManager,
         _logger = logger,
-        _userProvider = userProvider,
-        _uuid = uuid ?? const Uuid() {
+       _userProvider = userProvider {
     _setupSubscriptions();
   }
 
@@ -67,6 +75,73 @@ class CallRepositoryImpl implements CallRepository {
     // Subscribe to signaling events
     _signalingSubscription =
         _signalingDataSource.events.listen(_handleSignalingEvent);
+
+    // Subscribe to incoming calls via gRPC
+    _startIncomingCallsSubscription();
+  }
+
+  /// Starts subscription to incoming calls from the backend
+  Future<void> _startIncomingCallsSubscription() async {
+    try {
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        _logger.w('No access token, skipping incoming calls subscription');
+        return;
+      }
+
+      _incomingCallsSubscription = _callRemoteDatasource
+          .subscribeToIncomingCalls(accessToken: accessToken)
+          .listen(
+            _handleIncomingCallNotification,
+            onError: (error) {
+              _logger.e('Incoming calls subscription error: $error');
+              // Retry subscription after delay
+              Future.delayed(const Duration(seconds: 5), () {
+                _startIncomingCallsSubscription();
+              });
+            },
+            onDone: () {
+              _logger.i('Incoming calls subscription closed');
+              // Reconnect subscription
+              Future.delayed(const Duration(seconds: 1), () {
+                _startIncomingCallsSubscription();
+              });
+            },
+          );
+
+      _logger.i('Incoming calls subscription started');
+    } catch (e, stackTrace) {
+      _logger.e(
+        'Failed to start incoming calls subscription',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Handles incoming call notification from gRPC stream
+  void _handleIncomingCallNotification(IncomingCallData data) {
+    _logger.i(
+      'Incoming call notification: ${data.callId} from ${data.callerId}',
+    );
+
+    final call = Call(
+      id: data.callId,
+      type: data.isVideo ? CallType.video : CallType.voice,
+      direction: CallDirection.incoming,
+      status: CallStatus.ringing,
+      remoteUserId: data.callerId,
+      remoteUserName: data.callerDisplayName,
+      remoteUserAvatar: data.callerAvatarUrl,
+      initiatedAt: data.createdAt,
+    );
+
+    _activeCall = call;
+    _incomingCallsController.add(call);
+    _callStateChangesController.add(call);
+
+    // Play incoming ringtone
+    _callAudioService.playIncomingRingtone();
   }
 
   void _handleWebRTCEvent(WebRTCEvent event) {
@@ -131,6 +206,9 @@ class CallRepositoryImpl implements CallRepository {
     _activeCall = call;
     _incomingCallsController.add(call);
     _callStateChangesController.add(call);
+
+    // Play incoming ringtone
+    _callAudioService.playIncomingRingtone();
 
     // Send ringing notification
     _signalingDataSource.sendRinging(CallControlMessage(
@@ -207,6 +285,9 @@ class CallRepositoryImpl implements CallRepository {
   void _handleConnectionStateChange(PeerConnectionState state) {
     switch (state) {
       case PeerConnectionState.connected:
+        // Stop dial tone/ringtone when call connects
+        _callAudioService.stopAll();
+        _callAudioService.playCallConnected();
         _updateCallStatus(CallStatus.connected);
         _startDurationTimer();
       case PeerConnectionState.disconnected:
@@ -227,12 +308,24 @@ class CallRepositoryImpl implements CallRepository {
     if (_activeCall == null) return;
 
     try {
-      await _signalingDataSource.sendCandidate(CandidateMessage(
+      // Get access token
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        _logger.w('No access token for sending ICE candidate');
+        return;
+      }
+
+      // Send ICE candidate via gRPC
+      await _callRemoteDatasource.exchangeIceCandidate(
+        accessToken: accessToken,
         callId: _activeCall!.id,
-        fromUserId: _currentUserId,
-        toUserId: _activeCall!.remoteUserId!,
-        candidate: candidate,
-      ));
+        targetUserId: _activeCall!.remoteUserId!,
+        candidate: candidate.candidate,
+        sdpMid: candidate.sdpMid ?? '',
+        sdpMLineIndex: candidate.sdpMLineIndex ?? 0,
+      );
+    } on GrpcCallException catch (e) {
+      _logger.e('gRPC error sending ICE candidate: ${e.message}');
     } catch (e, stackTrace) {
       _logger.e('Failed to send ICE candidate', error: e, stackTrace: stackTrace);
     }
@@ -270,6 +363,20 @@ class CallRepositoryImpl implements CallRepository {
 
     _stopDurationTimer();
 
+    // Cancel call events subscription
+    _callEventsSubscription?.cancel();
+    _callEventsSubscription = null;
+
+    // Stop any playing audio and play end sound
+    _callAudioService.stopAll();
+
+    // Play appropriate end sound
+    if (reason == CallEndReason.busy) {
+      _callAudioService.playBusyTone();
+    } else {
+      _callAudioService.playCallEnded();
+    }
+
     final endedCall = _activeCall!.copyWith(
       status: CallStatus.ended,
       endedAt: DateTime.now(),
@@ -302,15 +409,25 @@ class CallRepositoryImpl implements CallRepository {
     _logger.i('Initiating ${type.name} call to $userId');
 
     try {
-      // Generate call ID
-      final callId = _uuid.v4();
+      // Get access token
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
 
-      // Create call entity
+      // Initiate call via gRPC
+      final result = await _callRemoteDatasource.initiateCall(
+        accessToken: accessToken,
+        userId: userId,
+        isVideo: type == CallType.video,
+      );
+
+      // Create call entity with server-assigned ID
       final call = Call(
-        id: callId,
+        id: result.callId,
         type: type,
         direction: CallDirection.outgoing,
-        status: CallStatus.initiating,
+        status: _mapCallState(result.state),
         remoteUserId: userId,
         initiatedAt: DateTime.now(),
         isLocalVideoEnabled: type == CallType.video,
@@ -319,8 +436,20 @@ class CallRepositoryImpl implements CallRepository {
       _activeCall = call;
       _callStateChangesController.add(call);
 
-      // Initialize WebRTC
-      await _webrtcDataSource.initialize(const WebRTCConfig());
+      // Initialize WebRTC with ICE servers from backend
+      await _webrtcDataSource.initialize(
+        WebRTCConfig(
+          iceServers: result.iceServers
+              .map(
+                (s) => <String, dynamic>{
+                  'urls': s.urls,
+                  if (s.username != null) 'username': s.username,
+                  if (s.credential != null) 'credential': s.credential,
+                },
+              )
+              .toList(),
+        ),
+      );
 
       // Start local media
       await _webrtcDataSource.startLocalMedia(
@@ -332,30 +461,144 @@ class CallRepositoryImpl implements CallRepository {
       final offer = await _webrtcDataSource.createOffer();
       await _webrtcDataSource.setLocalDescription(offer);
 
-      // Send call initiation
-      await _signalingDataSource.sendCall(CallMessage(
-        callId: callId,
-        fromUserId: _currentUserId,
-        toUserId: userId,
-        isVideo: type == CallType.video,
-      ));
+      // Send SDP offer via gRPC
+      await _callRemoteDatasource.exchangeSdp(
+        accessToken: accessToken,
+        callId: result.callId,
+        targetUserId: userId,
+        type: SdpMessageType.offer,
+        sdp: offer.sdp,
+      );
 
-      // Send SDP offer
-      await _signalingDataSource.sendSdp(SdpMessage(
-        type: SignalType.offer,
-        callId: callId,
-        fromUserId: _currentUserId,
-        toUserId: userId,
-        sdp: offer,
-      ));
+      // Start listening for call events
+      _startCallEventStream(result.callId, accessToken);
 
       _updateCallStatus(CallStatus.ringing);
 
+      // Start playing dial tone
+      await _callAudioService.playDialTone();
+
       return Right(_activeCall!);
+    } on GrpcCallException catch (e) {
+      _logger.e('gRPC error initiating call: ${e.message}');
+      _activeCall = null;
+      await _callAudioService.stopAll();
+      return Left(ServerFailure('Failed to initiate call: ${e.message}'));
     } catch (e, stackTrace) {
       _logger.e('Failed to initiate call', error: e, stackTrace: stackTrace);
       _activeCall = null;
+      await _callAudioService.stopAll();
       return Left(ServerFailure('Failed to initiate call: $e'));
+    }
+  }
+
+  /// Map gRPC call state to domain call status
+  CallStatus _mapCallState(CallStateType state) {
+    switch (state) {
+      case CallStateType.initiating:
+        return CallStatus.initiating;
+      case CallStateType.ringing:
+        return CallStatus.ringing;
+      case CallStateType.connecting:
+        return CallStatus.connecting;
+      case CallStateType.connected:
+        return CallStatus.connected;
+      case CallStateType.onHold:
+        return CallStatus.onHold;
+      case CallStateType.ended:
+        return CallStatus.ended;
+      case CallStateType.failed:
+        return CallStatus.ended;
+      case CallStateType.unknown:
+        return CallStatus.initiating;
+    }
+  }
+
+  /// Subscription for call events stream
+  StreamSubscription<CallEventData>? _callEventsSubscription;
+
+  /// Start listening for call events from the server
+  void _startCallEventStream(String callId, String accessToken) {
+    _callEventsSubscription?.cancel();
+    _callEventsSubscription = _callRemoteDatasource
+        .streamCallEvents(accessToken: accessToken, callId: callId)
+        .listen(
+          (event) {
+            _handleGrpcCallEvent(event, accessToken);
+          },
+          onError: (error) {
+            _logger.e('Call events stream error: $error');
+          },
+        );
+  }
+
+  /// Handle call events from gRPC stream
+  Future<void> _handleGrpcCallEvent(
+    CallEventData event,
+    String accessToken,
+  ) async {
+    if (event is CallStateChangedEvent) {
+      _updateCallStatus(_mapCallState(event.newState));
+      if (event.newState == CallStateType.ended ||
+          event.newState == CallStateType.failed) {
+        _endCall(_mapEndReason(event.endReason));
+      }
+    } else if (event is IceCandidateReceivedEvent) {
+      try {
+        await _webrtcDataSource.addIceCandidate(
+          IceCandidate(
+            candidate: event.candidate,
+            sdpMid: event.sdpMid,
+            sdpMLineIndex: event.sdpMLineIndex,
+          ),
+        );
+      } catch (e) {
+        _logger.e('Failed to add remote ICE candidate: $e');
+      }
+    } else if (event is SdpReceivedEvent) {
+      try {
+        await _webrtcDataSource.setRemoteDescription(
+          SessionDescription(
+            type: event.sdpType == SdpMessageType.offer ? 'offer' : 'answer',
+            sdp: event.sdp,
+          ),
+        );
+        if (event.sdpType == SdpMessageType.offer) {
+          // Create and send answer
+          final answer = await _webrtcDataSource.createAnswer();
+          await _webrtcDataSource.setLocalDescription(answer);
+
+          await _callRemoteDatasource.exchangeSdp(
+            accessToken: accessToken,
+            callId: event.callId,
+            targetUserId: _activeCall?.remoteUserId ?? '',
+            type: SdpMessageType.answer,
+            sdp: answer.sdp,
+          );
+        }
+      } catch (e) {
+        _logger.e('Failed to handle remote SDP: $e');
+      }
+    }
+  }
+
+  /// Map gRPC end reason to domain end reason
+  CallEndReason _mapEndReason(CallEndReasonType reason) {
+    switch (reason) {
+      case CallEndReasonType.completed:
+        return CallEndReason.localHangup;
+      case CallEndReasonType.declined:
+        return CallEndReason.declined;
+      case CallEndReasonType.missed:
+        return CallEndReason.noAnswer;
+      case CallEndReasonType.busy:
+        return CallEndReason.busy;
+      case CallEndReasonType.failedConnection:
+        return CallEndReason.networkError;
+      case CallEndReasonType.cancelled:
+        return CallEndReason.localHangup;
+      case CallEndReasonType.unknown:
+        return CallEndReason.unknown;
     }
   }
 
@@ -368,16 +611,34 @@ class CallRepositoryImpl implements CallRepository {
     }
 
     try {
-      // Send accept
-      await _signalingDataSource.sendAccept(CallControlMessage(
-        type: SignalType.accept,
-        callId: callId,
-        fromUserId: _currentUserId,
-        toUserId: _activeCall!.remoteUserId!,
-      ));
+      // Stop incoming ringtone
+      await _callAudioService.stopIncomingRingtone();
 
-      // Initialize WebRTC
-      await _webrtcDataSource.initialize(const WebRTCConfig());
+      // Get access token
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      // Accept call via gRPC
+      final result = await _callRemoteDatasource.acceptCall(
+        accessToken: accessToken,
+        callId: callId,
+      );
+
+      // Initialize WebRTC with ICE servers from backend
+      await _webrtcDataSource.initialize(
+        WebRTCConfig(
+          iceServers: result.iceServers
+              .map(
+                (s) => <String, dynamic>{
+                  'urls': s.urls,
+                  if (s.username != null) 'username': s.username,
+                  if (s.credential != null) 'credential': s.credential,
+                },
+              )
+              .toList(),
+      ));
 
       // Start local media
       await _webrtcDataSource.startLocalMedia(
@@ -385,9 +646,15 @@ class CallRepositoryImpl implements CallRepository {
         enableAudio: true,
       );
 
+      // Start listening for call events
+      _startCallEventStream(callId, accessToken);
+
       _updateCallStatus(CallStatus.connecting);
 
       return Right(_activeCall!);
+    } on GrpcCallException catch (e) {
+      _logger.e('gRPC error accepting call: ${e.message}');
+      return Left(ServerFailure('Failed to accept call: ${e.message}'));
     } catch (e, stackTrace) {
       _logger.e('Failed to accept call', error: e, stackTrace: stackTrace);
       return Left(ServerFailure('Failed to accept call: $e'));
@@ -403,16 +670,24 @@ class CallRepositoryImpl implements CallRepository {
     }
 
     try {
-      await _signalingDataSource.sendReject(CallControlMessage(
-        type: SignalType.reject,
+      // Get access token
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      // Reject call via gRPC
+      await _callRemoteDatasource.rejectCall(
+        accessToken: accessToken,
         callId: callId,
-        fromUserId: _currentUserId,
-        toUserId: _activeCall!.remoteUserId!,
-      ));
+      );
 
       _endCall(CallEndReason.declined);
 
       return const Right(null);
+    } on GrpcCallException catch (e) {
+      _logger.e('gRPC error rejecting call: ${e.message}');
+      return Left(ServerFailure('Failed to reject call: ${e.message}'));
     } catch (e, stackTrace) {
       _logger.e('Failed to reject call', error: e, stackTrace: stackTrace);
       return Left(ServerFailure('Failed to reject call: $e'));
@@ -428,19 +703,31 @@ class CallRepositoryImpl implements CallRepository {
     }
 
     try {
-      await _signalingDataSource.sendHangup(CallControlMessage(
-        type: SignalType.hangup,
+      // Get access token
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        return const Left(AuthFailure('Not authenticated'));
+      }
+
+      // End call via gRPC
+      await _callRemoteDatasource.endCall(
+        accessToken: accessToken,
         callId: callId,
-        fromUserId: _currentUserId,
-        toUserId: _activeCall!.remoteUserId!,
-      ));
+      );
 
       _endCall(CallEndReason.localHangup);
 
       return const Right(null);
+    } on GrpcCallException catch (e) {
+      _logger.e('gRPC error ending call: ${e.message}');
+      // Still end the call locally even if gRPC fails
+      _endCall(CallEndReason.localHangup);
+      return const Right(null);
     } catch (e, stackTrace) {
       _logger.e('Failed to end call', error: e, stackTrace: stackTrace);
-      return Left(ServerFailure('Failed to end call: $e'));
+      // Still end the call locally even if gRPC fails
+      _endCall(CallEndReason.localHangup);
+      return const Right(null);
     }
   }
 
@@ -559,10 +846,13 @@ class CallRepositoryImpl implements CallRepository {
   /// Dispose all resources
   Future<void> dispose() async {
     _stopDurationTimer();
+    await _callEventsSubscription?.cancel();
     await _webrtcSubscription?.cancel();
     await _signalingSubscription?.cancel();
+    await _incomingCallsSubscription?.cancel();
     await _incomingCallsController.close();
     await _callStateChangesController.close();
+    await _callAudioService.dispose();
     await _webrtcDataSource.dispose();
     await _signalingDataSource.dispose();
   }

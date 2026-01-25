@@ -16,6 +16,7 @@ import {
     toggleVideo,
     type ScreenSource
 } from '../api/calls';
+import { CallAudioService } from '../services/callAudioService';
 import type { CallInfo } from '../types';
 
 // Icons (inline SVGs for simplicity)
@@ -91,14 +92,28 @@ const Call: Component = () => {
   // Listen for call events
   createEffect(() => {
     const unlistenCallState = listen<CallInfo>('call:state_changed', (event) => {
+      const prevState = callInfo()?.state;
+      const newState = event.payload.state;
       setCallInfo(event.payload);
-      if (event.payload.state === 'ended') {
+
+      // Handle audio based on state transitions
+      if (newState === 'connected' && prevState !== 'connected') {
+        // Call connected - stop dial/ring tone, play connected sound
+        CallAudioService.stopDialTone();
+        CallAudioService.stopIncomingRingtone();
+        CallAudioService.playCallConnected();
+      } else if (newState === 'ended') {
+        // Call ended - stop all sounds, play end sound
+        CallAudioService.stopAll();
+        CallAudioService.playCallEnded();
         navigate('/');
       }
     });
 
     onCleanup(() => {
       unlistenCallState.then(unlisten => unlisten());
+      // Ensure all audio is stopped when leaving call page
+      CallAudioService.stopAll();
     });
   });
 
@@ -176,6 +191,9 @@ const Call: Component = () => {
     if (!callId) return;
 
     try {
+      // Stop all audio and play end call sound
+      CallAudioService.stopAll();
+      CallAudioService.playCallEnded();
       await endCall(callId);
       navigate('/');
     } catch (e) {

@@ -543,6 +543,41 @@ pub struct StreamCallEventsRequest {
     #[prost(string, tag = "2")]
     pub call_id: ::prost::alloc::string::String,
 }
+/// Request to subscribe to incoming call notifications
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubscribeToIncomingCallsRequest {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+}
+/// Notification about an incoming call
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IncomingCallNotification {
+    /// Unique call ID
+    #[prost(string, tag = "1")]
+    pub call_id: ::prost::alloc::string::String,
+    /// Type of call (voice or video)
+    #[prost(enumeration = "CallType", tag = "2")]
+    pub call_type: i32,
+    /// Whether this is a group call
+    #[prost(bool, tag = "3")]
+    pub is_group_call: bool,
+    /// Group ID if it's a group call
+    #[prost(string, optional, tag = "4")]
+    pub group_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// Caller information
+    #[prost(string, tag = "5")]
+    pub caller_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub caller_display_name: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "7")]
+    pub caller_avatar_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// ICE servers for WebRTC connection
+    #[prost(message, repeated, tag = "8")]
+    pub ice_servers: ::prost::alloc::vec::Vec<IceServer>,
+    /// When the call was initiated
+    #[prost(message, optional, tag = "9")]
+    pub created_at: ::core::option::Option<super::common::Timestamp>,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CallEvent {
     #[prost(string, tag = "1")]
@@ -1377,6 +1412,36 @@ pub mod call_service_client {
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new("guardyn.calls.CallService", "StreamCallEvents"),
+                );
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Subscribe to incoming call notifications for the current user
+        pub async fn subscribe_to_incoming_calls(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SubscribeToIncomingCallsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::IncomingCallNotification>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/guardyn.calls.CallService/SubscribeToIncomingCalls",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "guardyn.calls.CallService",
+                        "SubscribeToIncomingCalls",
+                    ),
                 );
             self.inner.server_streaming(req, path, codec).await
         }

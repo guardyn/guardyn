@@ -8,6 +8,7 @@ import { useNavigate } from '@solidjs/router';
 import { listen } from '@tauri-apps/api/event';
 import { Component, createEffect, createSignal, onCleanup, Show } from 'solid-js';
 import { acceptCall, rejectCall } from '../api/calls';
+import { CallAudioService } from '../services/callAudioService';
 import type { IncomingCall } from '../types';
 
 // Icons
@@ -34,6 +35,9 @@ const IncomingCallDialog: Component = () => {
       setIncomingCall(event.payload);
       setIsRinging(true);
 
+      // Start playing incoming ringtone
+      CallAudioService.playIncomingRingtone();
+
       // Auto-dismiss after 30 seconds
       setTimeout(() => {
         if (isRinging()) {
@@ -44,6 +48,8 @@ const IncomingCallDialog: Component = () => {
 
     const unlistenCancelled = listen<{ call_id: string }>('call:cancelled', (event) => {
       if (incomingCall()?.call_id === event.payload.call_id) {
+        // Stop ringtone when call is cancelled
+        CallAudioService.stopIncomingRingtone();
         setIncomingCall(null);
         setIsRinging(false);
       }
@@ -52,6 +58,8 @@ const IncomingCallDialog: Component = () => {
     onCleanup(() => {
       unlistenIncoming.then(unlisten => unlisten());
       unlistenCancelled.then(unlisten => unlisten());
+      // Ensure ringtone is stopped when component unmounts
+      CallAudioService.stopIncomingRingtone();
     });
   });
 
@@ -60,6 +68,9 @@ const IncomingCallDialog: Component = () => {
     if (!call) return;
 
     try {
+      // Stop ringtone when accepting
+      CallAudioService.stopIncomingRingtone();
+
       const result = await acceptCall(call.call_id);
       if (result.success) {
         setIncomingCall(null);
@@ -76,6 +87,9 @@ const IncomingCallDialog: Component = () => {
     if (!call) return;
 
     try {
+      // Stop ringtone when declining
+      CallAudioService.stopIncomingRingtone();
+
       await rejectCall(call.call_id, 'User declined');
     } catch (e) {
       console.error('Failed to reject call:', e);

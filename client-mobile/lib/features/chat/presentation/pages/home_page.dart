@@ -8,6 +8,7 @@ import 'package:guardyn_client/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
 import 'package:guardyn_client/features/auth/presentation/pages/settings_page.dart';
+import 'package:guardyn_client/features/calls/data/services/incoming_call_service.dart';
 import 'package:guardyn_client/features/groups/presentation/bloc/group_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/group_list_page.dart';
 import 'package:guardyn_client/features/messaging/presentation/bloc/message_bloc.dart';
@@ -26,6 +27,7 @@ class _HomePageState extends State<HomePage> {
   late final AuthBloc _authBloc;
   StreamSubscription<AuthState>? _authSubscription;
   AuthState? _currentAuthState;
+  late final IncomingCallService _incomingCallService;
 
   @override
   void initState() {
@@ -36,6 +38,17 @@ class _HomePageState extends State<HomePage> {
     // Use stream subscription instead of BlocListener to avoid
     // InheritedWidget dependency issues during navigation
     _authSubscription = _authBloc.stream.listen(_handleAuthStateChange);
+
+    // Start incoming call service
+    _incomingCallService = getIt<IncomingCallService>();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Set context and start listening after build context is available
+    _incomingCallService.setAppContext(context);
+    _incomingCallService.startListening();
   }
 
   @override

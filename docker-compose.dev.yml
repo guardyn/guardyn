@@ -183,6 +183,7 @@ services:
       - messaging-service
       - presence-service
       - media-service
+      - call-service
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9901' || exit 1"]
       interval: 10s
@@ -312,6 +313,37 @@ services:
         condition: service_healthy
       pd:
         condition: service_healthy
+
+  call-service:
+    <<: *rust-service
+    container_name: guardyn-call
+    command: cargo watch -x 'run --bin guardyn-call-service'
+    environment:
+      <<: *rust-env
+      GUARDYN_SERVICE_NAME: call-service
+      LISTEN_ADDR: "0.0.0.0:50056"
+      SCYLLA_HOSTS: scylladb:9042
+      NATS_URL: nats://nats:4222
+      AUTH_SERVICE_URL: http://auth-service:50051
+      JWT_SECRET: "UNSAFE_DEV_SECRET_CHANGE_IN_PRODUCTION_32BYTES"
+      # WebSocket signaling port
+      SIGNALING_PORT: "8085"
+      # ICE servers for WebRTC (STUN/TURN)
+      # TURN_SERVER_URL: "turn:turn.yourdomain.com:3478"
+      # TURN_USERNAME: "turnuser"
+      # TURN_CREDENTIAL: "turnpass"
+    ports:
+      - "50056:50056"  # gRPC
+      - "8085:8085"    # WebSocket signaling
+    depends_on:
+      pd:
+        condition: service_healthy
+      scylladb:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
 
   notification-service:
     <<: *rust-service

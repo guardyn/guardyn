@@ -1,6 +1,7 @@
 import 'package:grpc/grpc.dart';
 import 'package:guardyn_client/core/constants/config.dart';
 import 'package:guardyn_client/generated/auth.pbgrpc.dart';
+import 'package:guardyn_client/generated/calls.pbgrpc.dart';
 import 'package:guardyn_client/generated/media.pbgrpc.dart';
 import 'package:guardyn_client/generated/messaging.pbgrpc.dart';
 import 'package:guardyn_client/generated/notifications.pbgrpc.dart';
@@ -16,12 +17,14 @@ class GrpcClients {
   late ClientChannel _presenceChannel;
   late ClientChannel _mediaChannel;
   late ClientChannel _notificationChannel;
+  late ClientChannel _callChannel;
 
   late AuthServiceClient authClient;
   late MessagingServiceClient messagingClient;
   late PresenceServiceClient presenceClient;
   late MediaServiceClient mediaClient;
   late NotificationServiceClient notificationClient;
+  late CallServiceClient callClient;
 
   bool _initialized = false;
 
@@ -76,6 +79,7 @@ class GrpcClients {
       AppConfig.notificationHost,
       AppConfig.notificationPort,
     );
+    _callChannel = _createChannel(AppConfig.callHost, AppConfig.callPort);
 
     // Create service clients
     authClient = AuthServiceClient(_authChannel);
@@ -83,6 +87,7 @@ class GrpcClients {
     presenceClient = PresenceServiceClient(_presenceChannel);
     mediaClient = MediaServiceClient(_mediaChannel);
     notificationClient = NotificationServiceClient(_notificationChannel);
+    callClient = CallServiceClient(_callChannel);
 
     _initialized = true;
   }
@@ -95,6 +100,7 @@ class GrpcClients {
       _presenceChannel.shutdown(),
       _mediaChannel.shutdown(),
       _notificationChannel.shutdown(),
+      _callChannel.shutdown(),
     ]);
     _initialized = false;
   }

@@ -10,6 +10,8 @@ import 'package:guardyn_client/features/auth/data/datasources/auth_remote_dataso
 // Calls feature imports
 import 'package:guardyn_client/features/calls/data/datasources/datasources.dart';
 import 'package:guardyn_client/features/calls/data/repositories/call_repository_impl.dart';
+import 'package:guardyn_client/features/calls/data/services/call_audio_service.dart';
+import 'package:guardyn_client/features/calls/data/services/incoming_call_service.dart';
 import 'package:guardyn_client/features/calls/domain/repositories/call_repository.dart';
 import 'package:guardyn_client/features/calls/domain/usecases/usecases.dart';
 import 'package:guardyn_client/features/calls/presentation/bloc/bloc.dart';
@@ -409,11 +411,26 @@ void _registerCallsDependencies() {
     () => SignalingDataSourceImpl(logger: callLogger),
   );
 
+  getIt.registerLazySingleton<CallRemoteDatasource>(
+    () => CallRemoteDatasource(
+      client: getIt<GrpcClients>().callClient,
+      logger: callLogger,
+    ),
+  );
+
+  // Call audio service for ringtones and call sounds
+  getIt.registerLazySingleton<CallAudioService>(
+    () => CallAudioService(logger: callLogger),
+  );
+
   // Repository
   getIt.registerLazySingleton<CallRepository>(
     () => CallRepositoryImpl(
       webrtcDataSource: getIt<WebRTCDataSource>(),
       signalingDataSource: getIt<SignalingDataSource>(),
+      callRemoteDatasource: getIt<CallRemoteDatasource>(),
+      callAudioService: getIt<CallAudioService>(),
+      tokenManager: getIt<TokenManager>(),
       logger: callLogger,
       userProvider: getIt<UserProvider>(),
     ),
@@ -454,6 +471,14 @@ void _registerCallsDependencies() {
 
   getIt.registerLazySingleton<GetCallHistory>(
     () => GetCallHistory(getIt<CallRepository>()),
+  );
+
+  // Incoming call service - listens for incoming calls globally
+  getIt.registerLazySingleton<IncomingCallService>(
+    () => IncomingCallService(
+      callRepository: getIt<CallRepository>(),
+      logger: getIt<Logger>(),
+    ),
   );
 
   // Presentation layer - BLoC

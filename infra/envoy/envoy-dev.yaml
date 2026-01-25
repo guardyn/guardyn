@@ -94,6 +94,15 @@ static_resources:
                             cluster: notification_service
                             timeout: 30s
 
+                        # Call Service routes (Voice/Video calls)
+                        - match:
+                            prefix: "/guardyn.calls."
+                          route:
+                            cluster: call_service
+                            timeout: 60s
+                            max_stream_duration:
+                              grpc_timeout_header_max: 300s  # Long-lived streams for call events
+
                       cors:
                         allow_origin_string_match:
                           - prefix: "*"
@@ -232,6 +241,30 @@ static_resources:
                     socket_address:
                       address: notification-service
                       port_value: 50055
+      health_checks:
+        - timeout: 5s
+          interval: 10s
+          unhealthy_threshold: 3
+          healthy_threshold: 2
+          grpc_health_check: {}
+
+    - name: call_service
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: call_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: call-service
+                      port_value: 50056
       health_checks:
         - timeout: 5s
           interval: 10s
