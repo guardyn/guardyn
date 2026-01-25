@@ -477,7 +477,7 @@ void _registerCallsDependencies() {
   getIt.registerLazySingleton<IncomingCallService>(
     () => IncomingCallService(
       callRepository: getIt<CallRepository>(),
-      logger: getIt<Logger>(),
+      logger: callLogger,
     ),
   );
 
