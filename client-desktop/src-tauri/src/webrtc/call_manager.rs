@@ -250,6 +250,9 @@ impl CallManager {
             state,
         });
 
+        // Subscribe to call events from the server
+        self.start_call_events_subscription(call_id.clone()).await;
+
         info!("Call initiated successfully: {}", call_id);
         Ok(call_id)
     }
@@ -323,6 +326,9 @@ impl CallManager {
             call_id: call_id.clone(),
             state: CallState::Connecting,
         });
+
+        // Subscribe to call events from the server
+        self.start_call_events_subscription(call_id.clone()).await;
 
         info!("Call accepted: {}", call_id);
         Ok(())
@@ -577,6 +583,132 @@ impl CallManager {
                 }
                 Err(e) => {
                     warn!("Failed to subscribe to incoming calls: {}", e);
+                }
+            }
+        });
+    }
+
+    /// Start listening for call events for a specific call
+    /// 
+    /// This spawns a background task that subscribes to call events
+    /// from the backend and emits appropriate CallManager events.
+    async fn start_call_events_subscription(&self, call_id: String) {
+        let calls_client = Arc::clone(&self.calls_client);
+        let event_sender = self.event_sender.clone();
+        let active_calls = Arc::clone(&self.active_calls);
+
+        tauri::async_runtime::spawn(async move {
+            info!("Starting call events subscription for call: {}", call_id);
+
+            match calls_client.stream_call_events(call_id.clone()).await {
+                Ok(mut receiver) => {
+                    info!("Call events subscription established for call: {}", call_id);
+
+                    while let Some(event) = receiver.recv().await {
+                        match event {
+                            crate::services::CallEventReceived::StateChanged {
+                                call_id: cid,
+                                old_state,
+                                new_state,
+                                end_reason,
+                            } => {
+                                info!(
+                                    "Call {} state changed: {} -> {} (end_reason: {})",
+                                    cid, old_state, new_state, end_reason
+                                );
+
+                                let new_call_state = CallState::from_proto_value(new_state);
+
+                                // Update active call state
+                                if let Some(call) = active_calls.write().get_mut(&cid) {
+                                    call.state = new_call_state;
+                                }
+
+                                // Emit state changed event
+                                let _ = event_sender.send(CallManagerEvent::StateChanged {
+                                    call_id: cid.clone(),
+                                    state: new_call_state,
+                                });
+
+                                // If call ended, emit call ended event
+                                if new_state == 6 || new_state == 7 {
+                                    // ENDED or FAILED
+                                    let reason = match end_reason {
+                                        1 => "Normal".to_string(),
+                                        2 => "Declined".to_string(),
+                                        3 => "Missed".to_string(),
+                                        4 => "Busy".to_string(),
+                                        5 => "Failed".to_string(),
+                                        _ => "Unknown".to_string(),
+                                    };
+
+                                    // Remove from active calls
+                                    active_calls.write().remove(&cid);
+
+                                    let _ = event_sender.send(CallManagerEvent::CallEnded {
+                                        call_id: cid,
+                                        reason,
+                                    });
+                                    break;
+                                }
+                            }
+                            crate::services::CallEventReceived::CallEnded { call_id: cid, reason } => {
+                                info!("Call {} ended with reason: {}", cid, reason);
+
+                                // Remove from active calls
+                                active_calls.write().remove(&cid);
+
+                                let reason_str = match reason {
+                                    1 => "Normal".to_string(),
+                                    2 => "Declined".to_string(),
+                                    3 => "Missed".to_string(),
+                                    4 => "Busy".to_string(),
+                                    5 => "Failed".to_string(),
+                                    _ => "Unknown".to_string(),
+                                };
+
+                                let _ = event_sender.send(CallManagerEvent::CallEnded {
+                                    call_id: cid,
+                                    reason: reason_str,
+                                });
+                                break;
+                            }
+                            crate::services::CallEventReceived::IceCandidateReceived {
+                                call_id: cid,
+                                from_user_id: _,
+                                candidate,
+                                sdp_mid,
+                                sdp_mline_index,
+                            } => {
+                                debug!("Received ICE candidate for call {}", cid);
+                                let _ = event_sender.send(CallManagerEvent::RemoteIceCandidate {
+                                    call_id: cid,
+                                    candidate,
+                                    sdp_mid,
+                                    sdp_mline_index: sdp_mline_index as u32,
+                                });
+                            }
+                            crate::services::CallEventReceived::SdpReceived {
+                                call_id: cid,
+                                from_user_id: _,
+                                sdp_type,
+                                sdp,
+                            } => {
+                                info!("Received SDP for call {} (type: {})", cid, sdp_type);
+                                let sdp_type_str = if sdp_type == 1 { "offer" } else { "answer" };
+                                let _ = event_sender.send(CallManagerEvent::RemoteSdp {
+                                    call_id: cid,
+                                    sdp_type: sdp_type_str.to_string(),
+                                    sdp,
+                                });
+                            }
+                        }
+                    }
+
+                    info!("Call events subscription ended for call: {}", call_id);
+                }
+                Err(e) => {
+                    warn!("Failed to subscribe to call events for {}: {}", call_id, e);
                 }
             }
         });

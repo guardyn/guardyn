@@ -8,7 +8,7 @@ use crate::proto::calls::{
     ExchangeIceCandidateRequest, ExchangeSdpRequest, ExchangeSFrameKeyRequest,
     GetCallHistoryRequest, GetCallStateRequest, IceCandidate, InitiateCallRequest,
     ParticipantKeyPackage, RejectCallRequest, SdpMessage, SetMuteRequest, SetVideoRequest,
-    SubscribeToIncomingCallsRequest,
+    StreamCallEventsRequest, SubscribeToIncomingCallsRequest,
 };
 use futures::StreamExt;
 use std::sync::Arc;
@@ -70,6 +70,38 @@ pub struct CallHistoryEntry {
     pub end_reason: i32,
     pub started_at: i64,
     pub duration_seconds: i32,
+}
+
+/// Call event received from server stream
+#[derive(Debug, Clone)]
+pub enum CallEventReceived {
+    /// Call state changed
+    StateChanged {
+        call_id: String,
+        old_state: i32,
+        new_state: i32,
+        end_reason: i32,
+    },
+    /// Call ended
+    CallEnded {
+        call_id: String,
+        reason: i32,
+    },
+    /// ICE candidate received
+    IceCandidateReceived {
+        call_id: String,
+        from_user_id: String,
+        candidate: String,
+        sdp_mid: String,
+        sdp_mline_index: i32,
+    },
+    /// SDP received
+    SdpReceived {
+        call_id: String,
+        from_user_id: String,
+        sdp_type: i32,
+        sdp: String,
+    },
 }
 
 /// Incoming call notification
@@ -601,6 +633,90 @@ impl CallsClient {
                 }
             }
             info!("Incoming calls subscription ended");
+        });
+
+        Ok(rx)
+    }
+
+    /// Subscribe to call events stream for a specific call
+    /// Returns a receiver channel that will receive call events
+    pub async fn stream_call_events(
+        &self,
+        call_id: String,
+    ) -> Result<mpsc::Receiver<CallEventReceived>, GrpcError> {
+        info!("Subscribing to call events for call: {}", call_id);
+
+        let request = StreamCallEventsRequest {
+            access_token: self.grpc.get_auth_token().unwrap_or_default(),
+            call_id: call_id.clone(),
+        };
+
+        let mut client = self.client().await?;
+        let request = self.with_auth(Request::new(request))?;
+
+        let response = client
+            .stream_call_events(request)
+            .await
+            .map_err(|e| GrpcError::RequestFailed(e.to_string()))?;
+
+        let mut stream = response.into_inner();
+        let (tx, rx) = mpsc::channel::<CallEventReceived>(100);
+        let call_id_clone = call_id.clone();
+
+        // Spawn task to read from stream and forward to channel
+        tokio::spawn(async move {
+            while let Some(result) = stream.next().await {
+                match result {
+                    Ok(event) => {
+                        let call_event = match event.event {
+                            Some(crate::proto::calls::call_event::Event::StateChanged(sc)) => {
+                                info!(
+                                    "Call {} state changed: {} -> {} (reason: {})",
+                                    call_id_clone, sc.old_state, sc.new_state, sc.end_reason
+                                );
+                                Some(CallEventReceived::StateChanged {
+                                    call_id: event.call_id,
+                                    old_state: sc.old_state,
+                                    new_state: sc.new_state,
+                                    end_reason: sc.end_reason,
+                                })
+                            }
+                            Some(crate::proto::calls::call_event::Event::IceCandidateReceived(ice)) => {
+                                debug!("Call {} received ICE candidate from {}", call_id_clone, ice.from_user_id);
+                                ice.candidate.map(|c| CallEventReceived::IceCandidateReceived {
+                                    call_id: event.call_id,
+                                    from_user_id: ice.from_user_id,
+                                    candidate: c.candidate,
+                                    sdp_mid: c.sdp_mid,
+                                    sdp_mline_index: c.sdp_mline_index,
+                                })
+                            }
+                            Some(crate::proto::calls::call_event::Event::SdpReceived(sdp_event)) => {
+                                info!("Call {} received SDP from {}", call_id_clone, sdp_event.from_user_id);
+                                sdp_event.sdp.map(|s| CallEventReceived::SdpReceived {
+                                    call_id: event.call_id,
+                                    from_user_id: sdp_event.from_user_id,
+                                    sdp_type: s.r#type,
+                                    sdp: s.sdp,
+                                })
+                            }
+                            _ => None,
+                        };
+
+                        if let Some(evt) = call_event {
+                            if tx.send(evt).await.is_err() {
+                                warn!("Call events receiver dropped");
+                                break;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Call events stream error: {}", e);
+                        break;
+                    }
+                }
+            }
+            info!("Call events subscription ended for call: {}", call_id_clone);
         });
 
         Ok(rx)

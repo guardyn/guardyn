@@ -10,7 +10,7 @@ pub mod presence_client;
 pub mod secure_storage;
 
 pub use auth_client::AuthClient;
-pub use calls_client::CallsClient;
+pub use calls_client::{CallsClient, CallEventReceived};
 pub use media_client::{MediaClient, MediaMetadata, MediaType, UploadStatus};
 pub use messaging_client::MessagingClient;
 pub use presence_client::PresenceClient;

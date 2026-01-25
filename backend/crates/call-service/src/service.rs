@@ -75,6 +75,7 @@ impl CallService for CallServiceImpl {
         let response = handlers::accept_call(
             &self.db,
             &self.session_mgr,
+            &self.nats_client,
             request.into_inner(),
             &self.jwt_secret,
             &self.ice_servers,
@@ -91,6 +92,7 @@ impl CallService for CallServiceImpl {
         let response = handlers::reject_call(
             &self.db,
             &self.session_mgr,
+            &self.nats_client,
             request.into_inner(),
             &self.jwt_secret,
         )
@@ -888,6 +890,31 @@ fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<Cal
         CallEventType::IceCandidateReceived |
         CallEventType::SdpReceived |
         CallEventType::SFrameKeyRotated => None,
+        // Call accepted - convert to state change
+        CallEventType::CallAccepted => {
+            Some(call_event::Event::StateChanged(CallStateChanged {
+                old_state: 2, // RINGING
+                new_state: 3, // CONNECTING
+                end_reason: 0, // No end reason
+            }))
+        }
+        // Call rejected - convert to state change with declined reason
+        CallEventType::CallRejected => {
+            Some(call_event::Event::StateChanged(CallStateChanged {
+                old_state: 2, // RINGING
+                new_state: 6, // ENDED
+                end_reason: 2, // DECLINED
+            }))
+        }
+        // Call ended - convert to state change
+        CallEventType::CallEnded => {
+            let end_reason = envelope.payload.get("end_reason").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
+            Some(call_event::Event::StateChanged(CallStateChanged {
+                old_state: 4, // CONNECTED
+                new_state: 6, // ENDED
+                end_reason,
+            }))
+        }
     };
 
     event.map(|e| CallEvent {

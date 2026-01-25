@@ -125,6 +125,9 @@ pub enum CallEventType {
     SdpReceived,
     SFrameKeyRotated,
     QualityChanged,
+    CallAccepted,
+    CallRejected,
+    CallEnded,
 }
 
 /// NATS client for call signaling

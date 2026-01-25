@@ -7,7 +7,7 @@ use tracing::{debug, warn};
 use crate::auth_client::AuthClient;
 use crate::db::{CallDb, CallParticipantRecord, CallRecord, UserCallHistoryEntry};
 use crate::generated::guardyn::calls::*;
-use crate::nats::{CallNatsClient, IncomingCallEnvelope};
+use crate::nats::{CallEventEnvelope, CallEventType, CallNatsClient, IncomingCallEnvelope};
 use crate::session::{CallSessionManager, SessionParticipant};
 use crate::IceServerConfig;
 
@@ -213,6 +213,7 @@ pub async fn initiate_call(
 pub async fn accept_call(
     db: &CallDb,
     session_mgr: &CallSessionManager,
+    nats_client: &CallNatsClient,
     request: AcceptCallRequest,
     jwt_secret: &str,
     ice_servers: &[IceServerConfig],
@@ -299,6 +300,32 @@ pub async fn accept_call(
         warn!("Failed to update call state: {}", e);
     }
 
+    // Notify caller that call was accepted
+    let caller_id = {
+        let session_guard = session.read();
+        session_guard.participants.values()
+            .find(|p| p.user_id != user_id)
+            .map(|p| p.user_id.clone())
+    };
+
+    if let Some(caller) = caller_id {
+        let event = CallEventEnvelope {
+            call_id: request.call_id.clone(),
+            event_type: CallEventType::CallAccepted,
+            payload: serde_json::json!({
+                "accepter_id": user_id,
+                "accepter_display_name": display_name,
+            }),
+            timestamp: Utc::now().timestamp(),
+        };
+
+        if let Err(e) = nats_client.publish_call_event(&event).await {
+            warn!("Failed to publish CallAccepted event: {}", e);
+        } else {
+            debug!("Published CallAccepted event for caller {}", caller);
+        }
+    }
+
     debug!("User {} accepted call {}", user_id, request.call_id);
 
     AcceptCallResponse {
@@ -316,6 +343,7 @@ pub async fn accept_call(
 pub async fn reject_call(
     db: &CallDb,
     session_mgr: &CallSessionManager,
+    nats_client: &CallNatsClient,
     request: RejectCallRequest,
     jwt_secret: &str,
 ) -> RejectCallResponse {
@@ -331,12 +359,48 @@ pub async fn reject_call(
         }
     };
 
+    // Get the session to find the caller user ID (initiator)
+    let caller_id = session_mgr.get_session(&request.call_id)
+        .map(|s| {
+            let session = s.read();
+            // Find another participant who is not the one rejecting
+            session.participants.values()
+                .find(|p| p.user_id != user_id)
+                .map(|p| p.user_id.clone())
+                .or_else(|| {
+                    // If not found in participants, use initiator_id
+                    if session.initiator_id != user_id {
+                        Some(session.initiator_id.clone())
+                    } else {
+                        None
+                    }
+                })
+        })
+        .flatten();
+
     // End the session with DECLINED reason
     if let Some(_session) = session_mgr.end_session(&request.call_id) {
         if let Err(e) = db.end_call(&request.call_id, 2, 0).await {
             // DECLINED
             warn!("Failed to update call: {}", e);
         }
+    }
+
+    // Notify the caller that the call was rejected
+    if let Some(caller) = caller_id {
+        let event = crate::nats::CallEventEnvelope {
+            call_id: request.call_id.clone(),
+            event_type: crate::nats::CallEventType::CallRejected,
+            payload: serde_json::json!({
+                "rejected_by": user_id,
+                "reason": if request.reason.is_empty() { "declined".to_string() } else { request.reason.clone() }
+            }),
+            timestamp: chrono::Utc::now().timestamp(),
+        };
+        if let Err(e) = nats_client.publish_call_event(&event).await {
+            warn!("Failed to publish call rejected event: {}", e);
+        }
+        debug!("Published call rejected event to caller {}", caller);
     }
 
     debug!("User {} rejected call {}", user_id, request.call_id);
