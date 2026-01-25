@@ -266,12 +266,13 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
 }
 
 /// Generate deterministic conversation ID from two user IDs
+/// IMPORTANT: Uses NAMESPACE_DNS to match db.rs implementation
 fn generate_conversation_id(user1: &str, user2: &str) -> String {
     let mut users = vec![user1, user2];
     users.sort();
-    let namespace = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    // Use NAMESPACE_DNS to match the db.rs implementation
     let data = format!("{}:{}", users[0], users[1]);
-    uuid::Uuid::new_v5(&namespace, data.as_bytes()).to_string()
+    uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_DNS, data.as_bytes()).to_string()
 }
 
 /// Start NATS message relay - listens to all messages and forwards to WebSocket clients
