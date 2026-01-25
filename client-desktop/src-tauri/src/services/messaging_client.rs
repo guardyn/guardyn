@@ -139,18 +139,18 @@ impl MessagingClient {
     /// Get message history for a conversation
     pub async fn get_messages(
         &self,
-        conversation_user_id: String,
+        conversation_id: String,
         limit: i32,
     ) -> Result<Vec<IncomingMessage>, GrpcError> {
         debug!(
             "Getting messages for conversation: {}",
-            conversation_user_id
+            conversation_id
         );
 
         let request = GetMessagesRequest {
             access_token: self.grpc.get_auth_token().unwrap_or_default(),
-            conversation_user_id,
-            conversation_id: String::new(),
+            conversation_user_id: String::new(), // Not used when conversation_id is set
+            conversation_id,
             pagination: None,
             limit,
             start_time: None,
