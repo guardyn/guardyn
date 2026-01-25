@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { destroyWebSocket, getWebSocket, initWebSocket, type MessagePayload, type TypingPayload } from '../api/websocket';
-import { startMockGenerator, stopMockGenerator } from '../api/websocket.mock';
+import { stopMockGenerator } from '../api/websocket.mock';
 import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import {
@@ -63,21 +63,40 @@ const Chat: Component<ChatPageProps> = () => {
 
   onMount(async () => {
     try {
-      // Initialize WebSocket in stub mode for development
+      // Get WebSocket configuration from Tauri backend
+      const wsConfig = await invoke<{
+        url: string;
+        token: string | null;
+        device_id: string | null;
+        user_id: string | null;
+      }>('get_ws_config');
+
+      console.log('[Chat] WebSocket config:', {
+        url: wsConfig.url,
+        hasToken: !!wsConfig.token,
+        deviceId: wsConfig.device_id,
+        userId: wsConfig.user_id,
+      });
+
+      // Initialize WebSocket with real configuration
       const ws = initWebSocket({
-        url: 'wss://localhost:3000/ws',
-        stubMode: true,
+        url: wsConfig.url,
+        token: wsConfig.token || undefined,
+        deviceId: wsConfig.device_id || undefined,
+        stubMode: false, // Use real WebSocket connection
         autoReconnect: true,
       });
 
       if (ws) {
         // Listen for connection state changes
         ws.onStateChange((state) => {
+          console.log('[Chat] WebSocket state:', state);
           setIsConnected(state === 'connected');
         });
 
         // Listen for incoming messages
         ws.onMessage((data: MessagePayload) => {
+          console.log('[Chat] Received message:', data);
           addMessage({
             id: data.message_id || crypto.randomUUID(),
             conversationId: data.conversation_id || selectedConversation() || 'demo',
@@ -100,9 +119,6 @@ const Chat: Component<ChatPageProps> = () => {
 
         // Connect WebSocket
         ws.connect();
-
-        // Start mock generator in development
-        startMockGenerator(ws);
       }
 
       // Load conversations from Tauri backend
@@ -156,6 +172,15 @@ const Chat: Component<ChatPageProps> = () => {
     if (!convId) return;
     if (!content.trim() && !mediaId) return;
 
+    // Get recipient ID from the conversation
+    const conversation = conversations().find(c => c.id === convId);
+    const recipientId = conversation?.participant_ids?.[0];
+    
+    if (!recipientId) {
+      console.error('No recipient found for conversation:', convId);
+      return;
+    }
+
     // Get reply context if replying
     const replyContext = replyingTo();
 
@@ -189,10 +214,10 @@ const Chat: Component<ChatPageProps> = () => {
     }
 
     try {
-      // Send via WebSocket
+      // Send via WebSocket - use recipientId, not convId
       const ws = getWebSocket();
       if (ws && isConnected()) {
-        ws.sendMessage(convId, content, {
+        ws.sendMessage(recipientId, content, {
           clientMessageId: messageId,
           mediaId,
         });
@@ -201,6 +226,7 @@ const Chat: Component<ChatPageProps> = () => {
       // Also send via Tauri backend
       await invoke('send_message', {
         conversationId: convId,
+        recipientId: recipientId,
         content,
         mediaId,
       });

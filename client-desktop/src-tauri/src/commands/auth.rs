@@ -73,7 +73,19 @@ pub async fn login(
     tracing::info!("Login attempt for user: {}", request.username);
 
     // Generate key bundle for device registration
-    let key_bundle = generate_key_bundle().ok();
+    // Key bundle is REQUIRED for E2EE messaging - each device must have its own keys
+    let key_bundle = match generate_key_bundle() {
+        Ok(bundle) => {
+            tracing::info!("Key bundle generated successfully for login");
+            Some(bundle)
+        }
+        Err(e) => {
+            tracing::error!("Failed to generate key bundle for login: {}", e);
+            // Continue with login but warn that E2EE won't work
+            tracing::warn!("Login will proceed but E2EE messaging may not work without key bundle");
+            None
+        }
+    };
 
     // Call the auth service
     match state.auth().login(
@@ -88,10 +100,17 @@ pub async fn login(
             // Store session in state
             state.set_authenticated(true);
             state.set_user_id(Some(result.user_id.clone()));
+            state.set_device_id(Some(result.device_id.clone()));
             state.set_access_token(Some(result.access_token.clone()));
 
             // Update gRPC client with auth token
             state.grpc().set_auth_token(result.access_token.clone());
+
+            tracing::info!(
+                "Login successful for user: {}, device: {}",
+                result.user_id,
+                result.device_id
+            );
 
             let user_info = UserInfo {
                 user_id: result.user_id,
@@ -149,10 +168,15 @@ pub async fn register(
         key_bundle,
     ).await {
         Ok(result) => {
-            tracing::info!("Registration successful for user: {}", request.username);
+            tracing::info!(
+                "Registration successful for user: {}, device: {}",
+                request.username,
+                result.device_id
+            );
             // Store session in state
             state.set_authenticated(true);
             state.set_user_id(Some(result.user_id.clone()));
+            state.set_device_id(Some(result.device_id.clone()));
             state.set_access_token(Some(result.access_token.clone()));
 
             // Update gRPC client with auth token
@@ -220,4 +244,33 @@ pub async fn get_current_user(state: State<'_, AppState>) -> Result<Option<UserI
     } else {
         Ok(None)
     }
+}
+
+/// WebSocket connection configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WebSocketConfig {
+    pub url: String,
+    pub token: Option<String>,
+    pub device_id: Option<String>,
+    pub user_id: Option<String>,
+}
+
+/// Get WebSocket connection configuration
+/// Returns the token and device ID needed for WebSocket authentication
+#[tauri::command]
+pub async fn get_ws_config(state: State<'_, AppState>) -> Result<WebSocketConfig, String> {
+    // Get WebSocket URL from environment or use default for local development
+    let ws_host = std::env::var("WS_HOST").unwrap_or_else(|_| "localhost".to_string());
+    let ws_port = std::env::var("WS_PORT").unwrap_or_else(|_| "8081".to_string());
+    let ws_secure = std::env::var("WS_SECURE").unwrap_or_else(|_| "false".to_string());
+    
+    let protocol = if ws_secure == "true" { "wss" } else { "ws" };
+    let url = format!("{}://{}:{}/ws", protocol, ws_host, ws_port);
+    
+    Ok(WebSocketConfig {
+        url,
+        token: state.access_token(),
+        device_id: state.device_id(),
+        user_id: state.user_id(),
+    })
 }

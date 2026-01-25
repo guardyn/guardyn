@@ -57,6 +57,7 @@ pub struct Reaction {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendMessageRequest {
     pub conversation_id: String,
+    pub recipient_id: String,
     pub content: String,
     pub reply_to: Option<String>,
 }
@@ -72,8 +73,9 @@ pub async fn send_message(
     }
 
     tracing::debug!(
-        "Sending message to conversation: {}",
-        request.conversation_id
+        "Sending message to conversation: {}, recipient: {}",
+        request.conversation_id,
+        request.recipient_id
     );
 
     // Encrypt message content using Double Ratchet
@@ -83,9 +85,9 @@ pub async fn send_message(
     // 3. Encrypt with the session
     let encrypted_content = request.content.as_bytes().to_vec();
 
-    // Create outgoing message
+    // Create outgoing message - use recipient_id (user ID), not conversation_id
     let outgoing = OutgoingMessage {
-        recipient_user_id: request.conversation_id.clone(),
+        recipient_user_id: request.recipient_id.clone(),
         encrypted_content,
         message_type: 0, // TEXT message
         client_message_id: uuid::Uuid::new_v4().to_string(),
@@ -185,7 +187,7 @@ pub async fn get_messages(
                     // Decrypt message content
                     // In a real implementation, we would use Double Ratchet session
                     let content = String::from_utf8_lossy(&m.encrypted_content).to_string();
-                    
+
                     Message {
                         id: m.message_id,
                         conversation_id: conversation_id.clone(),

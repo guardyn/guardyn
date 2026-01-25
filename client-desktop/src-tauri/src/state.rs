@@ -24,6 +24,7 @@ pub struct AppState {
 struct AppStateInner {
     authenticated: bool,
     user_id: Option<String>,
+    device_id: Option<String>,
     access_token: Option<String>,
     settings: UserSettings,
 }
@@ -38,6 +39,7 @@ impl AppState {
             inner: Arc::new(RwLock::new(AppStateInner {
                 authenticated: false,
                 user_id: None,
+                device_id: None,
                 access_token: None,
                 settings: load_settings_from_disk(),
             })),
@@ -106,6 +108,16 @@ impl AppState {
         self.inner.write().user_id = user_id;
     }
 
+    /// Get device ID
+    pub fn device_id(&self) -> Option<String> {
+        self.inner.read().device_id.clone()
+    }
+
+    /// Set device ID
+    pub fn set_device_id(&self, device_id: Option<String>) {
+        self.inner.write().device_id = device_id;
+    }
+
     /// Get access token
     pub fn access_token(&self) -> Option<String> {
         self.inner.read().access_token.clone()
@@ -121,6 +133,7 @@ impl AppState {
         let mut state = self.inner.write();
         state.authenticated = false;
         state.user_id = None;
+        state.device_id = None;
         state.access_token = None;
     }
 
