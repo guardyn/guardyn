@@ -40,15 +40,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   /// Trigger background key replenishment after successful auth
+  /// 
+  /// Uses isolate-based generation for true background processing
+  /// without blocking the UI thread.
   void _triggerBackgroundKeyReplenishment() {
-    // Fire and forget - don't await, let it run in background
+    // Fire and forget - don't await, let it run in background isolate
     Future.microtask(() async {
       try {
+        // Use isolate-based replenishment for non-blocking operation
         final newKeys = await cryptoService
-            .replenishOneTimePreKeysInBackground();
+            .replenishOneTimePreKeysInIsolate();
         if (newKeys.isNotEmpty) {
           logger.i(
-            'Generated ${newKeys.length} new one-time pre-keys in background',
+            'Generated ${newKeys.length} new one-time pre-keys in background isolate',
           );
           // TODO: Upload new keys to server when API is available
         }

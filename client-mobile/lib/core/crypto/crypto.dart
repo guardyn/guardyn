@@ -19,11 +19,15 @@
 /// X3DH / DoubleRatchet ← Protocol implementations
 ///       ↓
 /// CryptoService    ← High-level session management
+///       ↓
+/// CryptoIsolate    ← Background key generation (non-blocking)
 /// ```
 library;
 
 // Exceptions
 export 'crypto_exceptions.dart';
+// Background isolate for key generation
+export 'crypto_isolate.dart';
 // Low-level crypto primitives (prefer using this)
 export 'crypto_primitives.dart';
 // High-level service

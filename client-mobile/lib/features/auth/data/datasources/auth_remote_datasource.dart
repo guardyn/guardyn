@@ -212,24 +212,26 @@ class AuthRemoteDatasource {
   /// Generate real X3DH KeyBundle for registration/login
   /// Uses CryptoService to create cryptographically secure keys
   /// 
-  /// Uses minimal keys for fast startup (5 keys).
+  /// OPTIMIZED: Uses isolate-based async generation for instant login.
+  /// Only 1 key is generated initially - more keys are added in background.
   /// Call [replenishKeysInBackground] after successful auth to generate more.
   Future<common.KeyBundle> _generateX3DHKeyBundle() async {
-    // Initialize X3DH if not already done (uses fast minimal key count)
-    if (!cryptoService.isInitialized) {
-      logger.i('Initializing X3DH protocol with minimal keys for fast startup');
-      await cryptoService.initializeX3DH(); // Uses default initialKeyCount (5)
-    }
+    final stopwatch = Stopwatch()..start();
+    
+    // Use async isolate-based generation for non-blocking UI
+    logger.i('Generating X3DH key bundle (async isolate)');
+    
+    final keyBundle = await cryptoService.generateKeyBundleAsync(
+      oneTimePreKeyCount: 1, // Minimal for fast startup
+    );
 
-    // Export real cryptographic key bundle
-    final keyBundle = cryptoService.exportKeyBundle(oneTimePreKeyIndex: 0);
-    if (keyBundle == null) {
-      throw AuthException('Failed to generate X3DH key bundle');
-    }
+    stopwatch.stop();
+    logger.i(
+      'Generated X3DH key bundle in ${stopwatch.elapsedMilliseconds}ms '
+      'with ${keyBundle.oneTimePreKey != null ? 1 : 0} one-time pre-key',
+    );
 
     final now = DateTime.now();
-    logger.i('Generated real X3DH key bundle with ${keyBundle.oneTimePreKey != null ? 1 : 0} one-time pre-key');
-
     return common.KeyBundle()
       ..identityKey = keyBundle.identityKey
       ..signedPreKey = keyBundle.signedPreKey

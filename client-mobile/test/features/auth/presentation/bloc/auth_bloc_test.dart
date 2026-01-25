@@ -36,6 +36,9 @@ void main() {
     // Setup default mock behavior for crypto service
     when(() => mockCryptoService.replenishOneTimePreKeysInBackground())
         .thenAnswer((_) async => []);
+    // Mock the new isolate-based replenishment method
+    when(() => mockCryptoService.replenishOneTimePreKeysInIsolate())
+        .thenAnswer((_) async => []);
     
     authBloc = AuthBloc(
       registerUser: mockRegisterUser,

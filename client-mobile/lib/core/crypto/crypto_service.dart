@@ -3,12 +3,14 @@
 /// Handles X3DH key exchange and Double Ratchet sessions
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'crypto_exceptions.dart';
+import 'crypto_isolate.dart';
 import 'crypto_primitives.dart';
 import 'double_ratchet.dart';
 import 'x3dh.dart';
@@ -16,7 +18,8 @@ import 'x3dh.dart';
 /// Configuration for one-time pre-key management
 class OneTimePreKeyConfig {
   /// Number of keys to generate on initial registration (fast startup)
-  static const int initialKeyCount = 5;
+  /// Set to 1 for instant login - more keys are generated in background
+  static const int initialKeyCount = 1;
 
   /// Target number of keys to maintain on server
   static const int targetKeyCount = 100;
@@ -39,6 +42,9 @@ class CryptoService {
 
   /// Flag to prevent multiple simultaneous replenishment operations
   bool _isReplenishing = false;
+  
+  /// Completer for pending key bundle generation (non-blocking)
+  Completer<X3DHKeyBundle>? _pendingKeyBundle;
 
   CryptoService({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage();
@@ -74,6 +80,159 @@ class CryptoService {
 
   /// Get the identity public key
   Uint8List? get identityPublicKey => _x3dh?.identityKey.publicKey;
+  
+  // =========================================================================
+  // FAST ASYNC KEY GENERATION (Isolate-based)
+  // =========================================================================
+
+  /// Generate X3DH key bundle asynchronously in background isolate
+  /// 
+  /// This method is NON-BLOCKING and returns immediately.
+  /// Keys are generated in a separate Dart isolate.
+  /// 
+  /// Returns a Future that completes when keys are ready.
+  Future<X3DHKeyBundle> generateKeyBundleAsync({
+    int oneTimePreKeyCount = 1,
+  }) async {
+    // If already initialized, return existing bundle immediately
+    if (isInitialized) {
+      final bundle = exportKeyBundle(oneTimePreKeyIndex: 0);
+      if (bundle != null) {
+        debugPrint('🔐 generateKeyBundleAsync: using existing keys');
+        return bundle;
+      }
+    }
+    
+    // If generation is already in progress, wait for it
+    if (_pendingKeyBundle != null && !_pendingKeyBundle!.isCompleted) {
+      debugPrint('🔐 generateKeyBundleAsync: waiting for pending generation');
+      return _pendingKeyBundle!.future;
+    }
+    
+    _pendingKeyBundle = Completer<X3DHKeyBundle>();
+    
+    debugPrint('🔐 generateKeyBundleAsync: starting isolate generation');
+    final stopwatch = Stopwatch()..start();
+    
+    try {
+      // Generate keys in background isolate
+      final result = await CryptoIsolateManager.instance.generateKeyBundle(
+        oneTimePreKeyCount: oneTimePreKeyCount,
+        onProgress: (current, total) {
+          debugPrint('🔐 Key generation progress: $current/$total');
+        },
+      );
+      
+      stopwatch.stop();
+      debugPrint('🔐 generateKeyBundleAsync: isolate completed in ${stopwatch.elapsedMilliseconds}ms');
+      
+      // Convert isolate result to X3DHProtocol
+      _x3dh = X3DHProtocol(
+        identityKey: IdentityKeyPair.fromBytes(
+          privateKey: result.identityPrivateKey,
+          publicKey: result.identityPublicKey,
+        ),
+        signedPreKey: SignedPreKey(
+          privateKey: result.signedPreKeyPrivate,
+          publicKey: result.signedPreKeyPublic,
+          signature: result.signedPreKeySignature,
+          keyId: result.signedPreKeyId,
+        ),
+        oneTimePreKeys: result.oneTimePreKeys.map((k) => OneTimePreKey(
+          privateKey: k.privateKey,
+          publicKey: k.publicKey,
+          keyId: k.keyId,
+        )).toList(),
+      );
+      
+      // Save to secure storage
+      await _saveX3DHState();
+      
+      final bundle = exportKeyBundle(oneTimePreKeyIndex: 0)!;
+      _pendingKeyBundle!.complete(bundle);
+      
+      return bundle;
+    } catch (e, stack) {
+      debugPrint('🔐 generateKeyBundleAsync error: $e\n$stack');
+      _pendingKeyBundle!.completeError(e);
+      rethrow;
+    }
+  }
+  
+  /// Replenish one-time pre-keys in background isolate
+  /// 
+  /// This is truly non-blocking and runs in a separate isolate.
+  Future<List<Uint8List>> replenishOneTimePreKeysInIsolate({
+    int? targetCount,
+  }) async {
+    if (_x3dh == null) {
+      debugPrint('🔐 replenishInIsolate: X3DH not initialized');
+      return [];
+    }
+
+    if (_isReplenishing) {
+      debugPrint('🔐 replenishInIsolate: already in progress');
+      return [];
+    }
+
+    final target = targetCount ?? OneTimePreKeyConfig.targetKeyCount;
+    final currentCount = availableOneTimePreKeyCount;
+
+    if (currentCount >= target) {
+      debugPrint(
+        '🔐 replenishInIsolate: already have $currentCount keys (target: $target)',
+      );
+      return [];
+    }
+
+    _isReplenishing = true;
+    final stopwatch = Stopwatch()..start();
+    
+    try {
+      final keysToGenerate = target - currentCount;
+      final startKeyId = _x3dh!.oneTimePreKeys.isEmpty
+          ? 0
+          : _x3dh!.oneTimePreKeys
+                    .map((k) => k.keyId)
+                    .reduce((a, b) => a > b ? a : b) +
+                1;
+      
+      debugPrint('🔐 replenishInIsolate: generating $keysToGenerate keys in isolate');
+      
+      // Generate in background isolate
+      final newKeys = await CryptoIsolateManager.instance.generateOneTimePreKeys(
+        count: keysToGenerate,
+        startKeyId: startKeyId,
+        onProgress: (current, total) {
+          if (current % 20 == 0 || current == total) {
+            debugPrint('🔐 Replenish progress: $current/$total');
+          }
+        },
+      );
+      
+      // Add to X3DH protocol
+      for (final keyData in newKeys) {
+        _x3dh!.oneTimePreKeys.add(OneTimePreKey(
+          privateKey: keyData.privateKey,
+          publicKey: keyData.publicKey,
+          keyId: keyData.keyId,
+        ));
+      }
+      
+      // Save updated state
+      await _saveX3DHState();
+      
+      stopwatch.stop();
+      debugPrint(
+        '🔐 replenishInIsolate: complete in ${stopwatch.elapsedMilliseconds}ms, '
+        'now have $availableOneTimePreKeyCount keys',
+      );
+      
+      return newKeys.map((k) => k.publicKey).toList();
+    } finally {
+      _isReplenishing = false;
+    }
+  }
 
   /// Initialize X3DH protocol (first time setup)
   /// Uses minimal keys for fast startup, replenish in background after login
