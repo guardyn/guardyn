@@ -15,7 +15,7 @@ mod tray;
 mod webrtc;
 mod window_state;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub use commands::*;
@@ -42,6 +42,55 @@ fn main() {
         .setup(|app| {
             // Initialize application state
             let state = AppState::new();
+            
+            // Setup call manager event handler
+            if let Some(mut event_receiver) = state.call_manager().subscribe() {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    while let Some(event) = event_receiver.recv().await {
+                        match event {
+                            webrtc::CallManagerEvent::IncomingCall { call_id, caller_id, caller_name, call_type } => {
+                                tracing::info!("Emitting incoming call event: call_id={}, from={}", call_id, caller_id);
+                                let payload = serde_json::json!({
+                                    "call_id": call_id,
+                                    "caller_id": caller_id,
+                                    "caller_name": caller_name,
+                                    "call_type": match call_type {
+                                        webrtc::CallType::Video => "video",
+                                        webrtc::CallType::Voice => "voice",
+                                    }
+                                });
+                                if let Err(e) = app_handle.emit("call:incoming", payload) {
+                                    tracing::error!("Failed to emit incoming call event: {}", e);
+                                }
+                            },
+                            webrtc::CallManagerEvent::StateChanged { call_id, state } => {
+                                let payload = serde_json::json!({
+                                    "call_id": call_id,
+                                    "state": format!("{:?}", state).to_lowercase()
+                                });
+                                let _ = app_handle.emit("call:state_changed", payload);
+                            },
+                            webrtc::CallManagerEvent::CallEnded { call_id, reason } => {
+                                let payload = serde_json::json!({
+                                    "call_id": call_id,
+                                    "reason": reason
+                                });
+                                let _ = app_handle.emit("call:ended", payload);
+                            },
+                            webrtc::CallManagerEvent::Error { call_id, message } => {
+                                let payload = serde_json::json!({
+                                    "call_id": call_id,
+                                    "error": message
+                                });
+                                let _ = app_handle.emit("call:error", payload);
+                            },
+                            _ => {} // Handle other events as needed
+                        }
+                    }
+                });
+            }
+            
             app.manage(state);
 
             // Setup system tray with enhanced menu

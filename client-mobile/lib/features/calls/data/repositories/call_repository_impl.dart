@@ -82,6 +82,10 @@ class CallRepositoryImpl implements CallRepository {
 
   /// Starts subscription to incoming calls from the backend
   Future<void> _startIncomingCallsSubscription() async {
+    // Cancel existing subscription before creating a new one
+    await _incomingCallsSubscription?.cancel();
+    _incomingCallsSubscription = null;
+
     try {
       final accessToken = await _tokenManager.getValidAccessToken();
       if (accessToken == null) {

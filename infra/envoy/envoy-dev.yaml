@@ -99,9 +99,10 @@ static_resources:
                             prefix: "/guardyn.calls."
                           route:
                             cluster: call_service
-                            timeout: 60s
+                            timeout: 0s  # No timeout for long-lived streams
                             max_stream_duration:
-                              grpc_timeout_header_max: 300s  # Long-lived streams for call events
+                              grpc_timeout_header_max: 0s  # No limit for incoming call subscriptions
+                              max_stream_duration: 0s  # Unlimited stream duration
 
                       cors:
                         allow_origin_string_match:

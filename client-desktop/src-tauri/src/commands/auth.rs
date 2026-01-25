@@ -112,6 +112,9 @@ pub async fn login(
             // Update gRPC client with auth token
             state.grpc().set_auth_token(result.access_token.clone());
 
+            // Start incoming calls subscription
+            state.call_manager().clone().start_incoming_calls_subscription();
+
             tracing::info!(
                 "Login successful for user: {}, device: {}",
                 result.user_id,
@@ -193,6 +196,9 @@ pub async fn register(
 
             // Update gRPC client with auth token
             state.grpc().set_auth_token(result.access_token.clone());
+
+            // Start incoming calls subscription
+            state.call_manager().clone().start_incoming_calls_subscription();
 
             let user_info = UserInfo {
                 user_id: result.user_id,

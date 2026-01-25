@@ -534,6 +534,53 @@ impl CallManager {
             warn!("Failed to send call manager event: {}", e);
         }
     }
+
+    /// Start listening for incoming calls
+    /// 
+    /// This spawns a background task that subscribes to incoming call notifications
+    /// from the backend and emits IncomingCall events.
+    pub fn start_incoming_calls_subscription(self: Arc<Self>) {
+        let manager = Arc::clone(&self);
+        
+        tauri::async_runtime::spawn(async move {
+            info!("Starting incoming calls subscription...");
+            
+            match manager.calls_client.subscribe_to_incoming_calls().await {
+                Ok(mut receiver) => {
+                    info!("Incoming calls subscription established");
+                    
+                    while let Some(notification) = receiver.recv().await {
+                        info!(
+                            "Received incoming call: call_id={}, from={} ({})",
+                            notification.call_id,
+                            notification.caller_id,
+                            notification.caller_display_name
+                        );
+                        
+                        // Convert call type from proto value
+                        let call_type = if notification.call_type == 2 {
+                            CallType::Video
+                        } else {
+                            CallType::Voice
+                        };
+                        
+                        // Emit the incoming call event
+                        manager.emit_event(CallManagerEvent::IncomingCall {
+                            call_id: notification.call_id,
+                            caller_id: notification.caller_id,
+                            caller_name: notification.caller_display_name,
+                            call_type,
+                        });
+                    }
+                    
+                    warn!("Incoming calls subscription stream ended");
+                }
+                Err(e) => {
+                    warn!("Failed to subscribe to incoming calls: {}", e);
+                }
+            }
+        });
+    }
 }
 
 /// Call information (safe to share across threads)

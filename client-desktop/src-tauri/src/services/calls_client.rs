@@ -8,12 +8,15 @@ use crate::proto::calls::{
     ExchangeIceCandidateRequest, ExchangeSdpRequest, ExchangeSFrameKeyRequest,
     GetCallHistoryRequest, GetCallStateRequest, IceCandidate, InitiateCallRequest,
     ParticipantKeyPackage, RejectCallRequest, SdpMessage, SetMuteRequest, SetVideoRequest,
+    SubscribeToIncomingCallsRequest,
 };
+use futures::StreamExt;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Call initiation result
 #[derive(Debug, Clone)]
@@ -67,6 +70,20 @@ pub struct CallHistoryEntry {
     pub end_reason: i32,
     pub started_at: i64,
     pub duration_seconds: i32,
+}
+
+/// Incoming call notification
+#[derive(Debug, Clone)]
+pub struct IncomingCallNotification {
+    pub call_id: String,
+    pub call_type: i32,
+    pub is_group_call: bool,
+    pub group_id: Option<String>,
+    pub caller_id: String,
+    pub caller_display_name: String,
+    pub caller_avatar_url: Option<String>,
+    pub ice_servers: Vec<IceServerInfo>,
+    pub created_at: i64,
 }
 
 /// Call service client
@@ -509,5 +526,83 @@ impl CallsClient {
             }
             None => Err(GrpcError::RequestFailed("Empty response".to_string())),
         }
+    }
+
+    /// Subscribe to incoming call notifications
+    /// Returns a receiver channel that will receive incoming call notifications
+    pub async fn subscribe_to_incoming_calls(
+        &self,
+    ) -> Result<mpsc::Receiver<IncomingCallNotification>, GrpcError> {
+        info!("Subscribing to incoming calls");
+
+        let request = SubscribeToIncomingCallsRequest {
+            access_token: self.grpc.get_auth_token().unwrap_or_default(),
+        };
+
+        let mut client = self.client().await?;
+        let request = self.with_auth(Request::new(request))?;
+
+        let response = client
+            .subscribe_to_incoming_calls(request)
+            .await
+            .map_err(|e| GrpcError::RequestFailed(e.to_string()))?;
+
+        let mut stream = response.into_inner();
+        let (tx, rx) = mpsc::channel::<IncomingCallNotification>(100);
+
+        // Spawn task to read from stream and forward to channel
+        tokio::spawn(async move {
+            while let Some(result) = stream.next().await {
+                match result {
+                    Ok(notification) => {
+                        info!(
+                            "Incoming call from {} (call_id: {})",
+                            notification.caller_display_name, notification.call_id
+                        );
+                        let incoming = IncomingCallNotification {
+                            call_id: notification.call_id,
+                            call_type: notification.call_type,
+                            is_group_call: notification.is_group_call,
+                            group_id: notification.group_id.filter(|s| !s.is_empty()),
+                            caller_id: notification.caller_id,
+                            caller_display_name: notification.caller_display_name,
+                            caller_avatar_url: notification.caller_avatar_url.filter(|s| !s.is_empty()),
+                            ice_servers: notification
+                                .ice_servers
+                                .into_iter()
+                                .map(|s| IceServerInfo {
+                                    urls: s.urls,
+                                    username: if s.username.is_empty() {
+                                        None
+                                    } else {
+                                        Some(s.username)
+                                    },
+                                    credential: if s.credential.is_empty() {
+                                        None
+                                    } else {
+                                        Some(s.credential)
+                                    },
+                                })
+                                .collect(),
+                            created_at: notification
+                                .created_at
+                                .map(|t| t.seconds)
+                                .unwrap_or(0),
+                        };
+                        if tx.send(incoming).await.is_err() {
+                            warn!("Incoming calls receiver dropped");
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Incoming calls stream error: {}", e);
+                        break;
+                    }
+                }
+            }
+            info!("Incoming calls subscription ended");
+        });
+
+        Ok(rx)
     }
 }

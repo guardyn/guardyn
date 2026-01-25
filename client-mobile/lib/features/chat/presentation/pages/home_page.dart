@@ -28,6 +28,7 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<AuthState>? _authSubscription;
   AuthState? _currentAuthState;
   late final IncomingCallService _incomingCallService;
+  bool _incomingCallServiceStarted = false;
 
   @override
   void initState() {
@@ -46,9 +47,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Set context and start listening after build context is available
-    _incomingCallService.setAppContext(context);
-    _incomingCallService.startListening();
+    // Set context and start listening after build context is available (only once)
+    if (!_incomingCallServiceStarted) {
+      _incomingCallServiceStarted = true;
+      _incomingCallService.setAppContext(context);
+      _incomingCallService.startListening();
+    }
   }
 
   @override
