@@ -219,6 +219,7 @@ export class WebSocketClient {
       encrypted?: boolean;
       clientMessageId?: string;
       mediaId?: string;
+      recipientUsername?: string;
     } = {}
   ): string {
     const clientMessageId = options.clientMessageId ?? crypto.randomUUID();

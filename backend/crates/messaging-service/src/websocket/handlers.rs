@@ -85,11 +85,17 @@ async fn handle_auth(ctx: &WsContext, auth: AuthMessage) -> WsMessage {
     match jwt::validate_token(&auth.token, &ctx.jwt_secret) {
         Ok(claims) => {
             let user_id = claims.sub;
+            let username = if claims.username.is_empty() {
+                None
+            } else {
+                Some(claims.username)
+            };
 
             // Authenticate the connection
             if let Err(e) = ctx.connection_manager.authenticate_connection(
                 &ctx.connection_id,
                 user_id.clone(),
+                username,
                 auth.device_id,
             ) {
                 error!(
@@ -154,6 +160,14 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
         }
     };
 
+    // Get sender's username from connection
+    let sender_username = ctx.connection_manager.get_username(&ctx.connection_id)
+        .unwrap_or_else(|| sender_id.clone());
+
+    // Get recipient username from send payload or use recipient_id as fallback
+    let recipient_username = send.recipient_username.clone()
+        .unwrap_or_else(|| send.recipient_id.clone());
+
     let message_id = Uuid::new_v4().to_string();
     let timestamp = chrono::Utc::now();
     let timestamp_str = timestamp.to_rfc3339();
@@ -179,7 +193,7 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
     };
 
     // Store in ScyllaDB via the database client
-    if let Err(e) = store_message_in_db(ctx, &message).await {
+    if let Err(e) = store_message_in_db(ctx, &message, &sender_username, &recipient_username).await {
         error!(
             message_id = %message_id,
             error = %e,
@@ -219,16 +233,12 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
 }
 
 /// Store message in database
-async fn store_message_in_db(ctx: &WsContext, message: &MessagePayload) -> Result<(), String> {
-    // This integrates with the existing DatabaseClient
-    // In production, you would use the proper ORM/query methods
-    let query = r#"
-        INSERT INTO guardyn.messages (
-            message_id, sender_id, recipient_id, content,
-            content_type, is_encrypted, created_at, read_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, null)
-    "#;
-
+async fn store_message_in_db(
+    ctx: &WsContext,
+    message: &MessagePayload,
+    sender_username: &str,
+    recipient_username: &str,
+) -> Result<(), String> {
     let timestamp = chrono::DateTime::parse_from_rfc3339(&message.timestamp)
         .map_err(|e| format!("Invalid timestamp: {}", e))?
         .with_timezone(&chrono::Utc);
@@ -237,7 +247,9 @@ async fn store_message_in_db(ctx: &WsContext, message: &MessagePayload) -> Resul
         .execute_message_insert(
             &message.message_id,
             &message.sender_id,
+            sender_username,
             &message.recipient_id,
+            recipient_username,
             &message.content,
             &message.content_type,
             message.encrypted,

@@ -216,9 +216,10 @@ const Chat: Component<ChatPageProps> = () => {
     if (!convId) return;
     if (!content.trim() && !mediaId) return;
 
-    // Get recipient ID from the conversation
+    // Get recipient ID and username from the conversation
     const conversation = conversations().find(c => c.id === convId);
     const recipientId = conversation?.participant_ids?.[0];
+    const recipientUsername = conversation?.name; // Use conversation name as recipient username
 
     if (!recipientId) {
       console.error('No recipient found for conversation:', convId);
@@ -264,6 +265,7 @@ const Chat: Component<ChatPageProps> = () => {
         ws.sendMessage(recipientId, content, {
           clientMessageId: messageId,
           mediaId,
+          recipientUsername,
         });
       }
 

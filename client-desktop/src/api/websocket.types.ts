@@ -105,6 +105,8 @@ export interface AuthResponsePayload {
 export interface SendMessagePayload {
   /** Recipient user ID */
   recipient_id: string;
+  /** Recipient username (for conversation display) */
+  recipient_username?: string;
   /** Message content (plaintext or encrypted) */
   content: string;
   /** Whether content is E2EE encrypted */
@@ -412,6 +414,7 @@ export function createSendMessage(
     contentType?: ContentType;
     clientMessageId?: string;
     mediaId?: string;
+    recipientUsername?: string;
   } = {}
 ): WsMessage {
   return {
@@ -423,6 +426,7 @@ export function createSendMessage(
       content_type: options.contentType ?? 'text',
       client_message_id: options.clientMessageId ?? crypto.randomUUID(),
       ...(options.mediaId && { media_id: options.mediaId }),
+      ...(options.recipientUsername && { recipient_username: options.recipientUsername }),
     },
   };
 }

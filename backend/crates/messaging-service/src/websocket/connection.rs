@@ -24,6 +24,8 @@ pub type DeviceId = String;
 pub struct ConnectionInfo {
     /// User ID (set after authentication)
     pub user_id: Option<UserId>,
+    /// Username for display purposes
+    pub username: Option<String>,
     /// Device ID for multi-device support
     pub device_id: Option<DeviceId>,
     /// Channel to send messages to this connection
@@ -74,6 +76,7 @@ impl ConnectionManager {
         let now = chrono::Utc::now();
         let info = ConnectionInfo {
             user_id: None,
+            username: None,
             device_id: None,
             sender,
             connected_at: now,
@@ -90,11 +93,13 @@ impl ConnectionManager {
         &self,
         connection_id: &str,
         user_id: UserId,
+        username: Option<String>,
         device_id: Option<DeviceId>,
     ) -> Result<(), &'static str> {
         // Update connection info with user ID
         if let Some(mut conn) = self.connections.get_mut(connection_id) {
             conn.user_id = Some(user_id.clone());
+            conn.username = username;
             conn.device_id = device_id;
             conn.last_activity = chrono::Utc::now();
         } else {
@@ -155,6 +160,13 @@ impl ConnectionManager {
         self.connections
             .get(connection_id)
             .and_then(|c| c.user_id.clone())
+    }
+
+    /// Get username for a connection
+    pub fn get_username(&self, connection_id: &str) -> Option<String> {
+        self.connections
+            .get(connection_id)
+            .and_then(|c| c.username.clone())
     }
 
     /// Get connection info

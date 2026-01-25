@@ -1707,7 +1707,9 @@ impl DatabaseClient {
         &self,
         message_id: &str,
         sender_id: &str,
+        sender_username: &str,
         recipient_id: &str,
+        recipient_username: &str,
         content: &str,
         content_type: &str,
         encrypted: bool,
@@ -1749,11 +1751,15 @@ impl DatabaseClient {
             content
         };
 
+        // Use actual usernames for conversation display
+        let recipient_display = if recipient_username.is_empty() { recipient_id } else { recipient_username };
+        let sender_display = if sender_username.is_empty() { sender_id } else { sender_username };
+
         self.upsert_conversation(
             sender_id,
             &conversation_id.to_string(),
             recipient_id,
-            recipient_id, // other_username (use ID as fallback)
+            recipient_display, // Use recipient's username for sender's view
             message_id,
             preview,
             time_ms,
@@ -1764,7 +1770,7 @@ impl DatabaseClient {
             recipient_id,
             &conversation_id.to_string(),
             sender_id,
-            sender_id, // other_username (use ID as fallback)
+            sender_display, // Use sender's username for recipient's view
             message_id,
             preview,
             time_ms,

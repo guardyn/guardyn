@@ -94,6 +94,9 @@ pub struct AuthResponse {
 pub struct SendMessagePayload {
     /// Recipient user ID
     pub recipient_id: String,
+    /// Recipient username (for conversation display)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recipient_username: Option<String>,
     /// Message content (plaintext or encrypted)
     pub content: String,
     /// Whether content is E2EE encrypted
