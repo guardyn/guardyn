@@ -60,6 +60,10 @@ const Chat: Component<ChatPageProps> = () => {
   const messages = () => getActiveMessages();
   const typingUsers = () => getActiveTypingUsers();
   const replyingTo = () => getReplyingTo();
+  
+  // Get selected conversation object
+  const selectedConv = () => conversations().find(c => c.id === selectedConversation());
+  const isGroupChat = () => selectedConv()?.is_group ?? false;
 
   onMount(async () => {
     console.log('[Chat] onMount started');
@@ -107,23 +111,27 @@ const Chat: Component<ChatPageProps> = () => {
           const convId = data.conversation_id || 'unknown';
           
           // Check if we have this conversation already
-          const existingConv = conversations().find(c => c.id === convId);
-          if (!existingConv) {
+          let conv = conversations().find(c => c.id === convId);
+          if (!conv) {
             // New conversation! Refresh the list
             console.log('[Chat] New conversation detected, refreshing list...');
             try {
               const convs = await invoke<Conversation[]>('get_conversations');
               setConversations(convs);
+              conv = convs.find(c => c.id === convId);
             } catch (err) {
               console.error('Failed to refresh conversations:', err);
             }
           }
           
+          // For 1-to-1 chats, use conversation name as sender name
+          const senderDisplayName = conv?.name || 'User';
+          
           addMessage({
             id: data.message_id || crypto.randomUUID(),
             conversationId: convId,
             senderId: data.sender_id || 'other',
-            senderName: data.sender_id || 'User',
+            senderName: senderDisplayName,
             content: data.content,
             timestamp: typeof data.timestamp === 'string' ? new Date(data.timestamp).getTime() : (data.timestamp || Date.now()),
             status: 'delivered',
@@ -181,13 +189,17 @@ const Chat: Component<ChatPageProps> = () => {
         timestamp: string;
       }>>('get_messages', { conversationId: id });
 
+      // Get conversation name for sender display
+      const conv = conversations().find(c => c.id === id);
+      const partnerName = conv?.name || 'User';
+      
       // Add backend messages to store
       msgs.forEach(msg => {
         addMessage({
           id: msg.id,
           conversationId: id,
           senderId: msg.sender_id,
-          senderName: msg.sender_id === 'self' ? 'You' : 'User',
+          senderName: msg.sender_id === 'self' ? 'You' : partnerName,
           content: msg.content,
           timestamp: new Date(msg.timestamp).getTime(),
           status: 'delivered',
@@ -495,7 +507,8 @@ const Chat: Component<ChatPageProps> = () => {
                         />
                       </Show>
 
-                      <Show when={!message.isOwn}>
+                      {/* Show sender name only in group chats */}
+                      <Show when={!message.isOwn && isGroupChat()}>
                         <p class="text-xs font-medium text-guardyn-600 dark:text-guardyn-400 mb-1">
                           {message.senderName}
                         </p>
