@@ -325,16 +325,19 @@ impl CallNatsClient {
         let consumer_name = format!("call-{}-ice-{}", call_id, user_id);
         let subject_filter = subjects::ice_candidate(call_id, user_id);
 
+        // Delete existing consumer to ensure fresh start and receive all messages
+        let _ = self.calls_stream.delete_consumer(&consumer_name).await;
+
         let consumer = self
             .calls_stream
-            .get_or_create_consumer(
-                &consumer_name,
-                jetstream::consumer::pull::Config {
-                    filter_subject: subject_filter.clone(),
-                    durable_name: Some(consumer_name.clone()),
-                    ..Default::default()
-                },
-            )
+            .create_consumer(jetstream::consumer::pull::Config {
+                filter_subject: subject_filter.clone(),
+                durable_name: Some(consumer_name.clone()),
+                // Deliver ALL messages to get ICE candidates published before subscription
+                deliver_policy: jetstream::consumer::DeliverPolicy::All,
+                ack_policy: jetstream::consumer::AckPolicy::Explicit,
+                ..Default::default()
+            })
             .await
             .context("Failed to create ICE consumer")?;
 
@@ -351,16 +354,20 @@ impl CallNatsClient {
         let consumer_name = format!("call-{}-sdp-{}", call_id, user_id);
         let subject_filter = subjects::sdp(call_id, user_id);
 
+        // Delete existing consumer to ensure fresh start and receive all messages
+        let _ = self.calls_stream.delete_consumer(&consumer_name).await;
+
         let consumer = self
             .calls_stream
-            .get_or_create_consumer(
-                &consumer_name,
-                jetstream::consumer::pull::Config {
-                    filter_subject: subject_filter.clone(),
-                    durable_name: Some(consumer_name.clone()),
-                    ..Default::default()
-                },
-            )
+            .create_consumer(jetstream::consumer::pull::Config {
+                filter_subject: subject_filter.clone(),
+                durable_name: Some(consumer_name.clone()),
+                // Deliver ALL messages from the stream for this subject
+                // This ensures we get SDP offer even if published before subscription
+                deliver_policy: jetstream::consumer::DeliverPolicy::All,
+                ack_policy: jetstream::consumer::AckPolicy::Explicit,
+                ..Default::default()
+            })
             .await
             .context("Failed to create SDP consumer")?;
 
@@ -377,16 +384,18 @@ impl CallNatsClient {
         let consumer_name = format!("call-{}-events", call_id);
         let subject_filter = subjects::events(call_id);
 
+        // Delete existing consumer to ensure fresh start
+        let _ = self.calls_stream.delete_consumer(&consumer_name).await;
+
         let consumer = self
             .calls_stream
-            .get_or_create_consumer(
-                &consumer_name,
-                jetstream::consumer::pull::Config {
-                    filter_subject: subject_filter.clone(),
-                    durable_name: Some(consumer_name.clone()),
-                    ..Default::default()
-                },
-            )
+            .create_consumer(jetstream::consumer::pull::Config {
+                filter_subject: subject_filter.clone(),
+                durable_name: Some(consumer_name.clone()),
+                deliver_policy: jetstream::consumer::DeliverPolicy::All,
+                ack_policy: jetstream::consumer::AckPolicy::Explicit,
+                ..Default::default()
+            })
             .await
             .context("Failed to create events consumer")?;
 
@@ -404,16 +413,18 @@ impl CallNatsClient {
         let consumer_name = format!("call-{}-sframe-{}", call_id, user_id);
         let subject_filter = subjects::sframe_key(call_id, user_id);
 
+        // Delete existing consumer to ensure fresh start
+        let _ = self.calls_stream.delete_consumer(&consumer_name).await;
+
         let consumer = self
             .calls_stream
-            .get_or_create_consumer(
-                &consumer_name,
-                jetstream::consumer::pull::Config {
-                    filter_subject: subject_filter.clone(),
-                    durable_name: Some(consumer_name.clone()),
-                    ..Default::default()
-                },
-            )
+            .create_consumer(jetstream::consumer::pull::Config {
+                filter_subject: subject_filter.clone(),
+                durable_name: Some(consumer_name.clone()),
+                deliver_policy: jetstream::consumer::DeliverPolicy::All,
+                ack_policy: jetstream::consumer::AckPolicy::Explicit,
+                ..Default::default()
+            })
             .await
             .context("Failed to create SFrame consumer")?;
 

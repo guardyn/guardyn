@@ -664,64 +664,74 @@ impl CallManager {
     /// 
     /// This spawns a background task that subscribes to incoming call notifications
     /// from the backend and emits IncomingCall events.
+    /// 
+    /// **Auto-reconnect**: If the subscription stream ends or fails, it will
+    /// automatically reconnect after a short delay.
     pub fn start_incoming_calls_subscription(self: Arc<Self>) {
         let manager = Arc::clone(&self);
         
         tauri::async_runtime::spawn(async move {
-            info!("Starting incoming calls subscription...");
-            
-            match manager.calls_client.subscribe_to_incoming_calls().await {
-                Ok(mut receiver) => {
-                    info!("Incoming calls subscription established");
-                    
-                    while let Some(notification) = receiver.recv().await {
-                        info!(
-                            "Received incoming call: call_id={}, from={} ({})",
-                            notification.call_id,
-                            notification.caller_id,
-                            notification.caller_display_name
-                        );
+            loop {
+                info!("Starting incoming calls subscription...");
+                
+                match manager.calls_client.subscribe_to_incoming_calls().await {
+                    Ok(mut receiver) => {
+                        info!("Incoming calls subscription established");
                         
-                        // Convert call type from proto value
-                        let call_type = if notification.call_type == 2 {
-                            CallType::Video
-                        } else {
-                            CallType::Voice
-                        };
+                        while let Some(notification) = receiver.recv().await {
+                            info!(
+                                "Received incoming call: call_id={}, from={} ({})",
+                                notification.call_id,
+                                notification.caller_id,
+                                notification.caller_display_name
+                            );
+                            
+                            // Convert call type from proto value
+                            let call_type = if notification.call_type == 2 {
+                                CallType::Video
+                            } else {
+                                CallType::Voice
+                            };
+                            
+                            // Store the pending incoming call info for later use when accepting
+                            let pending_call = PendingIncomingCall {
+                                call_id: notification.call_id.clone(),
+                                caller_id: notification.caller_id.clone(),
+                                caller_name: notification.caller_display_name.clone(),
+                                call_type,
+                                received_at: std::time::Instant::now(),
+                            };
+                            manager.pending_incoming_calls.write().insert(
+                                notification.call_id.clone(),
+                                pending_call,
+                            );
+                            
+                            // Start listening for call events IMMEDIATELY
+                            // This is crucial to detect if the caller cancels the call
+                            // before we accept/reject
+                            let call_id_for_events = notification.call_id.clone();
+                            manager.start_incoming_call_events_subscription(call_id_for_events);
+                            
+                            // Emit the incoming call event
+                            manager.emit_event(CallManagerEvent::IncomingCall {
+                                call_id: notification.call_id,
+                                caller_id: notification.caller_id,
+                                caller_name: notification.caller_display_name,
+                                call_type,
+                            });
+                        }
                         
-                        // Store the pending incoming call info for later use when accepting
-                        let pending_call = PendingIncomingCall {
-                            call_id: notification.call_id.clone(),
-                            caller_id: notification.caller_id.clone(),
-                            caller_name: notification.caller_display_name.clone(),
-                            call_type,
-                            received_at: std::time::Instant::now(),
-                        };
-                        manager.pending_incoming_calls.write().insert(
-                            notification.call_id.clone(),
-                            pending_call,
-                        );
-                        
-                        // Start listening for call events IMMEDIATELY
-                        // This is crucial to detect if the caller cancels the call
-                        // before we accept/reject
-                        let call_id_for_events = notification.call_id.clone();
-                        manager.start_incoming_call_events_subscription(call_id_for_events);
-                        
-                        // Emit the incoming call event
-                        manager.emit_event(CallManagerEvent::IncomingCall {
-                            call_id: notification.call_id,
-                            caller_id: notification.caller_id,
-                            caller_name: notification.caller_display_name,
-                            call_type,
-                        });
+                        warn!("Incoming calls subscription stream ended, reconnecting in 1s...");
                     }
-                    
-                    warn!("Incoming calls subscription stream ended");
+                    Err(e) => {
+                        warn!("Failed to subscribe to incoming calls: {}, retrying in 5s...", e);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                        continue;
+                    }
                 }
-                Err(e) => {
-                    warn!("Failed to subscribe to incoming calls: {}", e);
-                }
+                
+                // Reconnect after stream ended
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
         });
     }
