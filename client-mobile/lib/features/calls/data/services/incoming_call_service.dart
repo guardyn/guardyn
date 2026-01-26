@@ -54,7 +54,7 @@ class IncomingCallService {
         );
       },
     );
-    
+
     // Also listen for call state changes to close dialog when caller cancels
     _callStateChangesSubscription?.cancel();
     _callStateChangesSubscription = _callRepository.callStateChanges.listen(
@@ -66,7 +66,7 @@ class IncomingCallService {
         );
       },
     );
-    
+
     _logger.i('🔔 IncomingCallService: Listening started successfully');
   }
 
@@ -87,7 +87,7 @@ class IncomingCallService {
     );
 
     // If we're showing an incoming call dialog and the call ended, close it
-    if (_isShowingIncomingCall && 
+    if (_isShowingIncomingCall &&
         _currentIncomingCallId == call.id &&
         (call.status == CallStatus.ended || call.status == CallStatus.failed)) {
       _logger.i('🔔 IncomingCallService: Caller cancelled - closing incoming call dialog');
