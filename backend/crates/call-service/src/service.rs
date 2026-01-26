@@ -422,7 +422,7 @@ impl CallService for CallServiceImpl {
             // Poll for incoming call notifications
             loop {
                 if tx.is_closed() {
-                    debug!("Incoming call stream closed for user {}", user_id_clone);
+                    warn!("⚠️ Incoming call stream CLOSED for user {} - client disconnected", user_id_clone);
                     break;
                 }
 
