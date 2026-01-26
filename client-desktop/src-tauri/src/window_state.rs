@@ -12,7 +12,7 @@ use tauri::{App, Manager, PhysicalPosition, PhysicalSize, Runtime, WebviewWindow
 pub struct WindowState {
     /// Window X position
     pub x: Option<i32>,
-    /// Window Y position  
+    /// Window Y position
     pub y: Option<i32>,
     /// Window width
     pub width: Option<u32>,
@@ -33,7 +33,7 @@ impl WindowState {
     /// Load window state from disk
     pub fn load(app_data_dir: &PathBuf) -> Option<Self> {
         let path = Self::state_file_path(app_data_dir);
-        
+
         if !path.exists() {
             tracing::debug!("No window state file found at {:?}", path);
             return None;
@@ -69,7 +69,7 @@ impl WindowState {
         let content = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
         fs::write(&path, content).map_err(|e| e.to_string())?;
 
-        tracing::debug!("Saved window state to {:?}", path);
+        //tracing::debug!("Saved window state to {:?}", path);
         Ok(())
     }
 
@@ -166,11 +166,11 @@ pub fn setup_window_state<R: Runtime>(app: &App<R>) -> Result<(), Box<dyn std::e
 
         window.on_window_event(move |event| {
             use tauri::WindowEvent;
-            
+
             match event {
-                WindowEvent::CloseRequested { .. } 
-                | WindowEvent::Destroyed 
-                | WindowEvent::Resized(_) 
+                WindowEvent::CloseRequested { .. }
+                | WindowEvent::Destroyed
+                | WindowEvent::Resized(_)
                 | WindowEvent::Moved(_) => {
                     // Save window state on close, resize, or move
                     let state = WindowState::capture_from_window(&window_clone);

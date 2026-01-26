@@ -152,9 +152,74 @@ class CallRepositoryImpl implements CallRepository {
     _incomingCallsController.add(call);
     _callStateChangesController.add(call);
 
+    // Start listening for call events IMMEDIATELY
+    // This is crucial to detect if the caller cancels the call before we accept/reject
+    _startPendingCallEventStream(data.callId);
+
     // Play incoming ringtone
     _callAudioService.playIncomingRingtone();
     _logger.i('🔔 CallRepository: Incoming call processing complete, ringtone playing');
+  }
+
+  /// Subscription for pending call events (incoming calls before accept/reject)
+  StreamSubscription<CallEventData>? _pendingCallEventsSubscription;
+
+  /// Start listening for events on a pending incoming call
+  /// This detects if the caller cancels before we accept/reject
+  Future<void> _startPendingCallEventStream(String callId) async {
+    await _pendingCallEventsSubscription?.cancel();
+    _pendingCallEventsSubscription = null;
+
+    _logger.i('🔔 CallRepository: Starting pending call events stream for $callId');
+
+    try {
+      final accessToken = await _tokenManager.getValidAccessToken();
+      if (accessToken == null) {
+        _logger.w('🔔 CallRepository: No access token for pending call events');
+        return;
+      }
+
+      _pendingCallEventsSubscription = _callRemoteDatasource
+          .streamCallEvents(accessToken: accessToken, callId: callId)
+          .listen(
+            (event) => _handlePendingCallEvent(event),
+            onError: (error) {
+              _logger.e('🔔 CallRepository: Pending call events error: $error');
+            },
+            onDone: () {
+              _logger.i('🔔 CallRepository: Pending call events stream closed');
+            },
+          );
+    } catch (e, stackTrace) {
+      _logger.e(
+        '🔔 CallRepository: Failed to start pending call events stream',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Handle events for pending incoming calls (before accept/reject)
+  void _handlePendingCallEvent(CallEventData event) {
+    if (event is CallStateChangedEvent) {
+      _logger.i('🔔 CallRepository: Pending call state changed to ${event.newState}');
+      
+      if (event.newState == CallStateType.ended ||
+          event.newState == CallStateType.failed) {
+        // Caller cancelled the call before we answered
+        _logger.i('🔔 CallRepository: Caller cancelled - ending pending call');
+        
+        // Stop ringtone
+        _callAudioService.stopIncomingRingtone();
+        
+        // End the call with appropriate reason
+        _endCall(_mapEndReason(event.endReason));
+        
+        // Cancel the pending subscription
+        _pendingCallEventsSubscription?.cancel();
+        _pendingCallEventsSubscription = null;
+      }
+    }
   }
 
   void _handleWebRTCEvent(WebRTCEvent event) {
@@ -624,6 +689,10 @@ class CallRepositoryImpl implements CallRepository {
     }
 
     try {
+      // Cancel pending call events subscription - we'll start a new one for the active call
+      await _pendingCallEventsSubscription?.cancel();
+      _pendingCallEventsSubscription = null;
+
       // Stop incoming ringtone
       await _callAudioService.stopIncomingRingtone();
 
@@ -683,6 +752,13 @@ class CallRepositoryImpl implements CallRepository {
     }
 
     try {
+      // Cancel pending call events subscription
+      await _pendingCallEventsSubscription?.cancel();
+      _pendingCallEventsSubscription = null;
+
+      // Stop incoming ringtone
+      await _callAudioService.stopIncomingRingtone();
+
       // Get access token
       final accessToken = await _tokenManager.getValidAccessToken();
       if (accessToken == null) {
@@ -860,6 +936,7 @@ class CallRepositoryImpl implements CallRepository {
   Future<void> dispose() async {
     _stopDurationTimer();
     await _callEventsSubscription?.cancel();
+    await _pendingCallEventsSubscription?.cancel();
     await _webrtcSubscription?.cancel();
     await _signalingSubscription?.cancel();
     await _incomingCallsSubscription?.cancel();

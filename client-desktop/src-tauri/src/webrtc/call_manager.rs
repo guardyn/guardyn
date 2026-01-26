@@ -567,6 +567,99 @@ impl CallManager {
         }
     }
 
+    /// Start listening for call events for an incoming call BEFORE accepting
+    /// 
+    /// This is specifically for pending incoming calls - it monitors for
+    /// CallEnded or CallRejected events which indicate the caller has cancelled.
+    fn start_incoming_call_events_subscription(&self, call_id: String) {
+        let calls_client = Arc::clone(&self.calls_client);
+        let event_sender = self.event_sender.clone();
+        let pending_calls = Arc::clone(&self.pending_incoming_calls);
+
+        tauri::async_runtime::spawn(async move {
+            info!("Starting incoming call events subscription for pending call: {}", call_id);
+
+            match calls_client.stream_call_events(call_id.clone()).await {
+                Ok(mut receiver) => {
+                    info!("Incoming call events subscription established for: {}", call_id);
+
+                    while let Some(event) = receiver.recv().await {
+                        match event {
+                            crate::services::CallEventReceived::StateChanged {
+                                call_id: cid,
+                                old_state: _,
+                                new_state,
+                                end_reason,
+                            } => {
+                                info!(
+                                    "Pending call {} state changed to: {} (end_reason: {})",
+                                    cid, new_state, end_reason
+                                );
+
+                                // Check if call ended or failed (states 6 or 7)
+                                if new_state == 6 || new_state == 7 {
+                                    // ENDED or FAILED
+                                    let reason = match end_reason {
+                                        1 => "Normal".to_string(),
+                                        2 => "Declined".to_string(),
+                                        3 => "Missed".to_string(),
+                                        4 => "Busy".to_string(),
+                                        5 => "Failed".to_string(),
+                                        6 => "Cancelled".to_string(),
+                                        _ => "Unknown".to_string(),
+                                    };
+
+                                    // Remove from pending calls
+                                    pending_calls.write().remove(&cid);
+
+                                    // Emit call ended event to close incoming call dialog
+                                    let _ = event_sender.send(CallManagerEvent::CallEnded {
+                                        call_id: cid.clone(),
+                                        reason,
+                                    });
+
+                                    info!("Pending call {} was cancelled by caller", cid);
+                                    break;
+                                }
+                            }
+                            crate::services::CallEventReceived::CallEnded { call_id: cid, reason } => {
+                                info!("Pending call {} ended with reason: {}", cid, reason);
+
+                                // Remove from pending calls
+                                pending_calls.write().remove(&cid);
+
+                                let reason_str = match reason {
+                                    1 => "Normal".to_string(),
+                                    2 => "Declined".to_string(),
+                                    3 => "Missed".to_string(),
+                                    4 => "Busy".to_string(),
+                                    5 => "Failed".to_string(),
+                                    6 => "Cancelled".to_string(),
+                                    _ => "Unknown".to_string(),
+                                };
+
+                                let _ = event_sender.send(CallManagerEvent::CallEnded {
+                                    call_id: cid,
+                                    reason: reason_str,
+                                });
+                                break;
+                            }
+                            _ => {
+                                // Ignore other events (ICE, SDP) for pending calls
+                                // These will be handled after accepting
+                            }
+                        }
+                    }
+
+                    info!("Incoming call events subscription ended for: {}", call_id);
+                }
+                Err(e) => {
+                    warn!("Failed to subscribe to call events for incoming call {}: {}", call_id, e);
+                }
+            }
+        });
+    }
+
     /// Start listening for incoming calls
     /// 
     /// This spawns a background task that subscribes to incoming call notifications
@@ -608,6 +701,12 @@ impl CallManager {
                             notification.call_id.clone(),
                             pending_call,
                         );
+                        
+                        // Start listening for call events IMMEDIATELY
+                        // This is crucial to detect if the caller cancels the call
+                        // before we accept/reject
+                        let call_id_for_events = notification.call_id.clone();
+                        manager.start_incoming_call_events_subscription(call_id_for_events);
                         
                         // Emit the incoming call event
                         manager.emit_event(CallManagerEvent::IncomingCall {

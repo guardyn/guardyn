@@ -438,6 +438,7 @@ pub async fn reject_call(
 pub async fn end_call(
     db: &CallDb,
     session_mgr: &CallSessionManager,
+    nats_client: &CallNatsClient,
     request: EndCallRequest,
     jwt_secret: &str,
 ) -> EndCallResponse {
@@ -464,6 +465,24 @@ pub async fn end_call(
 
         // Collect participant IDs first to avoid borrow issues
         let participant_ids: Vec<String> = session.participants.keys().cloned().collect();
+
+        // Publish CallEnded event to notify all participants
+        let event = CallEventEnvelope {
+            call_id: request.call_id.clone(),
+            event_type: CallEventType::CallEnded,
+            payload: serde_json::json!({
+                "ended_by": user_id,
+                "end_reason": request.reason,
+                "duration_seconds": duration,
+            }),
+            timestamp: Utc::now().timestamp(),
+        };
+
+        if let Err(e) = nats_client.publish_call_event(&event).await {
+            warn!("Failed to publish CallEnded event: {}", e);
+        } else {
+            info!("Published CallEnded event for call {}", request.call_id);
+        }
 
         // Add to call history for all participants
         for participant_id in &participant_ids {

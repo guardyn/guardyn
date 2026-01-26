@@ -107,6 +107,7 @@ impl CallService for CallServiceImpl {
         let response = handlers::end_call(
             &self.db,
             &self.session_mgr,
+            &self.nats_client,
             request.into_inner(),
             &self.jwt_secret,
         )

@@ -55,9 +55,34 @@ const IncomingCallDialog: Component = () => {
       }
     });
 
+    // Listen for call:ended event - when caller ends the call before we answer
+    const unlistenEnded = listen<{ call_id: string; reason?: string }>('call:ended', (event) => {
+      if (incomingCall()?.call_id === event.payload.call_id) {
+        // Stop ringtone when call ended by remote party
+        CallAudioService.stopIncomingRingtone();
+        setIncomingCall(null);
+        setIsRinging(false);
+      }
+    });
+
+    // Listen for call:state_changed to detect when call is rejected or ended
+    const unlistenStateChanged = listen<{ call_id: string; state: string }>('call:state_changed', (event) => {
+      if (incomingCall()?.call_id === event.payload.call_id) {
+        const state = event.payload.state;
+        if (state === 'ended' || state === 'failed') {
+          // Stop ringtone when call ends
+          CallAudioService.stopIncomingRingtone();
+          setIncomingCall(null);
+          setIsRinging(false);
+        }
+      }
+    });
+
     onCleanup(() => {
       unlistenIncoming.then(unlisten => unlisten());
       unlistenCancelled.then(unlisten => unlisten());
+      unlistenEnded.then(unlisten => unlisten());
+      unlistenStateChanged.then(unlisten => unlisten());
       // Ensure ringtone is stopped when component unmounts
       CallAudioService.stopIncomingRingtone();
     });
