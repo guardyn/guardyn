@@ -115,6 +115,9 @@ class CallRepositoryImpl implements CallRepository {
         '🔔 CallRepository: Got access token, subscribing to gRPC stream #$currentSubId...',
       );
 
+      // Track if we already scheduled a retry to avoid double-retries
+      var retryScheduled = false;
+
       _incomingCallsSubscription = _callRemoteDatasource
           .subscribeToIncomingCalls(accessToken: accessToken)
           .listen(
@@ -123,19 +126,42 @@ class CallRepositoryImpl implements CallRepository {
               _logger.e(
                 '🔔 CallRepository: Subscription #$currentSubId error: $error',
               );
-              // Retry subscription after delay
-              Future.delayed(const Duration(seconds: 5), () {
-                _startIncomingCallsSubscription();
-              });
+              
+              // Check if it's an auth error - don't retry immediately for auth errors
+              final isAuthError =
+                  error.toString().contains('Invalid or expired token') ||
+                  error.toString().contains('unauthenticated');
+
+              if (isAuthError) {
+                _logger.w(
+                  '🔔 CallRepository: Auth error detected, will retry after getting fresh token...',
+                );
+                // For auth errors, wait longer and don't spam retries
+                if (!retryScheduled) {
+                  retryScheduled = true;
+                  Future.delayed(const Duration(seconds: 30), () {
+                    _startIncomingCallsSubscription();
+                  });
+                }
+              } else if (!retryScheduled) {
+                retryScheduled = true;
+                // Retry subscription after delay for other errors
+                Future.delayed(const Duration(seconds: 5), () {
+                  _startIncomingCallsSubscription();
+                });
+              }
             },
             onDone: () {
               _logger.i(
                 '🔔 CallRepository: Subscription #$currentSubId closed (onDone), reconnecting...',
               );
-              // Reconnect subscription
-              Future.delayed(const Duration(seconds: 1), () {
-                _startIncomingCallsSubscription();
-              });
+              // Reconnect subscription only if not already scheduled
+              if (!retryScheduled) {
+                retryScheduled = true;
+                Future.delayed(const Duration(seconds: 1), () {
+                  _startIncomingCallsSubscription();
+                });
+              }
             },
           );
 
