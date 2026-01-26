@@ -946,6 +946,12 @@ class CallRepositoryImpl implements CallRepository {
   @override
   Stream<Call> get callStateChanges => _callStateChangesController.stream;
 
+  @override
+  Future<void> restartIncomingCallsSubscription() async {
+    _logger.i('🔔 CallRepository: Restarting incoming calls subscription (after re-login)...');
+    await _startIncomingCallsSubscription();
+  }
+
   /// Dispose all resources
   Future<void> dispose() async {
     _stopDurationTimer();

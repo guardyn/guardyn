@@ -78,6 +78,10 @@ abstract class CallRepository {
   /// Clear all call history
   Future<Either<Failure, void>> clearCallHistory();
 
+  /// Restart incoming calls subscription
+  /// Should be called after re-login to ensure subscription is active with new token
+  Future<void> restartIncomingCallsSubscription();
+
   /// Stream of incoming calls
   Stream<Call> get incomingCalls;
 

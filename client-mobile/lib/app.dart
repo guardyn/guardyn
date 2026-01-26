@@ -9,6 +9,7 @@ import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:guardyn_client/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/login_user.dart';
+import 'package:guardyn_client/features/calls/domain/repositories/call_repository.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/logout_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart';
 import 'package:guardyn_client/features/auth/domain/usecases/update_profile.dart';
@@ -158,6 +159,7 @@ class _GuardynAppState extends State<GuardynApp> with WidgetsBindingObserver {
             cryptoService: cryptoService,
             updateProfile: updateProfile,
             uploadMedia: uploadMedia,
+            callRepository: getIt<CallRepository>(),
           ),
         ),
         BlocProvider(

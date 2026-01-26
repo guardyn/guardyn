@@ -7,6 +7,7 @@ import 'package:guardyn_client/features/auth/domain/usecases/register_user.dart'
 import 'package:guardyn_client/features/auth/domain/usecases/update_profile.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_event.dart';
 import 'package:guardyn_client/features/auth/presentation/bloc/auth_state.dart';
+import 'package:guardyn_client/features/calls/domain/repositories/call_repository.dart';
 import 'package:guardyn_client/features/media/domain/usecases/upload_media.dart';
 import 'package:logger/logger.dart';
 
@@ -17,6 +18,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogoutUser logoutUser;
   final AuthRepository authRepository;
   final CryptoService cryptoService;
+  final CallRepository? callRepository;
   final UpdateProfile? updateProfile;
   final UploadMedia? uploadMedia;
   final Logger logger = Logger();
@@ -27,6 +29,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.logoutUser,
     required this.authRepository,
     required this.cryptoService,
+    this.callRepository,
     this.updateProfile,
     this.uploadMedia,
   }) : super(AuthInitial()) {
@@ -63,6 +66,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
   }
 
+  /// Restart call subscriptions after successful auth
+  /// 
+  /// This ensures incoming calls subscription is active with new token
+  /// after re-login (e.g., after token expiry).
+  void _restartCallSubscriptions() {
+    // Fire and forget - let it run in background
+    Future.microtask(() async {
+      try {
+        if (callRepository != null) {
+          await callRepository!.restartIncomingCallsSubscription();
+          logger.i('Restarted incoming calls subscription after login');
+        }
+      } catch (e) {
+        logger.w('Failed to restart call subscriptions: $e');
+        // Non-fatal, will be retried on next call attempt
+      }
+    });
+  }
+
   Future<void> _onRegisterRequested(
     AuthRegisterRequested event,
     Emitter<AuthState> emit,
@@ -76,6 +98,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       logger.i('Registration successful: ${user.userId}');
       emit(AuthAuthenticated(user));
+
+      // Restart incoming calls subscription with new token
+      _restartCallSubscriptions();
 
       // Trigger background key replenishment after successful registration
       _triggerBackgroundKeyReplenishment();
@@ -100,6 +125,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       logger.i('Login successful: ${user.userId}');
       emit(AuthAuthenticated(user));
+
+      // Restart incoming calls subscription with new token
+      _restartCallSubscriptions();
 
       // Trigger background key replenishment after successful login
       _triggerBackgroundKeyReplenishment();

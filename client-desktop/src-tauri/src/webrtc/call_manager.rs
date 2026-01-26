@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use parking_lot::RwLock;
 use tokio::sync::mpsc;
@@ -143,6 +144,9 @@ pub struct CallManager {
     calls_client: Arc<CallsClient>,
     event_sender: mpsc::UnboundedSender<CallManagerEvent>,
     event_receiver: RwLock<Option<mpsc::UnboundedReceiver<CallManagerEvent>>>,
+    /// Cancellation signal for the incoming calls subscription task
+    /// Set to true to signal the subscription loop to stop
+    incoming_calls_cancel: Arc<AtomicBool>,
 }
 
 impl CallManager {
@@ -156,6 +160,7 @@ impl CallManager {
             calls_client,
             event_sender: tx,
             event_receiver: RwLock::new(Some(rx)),
+            incoming_calls_cancel: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -667,11 +672,30 @@ impl CallManager {
     /// 
     /// **Auto-reconnect**: If the subscription stream ends or fails, it will
     /// automatically reconnect after a short delay.
+    /// 
+    /// **Note**: If called multiple times (e.g., after re-login), the previous
+    /// subscription will be cancelled before starting a new one.
     pub fn start_incoming_calls_subscription(self: Arc<Self>) {
+        // Signal any existing subscription loop to stop
+        // This is important for re-login scenarios where the old token is expired
+        if self.incoming_calls_cancel.swap(true, Ordering::SeqCst) {
+            info!("Signalling previous incoming calls subscription to stop (re-login detected)");
+        }
+        
+        // Reset the cancellation flag for the new subscription
+        self.incoming_calls_cancel.store(false, Ordering::SeqCst);
+        
         let manager = Arc::clone(&self);
+        let cancel_flag = Arc::clone(&self.incoming_calls_cancel);
         
         tauri::async_runtime::spawn(async move {
             loop {
+                // Check if we should stop
+                if cancel_flag.load(Ordering::SeqCst) {
+                    info!("Incoming calls subscription cancelled (re-login or shutdown)");
+                    break;
+                }
+                
                 info!("Starting incoming calls subscription...");
                 
                 match manager.calls_client.subscribe_to_incoming_calls().await {
@@ -679,6 +703,12 @@ impl CallManager {
                         info!("Incoming calls subscription established");
                         
                         while let Some(notification) = receiver.recv().await {
+                            // Check if we should stop (re-login happened)
+                            if cancel_flag.load(Ordering::SeqCst) {
+                                info!("Incoming calls subscription cancelled while receiving");
+                                return;
+                            }
+                            
                             info!(
                                 "Received incoming call: call_id={}, from={} ({})",
                                 notification.call_id,
@@ -730,7 +760,11 @@ impl CallManager {
                     }
                 }
                 
-                // Reconnect after stream ended
+                // Reconnect after stream ended (unless cancelled)
+                if cancel_flag.load(Ordering::SeqCst) {
+                    info!("Incoming calls subscription cancelled during reconnect wait");
+                    break;
+                }
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
         });
