@@ -360,16 +360,24 @@ class CallRemoteDatasource {
   Stream<IncomingCallData> subscribeToIncomingCalls({
     required String accessToken,
   }) async* {
-    _logger.i('Subscribing to incoming call notifications');
+    _logger.i('🔔 SUBSCRIBING to incoming call notifications via gRPC stream');
 
     try {
       final request = proto.SubscribeToIncomingCallsRequest()
         ..accessToken = accessToken;
 
+      _logger.i('🔔 Created SubscribeToIncomingCallsRequest, calling gRPC...');
+
       await for (final notification in _client.subscribeToIncomingCalls(
         request,
         options: _createOptions(accessToken),
       )) {
+        _logger.i(
+          '🔔 RECEIVED incoming call notification from gRPC: '
+          'call_id=${notification.callId}, '
+          'caller_id=${notification.callerId}, '
+          'caller_name=${notification.callerDisplayName}',
+        );
         yield IncomingCallData(
           callId: notification.callId,
           isVideo: notification.callType == proto.CallType.VIDEO,

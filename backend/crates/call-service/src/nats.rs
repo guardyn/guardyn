@@ -282,13 +282,22 @@ impl CallNatsClient {
             subject, consumer_name
         );
 
+        // Delete existing consumer to ensure fresh start with new delivery policy
+        // This prevents receiving old messages when reconnecting
+        let _ = self.calls_stream.delete_consumer(&consumer_name).await;
+
+        // Use DeliverPolicy::ByStartTime to only receive messages from the last 10 seconds
+        // This catches messages published just before consumer creation, but ignores old ones
+        let start_time = std::time::SystemTime::now() - std::time::Duration::from_secs(10);
+
         let consumer = self.calls_stream
-            .get_or_create_consumer(&consumer_name, jetstream::consumer::pull::Config {
+            .create_consumer(jetstream::consumer::pull::Config {
                 durable_name: Some(consumer_name.clone()),
                 filter_subject: subject.clone(),
-                // Use DeliverPolicy::All to receive messages published before consumer creation
-                // This is important because the caller may publish before the callee's consumer is ready
-                deliver_policy: jetstream::consumer::DeliverPolicy::All,
+                // Only deliver messages from the last 10 seconds - not old stale ones
+                deliver_policy: jetstream::consumer::DeliverPolicy::ByStartTime {
+                    start_time: start_time.into(),
+                },
                 ack_policy: jetstream::consumer::AckPolicy::Explicit,
                 // Limit how long we keep unacked messages
                 ack_wait: std::time::Duration::from_secs(30),
@@ -300,7 +309,7 @@ impl CallNatsClient {
             .context("Failed to create incoming call consumer")?;
 
         info!(
-            "Created incoming call consumer {} for user {} with subject {}",
+            "Created incoming call consumer {} for user {} with subject {} (looking back 10 seconds)",
             consumer_name, user_id, subject
         );
 

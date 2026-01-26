@@ -136,8 +136,42 @@ impl CallSessionManager {
     }
 
     /// Check if user is in a call
+    /// Also cleans up stale calls (calls that have been in INITIATING/RINGING state for too long)
     pub fn is_user_in_call(&self, user_id: &str) -> bool {
-        self.user_calls.contains_key(user_id)
+        if let Some(call_id_ref) = self.user_calls.get(user_id) {
+            let call_id = call_id_ref.value().clone();
+            drop(call_id_ref); // Release the lock before potentially calling end_session
+            
+            // Check if the call is stale (in INITIATING or RINGING state for more than 60 seconds)
+            if let Some(session) = self.sessions.get(&call_id) {
+                let session_guard = session.read();
+                let age = Utc::now() - session_guard.created_at;
+                let state = session_guard.state;
+                drop(session_guard); // Release lock before removing
+                
+                // States: 1=INITIATING, 2=RINGING - if stuck for >60s, consider stale
+                if (state == 1 || state == 2) && age.num_seconds() > 60 {
+                    tracing::warn!(
+                        "Cleaning up stale call {} for user {} (age: {}s, state: {})",
+                        call_id, user_id, age.num_seconds(), 
+                        if state == 1 { "INITIATING" } else { "RINGING" }
+                    );
+                    drop(session); // Release the DashMap guard
+                    self.end_session(&call_id);
+                    return false;
+                }
+                return true;
+            } else {
+                // Session doesn't exist, clean up the user_calls entry
+                tracing::warn!(
+                    "Cleaning up orphaned user_call entry for user {} (call {} not found)",
+                    user_id, call_id
+                );
+                self.user_calls.remove(user_id);
+                return false;
+            }
+        }
+        false
     }
 
     /// Add participant to session

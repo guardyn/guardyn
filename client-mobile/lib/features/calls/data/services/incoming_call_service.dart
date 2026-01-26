@@ -41,22 +41,23 @@ class IncomingCallService {
 
   /// Start listening for incoming calls
   void startListening() {
-    _logger.i('IncomingCallService: Starting to listen for incoming calls');
+    _logger.i('🔔 IncomingCallService: Starting to listen for incoming calls on repository stream');
     _incomingCallsSubscription?.cancel();
     _incomingCallsSubscription = _callRepository.incomingCalls.listen(
       _handleIncomingCall,
       onError: (error) {
         _logger.e(
-          'IncomingCallService: Error in incoming calls stream',
+          '🔔 IncomingCallService: Error in incoming calls stream',
           error: error,
         );
       },
     );
+    _logger.i('🔔 IncomingCallService: Listening started successfully');
   }
 
   /// Stop listening for incoming calls
   void stopListening() {
-    _logger.i('IncomingCallService: Stopping incoming call listener');
+    _logger.i('🔔 IncomingCallService: Stopping incoming call listener');
     _incomingCallsSubscription?.cancel();
     _incomingCallsSubscription = null;
   }
@@ -64,19 +65,21 @@ class IncomingCallService {
   /// Handle an incoming call
   void _handleIncomingCall(Call call) {
     _logger.i(
-      'IncomingCallService: Incoming call from ${call.remoteUserName ?? call.remoteUserId}',
+      '🔔 IncomingCallService: RECEIVED incoming call event: '
+      'call_id=${call.id}, from=${call.remoteUserName ?? call.remoteUserId}',
     );
 
     if (_isShowingIncomingCall) {
-      _logger.w('IncomingCallService: Already showing incoming call UI');
+      _logger.w('🔔 IncomingCallService: Already showing incoming call UI, ignoring');
       return;
     }
 
     if (_appContext == null) {
-      _logger.w('IncomingCallService: No app context available');
+      _logger.w('🔔 IncomingCallService: No app context available, cannot show UI!');
       return;
     }
 
+    _logger.i('🔔 IncomingCallService: Showing incoming call dialog...');
     _showIncomingCallDialog(call);
   }
 
