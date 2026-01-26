@@ -350,7 +350,7 @@ class CallRemoteDatasource {
     required String accessToken,
     required String callId,
   }) async* {
-    _logger.i('Starting call events stream for $callId');
+    _logger.i('📞 Starting call events stream for $callId');
 
     try {
       final request = proto.StreamCallEventsRequest()
@@ -361,8 +361,10 @@ class CallRemoteDatasource {
         request,
         options: _createOptions(accessToken),
       )) {
+        _logger.i('📞 Received raw call event for call ${event.callId}');
         yield _mapCallEvent(event);
       }
+      _logger.i('📞 Call events stream completed normally for $callId');
     } on GrpcError catch (e) {
       // Log the error but DON'T throw - just complete the stream gracefully.
       // Throwing here can kill the gRPC channel and affect other subscriptions

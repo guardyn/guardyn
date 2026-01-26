@@ -526,7 +526,7 @@ impl CallService for CallServiceImpl {
             };
 
             // Subscribe to general call events
-            let events_consumer = match nats_client.subscribe_call_events(&call_id).await {
+            let events_consumer = match nats_client.subscribe_call_events(&call_id, &user_id_clone).await {
                 Ok(c) => Some(c),
                 Err(e) => {
                     warn!("Failed to subscribe to call events: {}", e);

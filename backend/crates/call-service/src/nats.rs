@@ -379,9 +379,11 @@ impl CallNatsClient {
         Ok(consumer)
     }
 
-    /// Subscribe to call events for a specific call
-    pub async fn subscribe_call_events(&self, call_id: &str) -> Result<PullConsumer> {
-        let consumer_name = format!("call-{}-events", call_id);
+    /// Subscribe to call events for a specific call and user
+    /// Each user gets their own consumer to ensure all participants receive all events
+    pub async fn subscribe_call_events(&self, call_id: &str, user_id: &str) -> Result<PullConsumer> {
+        // Make consumer name unique per user to ensure each participant gets all events
+        let consumer_name = format!("call-{}-events-{}", call_id, user_id);
         let subject_filter = subjects::events(call_id);
 
         // Delete existing consumer to ensure fresh start
@@ -399,7 +401,7 @@ impl CallNatsClient {
             .await
             .context("Failed to create events consumer")?;
 
-        info!("Created events consumer {} for call {}", consumer_name, call_id);
+        info!("Created events consumer {} for call {} user {}", consumer_name, call_id, user_id);
 
         Ok(consumer)
     }

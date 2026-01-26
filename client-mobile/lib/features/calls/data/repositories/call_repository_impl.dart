@@ -250,8 +250,12 @@ class CallRepositoryImpl implements CallRepository {
 
   /// Handle events for pending incoming calls (before accept/reject)
   void _handlePendingCallEvent(CallEventData event) {
+    _logger.i('🔔 CallRepository: Pending call event received: ${event.runtimeType}');
+    
     if (event is CallStateChangedEvent) {
-      _logger.i('🔔 CallRepository: Pending call state changed to ${event.newState}');
+      _logger.i(
+        '🔔 CallRepository: Pending call state changed: ${event.oldState} -> ${event.newState}, endReason: ${event.endReason}',
+      );
 
       if (event.newState == CallStateType.ended ||
           event.newState == CallStateType.failed) {
@@ -704,10 +708,14 @@ class CallRepositoryImpl implements CallRepository {
     CallEventData event,
     String accessToken,
   ) async {
+    _logger.i('📞 Received call event: ${event.runtimeType} for call ${event.callId}');
+    
     if (event is CallStateChangedEvent) {
+      _logger.i('📞 Call state changed: ${event.oldState} -> ${event.newState}, endReason: ${event.endReason}');
       _updateCallStatus(_mapCallState(event.newState));
       if (event.newState == CallStateType.ended ||
           event.newState == CallStateType.failed) {
+        _logger.i('📞 Call ended/failed - triggering _endCall');
         _endCall(_mapEndReason(event.endReason));
       }
     } else if (event is IceCandidateReceivedEvent) {
