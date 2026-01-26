@@ -251,7 +251,7 @@ class CallRepositoryImpl implements CallRepository {
   /// Handle events for pending incoming calls (before accept/reject)
   void _handlePendingCallEvent(CallEventData event) {
     _logger.i('🔔 CallRepository: Pending call event received: ${event.runtimeType}');
-    
+
     if (event is CallStateChangedEvent) {
       _logger.i(
         '🔔 CallRepository: Pending call state changed: ${event.oldState} -> ${event.newState}, endReason: ${event.endReason}',
@@ -709,7 +709,7 @@ class CallRepositoryImpl implements CallRepository {
     String accessToken,
   ) async {
     _logger.i('📞 Received call event: ${event.runtimeType} for call ${event.callId}');
-    
+
     if (event is CallStateChangedEvent) {
       _logger.i('📞 Call state changed: ${event.oldState} -> ${event.newState}, endReason: ${event.endReason}');
       _updateCallStatus(_mapCallState(event.newState));
