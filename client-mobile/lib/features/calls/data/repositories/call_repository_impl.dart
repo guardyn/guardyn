@@ -470,6 +470,20 @@ class CallRepositoryImpl implements CallRepository {
 
     // Clean up WebRTC
     _webrtcDataSource.close();
+
+    // Ensure incoming calls subscription is healthy after call ends
+    // This fixes issues where the subscription can die during a call
+    _ensureIncomingCallsSubscription();
+  }
+
+  /// Ensures the incoming calls subscription is active
+  /// Restarts it if it appears to be dead
+  void _ensureIncomingCallsSubscription() {
+    // Always restart incoming calls subscription after a call ends
+    // This ensures we don't miss incoming calls due to a dead subscription
+    // The gRPC stream might have been affected by the call's gRPC operations
+    _logger.i('🔔 CallRepository: Restarting incoming calls subscription after call ended...');
+    _startIncomingCallsSubscription();
   }
 
   void _handleCallError(String message) {
