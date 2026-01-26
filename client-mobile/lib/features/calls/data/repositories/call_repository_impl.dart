@@ -595,9 +595,11 @@ class CallRepositoryImpl implements CallRepository {
   /// Subscription for call events stream
   StreamSubscription<CallEventData>? _callEventsSubscription;
 
-  /// Start listening for call events from the server
+  /// Start listening for call events from the server with retry logic
   void _startCallEventStream(String callId, String accessToken) {
     _callEventsSubscription?.cancel();
+    _logger.i('💡 Starting call events stream for $callId');
+    
     _callEventsSubscription = _callRemoteDatasource
         .streamCallEvents(accessToken: accessToken, callId: callId)
         .listen(
@@ -605,7 +607,19 @@ class CallRepositoryImpl implements CallRepository {
             _handleGrpcCallEvent(event, accessToken);
           },
           onError: (error) {
-            _logger.e('Call events stream error: $error');
+            _logger.e('⛔ Call events stream error: $error');
+            // Only retry if call is still active
+            if (_activeCall != null && _activeCall!.id == callId) {
+              _logger.i('💡 Retrying call events stream in 2 seconds...');
+              Future.delayed(const Duration(seconds: 2), () {
+                if (_activeCall != null && _activeCall!.id == callId) {
+                  _startCallEventStream(callId, accessToken);
+                }
+              });
+            }
+          },
+          onDone: () {
+            _logger.i('💡 Call events stream closed for $callId');
           },
         );
   }

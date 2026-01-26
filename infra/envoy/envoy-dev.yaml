@@ -20,8 +20,20 @@ static_resources:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-                codec_type: AUTO
+                codec_type: HTTP2
                 stat_prefix: ingress_http
+                # HTTP/2 connection settings for long-lived gRPC streams
+                http2_protocol_options:
+                  # Maximum concurrent streams per connection
+                  max_concurrent_streams: 100
+                  # Initial stream-level flow-control window size
+                  initial_stream_window_size: 1048576  # 1MB
+                  # Initial connection-level flow-control window size
+                  initial_connection_window_size: 1048576  # 1MB
+                  # Allow keepalive from clients without active streams
+                  allow_connect: true
+                # Stream idle timeout - 0s = no timeout for server-sent events / subscriptions
+                stream_idle_timeout: 0s
                 access_log:
                   - name: envoy.access_loggers.stdout
                     typed_config:
@@ -184,7 +196,12 @@ static_resources:
         envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
           "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
           explicit_http_config:
-            http2_protocol_options: {}
+            http2_protocol_options:
+              # Keepalive settings for long-lived presence streams
+              connection_keepalive:
+                interval: 30s
+                timeout: 20s
+              max_concurrent_streams: 100
       load_assignment:
         cluster_name: presence_service
         endpoints:
@@ -256,7 +273,15 @@ static_resources:
         envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
           "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
           explicit_http_config:
-            http2_protocol_options: {}
+            http2_protocol_options:
+              # Keepalive settings for long-lived gRPC streams (calls)
+              connection_keepalive:
+                # Send ping every 30 seconds
+                interval: 30s
+                # Wait 20 seconds for ping response
+                timeout: 20s
+              # Maximum concurrent streams
+              max_concurrent_streams: 100
       load_assignment:
         cluster_name: call_service
         endpoints:

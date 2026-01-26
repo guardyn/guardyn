@@ -91,7 +91,12 @@ const Call: Component = () => {
 
   // Listen for call events
   createEffect(() => {
+    const callId = params.id;
+    
     const unlistenCallState = listen<CallInfo>('call:state_changed', (event) => {
+      // Only process events for this call
+      if (event.payload.call_id !== callId) return;
+      
       const prevState = callInfo()?.state;
       const newState = event.payload.state;
       setCallInfo(event.payload);
@@ -110,8 +115,21 @@ const Call: Component = () => {
       }
     });
 
+    // Listen for call:ended event - when remote party ends the call
+    const unlistenCallEnded = listen<{ call_id: string; reason?: string }>('call:ended', (event) => {
+      // Only process events for this call
+      if (event.payload.call_id !== callId) return;
+      
+      console.log('Call ended event received:', event.payload);
+      // Call ended by remote party - stop all sounds and navigate away
+      CallAudioService.stopAll();
+      CallAudioService.playCallEnded();
+      navigate('/');
+    });
+
     onCleanup(() => {
       unlistenCallState.then(unlisten => unlisten());
+      unlistenCallEnded.then(unlisten => unlisten());
       // Ensure all audio is stopped when leaving call page
       CallAudioService.stopAll();
     });

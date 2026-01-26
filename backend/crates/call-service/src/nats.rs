@@ -445,7 +445,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
-            .expires(std::time::Duration::from_secs(5))
+            .expires(std::time::Duration::from_millis(100))
             .messages()
             .await
             .context("Failed to fetch ICE candidates")?;
@@ -484,7 +484,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
-            .expires(std::time::Duration::from_secs(5))
+            .expires(std::time::Duration::from_millis(100))
             .messages()
             .await
             .context("Failed to fetch SDP messages")?;
@@ -522,7 +522,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
-            .expires(std::time::Duration::from_secs(5))
+            .expires(std::time::Duration::from_millis(100))
             .messages()
             .await
             .context("Failed to fetch call events")?;
@@ -560,7 +560,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
-            .expires(std::time::Duration::from_secs(5))
+            .expires(std::time::Duration::from_millis(100))
             .messages()
             .await
             .context("Failed to fetch SFrame keys")?;
@@ -596,11 +596,11 @@ impl CallNatsClient {
         consumer: &PullConsumer,
         batch_size: usize,
     ) -> Result<Vec<IncomingCallEnvelope>> {
-        // Use expires() for long-polling - wait up to 5 seconds for messages
+        // Use expires() for short polling - wait up to 100ms for messages
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
-            .expires(std::time::Duration::from_secs(5))
+            .expires(std::time::Duration::from_millis(100))
             .messages()
             .await
             .context("Failed to fetch incoming call notifications")?;
