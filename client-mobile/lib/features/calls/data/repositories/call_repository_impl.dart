@@ -44,6 +44,9 @@ class CallRepositoryImpl implements CallRepository {
   StreamSubscription? _signalingSubscription;
   StreamSubscription<IncomingCallData>? _incomingCallsSubscription;
 
+  /// Subscription ID for debugging
+  int _subscriptionId = 0;
+
   /// Timer for call duration tracking
   Timer? _durationTimer;
 
@@ -84,33 +87,51 @@ class CallRepositoryImpl implements CallRepository {
   /// Starts subscription to incoming calls from the backend
   Future<void> _startIncomingCallsSubscription() async {
     // Cancel existing subscription before creating a new one
-    await _incomingCallsSubscription?.cancel();
-    _incomingCallsSubscription = null;
+    final previousSubId = _subscriptionId;
+    if (_incomingCallsSubscription != null) {
+      _logger.i(
+        '🔔 CallRepository: Cancelling previous subscription #$previousSubId before creating new one...',
+      );
+      await _incomingCallsSubscription?.cancel();
+      _incomingCallsSubscription = null;
+    }
 
-    _logger.i('🔔 CallRepository: Starting incoming calls subscription...');
+    _subscriptionId++;
+    final currentSubId = _subscriptionId;
+    _logger.i(
+      '🔔 CallRepository: Starting incoming calls subscription #$currentSubId...',
+    );
 
     try {
       final accessToken = await _tokenManager.getValidAccessToken();
       if (accessToken == null) {
-        _logger.w('🔔 CallRepository: No access token, skipping incoming calls subscription');
+        _logger.w(
+          '🔔 CallRepository: No access token, skipping incoming calls subscription #$currentSubId',
+        );
         return;
       }
 
-      _logger.i('🔔 CallRepository: Got access token, subscribing to gRPC stream...');
+      _logger.i(
+        '🔔 CallRepository: Got access token, subscribing to gRPC stream #$currentSubId...',
+      );
 
       _incomingCallsSubscription = _callRemoteDatasource
           .subscribeToIncomingCalls(accessToken: accessToken)
           .listen(
             _handleIncomingCallNotification,
             onError: (error) {
-              _logger.e('🔔 CallRepository: Incoming calls subscription error: $error');
+              _logger.e(
+                '🔔 CallRepository: Subscription #$currentSubId error: $error',
+              );
               // Retry subscription after delay
               Future.delayed(const Duration(seconds: 5), () {
                 _startIncomingCallsSubscription();
               });
             },
             onDone: () {
-              _logger.i('🔔 CallRepository: Incoming calls subscription closed, reconnecting...');
+              _logger.i(
+                '🔔 CallRepository: Subscription #$currentSubId closed (onDone), reconnecting...',
+              );
               // Reconnect subscription
               Future.delayed(const Duration(seconds: 1), () {
                 _startIncomingCallsSubscription();
@@ -118,10 +139,12 @@ class CallRepositoryImpl implements CallRepository {
             },
           );
 
-      _logger.i('🔔 CallRepository: Incoming calls subscription started successfully');
+      _logger.i(
+        '🔔 CallRepository: Incoming calls subscription #$currentSubId started successfully',
+      );
     } catch (e, stackTrace) {
       _logger.e(
-        '🔔 CallRepository: Failed to start incoming calls subscription',
+        '🔔 CallRepository: Failed to start subscription #$currentSubId',
         error: e,
         stackTrace: stackTrace,
       );

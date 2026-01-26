@@ -802,7 +802,7 @@ impl CallService for CallServiceImpl {
         _request: Request<HealthRequest>,
     ) -> Result<Response<crate::generated::guardyn::common::HealthStatus>, Status> {
         use crate::generated::guardyn::common::{health_status::Status as HealthStatusEnum, Timestamp};
-        
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
