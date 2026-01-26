@@ -277,20 +277,31 @@ impl CallNatsClient {
         let subject = subjects::incoming_call(user_id);
         let consumer_name = format!("incoming-{}", user_id);
 
+        debug!(
+            "Subscribing to incoming calls: subject={}, consumer={}",
+            subject, consumer_name
+        );
+
         let consumer = self.calls_stream
             .get_or_create_consumer(&consumer_name, jetstream::consumer::pull::Config {
                 durable_name: Some(consumer_name.clone()),
                 filter_subject: subject.clone(),
-                deliver_policy: jetstream::consumer::DeliverPolicy::New,
+                // Use DeliverPolicy::All to receive messages published before consumer creation
+                // This is important because the caller may publish before the callee's consumer is ready
+                deliver_policy: jetstream::consumer::DeliverPolicy::All,
                 ack_policy: jetstream::consumer::AckPolicy::Explicit,
+                // Limit how long we keep unacked messages
+                ack_wait: std::time::Duration::from_secs(30),
+                // Only keep messages for a short time since calls are time-sensitive
+                inactive_threshold: std::time::Duration::from_secs(60),
                 ..Default::default()
             })
             .await
             .context("Failed to create incoming call consumer")?;
 
         info!(
-            "Created incoming call consumer {} for user {}",
-            consumer_name, user_id
+            "Created incoming call consumer {} for user {} with subject {}",
+            consumer_name, user_id, subject
         );
 
         Ok(consumer)

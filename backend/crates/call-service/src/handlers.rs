@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use chrono::Utc;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::auth_client::AuthClient;
 use crate::db::{CallDb, CallParticipantRecord, CallRecord, UserCallHistoryEntry};
@@ -187,20 +187,24 @@ pub async fn initiate_call(
             timestamp: Utc::now().timestamp(),
         };
 
-        debug!(
-            "Publishing incoming call notification: call_id={}, caller={}, callee={}",
+        info!(
+            "Publishing incoming call notification to NATS: call_id={}, caller={}, callee={}",
             call_id, user_id, target_uid
         );
 
         if let Err(e) = nats_client.publish_incoming_call(target_uid, &incoming_envelope).await {
             warn!("Failed to notify callee about incoming call: {}", e);
         } else {
+            info!(
+                "Successfully published incoming call notification: call_id={}, callee={}",
+                call_id, target_uid
+            );
             // Update state to RINGING after successfully notifying callee
             session_mgr.update_state(&call_id, 2); // RINGING = 2
             if let Err(e) = db.update_call_state(&call_id, 2).await {
                 warn!("Failed to update call state to RINGING: {}", e);
             }
-            debug!("Call {} state updated to RINGING", call_id);
+            info!("Call {} state updated to RINGING", call_id);
         }
     }
 

@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
 use tonic::{Request, Response, Status};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::db::CallDb;
 use crate::generated::guardyn::calls::call_service_server::CallService;
@@ -396,7 +396,7 @@ impl CallService for CallServiceImpl {
             Err(_) => return Err(Status::unauthenticated("Invalid or expired token")),
         };
 
-        debug!("User {} subscribing to incoming calls", user_id);
+        info!("User {} subscribing to incoming calls", user_id);
 
         // Create channel for incoming call notifications
         let (tx, rx) = mpsc::channel::<Result<IncomingCallNotification, Status>>(100);
@@ -416,6 +416,8 @@ impl CallService for CallServiceImpl {
                 }
             };
 
+            info!("Incoming calls subscription loop started for user {}", user_id_clone);
+
             // Poll for incoming call notifications
             loop {
                 if tx.is_closed() {
@@ -424,29 +426,45 @@ impl CallService for CallServiceImpl {
                 }
 
                 // Fetch incoming call notifications
-                if let Ok(notifications) = nats_client.fetch_incoming_calls(&consumer, 10).await {
-                    for notification in notifications {
-                        let proto_notification = IncomingCallNotification {
-                            call_id: notification.call_id,
-                            call_type: notification.call_type,
-                            is_group_call: notification.is_group_call,
-                            group_id: notification.group_id,
-                            caller_id: notification.caller_id,
-                            caller_display_name: notification.caller_display_name,
-                            caller_avatar_url: notification.caller_avatar_url,
-                            ice_servers: ice_servers.iter().map(|c| IceServer {
-                                urls: c.urls.clone(),
-                                username: c.username.clone().unwrap_or_default(),
-                                credential: c.credential.clone().unwrap_or_default(),
-                            }).collect(),
-                            created_at: Some(crate::generated::guardyn::common::Timestamp {
-                                seconds: notification.timestamp,
-                                nanos: 0,
-                            }),
-                        };
-                        if tx.send(Ok(proto_notification)).await.is_err() {
-                            break;
+                match nats_client.fetch_incoming_calls(&consumer, 10).await {
+                    Ok(notifications) => {
+                        if !notifications.is_empty() {
+                            info!(
+                                "Received {} incoming call notification(s) for user {}",
+                                notifications.len(),
+                                user_id_clone
+                            );
                         }
+                        for notification in notifications {
+                            info!(
+                                "Forwarding incoming call {} from {} to user {}",
+                                notification.call_id, notification.caller_id, user_id_clone
+                            );
+                            let proto_notification = IncomingCallNotification {
+                                call_id: notification.call_id.clone(),
+                                call_type: notification.call_type,
+                                is_group_call: notification.is_group_call,
+                                group_id: notification.group_id,
+                                caller_id: notification.caller_id,
+                                caller_display_name: notification.caller_display_name,
+                                caller_avatar_url: notification.caller_avatar_url,
+                                ice_servers: ice_servers.iter().map(|c| IceServer {
+                                    urls: c.urls.clone(),
+                                    username: c.username.clone().unwrap_or_default(),
+                                    credential: c.credential.clone().unwrap_or_default(),
+                                }).collect(),
+                                created_at: Some(crate::generated::guardyn::common::Timestamp {
+                                    seconds: notification.timestamp,
+                                    nanos: 0,
+                                }),
+                            };
+                            if tx.send(Ok(proto_notification)).await.is_err() {
+                                break;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Error fetching incoming calls for user {}: {}", user_id_clone, e);
                     }
                 }
 
