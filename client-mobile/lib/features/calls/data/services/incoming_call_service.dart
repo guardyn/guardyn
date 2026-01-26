@@ -25,8 +25,10 @@ class IncomingCallService {
   final Logger _logger;
 
   StreamSubscription<Call>? _incomingCallsSubscription;
+  StreamSubscription<Call>? _callStateChangesSubscription;
   BuildContext? _appContext;
   bool _isShowingIncomingCall = false;
+  String? _currentIncomingCallId;
 
   IncomingCallService({
     required CallRepository callRepository,
@@ -52,6 +54,19 @@ class IncomingCallService {
         );
       },
     );
+    
+    // Also listen for call state changes to close dialog when caller cancels
+    _callStateChangesSubscription?.cancel();
+    _callStateChangesSubscription = _callRepository.callStateChanges.listen(
+      _handleCallStateChange,
+      onError: (error) {
+        _logger.e(
+          '🔔 IncomingCallService: Error in call state changes stream',
+          error: error,
+        );
+      },
+    );
+    
     _logger.i('🔔 IncomingCallService: Listening started successfully');
   }
 
@@ -60,6 +75,39 @@ class IncomingCallService {
     _logger.i('🔔 IncomingCallService: Stopping incoming call listener');
     _incomingCallsSubscription?.cancel();
     _incomingCallsSubscription = null;
+    _callStateChangesSubscription?.cancel();
+    _callStateChangesSubscription = null;
+  }
+
+  /// Handle call state changes - close dialog if caller cancelled
+  void _handleCallStateChange(Call call) {
+    _logger.i(
+      '🔔 IncomingCallService: Call state changed: '
+      'call_id=${call.id}, status=${call.status}, showing=$_isShowingIncomingCall, currentCallId=$_currentIncomingCallId',
+    );
+
+    // If we're showing an incoming call dialog and the call ended, close it
+    if (_isShowingIncomingCall && 
+        _currentIncomingCallId == call.id &&
+        (call.status == CallStatus.ended || call.status == CallStatus.failed)) {
+      _logger.i('🔔 IncomingCallService: Caller cancelled - closing incoming call dialog');
+      _closeIncomingCallDialog();
+    }
+  }
+
+  /// Close the incoming call dialog programmatically
+  void _closeIncomingCallDialog() {
+    if (_appContext == null || !_isShowingIncomingCall) return;
+
+    try {
+      // Pop the dialog
+      Navigator.of(_appContext!, rootNavigator: true).pop(null);
+      _isShowingIncomingCall = false;
+      _currentIncomingCallId = null;
+      _logger.i('🔔 IncomingCallService: Incoming call dialog closed');
+    } catch (e) {
+      _logger.e('🔔 IncomingCallService: Failed to close dialog', error: e);
+    }
   }
 
   /// Handle an incoming call
@@ -88,6 +136,7 @@ class IncomingCallService {
     if (_appContext == null) return;
 
     _isShowingIncomingCall = true;
+    _currentIncomingCallId = call.id;
 
     final context = _appContext!;
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -106,6 +155,7 @@ class IncomingCallService {
       ),
     ).then((accepted) {
       _isShowingIncomingCall = false;
+      _currentIncomingCallId = null;
 
       if (accepted == true) {
         _navigateToCallScreen(call);
@@ -135,6 +185,7 @@ class IncomingCallService {
   /// Dispose resources
   void dispose() {
     _incomingCallsSubscription?.cancel();
+    _callStateChangesSubscription?.cancel();
     _appContext = null;
   }
 }
