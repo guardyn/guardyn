@@ -11,12 +11,21 @@ import 'package:logger/logger.dart';
 /// gRPC DataSource for call operations
 class CallRemoteDatasource {
   final CallServiceClient _client;
+
+  /// Dedicated client for incoming calls subscription.
+  /// Uses a separate gRPC channel to isolate from other call operations.
+  /// This prevents HTTP/2 errors in streamCallEvents from killing the
+  /// incoming calls subscription.
+  final CallServiceClient _incomingCallsClient;
+
   final Logger _logger;
 
   CallRemoteDatasource({
     required CallServiceClient client,
+    required CallServiceClient incomingCallsClient,
     required Logger logger,
   }) : _client = client,
+       _incomingCallsClient = incomingCallsClient,
        _logger = logger;
 
   /// Create call metadata with authorization
@@ -333,6 +342,10 @@ class CallRemoteDatasource {
   }
 
   /// Stream call events
+  ///
+  /// This stream will complete gracefully on errors instead of throwing exceptions.
+  /// This prevents HTTP/2 errors from killing the gRPC channel and affecting
+  /// other subscriptions like incoming calls.
   Stream<CallEventData> streamCallEvents({
     required String accessToken,
     required String callId,
@@ -351,24 +364,36 @@ class CallRemoteDatasource {
         yield _mapCallEvent(event);
       }
     } on GrpcError catch (e) {
-      _logger.e('gRPC error in call events stream: ${e.message}');
-      throw GrpcCallException(e.message ?? 'Unknown gRPC error');
+      // Log the error but DON'T throw - just complete the stream gracefully.
+      // Throwing here can kill the gRPC channel and affect other subscriptions
+      // like subscribeToIncomingCalls.
+      _logger.e('⚠️ Call events stream error (graceful close): ${e.message}');
+      // Stream will complete naturally here
     }
   }
 
   /// Subscribe to incoming call notifications
+  ///
+  /// IMPORTANT: Uses a dedicated gRPC channel isolated from other call operations.
+  /// This ensures HTTP/2 errors in streamCallEvents don't kill this subscription.
   Stream<IncomingCallData> subscribeToIncomingCalls({
     required String accessToken,
   }) async* {
-    _logger.i('🔔 SUBSCRIBING to incoming call notifications via gRPC stream');
+    _logger.i(
+      '🔔 SUBSCRIBING to incoming call notifications via ISOLATED gRPC channel',
+    );
 
     try {
       final request = proto.SubscribeToIncomingCallsRequest()
         ..accessToken = accessToken;
 
-      _logger.i('🔔 Created SubscribeToIncomingCallsRequest, calling gRPC...');
+      _logger.i(
+        '🔔 Created SubscribeToIncomingCallsRequest, calling gRPC on isolated channel...',
+      );
 
-      await for (final notification in _client.subscribeToIncomingCalls(
+      // Use the dedicated incoming calls client (isolated channel)
+      await for (final notification
+          in _incomingCallsClient.subscribeToIncomingCalls(
         request,
         options: _createOptions(accessToken),
       )) {

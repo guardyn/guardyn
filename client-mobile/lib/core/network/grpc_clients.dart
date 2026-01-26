@@ -19,12 +19,21 @@ class GrpcClients {
   late ClientChannel _notificationChannel;
   late ClientChannel _callChannel;
 
+  /// Dedicated channel for incoming call subscriptions.
+  /// This is isolated from the main call channel to prevent HTTP/2 errors
+  /// in other call operations from killing the incoming calls subscription.
+  late ClientChannel _incomingCallsChannel;
+
   late AuthServiceClient authClient;
   late MessagingServiceClient messagingClient;
   late PresenceServiceClient presenceClient;
   late MediaServiceClient mediaClient;
   late NotificationServiceClient notificationClient;
   late CallServiceClient callClient;
+
+  /// Dedicated client for incoming call subscriptions only.
+  /// Uses a separate gRPC channel to ensure subscription stability.
+  late CallServiceClient incomingCallsClient;
 
   bool _initialized = false;
 
@@ -81,6 +90,15 @@ class GrpcClients {
     );
     _callChannel = _createChannel(AppConfig.callHost, AppConfig.callPort);
 
+    // Create a dedicated channel for incoming calls subscription.
+    // This ensures that HTTP/2 errors in regular call operations (like streamCallEvents)
+    // don't kill the incoming calls subscription, which must stay alive for the app to
+    // receive incoming calls.
+    _incomingCallsChannel = _createChannel(
+      AppConfig.callHost,
+      AppConfig.callPort,
+    );
+
     // Create service clients
     authClient = AuthServiceClient(_authChannel);
     messagingClient = MessagingServiceClient(_messagingChannel);
@@ -88,6 +106,9 @@ class GrpcClients {
     mediaClient = MediaServiceClient(_mediaChannel);
     notificationClient = NotificationServiceClient(_notificationChannel);
     callClient = CallServiceClient(_callChannel);
+
+    // Dedicated client for incoming calls - uses isolated channel
+    incomingCallsClient = CallServiceClient(_incomingCallsChannel);
 
     _initialized = true;
   }
@@ -101,6 +122,7 @@ class GrpcClients {
       _mediaChannel.shutdown(),
       _notificationChannel.shutdown(),
       _callChannel.shutdown(),
+      _incomingCallsChannel.shutdown(),
     ]);
     _initialized = false;
   }

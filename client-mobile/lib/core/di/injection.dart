@@ -414,6 +414,7 @@ void _registerCallsDependencies() {
   getIt.registerLazySingleton<CallRemoteDatasource>(
     () => CallRemoteDatasource(
       client: getIt<GrpcClients>().callClient,
+      incomingCallsClient: getIt<GrpcClients>().incomingCallsClient,
       logger: callLogger,
     ),
   );

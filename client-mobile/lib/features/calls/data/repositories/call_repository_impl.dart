@@ -126,7 +126,7 @@ class CallRepositoryImpl implements CallRepository {
               _logger.e(
                 '🔔 CallRepository: Subscription #$currentSubId error: $error',
               );
-              
+
               // Check if it's an auth error - don't retry immediately for auth errors
               final isAuthError =
                   error.toString().contains('Invalid or expired token') ||
@@ -252,18 +252,18 @@ class CallRepositoryImpl implements CallRepository {
   void _handlePendingCallEvent(CallEventData event) {
     if (event is CallStateChangedEvent) {
       _logger.i('🔔 CallRepository: Pending call state changed to ${event.newState}');
-      
+
       if (event.newState == CallStateType.ended ||
           event.newState == CallStateType.failed) {
         // Caller cancelled the call before we answered
         _logger.i('🔔 CallRepository: Caller cancelled - ending pending call');
-        
+
         // Stop ringtone
         _callAudioService.stopIncomingRingtone();
-        
+
         // End the call with appropriate reason
         _endCall(_mapEndReason(event.endReason));
-        
+
         // Cancel the pending subscription
         _pendingCallEventsSubscription?.cancel();
         _pendingCallEventsSubscription = null;
@@ -662,7 +662,7 @@ class CallRepositoryImpl implements CallRepository {
   void _startCallEventStream(String callId, String accessToken) {
     _callEventsSubscription?.cancel();
     _logger.i('💡 Starting call events stream for $callId');
-    
+
     _callEventsSubscription = _callRemoteDatasource
         .streamCallEvents(accessToken: accessToken, callId: callId)
         .listen(
@@ -683,6 +683,18 @@ class CallRepositoryImpl implements CallRepository {
           },
           onDone: () {
             _logger.i('💡 Call events stream closed for $callId');
+            // Retry on graceful stream close too (can happen on HTTP/2 errors)
+            // Only retry if call is still active
+            if (_activeCall != null && _activeCall!.id == callId) {
+              _logger.i(
+                '💡 Stream closed while call active, retrying in 2 seconds...',
+              );
+              Future.delayed(const Duration(seconds: 2), () {
+                if (_activeCall != null && _activeCall!.id == callId) {
+                  _startCallEventStream(callId, accessToken);
+                }
+              });
+            }
           },
         );
   }
