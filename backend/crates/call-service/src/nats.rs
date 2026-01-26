@@ -405,7 +405,7 @@ impl CallNatsClient {
         Ok(consumer)
     }
 
-    /// Fetch ICE candidates from consumer
+    /// Fetch ICE candidates from consumer with long-polling
     pub async fn fetch_ice_candidates(
         &self,
         consumer: &PullConsumer,
@@ -414,6 +414,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
+            .expires(std::time::Duration::from_secs(5))
             .messages()
             .await
             .context("Failed to fetch ICE candidates")?;
@@ -425,6 +426,7 @@ impl CallNatsClient {
                 Ok(msg) => {
                     if let Ok(envelope) = serde_json::from_slice::<IceCandidateEnvelope>(&msg.payload)
                     {
+                        debug!("Received ICE candidate from {} for call {}", envelope.from_user_id, envelope.call_id);
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack ICE candidate message: {}", e);
@@ -432,7 +434,9 @@ impl CallNatsClient {
                     }
                 }
                 Err(e) => {
-                    error!("Error receiving ICE candidate message: {}", e);
+                    if !e.to_string().contains("timeout") {
+                        error!("Error receiving ICE candidate message: {}", e);
+                    }
                 }
             }
         }
@@ -440,7 +444,7 @@ impl CallNatsClient {
         Ok(envelopes)
     }
 
-    /// Fetch SDP messages from consumer
+    /// Fetch SDP messages from consumer with long-polling
     pub async fn fetch_sdp_messages(
         &self,
         consumer: &PullConsumer,
@@ -449,6 +453,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
+            .expires(std::time::Duration::from_secs(5))
             .messages()
             .await
             .context("Failed to fetch SDP messages")?;
@@ -459,6 +464,7 @@ impl CallNatsClient {
             match msg {
                 Ok(msg) => {
                     if let Ok(envelope) = serde_json::from_slice::<SdpEnvelope>(&msg.payload) {
+                        debug!("Received SDP from {} for call {}", envelope.from_user_id, envelope.call_id);
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack SDP message: {}", e);
@@ -466,7 +472,9 @@ impl CallNatsClient {
                     }
                 }
                 Err(e) => {
-                    error!("Error receiving SDP message: {}", e);
+                    if !e.to_string().contains("timeout") {
+                        error!("Error receiving SDP message: {}", e);
+                    }
                 }
             }
         }
@@ -474,7 +482,7 @@ impl CallNatsClient {
         Ok(envelopes)
     }
 
-    /// Fetch call events from consumer
+    /// Fetch call events from consumer with long-polling
     pub async fn fetch_call_events(
         &self,
         consumer: &PullConsumer,
@@ -483,6 +491,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
+            .expires(std::time::Duration::from_secs(5))
             .messages()
             .await
             .context("Failed to fetch call events")?;
@@ -493,6 +502,7 @@ impl CallNatsClient {
             match msg {
                 Ok(msg) => {
                     if let Ok(envelope) = serde_json::from_slice::<CallEventEnvelope>(&msg.payload) {
+                        debug!("Received call event {:?} for call {}", envelope.event_type, envelope.call_id);
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack call event message: {}", e);
@@ -500,7 +510,9 @@ impl CallNatsClient {
                     }
                 }
                 Err(e) => {
-                    error!("Error receiving call event message: {}", e);
+                    if !e.to_string().contains("timeout") {
+                        error!("Error receiving call event message: {}", e);
+                    }
                 }
             }
         }
@@ -508,7 +520,7 @@ impl CallNatsClient {
         Ok(envelopes)
     }
 
-    /// Fetch SFrame keys from consumer
+    /// Fetch SFrame keys from consumer with long-polling
     pub async fn fetch_sframe_keys(
         &self,
         consumer: &PullConsumer,
@@ -517,6 +529,7 @@ impl CallNatsClient {
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
+            .expires(std::time::Duration::from_secs(5))
             .messages()
             .await
             .context("Failed to fetch SFrame keys")?;
@@ -527,6 +540,7 @@ impl CallNatsClient {
             match msg {
                 Ok(msg) => {
                     if let Ok(envelope) = serde_json::from_slice::<SFrameKeyEnvelope>(&msg.payload) {
+                        debug!("Received SFrame key for call {}", envelope.call_id);
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack SFrame key message: {}", e);
@@ -534,7 +548,9 @@ impl CallNatsClient {
                     }
                 }
                 Err(e) => {
-                    error!("Error receiving SFrame key message: {}", e);
+                    if !e.to_string().contains("timeout") {
+                        error!("Error receiving SFrame key message: {}", e);
+                    }
                 }
             }
         }
@@ -542,15 +558,18 @@ impl CallNatsClient {
         Ok(envelopes)
     }
 
-    /// Fetch incoming call notifications from consumer
+    /// Fetch incoming call notifications from consumer with long-polling
+    /// Uses a timeout to wait for new messages instead of returning immediately
     pub async fn fetch_incoming_calls(
         &self,
         consumer: &PullConsumer,
         batch_size: usize,
     ) -> Result<Vec<IncomingCallEnvelope>> {
+        // Use expires() for long-polling - wait up to 5 seconds for messages
         let mut messages = consumer
             .batch()
             .max_messages(batch_size)
+            .expires(std::time::Duration::from_secs(5))
             .messages()
             .await
             .context("Failed to fetch incoming call notifications")?;
@@ -561,6 +580,7 @@ impl CallNatsClient {
             match msg {
                 Ok(msg) => {
                     if let Ok(envelope) = serde_json::from_slice::<IncomingCallEnvelope>(&msg.payload) {
+                        debug!("Received incoming call notification for call {}", envelope.call_id);
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack incoming call message: {}", e);
@@ -568,7 +588,10 @@ impl CallNatsClient {
                     }
                 }
                 Err(e) => {
-                    error!("Error receiving incoming call message: {}", e);
+                    // Timeout errors are expected with long-polling
+                    if !e.to_string().contains("timeout") {
+                        error!("Error receiving incoming call message: {}", e);
+                    }
                 }
             }
         }

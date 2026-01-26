@@ -126,9 +126,20 @@ pub enum CallManagerEvent {
     },
 }
 
+/// Information about a pending incoming call (before acceptance)
+#[derive(Debug, Clone)]
+pub struct PendingIncomingCall {
+    pub call_id: String,
+    pub caller_id: String,
+    pub caller_name: String,
+    pub call_type: CallType,
+    pub received_at: std::time::Instant,
+}
+
 /// Call Manager handles all active calls
 pub struct CallManager {
     active_calls: Arc<RwLock<HashMap<String, ActiveCall>>>,
+    pending_incoming_calls: Arc<RwLock<HashMap<String, PendingIncomingCall>>>,
     calls_client: Arc<CallsClient>,
     event_sender: mpsc::UnboundedSender<CallManagerEvent>,
     event_receiver: RwLock<Option<mpsc::UnboundedReceiver<CallManagerEvent>>>,
@@ -141,6 +152,7 @@ impl CallManager {
         
         Self {
             active_calls: Arc::new(RwLock::new(HashMap::new())),
+            pending_incoming_calls: Arc::new(RwLock::new(HashMap::new())),
             calls_client,
             event_sender: tx,
             event_receiver: RwLock::new(Some(rx)),
@@ -261,6 +273,16 @@ impl CallManager {
     pub async fn accept_call(&self, call_id: String) -> Result<(), CallManagerError> {
         info!("Accepting call: {}", call_id);
 
+        // Get the pending call info (caller_id, call_type, etc.)
+        let pending_call = self.pending_incoming_calls.write().remove(&call_id);
+        let (remote_user_id, call_type) = match &pending_call {
+            Some(pending) => (pending.caller_id.clone(), pending.call_type),
+            None => {
+                warn!("No pending call info found for call_id: {} - using defaults", call_id);
+                (String::new(), CallType::Voice)
+            }
+        };
+
         // Call the backend to accept
         let call_response = self
             .calls_client
@@ -279,6 +301,7 @@ impl CallManager {
             })
             .collect();
 
+        let is_video = call_type == CallType::Video;
         let webrtc_config = WebRtcConfig {
             ice_servers: if ice_servers.is_empty() {
                 vec![IceServerConfig {
@@ -290,7 +313,7 @@ impl CallManager {
                 ice_servers
             },
             audio_enabled: true,
-            video_enabled: true, // Will be adjusted based on call type
+            video_enabled: is_video,
             data_channel_enabled: false,
         };
 
@@ -304,18 +327,18 @@ impl CallManager {
         };
         let sframe_encryptor = SFrameEncryptor::new(sframe_key, call_response.sframe_key_id);
 
-        // Store/update the active call
+        // Store/update the active call with proper caller info
         let active_call = ActiveCall {
             call_id: call_id.clone(),
-            call_type: CallType::Voice, // Will be set properly from call info
-            remote_user_id: String::new(),
+            call_type,
+            remote_user_id,
             state: CallState::Connecting,
             is_outgoing: false,
             started_at: std::time::Instant::now(),
             webrtc_manager,
             sframe_encryptor,
             audio_muted: false,
-            video_enabled: false,
+            video_enabled: is_video,
             screen_sharing: false,
         };
 
@@ -327,10 +350,10 @@ impl CallManager {
             state: CallState::Connecting,
         });
 
-        // Subscribe to call events from the server
+        // Subscribe to call events from the server to receive SDP offer and ICE candidates
         self.start_call_events_subscription(call_id.clone()).await;
 
-        info!("Call accepted: {}", call_id);
+        info!("Call accepted: {} - waiting for SDP offer from caller", call_id);
         Ok(())
     }
 
@@ -341,6 +364,9 @@ impl CallManager {
         reason: Option<String>,
     ) -> Result<(), CallManagerError> {
         info!("Rejecting call: {} (reason: {:?})", call_id, reason);
+
+        // Remove from pending calls
+        self.pending_incoming_calls.write().remove(&call_id);
 
         self.calls_client
             .reject_call(call_id.clone(), reason)
@@ -570,6 +596,19 @@ impl CallManager {
                             CallType::Voice
                         };
                         
+                        // Store the pending incoming call info for later use when accepting
+                        let pending_call = PendingIncomingCall {
+                            call_id: notification.call_id.clone(),
+                            caller_id: notification.caller_id.clone(),
+                            caller_name: notification.caller_display_name.clone(),
+                            call_type,
+                            received_at: std::time::Instant::now(),
+                        };
+                        manager.pending_incoming_calls.write().insert(
+                            notification.call_id.clone(),
+                            pending_call,
+                        );
+                        
                         // Emit the incoming call event
                         manager.emit_event(CallManagerEvent::IncomingCall {
                             call_id: notification.call_id,
@@ -592,6 +631,9 @@ impl CallManager {
     /// 
     /// This spawns a background task that subscribes to call events
     /// from the backend and emits appropriate CallManager events.
+    /// 
+    /// **Important**: This function processes incoming SDP and ICE candidates
+    /// and applies them to the WebRTC peer connection to establish the call.
     async fn start_call_events_subscription(&self, call_id: String) {
         let calls_client = Arc::clone(&self.calls_client);
         let event_sender = self.event_sender.clone();
@@ -681,6 +723,25 @@ impl CallManager {
                                 sdp_mline_index,
                             } => {
                                 debug!("Received ICE candidate for call {}", cid);
+                                
+                                // Get webrtc_manager clone to avoid holding lock during async
+                                let webrtc_manager = active_calls.read().get(&cid)
+                                    .map(|call| call.webrtc_manager.clone());
+                                
+                                // Apply ICE candidate to WebRTC peer connection
+                                if let Some(manager) = webrtc_manager {
+                                    if let Err(e) = manager.add_ice_candidate(
+                                        &candidate,
+                                        &sdp_mid,
+                                        sdp_mline_index as u32,
+                                    ).await {
+                                        warn!("Failed to add ICE candidate: {:?}", e);
+                                    } else {
+                                        debug!("ICE candidate added successfully for call {}", cid);
+                                    }
+                                }
+                                
+                                // Also emit event for UI updates
                                 let _ = event_sender.send(CallManagerEvent::RemoteIceCandidate {
                                     call_id: cid,
                                     candidate,
@@ -696,6 +757,55 @@ impl CallManager {
                             } => {
                                 info!("Received SDP for call {} (type: {})", cid, sdp_type);
                                 let sdp_type_str = if sdp_type == 1 { "offer" } else { "answer" };
+                                
+                                // Get call info - clone what we need to avoid holding lock
+                                let call_info = active_calls.read().get(&cid).map(|call| {
+                                    (call.webrtc_manager.clone(), call.remote_user_id.clone())
+                                });
+                                
+                                if let Some((webrtc_manager, remote_user_id)) = call_info {
+                                    if sdp_type == 1 {
+                                        // Received OFFER - we are the callee
+                                        // Set remote description (the offer)
+                                        if let Err(e) = webrtc_manager.set_remote_description(&sdp).await {
+                                            warn!("Failed to set remote description: {:?}", e);
+                                        } else {
+                                            info!("Remote SDP offer set successfully for call {}", cid);
+                                            
+                                            // Create and send answer
+                                            match webrtc_manager.create_answer(&sdp).await {
+                                                Ok(answer_sdp) => {
+                                                    info!("Created SDP answer for call {}", cid);
+                                                    
+                                                    // Send answer to caller via backend
+                                                    if let Err(e) = calls_client.exchange_sdp(
+                                                        cid.clone(),
+                                                        remote_user_id,
+                                                        2, // ANSWER type
+                                                        answer_sdp,
+                                                    ).await {
+                                                        warn!("Failed to send SDP answer: {:?}", e);
+                                                    } else {
+                                                        info!("SDP answer sent successfully for call {}", cid);
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    warn!("Failed to create SDP answer: {:?}", e);
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Received ANSWER - we are the caller
+                                        // Just set remote description
+                                        if let Err(e) = webrtc_manager.set_remote_description(&sdp).await {
+                                            warn!("Failed to set remote description (answer): {:?}", e);
+                                        } else {
+                                            info!("Remote SDP answer set successfully for call {}", cid);
+                                        }
+                                    }
+                                }
+                                
+                                // Emit event for UI updates
                                 let _ = event_sender.send(CallManagerEvent::RemoteSdp {
                                     call_id: cid,
                                     sdp_type: sdp_type_str.to_string(),

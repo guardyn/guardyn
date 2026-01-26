@@ -187,17 +187,35 @@ pub async fn initiate_call(
             timestamp: Utc::now().timestamp(),
         };
 
+        debug!(
+            "Publishing incoming call notification: call_id={}, caller={}, callee={}",
+            call_id, user_id, target_uid
+        );
+
         if let Err(e) = nats_client.publish_incoming_call(target_uid, &incoming_envelope).await {
             warn!("Failed to notify callee about incoming call: {}", e);
+        } else {
+            // Update state to RINGING after successfully notifying callee
+            session_mgr.update_state(&call_id, 2); // RINGING = 2
+            if let Err(e) = db.update_call_state(&call_id, 2).await {
+                warn!("Failed to update call state to RINGING: {}", e);
+            }
+            debug!("Call {} state updated to RINGING", call_id);
         }
     }
 
-    debug!("Created call {} initiated by {}", call_id, user_id);
+    // Get current state (may be RINGING if callee was notified)
+    let current_state = session_mgr
+        .get_session(&call_id)
+        .map(|s| s.read().state)
+        .unwrap_or(1); // Default to INITIATING
+
+    debug!("Created call {} initiated by {} with state {}", call_id, user_id, current_state);
 
     InitiateCallResponse {
         result: Some(initiate_call_response::Result::Success(InitiateCallSuccess {
             call_id,
-            state: CallState::Initiating as i32,
+            state: current_state,
             created_at: Some(crate::generated::guardyn::common::Timestamp {
                 seconds: Utc::now().timestamp(),
                 nanos: 0,
