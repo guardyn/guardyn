@@ -197,6 +197,7 @@ class CallRepositoryImpl implements CallRepository {
     );
 
     _activeCall = call;
+    _logger.i('🔔 CallRepository: SET _activeCall=${call.id}');
     _logger.i('🔔 CallRepository: Adding call to incomingCallsController...');
     _incomingCallsController.add(call);
     _callStateChangesController.add(call);
@@ -518,6 +519,9 @@ class CallRepositoryImpl implements CallRepository {
     // Add to history
     _callHistory.insert(0, endedCall);
 
+    _logger.i(
+      '🔔 CallRepository: CLEARING _activeCall (was ${_activeCall?.id})',
+    );
     _activeCall = null;
     _callStateChangesController.add(endedCall);
 
@@ -842,9 +846,13 @@ class CallRepositoryImpl implements CallRepository {
 
   @override
   Future<Either<Failure, void>> rejectCall(String callId) async {
-    _logger.i('Rejecting call $callId');
+    _logger.i('📞 rejectCall: Attempting to reject call $callId');
+    _logger.i('📞 rejectCall: _activeCall=${_activeCall?.id}, target=$callId');
 
     if (_activeCall == null || _activeCall!.id != callId) {
+      _logger.e(
+        '📞 rejectCall: FAILED - no active call! _activeCall=${_activeCall?.id}, trying to reject=$callId',
+      );
       return const Left(ServerFailure('No active call to reject'));
     }
 

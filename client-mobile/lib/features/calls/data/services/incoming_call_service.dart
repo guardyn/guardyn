@@ -153,7 +153,7 @@ class IncomingCallService {
           navigator.pop(false);
         },
       ),
-    ).then((accepted) {
+    ).then((accepted) async {
       _isShowingIncomingCall = false;
       _currentIncomingCallId = null;
 
@@ -161,7 +161,15 @@ class IncomingCallService {
         _navigateToCallScreen(call);
       } else {
         // Reject the call
-        _callRepository.rejectCall(call.id);
+        _logger.i(
+          '🔔 IncomingCallService: User declined, calling rejectCall(${call.id})',
+        );
+        final result = await _callRepository.rejectCall(call.id);
+        result.fold(
+          (failure) =>
+              _logger.e('🔔 IncomingCallService: rejectCall FAILED: $failure'),
+          (_) => _logger.i('🔔 IncomingCallService: rejectCall SUCCESS'),
+        );
       }
     });
   }
