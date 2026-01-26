@@ -429,9 +429,14 @@ class CallRemoteDatasource {
           ),
         );
       }
+      // Stream completed normally (server closed it)
+      _logger.w('🔔 Incoming calls gRPC stream completed (server closed connection)');
     } on GrpcError catch (e) {
-      _logger.e('gRPC error subscribing to incoming calls: ${e.message}');
+      _logger.e('🔔 gRPC error subscribing to incoming calls: ${e.code} - ${e.message}');
       throw GrpcCallException(e.message ?? 'Unknown gRPC error');
+    } catch (e) {
+      _logger.e('🔔 Unexpected error in incoming calls stream: $e');
+      rethrow;
     }
   }
 

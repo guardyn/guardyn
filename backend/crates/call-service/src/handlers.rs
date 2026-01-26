@@ -381,10 +381,15 @@ pub async fn reject_call(
         }
     };
 
+    info!("📞 reject_call: user {} rejecting call {}", user_id, request.call_id);
+
     // Get the session to find the caller user ID (initiator)
     let caller_id = session_mgr.get_session(&request.call_id)
         .map(|s| {
             let session = s.read();
+            info!("📞 reject_call: found session, initiator={}, participants={:?}", 
+                  session.initiator_id, 
+                  session.participants.keys().collect::<Vec<_>>());
             // Find another participant who is not the one rejecting
             session.participants.values()
                 .find(|p| p.user_id != user_id)
@@ -399,6 +404,8 @@ pub async fn reject_call(
                 })
         })
         .flatten();
+    
+    info!("📞 reject_call: caller_id to notify = {:?}", caller_id);
 
     // End the session with DECLINED reason
     if let Some(_session) = session_mgr.end_session(&request.call_id) {
@@ -419,13 +426,19 @@ pub async fn reject_call(
             }),
             timestamp: chrono::Utc::now().timestamp(),
         };
+        info!("📞 reject_call: publishing CallRejected event for call {} to NATS subject calls.{}.events", 
+              request.call_id, request.call_id);
         if let Err(e) = nats_client.publish_call_event(&event).await {
-            warn!("Failed to publish call rejected event: {}", e);
+            warn!("📞 reject_call: Failed to publish call rejected event: {}", e);
+        } else {
+            info!("📞 reject_call: SUCCESS - published CallRejected event for call {} (caller: {})", 
+                  request.call_id, caller);
         }
-        debug!("Published call rejected event to caller {}", caller);
+    } else {
+        warn!("📞 reject_call: No caller_id found - cannot notify caller about rejection!");
     }
 
-    debug!("User {} rejected call {}", user_id, request.call_id);
+    info!("📞 reject_call: User {} rejected call {} - COMPLETE", user_id, request.call_id);
 
     RejectCallResponse {
         result: Some(reject_call_response::Result::Success(RejectCallSuccess {

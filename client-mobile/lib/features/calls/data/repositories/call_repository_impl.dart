@@ -47,6 +47,9 @@ class CallRepositoryImpl implements CallRepository {
   /// Subscription ID for debugging
   int _subscriptionId = 0;
 
+  /// Timer for subscription health check
+  Timer? _subscriptionHealthTimer;
+
   /// Timer for call duration tracking
   Timer? _durationTimer;
 
@@ -82,6 +85,32 @@ class CallRepositoryImpl implements CallRepository {
 
     // Subscribe to incoming calls via gRPC
     _startIncomingCallsSubscription();
+
+    // Start periodic health check for incoming calls subscription
+    _startSubscriptionHealthCheck();
+  }
+
+  /// Periodically checks if incoming calls subscription is alive
+  void _startSubscriptionHealthCheck() {
+    _subscriptionHealthTimer?.cancel();
+    _subscriptionHealthTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _checkSubscriptionHealth(),
+    );
+  }
+
+  /// Check and restart subscription if it appears dead
+  void _checkSubscriptionHealth() {
+    if (_incomingCallsSubscription == null) {
+      _logger.w(
+        '🔔 CallRepository: Health check - subscription is NULL, restarting...',
+      );
+      _startIncomingCallsSubscription();
+    } else {
+      _logger.d(
+        '🔔 CallRepository: Health check - subscription exists (ID: $_subscriptionId)',
+      );
+    }
   }
 
   /// Starts subscription to incoming calls from the backend
@@ -106,8 +135,12 @@ class CallRepositoryImpl implements CallRepository {
       final accessToken = await _tokenManager.getValidAccessToken();
       if (accessToken == null) {
         _logger.w(
-          '🔔 CallRepository: No access token, skipping incoming calls subscription #$currentSubId',
+          '🔔 CallRepository: No access token, will retry subscription #$currentSubId in 5 seconds...',
         );
+        // Retry after delay - user might log in soon
+        Future.delayed(const Duration(seconds: 5), () {
+          _startIncomingCallsSubscription();
+        });
         return;
       }
 
@@ -1046,6 +1079,7 @@ class CallRepositoryImpl implements CallRepository {
   /// Dispose all resources
   Future<void> dispose() async {
     _stopDurationTimer();
+    _subscriptionHealthTimer?.cancel();
     await _callEventsSubscription?.cancel();
     await _pendingCallEventsSubscription?.cancel();
     await _webrtcSubscription?.cancel();

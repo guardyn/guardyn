@@ -234,6 +234,11 @@ impl CallNatsClient {
         let subject = subjects::events(&envelope.call_id);
         let payload = serde_json::to_vec(envelope)?;
 
+        info!(
+            "📤 publish_call_event: Publishing {:?} event to subject {} for call {}",
+            envelope.event_type, subject, envelope.call_id
+        );
+
         self.context
             .publish(subject.clone(), payload.into())
             .await
@@ -241,8 +246,8 @@ impl CallNatsClient {
             .await
             .context("Failed to confirm call event publication")?;
 
-        debug!(
-            "Published call event {:?} for call {}",
+        info!(
+            "📤 publish_call_event: SUCCESS - Published {:?} event for call {}",
             envelope.event_type, envelope.call_id
         );
 
@@ -534,11 +539,17 @@ impl CallNatsClient {
         while let Some(msg) = messages.next().await {
             match msg {
                 Ok(msg) => {
-                    if let Ok(envelope) = serde_json::from_slice::<CallEventEnvelope>(&msg.payload) {
-                        debug!("Received call event {:?} for call {}", envelope.event_type, envelope.call_id);
-                        envelopes.push(envelope);
-                        if let Err(e) = msg.ack().await {
-                            warn!("Failed to ack call event message: {}", e);
+                    match serde_json::from_slice::<CallEventEnvelope>(&msg.payload) {
+                        Ok(envelope) => {
+                            info!("📬 fetch_call_events: Received {:?} event for call {} from NATS", 
+                                  envelope.event_type, envelope.call_id);
+                            envelopes.push(envelope);
+                            if let Err(e) = msg.ack().await {
+                                warn!("Failed to ack call event message: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            warn!("📬 fetch_call_events: Failed to deserialize message: {}", e);
                         }
                     }
                 }

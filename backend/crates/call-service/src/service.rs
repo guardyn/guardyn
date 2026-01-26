@@ -506,7 +506,11 @@ impl CallService for CallServiceImpl {
         let call_id = req.call_id.clone();
         let user_id_clone = user_id.clone();
 
+        info!("📡 stream_call_events: Starting event stream for call {} user {}", call_id, user_id);
+
         tokio::spawn(async move {
+            info!("📡 stream_call_events: Spawned task for call {} user {}", call_id, user_id_clone);
+            
             // Subscribe to ICE candidates for this user
             let ice_consumer = match nats_client.subscribe_ice_candidates(&call_id, &user_id_clone).await {
                 Ok(c) => Some(c),
@@ -527,7 +531,10 @@ impl CallService for CallServiceImpl {
 
             // Subscribe to general call events
             let events_consumer = match nats_client.subscribe_call_events(&call_id, &user_id_clone).await {
-                Ok(c) => Some(c),
+                Ok(c) => {
+                    info!("📡 stream_call_events: Events consumer created for call {} user {}", call_id, user_id_clone);
+                    Some(c)
+                }
                 Err(e) => {
                     warn!("Failed to subscribe to call events: {}", e);
                     None
@@ -543,10 +550,12 @@ impl CallService for CallServiceImpl {
                 }
             };
 
+            info!("📡 stream_call_events: All consumers created, starting poll loop for call {} user {}", call_id, user_id_clone);
+
             // Poll for events
             loop {
                 if tx.is_closed() {
-                    debug!("Event stream closed for call {}", call_id);
+                    info!("📡 stream_call_events: Event stream closed for call {} - client disconnected", call_id);
                     break;
                 }
 
@@ -607,11 +616,22 @@ impl CallService for CallServiceImpl {
                 // Fetch call events
                 if let Some(ref consumer) = events_consumer {
                     if let Ok(events) = nats_client.fetch_call_events(consumer, 10).await {
+                        if !events.is_empty() {
+                            info!("📨 stream_call_events: Fetched {} call events for call {} user {}", 
+                                  events.len(), call_id, user_id_clone);
+                        }
                         for event_envelope in events {
+                            info!("📨 stream_call_events: Processing {:?} event for call {}", 
+                                  event_envelope.event_type, call_id);
                             if let Some(call_event) = convert_call_event(&call_id, &event_envelope) {
+                                info!("📨 stream_call_events: Converted event, sending to client for call {}", call_id);
                                 if tx.send(Ok(call_event)).await.is_err() {
+                                    warn!("📨 stream_call_events: Failed to send event - channel closed for call {}", call_id);
                                     break;
                                 }
+                            } else {
+                                warn!("📨 stream_call_events: Failed to convert event {:?} for call {}", 
+                                      event_envelope.event_type, call_id);
                             }
                         }
                     }
