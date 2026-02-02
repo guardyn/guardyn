@@ -20,6 +20,8 @@ env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: '20'
 
+# CI/CD trigger: updated Linux dependencies for Tauri v2
+
 jobs:
   # Task 17: Test Job
   test:
