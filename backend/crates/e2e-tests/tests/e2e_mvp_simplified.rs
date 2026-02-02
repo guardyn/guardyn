@@ -268,6 +268,9 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
         message_type: MessageType::Text as i32, // TEXT = 0
         media_id: String::new(),
         recipient_username: user2.username.clone(),
+        x3dh_prekey: String::new(),
+        thread_reference: None,
+        voice_metadata: None,
     });
 
     let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -366,6 +369,9 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
             message_type: MessageType::Text as i32,
             media_id: String::new(),
             recipient_username: user2.username.clone(),
+            x3dh_prekey: String::new(),
+            thread_reference: None,
+            voice_metadata: None,
         });
 
         let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -441,6 +447,9 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
             message_type: MessageType::Text as i32,
             media_id: String::new(),
             recipient_username: user2.username.clone(),
+            x3dh_prekey: String::new(),
+            thread_reference: None,
+            voice_metadata: None,
         });
 
         let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -533,6 +542,8 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
         group_name: "E2E Test Group".to_string(),
         member_user_ids: vec![user2.user_id()?, user3.user_id()?],
         mls_group_state: vec![], // Mock MLS state for MVP
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client.create_group(create_group_request).await?.into_inner();
@@ -564,6 +575,8 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
             nanos: 0,
         }),
         media_id: String::new(),
+        thread_reference: None,
+        voice_metadata: None,
     });
 
     let send_group_response = messaging_client.send_group_message(send_group_request).await?.into_inner();
@@ -651,6 +664,9 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
         message_type: MessageType::Text as i32,
         media_id: String::new(),
         recipient_username: user2.username.clone(),
+        x3dh_prekey: String::new(),
+        thread_reference: None,
+        voice_metadata: None,
     });
 
     let send_response = messaging_client.send_message(send_request).await?.into_inner();
@@ -726,6 +742,8 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         group_name: "Member Management Test".to_string(),
         member_user_ids: vec![user2.user_id()?, user3.user_id()?],
         mls_group_state: vec![], // Mock MLS state
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client.create_group(create_group_request).await?.into_inner();

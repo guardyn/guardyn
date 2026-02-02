@@ -48,3 +48,8 @@ harness = true
 name = "e2e_groups"
 path = "tests/e2e_groups.rs"
 harness = true
+
+[[test]]
+name = "e2e_production_readiness"
+path = "tests/e2e_production_readiness.rs"
+harness = true
