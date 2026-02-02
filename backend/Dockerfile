@@ -13,8 +13,8 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copy the entire backend directory
-COPY backend/ .
+# Copy the entire backend directory (when building from root) or current directory (when building from backend/)
+COPY . .
 
 # Build argument for service name
 ARG SERVICE_NAME
