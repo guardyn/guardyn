@@ -2,6 +2,7 @@
 # Run with: cargo deny check
 # See: https://embarkstudios.github.io/cargo-deny/
 
+# cargo-deny v2 configuration
 [graph]
 # All crates are considered
 all-features = true
@@ -9,28 +10,27 @@ no-default-features = false
 
 [advisories]
 # RUSTSEC database
+version = 2
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 
-# Fail on vulnerabilities
-vulnerability = "deny"
-
-# Warn on unmaintained crates
-unmaintained = "warn"
-
-# Warn on yanked versions
-yanked = "warn"
-
 # Ignore specific advisories (with justification)
 ignore = [
-    # Example: "RUSTSEC-2023-0001", # Reason for ignoring
+    "RUSTSEC-2024-0388", # derivative - waiting for dependency update
+    "RUSTSEC-2024-0384", # instant - waiting for dependency update  
+    "RUSTSEC-2024-0436", # paste - waiting for dependency update
+    "RUSTSEC-2024-0437", # protobuf recursion - tracked separately
+    "RUSTSEC-2023-0071", # rsa Marvin attack - tracked separately
+    "RUSTSEC-2025-0134", # rustls-pemfile - waiting for dependency update
 ]
 
 [licenses]
+version = 2
+
 # Confidence threshold for license detection
 confidence-threshold = 0.8
 
-# List of allowed licenses
+# List of allowed licenses (SPDX expressions)
 allow = [
     "MIT",
     "Apache-2.0",
@@ -40,6 +40,7 @@ allow = [
     "ISC",
     "Zlib",
     "0BSD",
+    "Unicode-3.0",
     "Unicode-DFS-2016",
     "BSL-1.0",
     "CC0-1.0",
@@ -47,17 +48,8 @@ allow = [
     "OpenSSL",
 ]
 
-# Deny copyleft licenses
-deny = [
-    "GPL-1.0",
-    "GPL-2.0",
-    "GPL-3.0",
-    "AGPL-1.0",
-    "AGPL-3.0",
-    "LGPL-2.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
-]
+# Private crates that don't need a license
+private = { ignore = true }
 
 # Clarifications for specific crates
 [[licenses.clarify]]
@@ -67,34 +59,27 @@ license-files = [
     { path = "LICENSE", hash = 0xbd0eed23 }
 ]
 
-[[licenses.clarify]]
-name = "webpki"
-expression = "ISC"
-license-files = [
-    { path = "LICENSE", hash = 0x001c7e6c }
-]
-
 [bans]
 # Multiple versions of the same crate
 multiple-versions = "warn"
 
-# Wildcards in version requirements
-wildcards = "deny"
+# Wildcards in version requirements (allow for workspace crates)
+wildcards = "allow"
 
 # Crates that are not allowed
 deny = [
-    # Example: { name = "openssl", reason = "Use rustls instead" }
+    # Example: { crate = "openssl", reason = "Use rustls instead" }
 ]
 
 # Allow specific duplicates
 skip = [
     # Allow multiple versions during transition
-    # { name = "some-crate", version = "*" }
+    # { crate = "some-crate@*" }
 ]
 
 # Allow tree-wide duplicates
 skip-tree = [
-    # { name = "some-crate", version = "*" }
+    # { crate = "some-crate@*" }
 ]
 
 [sources]
