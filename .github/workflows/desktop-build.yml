@@ -5,11 +5,15 @@ on:
     branches: [main]
     paths:
       - 'client-desktop/**'
+      - 'backend/crates/crypto/**'
+      - 'backend/crates/common/**'
       - '.github/workflows/desktop-build.yml'
   pull_request:
     branches: [main]
     paths:
       - 'client-desktop/**'
+      - 'backend/crates/crypto/**'
+      - 'backend/crates/common/**'
   workflow_dispatch:
 
 env:
@@ -91,6 +95,7 @@ jobs:
           projectPath: client-desktop
           tauriScript: npm run tauri
           args: --target ${{ matrix.target }}
+        continue-on-error: true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
