@@ -125,7 +125,8 @@ jobs:
             librsvg2-dev \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            protobuf-compiler
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -179,7 +180,8 @@ jobs:
             patchelf \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            protobuf-compiler
 
       - name: Cache Cargo
         uses: actions/cache@v4

@@ -17,7 +17,7 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 # Ignore specific advisories (with justification)
 ignore = [
     "RUSTSEC-2024-0388", # derivative - waiting for dependency update
-    "RUSTSEC-2024-0384", # instant - waiting for dependency update  
+    "RUSTSEC-2024-0384", # instant - waiting for dependency update
     "RUSTSEC-2024-0436", # paste - waiting for dependency update
     "RUSTSEC-2024-0437", # protobuf recursion - tracked separately
     "RUSTSEC-2023-0071", # rsa Marvin attack - tracked separately
