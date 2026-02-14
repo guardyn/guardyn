@@ -842,6 +842,27 @@
             text-decoration: underline;
         }
 
+        /* Use Cases List */
+        .use-case-list {
+            list-style: none;
+            margin-top: 1.5rem;
+        }
+
+        .use-case-list li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.8rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .use-case-list li span {
+            font-size: 1.1rem;
+            min-width: 24px;
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .hero-logo {
@@ -1011,6 +1032,70 @@
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
                         macOS
                     </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section id="use-cases" class="section">
+        <div class="container">
+            <h2 class="section-title">Built for <span class="gradient-text">Everyone</span></h2>
+            <p class="section-subtitle">
+                From activists to enterprises, Guardyn provides the privacy layer for the modern world.
+            </p>
+
+            <div class="features">
+                <!-- For EveryOne / Civil Society -->
+                <div class="feature">
+                    <div class="feature-icon">🕊️</div>
+                    <h3 class="feature-title">Civil Society</h3>
+                    <ul class="use-case-list">
+                        <li><span>🖊️</span> Journalists protecting sources</li>
+                        <li><span>🛡️</span> Human Rights Defenders</li>
+                        <li><span>🤝</span> NGOs in conflict zones</li>
+                        <li><span>🏳️‍🌈</span> LGBTQ+ Activists</li>
+                        <li><span>🗣️</span> Whistleblowers & Dissidents</li>
+                    </ul>
+                </div>
+
+                <!-- For Business -->
+                <div class="feature">
+                    <div class="feature-icon">🏢</div>
+                    <h3 class="feature-title">For Business</h3>
+                    <ul class="use-case-list">
+                        <li><span>🏥</span> GDPR/HIPAA Healthcare Orgs</li>
+                        <li><span>⚖️</span> Legal Client Privilege</li>
+                        <li><span>💼</span> Executive Communications</li>
+                        <li><span>🧪</span> IP & R&D Protection</li>
+                        <li><span>💰</span> Secure Financial Operations</li>
+                    </ul>
+                </div>
+
+                <!-- For Government -->
+                <div class="feature">
+                    <div class="feature-icon">🏛️</div>
+                    <h3 class="feature-title">For Government</h3>
+                    <ul class="use-case-list">
+                        <li><span>👔</span> Diplomatic Communications</li>
+                        <li><span>🕵️</span> Intelligence Sharing</li>
+                        <li><span>🗳️</span> Election Infrastructure</li>
+                        <li><span>👮</span> Law Enforcement</li>
+                        <li><span>🏙️</span> Smart City Security</li>
+                    </ul>
+                </div>
+
+                 <!-- For Military -->
+                <div class="feature">
+                    <div class="feature-icon">🎖️</div>
+                    <h3 class="feature-title">For Military</h3>
+                    <ul class="use-case-list">
+                        <li><span>📡</span> Tactical Operations</li>
+                        <li><span>🗺️</span> C2 (Command & Control)</li>
+                        <li><span>🚛</span> Secure Logistics Chain</li>
+                        <li><span>⚓</span> Naval Communications</li>
+                        <li><span>🪖</span> Field Unit Coordination</li>
+                    </ul>
                 </div>
             </div>
         </div>
