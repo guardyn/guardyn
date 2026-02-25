@@ -23,13 +23,13 @@
 //! ```
 
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
     runtime,
     trace::{RandomIdGenerator, Sampler, TracerProvider},
     Resource,
 };
-use opentelemetry::KeyValue;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Guard that ensures proper shutdown of the tracing pipeline
@@ -63,8 +63,8 @@ pub fn init_tracing(
     otlp_endpoint: Option<&str>,
 ) -> TracingGuard {
     // Build the subscriber layers
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| log_level.into());
+    let env_filter =
+        tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| log_level.into());
 
     // JSON formatting layer for structured logs
     let fmt_layer = tracing_subscriber::fmt::layer()
@@ -156,7 +156,10 @@ fn init_opentelemetry_tracer(
 /// Legacy initialization function for backward compatibility
 ///
 /// Use `init_tracing` with otlp_endpoint parameter for new services that need distributed tracing.
-#[deprecated(since = "0.2.0", note = "Use init_tracing with otlp_endpoint parameter instead")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use init_tracing with otlp_endpoint parameter instead"
+)]
 pub fn init_tracing_legacy(service_name: &str, log_level: &str) {
     let _ = init_tracing(service_name, log_level, None);
 }

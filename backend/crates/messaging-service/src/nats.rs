@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 /// NATS message envelope
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct MessageEnvelope {
     pub message_id: String,
     pub sender_user_id: String,
@@ -59,9 +60,9 @@ impl NatsClient {
 
     /// Publish message to NATS
     pub async fn publish_message(&self, envelope: &MessageEnvelope) -> Result<()> {
-        let subject = format!("messages.{}.{}",
-            envelope.recipient_user_id,
-            envelope.message_id
+        let subject = format!(
+            "messages.{}.{}",
+            envelope.recipient_user_id, envelope.message_id
         );
 
         let payload = serde_json::to_vec(envelope)?;
@@ -83,7 +84,11 @@ impl NatsClient {
     }
 
     /// Publish message to NATS with custom subject (for group messages)
-    pub async fn publish_message_to_subject(&self, subject: &str, envelope: &MessageEnvelope) -> Result<()> {
+    pub async fn publish_message_to_subject(
+        &self,
+        subject: &str,
+        envelope: &MessageEnvelope,
+    ) -> Result<()> {
         let payload = serde_json::to_vec(envelope)?;
 
         self.context
@@ -93,7 +98,11 @@ impl NatsClient {
             .await
             .context("Failed to confirm message publication")?;
 
-        tracing::debug!("Published message {} to subject {}", envelope.message_id, subject);
+        tracing::debug!(
+            "Published message {} to subject {}",
+            envelope.message_id,
+            subject
+        );
 
         Ok(())
     }
@@ -206,5 +215,3 @@ impl NatsClient {
         Ok(())
     }
 }
-
-

@@ -39,8 +39,11 @@ pub struct SessionParticipant {
 /// SFrame key material for a participant
 #[derive(Debug, Clone)]
 pub struct ParticipantKey {
+    #[allow(dead_code)]
     pub user_id: String,
+    #[allow(dead_code)]
     pub key_id: u32,
+    #[allow(dead_code)]
     pub key_material: Vec<u8>,
 }
 
@@ -131,6 +134,7 @@ impl CallSessionManager {
     }
 
     /// Get user's active call
+    #[allow(dead_code)]
     pub fn get_user_call(&self, user_id: &str) -> Option<String> {
         self.user_calls.get(user_id).map(|c| c.clone())
     }
@@ -141,19 +145,21 @@ impl CallSessionManager {
         if let Some(call_id_ref) = self.user_calls.get(user_id) {
             let call_id = call_id_ref.value().clone();
             drop(call_id_ref); // Release the lock before potentially calling end_session
-            
+
             // Check if the call is stale (in INITIATING or RINGING state for more than 60 seconds)
             if let Some(session) = self.sessions.get(&call_id) {
                 let session_guard = session.read();
                 let age = Utc::now() - session_guard.created_at;
                 let state = session_guard.state;
                 drop(session_guard); // Release lock before removing
-                
+
                 // States: 1=INITIATING, 2=RINGING - if stuck for >60s, consider stale
                 if (state == 1 || state == 2) && age.num_seconds() > 60 {
                     tracing::warn!(
                         "Cleaning up stale call {} for user {} (age: {}s, state: {})",
-                        call_id, user_id, age.num_seconds(), 
+                        call_id,
+                        user_id,
+                        age.num_seconds(),
                         if state == 1 { "INITIATING" } else { "RINGING" }
                     );
                     drop(session); // Release the DashMap guard
@@ -165,7 +171,8 @@ impl CallSessionManager {
                 // Session doesn't exist, clean up the user_calls entry
                 tracing::warn!(
                     "Cleaning up orphaned user_call entry for user {} (call {} not found)",
-                    user_id, call_id
+                    user_id,
+                    call_id
                 );
                 self.user_calls.remove(user_id);
                 return false;
@@ -293,6 +300,7 @@ impl CallSessionManager {
     }
 
     /// Update speaking indicator
+    #[allow(dead_code)]
     pub fn update_speaking(&self, call_id: &str, user_id: &str, speaking: bool) -> bool {
         if let Some(session) = self.get_session(call_id) {
             let mut session = session.write();
@@ -374,6 +382,7 @@ impl CallSessionManager {
     }
 
     /// Get all SFrame keys for a call
+    #[allow(dead_code)]
     pub fn get_sframe_keys(&self, call_id: &str) -> Vec<ParticipantKey> {
         self.sframe_keys
             .get(call_id)
@@ -391,17 +400,17 @@ impl Default for CallSessionManager {
 /// Generate random SFrame key material
 fn generate_sframe_key() -> Vec<u8> {
     use std::time::{SystemTime, UNIX_EPOCH};
-    
+
     // Simple key generation - in production use proper CSPRNG
     let mut key = vec![0u8; 32];
     let seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    
+
     for (i, byte) in key.iter_mut().enumerate() {
         *byte = ((seed >> (i % 8)) & 0xFF) as u8 ^ (i as u8);
     }
-    
+
     key
 }

@@ -26,6 +26,7 @@ use tonic::{transport::Channel, Request};
 use uuid::Uuid;
 
 // Import generated proto code
+#[allow(dead_code, clippy::large_enum_variant)]
 mod proto {
     pub mod auth {
         tonic::include_proto!("guardyn.auth");
@@ -41,8 +42,8 @@ mod proto {
 use proto::auth::{auth_service_client::AuthServiceClient, RegisterRequest};
 use proto::common::{KeyBundle, Timestamp};
 use proto::media::{
-    media_service_client::MediaServiceClient, GetDownloadUrlRequest, GetUploadUrlRequest,
-    GenerateThumbnailRequest, GetMediaMetadataRequest,
+    media_service_client::MediaServiceClient, GenerateThumbnailRequest, GetDownloadUrlRequest,
+    GetMediaMetadataRequest, GetUploadUrlRequest,
 };
 
 /// Test environment configuration
@@ -92,7 +93,10 @@ fn mock_key_bundle() -> KeyBundle {
         signed_pre_key: vec![0u8; 32],
         signed_pre_key_signature: vec![0u8; 64],
         one_time_pre_keys: vec![vec![0u8; 32]],
-        created_at: Some(Timestamp { seconds: now, nanos: 0 }),
+        created_at: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
     }
 }
 
@@ -162,7 +166,7 @@ impl TestUser {
         self.access_token
             .as_ref()
             .ok_or("User not authenticated".into())
-            .map(|s| s.clone())
+            .cloned()
     }
 }
 
@@ -256,9 +260,10 @@ async fn test_01_upload_image_flow() -> Result<(), Box<dyn std::error::Error>> {
         size_bytes: test_image.len() as i64,
         conversation_id: String::new(),
     });
-    upload_url_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    upload_url_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let upload_url_response = media_client
         .get_upload_url(upload_url_request)
@@ -266,20 +271,33 @@ async fn test_01_upload_image_flow() -> Result<(), Box<dyn std::error::Error>> {
         .into_inner();
 
     if let Some(error) = upload_url_response.error {
-        return Err(format!("Get upload URL failed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Get upload URL failed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
-    assert!(!upload_url_response.upload_url.is_empty(), "Upload URL should not be empty");
-    assert!(!upload_url_response.media_id.is_empty(), "Media ID should not be empty");
-    
+    assert!(
+        !upload_url_response.upload_url.is_empty(),
+        "Upload URL should not be empty"
+    );
+    assert!(
+        !upload_url_response.media_id.is_empty(),
+        "Media ID should not be empty"
+    );
+
     let media_id = upload_url_response.media_id.clone();
     println!("✅ Got upload URL for media_id: {}", media_id);
-    println!("📝 Upload URL expires at: {}", upload_url_response.expires_at);
+    println!(
+        "📝 Upload URL expires at: {}",
+        upload_url_response.expires_at
+    );
 
     // Step 2: Upload file to pre-signed URL
     println!("📤 Uploading file to pre-signed URL...");
     let http_client = reqwest::Client::new();
-    
+
     let upload_response = http_client
         .put(&upload_url_response.upload_url)
         .header("Content-Type", "image/jpeg")
@@ -302,9 +320,10 @@ async fn test_01_upload_image_flow() -> Result<(), Box<dyn std::error::Error>> {
     let mut metadata_request = Request::new(GetMediaMetadataRequest {
         media_id: media_id.clone(),
     });
-    metadata_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    metadata_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let metadata_response = media_client
         .get_media_metadata(metadata_request)
@@ -319,7 +338,10 @@ async fn test_01_upload_image_flow() -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(metadata.media_id, media_id);
         assert_eq!(metadata.filename, "test_image.jpg");
         assert_eq!(metadata.mime_type, "image/jpeg");
-        println!("✅ Metadata verified: filename={}, mime_type={}", metadata.filename, metadata.mime_type);
+        println!(
+            "✅ Metadata verified: filename={}, mime_type={}",
+            metadata.filename, metadata.mime_type
+        );
     } else {
         return Err("No metadata returned".into());
     }
@@ -358,9 +380,10 @@ async fn test_02_download_media_flow() -> Result<(), Box<dyn std::error::Error>>
         size_bytes: test_image.len() as i64,
         conversation_id: String::new(),
     });
-    upload_url_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    upload_url_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let upload_url_response = media_client
         .get_upload_url(upload_url_request)
@@ -368,7 +391,11 @@ async fn test_02_download_media_flow() -> Result<(), Box<dyn std::error::Error>>
         .into_inner();
 
     if let Some(error) = upload_url_response.error {
-        return Err(format!("Get upload URL failed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Get upload URL failed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
     let media_id = upload_url_response.media_id.clone();
@@ -391,9 +418,10 @@ async fn test_02_download_media_flow() -> Result<(), Box<dyn std::error::Error>>
     let mut download_url_request = Request::new(GetDownloadUrlRequest {
         media_id: media_id.clone(),
     });
-    download_url_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    download_url_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let download_url_response = media_client
         .get_download_url(download_url_request)
@@ -401,10 +429,17 @@ async fn test_02_download_media_flow() -> Result<(), Box<dyn std::error::Error>>
         .into_inner();
 
     if let Some(error) = download_url_response.error {
-        return Err(format!("Get download URL failed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Get download URL failed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
-    assert!(!download_url_response.download_url.is_empty(), "Download URL should not be empty");
+    assert!(
+        !download_url_response.download_url.is_empty(),
+        "Download URL should not be empty"
+    );
     println!("✅ Got download URL");
 
     // Step 3: Download the file
@@ -422,7 +457,11 @@ async fn test_02_download_media_flow() -> Result<(), Box<dyn std::error::Error>>
     println!("✅ Downloaded {} bytes", downloaded_bytes.len());
 
     // Verify content matches
-    assert_eq!(downloaded_bytes.as_ref(), test_image.as_slice(), "Downloaded content should match original");
+    assert_eq!(
+        downloaded_bytes.as_ref(),
+        test_image.as_slice(),
+        "Downloaded content should match original"
+    );
     println!("✅ Content verified: downloaded file matches original");
 
     println!("✅ Test 2 PASSED: Download media flow works correctly");
@@ -452,10 +491,14 @@ async fn test_03_upload_unauthorized() -> Result<(), Box<dyn std::error::Error>>
     });
 
     let no_auth_response = media_client.get_upload_url(no_auth_request).await;
-    
+
     match no_auth_response {
         Err(status) => {
-            println!("✅ Request without token rejected: {} - {}", status.code(), status.message());
+            println!(
+                "✅ Request without token rejected: {} - {}",
+                status.code(),
+                status.message()
+            );
         }
         Ok(response) => {
             let resp = response.into_inner();
@@ -483,7 +526,11 @@ async fn test_03_upload_unauthorized() -> Result<(), Box<dyn std::error::Error>>
 
     match invalid_auth_response {
         Err(status) => {
-            println!("✅ Request with invalid token rejected: {} - {}", status.code(), status.message());
+            println!(
+                "✅ Request with invalid token rejected: {} - {}",
+                status.code(),
+                status.message()
+            );
         }
         Ok(response) => {
             let resp = response.into_inner();
@@ -526,20 +573,28 @@ async fn test_04_upload_size_limit() -> Result<(), Box<dyn std::error::Error>> {
         size_bytes: 100 * 1024 * 1024 * 1024, // 100GB
         conversation_id: String::new(),
     });
-    large_file_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    large_file_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let large_response = media_client.get_upload_url(large_file_request).await;
 
     match large_response {
         Err(status) => {
-            println!("✅ Large file upload rejected at gRPC level: {} - {}", status.code(), status.message());
+            println!(
+                "✅ Large file upload rejected at gRPC level: {} - {}",
+                status.code(),
+                status.message()
+            );
         }
         Ok(response) => {
             let resp = response.into_inner();
             if resp.error.is_some() {
-                println!("✅ Large file upload rejected via error response: {:?}", resp.error);
+                println!(
+                    "✅ Large file upload rejected via error response: {:?}",
+                    resp.error
+                );
             } else {
                 // Even if URL is generated, the actual upload would fail at S3 level
                 println!("⚠️ Upload URL generated but actual upload of 100GB would fail at storage level");
@@ -556,18 +611,29 @@ async fn test_04_upload_size_limit() -> Result<(), Box<dyn std::error::Error>> {
         size_bytes: 1024 * 1024, // 1MB
         conversation_id: String::new(),
     });
-    normal_file_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    normal_file_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
-    let normal_response = media_client.get_upload_url(normal_file_request).await?.into_inner();
+    let normal_response = media_client
+        .get_upload_url(normal_file_request)
+        .await?
+        .into_inner();
 
     if let Some(error) = normal_response.error {
-        return Err(format!("Normal file upload should succeed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Normal file upload should succeed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
     assert!(!normal_response.media_id.is_empty());
-    println!("✅ Normal file (1MB) upload URL generated: {}", normal_response.media_id);
+    println!(
+        "✅ Normal file (1MB) upload URL generated: {}",
+        normal_response.media_id
+    );
 
     println!("✅ Test 4 PASSED: Size limit handling works correctly");
     Ok(())
@@ -602,9 +668,10 @@ async fn test_05_media_thumbnail_generation() -> Result<(), Box<dyn std::error::
         size_bytes: test_image.len() as i64,
         conversation_id: String::new(),
     });
-    upload_url_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    upload_url_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let upload_url_response = media_client
         .get_upload_url(upload_url_request)
@@ -612,7 +679,11 @@ async fn test_05_media_thumbnail_generation() -> Result<(), Box<dyn std::error::
         .into_inner();
 
     if let Some(error) = upload_url_response.error {
-        return Err(format!("Get upload URL failed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Get upload URL failed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
     let media_id = upload_url_response.media_id.clone();
@@ -639,9 +710,10 @@ async fn test_05_media_thumbnail_generation() -> Result<(), Box<dyn std::error::
         format: "jpeg".to_string(),
         quality: 80,
     });
-    thumbnail_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    thumbnail_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let thumbnail_response = media_client
         .generate_thumbnail(thumbnail_request)
@@ -650,20 +722,30 @@ async fn test_05_media_thumbnail_generation() -> Result<(), Box<dyn std::error::
 
     if let Some(error) = thumbnail_response.error {
         // Thumbnail generation might fail if image processing library isn't available
-        println!("⚠️ Thumbnail generation error (may be expected in test env): {:?} - {}", error.code, error.message);
+        println!(
+            "⚠️ Thumbnail generation error (may be expected in test env): {:?} - {}",
+            error.code, error.message
+        );
         println!("✅ Test 5 PASSED: Thumbnail endpoint is functional (generation may require additional setup)");
         return Ok(());
     }
 
     if !thumbnail_response.thumbnail_id.is_empty() {
-        println!("✅ Thumbnail generated: thumbnail_id = {}", thumbnail_response.thumbnail_id);
-        
+        println!(
+            "✅ Thumbnail generated: thumbnail_id = {}",
+            thumbnail_response.thumbnail_id
+        );
+
         if let Some(metadata) = thumbnail_response.metadata {
-            println!("📝 Thumbnail metadata: filename={}, mime_type={}", 
-                metadata.filename, metadata.mime_type);
+            println!(
+                "📝 Thumbnail metadata: filename={}, mime_type={}",
+                metadata.filename, metadata.mime_type
+            );
         }
     } else {
-        println!("⚠️ No thumbnail ID returned - thumbnail generation may require additional libraries");
+        println!(
+            "⚠️ No thumbnail ID returned - thumbnail generation may require additional libraries"
+        );
     }
 
     println!("✅ Test 5 PASSED: Media thumbnail generation flow works");
@@ -705,9 +787,10 @@ async fn test_06_send_message_with_media() -> Result<(), Box<dyn std::error::Err
         size_bytes: test_image.len() as i64,
         conversation_id: String::new(),
     });
-    upload_url_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", sender.token()?).parse()?);
+    upload_url_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", sender.token()?).parse()?,
+    );
 
     let upload_url_response = media_client
         .get_upload_url(upload_url_request)
@@ -715,7 +798,11 @@ async fn test_06_send_message_with_media() -> Result<(), Box<dyn std::error::Err
         .into_inner();
 
     if let Some(error) = upload_url_response.error {
-        return Err(format!("Get upload URL failed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Get upload URL failed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
     let media_id = upload_url_response.media_id.clone();
@@ -737,9 +824,10 @@ async fn test_06_send_message_with_media() -> Result<(), Box<dyn std::error::Err
     let mut metadata_request = Request::new(GetMediaMetadataRequest {
         media_id: media_id.clone(),
     });
-    metadata_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", sender.token()?).parse()?);
+    metadata_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", sender.token()?).parse()?,
+    );
 
     let metadata_response = media_client
         .get_media_metadata(metadata_request)
@@ -754,7 +842,10 @@ async fn test_06_send_message_with_media() -> Result<(), Box<dyn std::error::Err
 
     // Note: Full message sending requires messaging-service integration
     // This test verifies the media upload portion of the flow
-    println!("📝 Media ID '{}' is ready to be attached to SendMessageRequest.media_id", media_id);
+    println!(
+        "📝 Media ID '{}' is ready to be attached to SendMessageRequest.media_id",
+        media_id
+    );
 
     println!("✅ Test 6 PASSED: Media attachment workflow works correctly");
     Ok(())
@@ -791,9 +882,10 @@ async fn test_07_avatar_upload_profile() -> Result<(), Box<dyn std::error::Error
         size_bytes: test_image.len() as i64,
         conversation_id: String::new(),
     });
-    upload_url_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    upload_url_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
     let upload_url_response = media_client
         .get_upload_url(upload_url_request)
@@ -801,7 +893,11 @@ async fn test_07_avatar_upload_profile() -> Result<(), Box<dyn std::error::Error
         .into_inner();
 
     if let Some(error) = upload_url_response.error {
-        return Err(format!("Get upload URL failed: {:?} - {}", error.code, error.message).into());
+        return Err(format!(
+            "Get upload URL failed: {:?} - {}",
+            error.code, error.message
+        )
+        .into());
     }
 
     let avatar_media_id = upload_url_response.media_id.clone();
@@ -826,6 +922,7 @@ async fn test_07_avatar_upload_profile() -> Result<(), Box<dyn std::error::Error
         avatar_media_id: avatar_media_id.clone(),
         display_name: "Test User Avatar".to_string(),
         bio: "Testing avatar upload".to_string(),
+        clear_avatar: false,
     });
 
     let update_response = auth_client
@@ -835,16 +932,30 @@ async fn test_07_avatar_upload_profile() -> Result<(), Box<dyn std::error::Error
 
     match update_response.result {
         Some(proto::auth::update_profile_response::Result::Profile(profile)) => {
-            assert_eq!(profile.avatar_media_id, avatar_media_id, "Avatar media ID should match");
-            assert_eq!(profile.display_name, "Test User Avatar", "Display name should be updated");
-            assert_eq!(profile.bio, "Testing avatar upload", "Bio should be updated");
+            assert_eq!(
+                profile.avatar_media_id, avatar_media_id,
+                "Avatar media ID should match"
+            );
+            assert_eq!(
+                profile.display_name, "Test User Avatar",
+                "Display name should be updated"
+            );
+            assert_eq!(
+                profile.bio, "Testing avatar upload",
+                "Bio should be updated"
+            );
             println!("✅ Profile updated successfully");
             println!("📝 Avatar: {}", profile.avatar_media_id);
             println!("📝 Display Name: {}", profile.display_name);
             println!("📝 Bio: {}", profile.bio);
         }
         Some(proto::auth::update_profile_response::Result::Error(error)) => {
-            return Err(format!("Update profile failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Update profile failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => {
             return Err("No response from update profile".into());
@@ -864,11 +975,16 @@ async fn test_07_avatar_upload_profile() -> Result<(), Box<dyn std::error::Error
 
     match profile_response.result {
         Some(proto::auth::get_user_profile_response::Result::Success(profile)) => {
-            assert_eq!(profile.avatar_media_id, avatar_media_id, "Retrieved avatar should match");
+            assert_eq!(
+                profile.avatar_media_id, avatar_media_id,
+                "Retrieved avatar should match"
+            );
             println!("✅ Profile retrieved with correct avatar_media_id");
         }
         Some(proto::auth::get_user_profile_response::Result::Error(error)) => {
-            return Err(format!("Get profile failed: {:?} - {}", error.code(), error.message).into());
+            return Err(
+                format!("Get profile failed: {:?} - {}", error.code(), error.message).into(),
+            );
         }
         None => {
             return Err("No response from get profile".into());
@@ -909,7 +1025,7 @@ async fn test_08_list_conversation_media() -> Result<(), Box<dyn std::error::Err
         ("image2.jpg", "image/jpeg"),
         ("document.pdf", "application/pdf"),
     ];
-    
+
     let mut uploaded_media_ids: Vec<String> = Vec::new();
     let test_image = generate_test_jpeg();
 
@@ -922,9 +1038,10 @@ async fn test_08_list_conversation_media() -> Result<(), Box<dyn std::error::Err
             size_bytes: test_image.len() as i64,
             conversation_id: conversation_id.clone(),
         });
-        upload_url_request
-            .metadata_mut()
-            .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+        upload_url_request.metadata_mut().insert(
+            "authorization",
+            format!("Bearer {}", user.token()?).parse()?,
+        );
 
         let upload_url_response = media_client
             .get_upload_url(upload_url_request)
@@ -932,11 +1049,15 @@ async fn test_08_list_conversation_media() -> Result<(), Box<dyn std::error::Err
             .into_inner();
 
         if let Some(error) = upload_url_response.error {
-            return Err(format!("Get upload URL failed for {}: {:?} - {}", filename, error.code, error.message).into());
+            return Err(format!(
+                "Get upload URL failed for {}: {:?} - {}",
+                filename, error.code, error.message
+            )
+            .into());
         }
 
         let media_id = upload_url_response.media_id.clone();
-        
+
         // Upload the file
         let http_client = reqwest::Client::new();
         http_client
@@ -945,7 +1066,7 @@ async fn test_08_list_conversation_media() -> Result<(), Box<dyn std::error::Err
             .body(test_image.clone())
             .send()
             .await?;
-        
+
         uploaded_media_ids.push(media_id.clone());
         println!("✅ Uploaded {} with media_id: {}", filename, media_id);
     }
@@ -964,14 +1085,12 @@ async fn test_08_list_conversation_media() -> Result<(), Box<dyn std::error::Err
         sort_by: "created_at".to_string(),
         ascending: false,
     });
-    list_request
-        .metadata_mut()
-        .insert("authorization", format!("Bearer {}", user.token()?).parse()?);
+    list_request.metadata_mut().insert(
+        "authorization",
+        format!("Bearer {}", user.token()?).parse()?,
+    );
 
-    let list_response = media_client
-        .list_media(list_request)
-        .await?
-        .into_inner();
+    let list_response = media_client.list_media(list_request).await?.into_inner();
 
     if let Some(error) = list_response.error {
         return Err(format!("List media failed: {:?} - {}", error.code, error.message).into());
@@ -981,12 +1100,11 @@ async fn test_08_list_conversation_media() -> Result<(), Box<dyn std::error::Err
 
     // Verify all uploaded media are present
     for media in &list_response.items {
-        println!("  - {} ({}): {} bytes", 
-            media.filename, 
-            media.mime_type, 
-            media.size_bytes
+        println!(
+            "  - {} ({}): {} bytes",
+            media.filename, media.mime_type, media.size_bytes
         );
-        
+
         // Check if this is one of our uploaded files
         if uploaded_media_ids.contains(&media.media_id) {
             println!("    ✅ Matches uploaded file");

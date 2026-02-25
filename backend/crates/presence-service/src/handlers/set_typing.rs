@@ -1,7 +1,6 @@
 /// Set Typing Handler
 ///
 /// Sets typing indicator for a conversation
-
 use crate::db::DatabaseClient;
 use crate::jwt;
 use crate::nats::{NatsClient, TypingEvent};

@@ -7,8 +7,9 @@
 //! - Cross-component interoperability
 
 use guardyn_crypto::{
-    pad_message, unpad_message, next_padme_length,
+    next_padme_length, pad_message,
     pqxdh::{generate_hybrid_key_bundle, verify_hybrid_bundle, HybridKeyBundle},
+    unpad_message,
 };
 
 mod pqxdh_tests {
@@ -18,9 +19,13 @@ mod pqxdh_tests {
     fn test_hybrid_key_bundle_generation() {
         // Generate bundle with one-time prekey
         let result = generate_hybrid_key_bundle(true, false);
-        assert!(result.is_ok(), "Bundle generation failed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Bundle generation failed: {:?}",
+            result.err()
+        );
 
-        let (bundle, private_keys) = result.unwrap();
+        let (bundle, _private_keys) = result.unwrap();
 
         // Verify bundle structure
         assert_eq!(bundle.identity_key.len(), 32);
@@ -43,7 +48,11 @@ mod pqxdh_tests {
 
         // Verification should pass for valid bundle
         let verify_result = verify_hybrid_bundle(&bundle);
-        assert!(verify_result.is_ok(), "Verification failed: {:?}", verify_result.err());
+        assert!(
+            verify_result.is_ok(),
+            "Verification failed: {:?}",
+            verify_result.err()
+        );
     }
 
     #[test]
@@ -66,12 +75,16 @@ mod pqxdh_tests {
         let json = serde_json::to_string(&bundle).expect("Serialization failed");
 
         // Deserialize back
-        let restored: HybridKeyBundle = serde_json::from_str(&json).expect("Deserialization failed");
+        let restored: HybridKeyBundle =
+            serde_json::from_str(&json).expect("Deserialization failed");
 
         // Verify integrity
         assert_eq!(bundle.identity_key, restored.identity_key);
         assert_eq!(bundle.signed_prekey, restored.signed_prekey);
-        assert_eq!(bundle.signed_prekey_signature.0, restored.signed_prekey_signature.0);
+        assert_eq!(
+            bundle.signed_prekey_signature.0,
+            restored.signed_prekey_signature.0
+        );
     }
 
     #[cfg(feature = "pq")]
@@ -137,8 +150,8 @@ mod padme_tests {
         // Test that PADMÉ produces consistent padding
         // PADMÉ algorithm doesn't always round to powers of 2
         let test_cases = [
-            (10, 32),    // Small messages padded to minimum
-            (100, 100),  // Should be at least 100
+            (10, 32),     // Small messages padded to minimum
+            (100, 100),   // Should be at least 100
             (1000, 1000), // Should be at least 1000
             (5000, 5000), // Should be at least input size
         ];
@@ -148,13 +161,16 @@ mod padme_tests {
             assert!(
                 padded_len >= min_expected,
                 "For input {} expected at least {}, got {}",
-                input_len, min_expected, padded_len
+                input_len,
+                min_expected,
+                padded_len
             );
             // PADMÉ should not produce excessive padding (max ~14% overhead for large messages)
             assert!(
                 padded_len <= input_len + input_len / 7 + 32,
                 "For input {} got excessive padding: {}",
-                input_len, padded_len
+                input_len,
+                padded_len
             );
         }
     }
@@ -186,7 +202,7 @@ mod ffi_tests {
     fn test_aes_gcm_roundtrip() {
         #[cfg(feature = "ffi")]
         {
-            use guardyn_crypto::ffi::{encrypt_aes256_gcm, decrypt_aes256_gcm};
+            use guardyn_crypto::ffi::{decrypt_aes256_gcm, encrypt_aes256_gcm};
 
             let key = vec![0u8; 32];
             let plaintext = b"Secret message".to_vec();
@@ -194,8 +210,7 @@ mod ffi_tests {
             let encrypted = encrypt_aes256_gcm(plaintext.clone(), key.clone(), None, None)
                 .expect("Encryption failed");
 
-            let decrypted = decrypt_aes256_gcm(encrypted, key, None)
-                .expect("Decryption failed");
+            let decrypted = decrypt_aes256_gcm(encrypted, key, None).expect("Decryption failed");
 
             assert_eq!(plaintext, decrypted);
         }
@@ -205,7 +220,7 @@ mod ffi_tests {
     fn test_chacha20_poly1305_roundtrip() {
         #[cfg(feature = "ffi")]
         {
-            use guardyn_crypto::ffi::{encrypt_chacha20_poly1305, decrypt_chacha20_poly1305};
+            use guardyn_crypto::ffi::{decrypt_chacha20_poly1305, encrypt_chacha20_poly1305};
 
             let key = vec![0u8; 32];
             let plaintext = b"Another secret".to_vec();
@@ -213,8 +228,8 @@ mod ffi_tests {
             let encrypted = encrypt_chacha20_poly1305(plaintext.clone(), key.clone(), None, None)
                 .expect("Encryption failed");
 
-            let decrypted = decrypt_chacha20_poly1305(encrypted, key, None)
-                .expect("Decryption failed");
+            let decrypted =
+                decrypt_chacha20_poly1305(encrypted, key, None).expect("Decryption failed");
 
             assert_eq!(plaintext, decrypted);
         }
@@ -229,8 +244,8 @@ mod ffi_tests {
             let keypair = generate_ed25519_keypair();
             let message = b"Sign this message".to_vec();
 
-            let signature = sign_ed25519(keypair.private_key.clone(), message.clone())
-                .expect("Signing failed");
+            let signature =
+                sign_ed25519(keypair.private_key.clone(), message.clone()).expect("Signing failed");
 
             let valid = verify_ed25519(keypair.public_key, message, signature)
                 .expect("Verification failed");
@@ -248,15 +263,11 @@ mod ffi_tests {
             let alice = generate_x25519_keypair();
             let bob = generate_x25519_keypair();
 
-            let shared_alice = x25519_diffie_hellman(
-                alice.private_key,
-                bob.public_key.clone(),
-            ).expect("DH failed");
+            let shared_alice = x25519_diffie_hellman(alice.private_key, bob.public_key.clone())
+                .expect("DH failed");
 
-            let shared_bob = x25519_diffie_hellman(
-                bob.private_key,
-                alice.public_key.clone(),
-            ).expect("DH failed");
+            let shared_bob = x25519_diffie_hellman(bob.private_key, alice.public_key.clone())
+                .expect("DH failed");
 
             assert_eq!(shared_alice, shared_bob);
         }
@@ -271,8 +282,7 @@ mod ffi_tests {
             let ikm = vec![0u8; 32];
             let info = b"guardyn-key".to_vec();
 
-            let derived = hkdf_sha256(ikm, None, info, 64)
-                .expect("HKDF failed");
+            let derived = hkdf_sha256(ikm, None, info, 64).expect("HKDF failed");
 
             assert_eq!(derived.len(), 64);
         }
@@ -341,15 +351,18 @@ mod cross_platform_tests {
 
         // Known input
         let ikm = vec![0x0b; 22]; // 22 bytes of 0x0b
-        let salt = Some(vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c]);
+        let salt = Some(vec![
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
+        ]);
         let info = vec![0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9];
 
         let okm = hkdf_sha256(ikm, salt, info, 42).unwrap();
 
         // RFC 5869 Test Case 1 expected output
         let expected = hex::decode(
-            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
-        ).unwrap();
+            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
+        )
+        .unwrap();
 
         assert_eq!(okm, expected);
     }

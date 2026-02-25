@@ -21,18 +21,19 @@ pub async fn update_group(
     // Validate JWT token and extract user_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(UpdateGroupResponse {
-                result: Some(update_group_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(UpdateGroupResponse {
+                    result: Some(update_group_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group_id
     if request.group_id.is_empty() {
@@ -152,7 +153,10 @@ pub async fn update_group(
     let user_profiles: HashMap<String, UserProfileInfo> = match AuthClient::new(&auth_url).await {
         Ok(mut client) => client.get_user_profiles(&user_ids).await,
         Err(e) => {
-            tracing::warn!("Failed to connect to auth service for profile lookup: {}", e);
+            tracing::warn!(
+                "Failed to connect to auth service for profile lookup: {}",
+                e
+            );
             HashMap::new()
         }
     };
@@ -162,15 +166,13 @@ pub async fn update_group(
         .map(|m| {
             // Get full profile or create default with user_id as fallback
             let profile = user_profiles.get(&m.user_id);
-            
+
             let username = profile
                 .map(|p| p.username.clone())
                 .unwrap_or_else(|| m.user_id.clone());
-            
-            let display_name = profile
-                .map(|p| p.display_name.clone())
-                .unwrap_or_default();
-            
+
+            let display_name = profile.map(|p| p.display_name.clone()).unwrap_or_default();
+
             let avatar_media_id = profile
                 .map(|p| p.avatar_media_id.clone())
                 .unwrap_or_default();
@@ -205,11 +207,7 @@ pub async fn update_group(
         description: new_description.unwrap_or_default(),
     };
 
-    tracing::info!(
-        "User {} updated group {} info",
-        user_id,
-        request.group_id
-    );
+    tracing::info!("User {} updated group {} info", user_id, request.group_id);
 
     Ok(Response::new(UpdateGroupResponse {
         result: Some(update_group_response::Result::Success(UpdateGroupSuccess {

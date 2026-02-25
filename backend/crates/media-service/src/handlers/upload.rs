@@ -7,8 +7,8 @@ use crate::{
     db::{DatabaseClient, MediaMetadataRecord},
     jwt,
     proto::media::{
-        upload_media_request::Content,
-        MediaMetadata, MediaType, UploadMediaRequest, UploadMediaResponse, UploadStatus,
+        upload_media_request::Content, MediaMetadata, MediaType, UploadMediaRequest,
+        UploadMediaResponse, UploadStatus,
     },
     storage::StorageClient,
 };
@@ -35,13 +35,19 @@ pub async fn handle(
     let max_size = config.max_file_size_bytes;
 
     // First message should be the header
-    let first_msg = stream.next().await
+    let first_msg = stream
+        .next()
+        .await
         .ok_or_else(|| Status::invalid_argument("Empty upload stream"))?
         .map_err(|e| Status::internal(format!("Stream error: {}", e)))?;
 
     let header = match first_msg.content {
         Some(Content::Header(h)) => h,
-        _ => return Err(Status::invalid_argument("First message must be upload header")),
+        _ => {
+            return Err(Status::invalid_argument(
+                "First message must be upload header",
+            ))
+        }
     };
 
     // Validate size
@@ -54,10 +60,7 @@ pub async fn handle(
 
     // Generate media ID and storage path
     let media_id = DatabaseClient::generate_media_id();
-    let extension = header.filename
-        .rsplit('.')
-        .next()
-        .unwrap_or("bin");
+    let extension = header.filename.rsplit('.').next().unwrap_or("bin");
     let storage_path = format!("{}/{}.{}", &user_id, &media_id, extension);
 
     tracing::info!(
@@ -74,15 +77,15 @@ pub async fn handle(
 
     while let Some(msg) = stream.next().await {
         let msg = msg.map_err(|e| Status::internal(format!("Stream error: {}", e)))?;
-        
+
         if let Some(Content::Chunk(chunk_data)) = msg.content {
             bytes_received += chunk_data.len() as i64;
-            
+
             // Check max size
             if bytes_received > max_size as i64 {
                 return Err(Status::invalid_argument("File exceeds maximum size"));
             }
-            
+
             hasher.update(&chunk_data);
             data.extend_from_slice(&chunk_data);
         }
@@ -98,14 +101,13 @@ pub async fn handle(
     }
 
     // Upload to storage
-    storage.upload_file(
-        &storage_path,
-        data.freeze(),
-        &header.mime_type,
-    ).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to upload to storage");
-        Status::internal("Failed to store file")
-    })?;
+    storage
+        .upload_file(&storage_path, data.freeze(), &header.mime_type)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to upload to storage");
+            Status::internal("Failed to store file")
+        })?;
 
     // Determine media type from mime type
     let media_type = determine_media_type(&header.mime_type);
@@ -207,10 +209,10 @@ fn determine_media_type(mime_type: &str) -> MediaType {
         MediaType::Video
     } else if mime_type.starts_with("audio/") {
         MediaType::Audio
-    } else if mime_type.starts_with("application/pdf") 
+    } else if mime_type.starts_with("application/pdf")
         || mime_type.starts_with("application/msword")
         || mime_type.starts_with("application/vnd.openxmlformats")
-        || mime_type.starts_with("text/") 
+        || mime_type.starts_with("text/")
     {
         MediaType::Document
     } else {

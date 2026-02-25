@@ -157,16 +157,21 @@ pub fn encrypt_aes256_gcm(
         n
     };
 
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce_arr: [u8; 12] = nonce_bytes[..]
+        .try_into()
+        .map_err(|_| "Invalid nonce length".to_string())?;
+    let nonce = Nonce::<_>::from(nonce_arr);
 
     let ciphertext = if let Some(aad) = associated_data {
         let payload = Payload {
             msg: &plaintext,
             aad: &aad,
         };
-        cipher.encrypt(nonce, payload).map_err(|e| e.to_string())?
+        cipher.encrypt(&nonce, payload).map_err(|e| e.to_string())?
     } else {
-        cipher.encrypt(nonce, plaintext.as_slice()).map_err(|e| e.to_string())?
+        cipher
+            .encrypt(&nonce, plaintext.as_slice())
+            .map_err(|e| e.to_string())?
     };
 
     // AES-GCM appends the tag to the ciphertext
@@ -196,7 +201,10 @@ pub fn decrypt_aes256_gcm(
     }
 
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| e.to_string())?;
-    let nonce = Nonce::from_slice(&encrypted.nonce);
+    let nonce_arr: [u8; 12] = encrypted.nonce[..]
+        .try_into()
+        .map_err(|_| "Invalid nonce length".to_string())?;
+    let nonce = Nonce::from(nonce_arr);
 
     // Reconstruct ciphertext with tag appended
     let mut ciphertext_with_tag = encrypted.ciphertext;
@@ -207,9 +215,11 @@ pub fn decrypt_aes256_gcm(
             msg: &ciphertext_with_tag,
             aad: &aad,
         };
-        cipher.decrypt(nonce, payload).map_err(|e| e.to_string())?
+        cipher.decrypt(&nonce, payload).map_err(|e| e.to_string())?
     } else {
-        cipher.decrypt(nonce, ciphertext_with_tag.as_slice()).map_err(|e| e.to_string())?
+        cipher
+            .decrypt(&nonce, ciphertext_with_tag.as_slice())
+            .map_err(|e| e.to_string())?
     };
 
     Ok(plaintext)
@@ -245,16 +255,21 @@ pub fn encrypt_chacha20_poly1305(
         n
     };
 
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce_arr: [u8; 12] = nonce_bytes[..]
+        .try_into()
+        .map_err(|_| "Invalid nonce length".to_string())?;
+    let nonce = Nonce::from(nonce_arr);
 
     let ciphertext = if let Some(aad) = associated_data {
         let payload = Payload {
             msg: &plaintext,
             aad: &aad,
         };
-        cipher.encrypt(nonce, payload).map_err(|e| e.to_string())?
+        cipher.encrypt(&nonce, payload).map_err(|e| e.to_string())?
     } else {
-        cipher.encrypt(nonce, plaintext.as_slice()).map_err(|e| e.to_string())?
+        cipher
+            .encrypt(&nonce, plaintext.as_slice())
+            .map_err(|e| e.to_string())?
     };
 
     // ChaCha20-Poly1305 appends the tag to the ciphertext
@@ -284,7 +299,10 @@ pub fn decrypt_chacha20_poly1305(
     }
 
     let cipher = ChaCha20Poly1305::new_from_slice(&key).map_err(|e| e.to_string())?;
-    let nonce = Nonce::from_slice(&encrypted.nonce);
+    let nonce_arr: [u8; 12] = encrypted.nonce[..]
+        .try_into()
+        .map_err(|_| "Invalid nonce length".to_string())?;
+    let nonce = Nonce::from(nonce_arr);
 
     let mut ciphertext_with_tag = encrypted.ciphertext;
     ciphertext_with_tag.extend_from_slice(&encrypted.tag);
@@ -294,9 +312,11 @@ pub fn decrypt_chacha20_poly1305(
             msg: &ciphertext_with_tag,
             aad: &aad,
         };
-        cipher.decrypt(nonce, payload).map_err(|e| e.to_string())?
+        cipher.decrypt(&nonce, payload).map_err(|e| e.to_string())?
     } else {
-        cipher.decrypt(nonce, ciphertext_with_tag.as_slice()).map_err(|e| e.to_string())?
+        cipher
+            .decrypt(&nonce, ciphertext_with_tag.as_slice())
+            .map_err(|e| e.to_string())?
     };
 
     Ok(plaintext)
@@ -314,7 +334,11 @@ pub fn hkdf_sha256(
 
     let salt_bytes = salt.unwrap_or_default();
     let hkdf = Hkdf::<Sha256>::new(
-        if salt_bytes.is_empty() { None } else { Some(&salt_bytes) },
+        if salt_bytes.is_empty() {
+            None
+        } else {
+            Some(&salt_bytes)
+        },
         &ikm,
     );
 
@@ -433,10 +457,7 @@ pub fn generate_ed25519_keypair_from_seed(seed: Vec<u8>) -> Result<FfiKeyPair, S
 }
 
 /// Perform X25519 Diffie-Hellman key agreement
-pub fn x25519_diffie_hellman(
-    private_key: Vec<u8>,
-    public_key: Vec<u8>,
-) -> Result<Vec<u8>, String> {
+pub fn x25519_diffie_hellman(private_key: Vec<u8>, public_key: Vec<u8>) -> Result<Vec<u8>, String> {
     use x25519_dalek::{PublicKey, StaticSecret};
 
     if private_key.len() != 32 {
@@ -569,8 +590,7 @@ mod tests {
 
         let shared_alice =
             x25519_diffie_hellman(alice.private_key, bob.public_key.clone()).unwrap();
-        let shared_bob =
-            x25519_diffie_hellman(bob.private_key, alice.public_key.clone()).unwrap();
+        let shared_bob = x25519_diffie_hellman(bob.private_key, alice.public_key.clone()).unwrap();
 
         assert_eq!(shared_alice, shared_bob);
     }

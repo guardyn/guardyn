@@ -2,28 +2,29 @@
 ///
 /// Handles forwarding messages between conversations.
 /// Preserves forward metadata (original sender, timestamp, forward count).
-
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
+use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
 use crate::proto::messaging::{
-    ForwardMessageRequest, ForwardMessageResponse, ForwardMessageSuccess,
-    ForwardInfo, MessageType,
-    forward_message_response,
+    forward_message_response, ForwardInfo, ForwardMessageRequest, ForwardMessageResponse,
+    ForwardMessageSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tracing::{info, warn, error, instrument};
+use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
 /// Forward a message to another conversation
-#[instrument(skip(db, request), fields(user_id, source_message_id, target_conversation_id))]
+#[instrument(
+    skip(db, request),
+    fields(user_id, source_message_id, target_conversation_id)
+)]
 pub async fn forward_message(
     db: Arc<DatabaseClient>,
     request: Request<ForwardMessageRequest>,
 ) -> Result<Response<ForwardMessageResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -38,14 +39,14 @@ pub async fn forward_message(
             }));
         }
     };
-    
+
     let user_id = claims.sub.clone();
     let device_id = claims.device_id.clone();
-    
+
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("source_message_id", &req.source_message_id);
     tracing::Span::current().record("target_conversation_id", &req.target_conversation_id);
-    
+
     // Validate required fields
     if req.source_message_id.is_empty() || req.target_conversation_id.is_empty() {
         return Ok(Response::new(ForwardMessageResponse {
@@ -56,7 +57,7 @@ pub async fn forward_message(
             })),
         }));
     }
-    
+
     if req.encrypted_content.is_empty() {
         return Ok(Response::new(ForwardMessageResponse {
             result: Some(forward_message_response::Result::Error(ErrorResponse {
@@ -66,13 +67,16 @@ pub async fn forward_message(
             })),
         }));
     }
-    
+
     // Fetch original message metadata for forward info
-    let original_message = match db.get_message_metadata(
-        &req.source_message_id,
-        &req.source_conversation_id,
-        req.source_is_group,
-    ).await {
+    let original_message = match db
+        .get_message_metadata(
+            &req.source_message_id,
+            &req.source_conversation_id,
+            req.source_is_group,
+        )
+        .await
+    {
         Ok(Some(msg)) => msg,
         Ok(None) => {
             return Ok(Response::new(ForwardMessageResponse {
@@ -94,16 +98,16 @@ pub async fn forward_message(
             }));
         }
     };
-    
+
     // Build forward info
     let forward_info = ForwardInfo {
         original_message_id: req.source_message_id.clone(),
         original_sender_id: original_message.sender_user_id.clone(),
         original_sender_name: original_message.sender_username.clone(),
-        original_timestamp: original_message.server_timestamp.clone(),
+        original_timestamp: original_message.server_timestamp,
         forward_count: original_message.forward_count + 1,
     };
-    
+
     // Generate new message ID
     let new_message_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now();
@@ -111,7 +115,7 @@ pub async fn forward_message(
         seconds: now.timestamp(),
         nanos: now.timestamp_subsec_nanos() as i32,
     };
-    
+
     // Store forwarded message
     let result = if req.target_is_group {
         db.store_forwarded_group_message(
@@ -123,7 +127,8 @@ pub async fn forward_message(
             original_message.message_type,
             &req.client_message_id,
             &forward_info,
-        ).await
+        )
+        .await
     } else {
         db.store_forwarded_message(
             &new_message_id,
@@ -135,9 +140,10 @@ pub async fn forward_message(
             original_message.message_type,
             &req.client_message_id,
             &forward_info,
-        ).await
+        )
+        .await
     };
-    
+
     match result {
         Ok(_) => {
             info!(
@@ -148,12 +154,14 @@ pub async fn forward_message(
                 forward_count = forward_info.forward_count,
                 "Message forwarded successfully"
             );
-            
+
             Ok(Response::new(ForwardMessageResponse {
-                result: Some(forward_message_response::Result::Success(ForwardMessageSuccess {
-                    message_id: new_message_id,
-                    server_timestamp: Some(server_timestamp),
-                })),
+                result: Some(forward_message_response::Result::Success(
+                    ForwardMessageSuccess {
+                        message_id: new_message_id,
+                        server_timestamp: Some(server_timestamp),
+                    },
+                )),
             }))
         }
         Err(e) => {

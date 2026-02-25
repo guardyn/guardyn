@@ -1,3 +1,4 @@
+mod db;
 /// Authentication Service
 ///
 /// Handles:
@@ -6,22 +7,25 @@
 /// - Device management
 /// - Session handling
 /// - Token generation and validation
-
 mod handlers;
-mod models;
 mod jwt;
-mod db;
+mod models;
 
-use guardyn_common::{config::ServiceConfig, observability, kafka::{KafkaProducer, KafkaConfig}};
-use tonic::{transport::Server, Request, Response, Status};
 use anyhow::Result;
+use guardyn_common::{
+    config::ServiceConfig,
+    kafka::{KafkaConfig, KafkaProducer},
+    observability,
+};
 use std::sync::Arc;
+use tonic::{transport::Server, Request, Response, Status};
 
 // Import generated protobuf code - pub to make available to handlers
 pub mod proto {
     pub mod common {
         include!("generated/guardyn.common.rs");
     }
+    #[allow(clippy::large_enum_variant)]
     pub mod auth {
         include!("generated/guardyn.auth.rs");
     }
@@ -29,25 +33,16 @@ pub mod proto {
 
 use proto::auth::{
     auth_service_server::{AuthService, AuthServiceServer},
-    RegisterRequest, RegisterResponse,
-    LoginRequest, LoginResponse,
-    LogoutRequest, LogoutResponse,
-    RefreshTokenRequest, RefreshTokenResponse,
-    ValidateTokenRequest, ValidateTokenResponse,
-    GetKeyBundleRequest, GetKeyBundleResponse,
-    UploadPreKeysRequest, UploadPreKeysResponse,
-    UploadMlsKeyPackageRequest, UploadMlsKeyPackageResponse,
-    GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
-    SearchUsersRequest, SearchUsersResponse,
-    GetUserProfileRequest, GetUserProfileResponse,
-    UpdateProfileRequest, UpdateProfileResponse,
-    DeleteAccountRequest, DeleteAccountResponse,
-    AddContactRequest, AddContactResponse,
-    RemoveContactRequest, RemoveContactResponse,
-    ListContactsRequest, ListContactsResponse,
-    GetContactRequest, GetContactResponse,
-    UpdateContactRequest, UpdateContactResponse,
-    HealthRequest,
+    AddContactRequest, AddContactResponse, DeleteAccountRequest, DeleteAccountResponse,
+    GetContactRequest, GetContactResponse, GetKeyBundleRequest, GetKeyBundleResponse,
+    GetMlsKeyPackageRequest, GetMlsKeyPackageResponse, GetUserProfileRequest,
+    GetUserProfileResponse, HealthRequest, ListContactsRequest, ListContactsResponse, LoginRequest,
+    LoginResponse, LogoutRequest, LogoutResponse, RefreshTokenRequest, RefreshTokenResponse,
+    RegisterRequest, RegisterResponse, RemoveContactRequest, RemoveContactResponse,
+    SearchUsersRequest, SearchUsersResponse, UpdateContactRequest, UpdateContactResponse,
+    UpdateProfileRequest, UpdateProfileResponse, UploadMlsKeyPackageRequest,
+    UploadMlsKeyPackageResponse, UploadPreKeysRequest, UploadPreKeysResponse, ValidateTokenRequest,
+    ValidateTokenResponse,
 };
 use proto::common::HealthStatus;
 
@@ -60,10 +55,18 @@ pub struct AuthServiceImpl {
 
 impl AuthServiceImpl {
     pub fn new(db: db::DatabaseClient, jwt_secret: String) -> Self {
-        Self { db, jwt_secret, event_producer: None }
+        Self {
+            db,
+            jwt_secret,
+            event_producer: None,
+        }
     }
 
-    pub fn with_events(db: db::DatabaseClient, jwt_secret: String, producer: KafkaProducer) -> Self {
+    pub fn with_events(
+        db: db::DatabaseClient,
+        jwt_secret: String,
+        producer: KafkaProducer,
+    ) -> Self {
         Self {
             db,
             jwt_secret,
@@ -169,12 +172,9 @@ impl AuthService for AuthServiceImpl {
         request: Request<UpdateProfileRequest>,
     ) -> Result<Response<UpdateProfileResponse>, Status> {
         let db = std::sync::Arc::new(self.db.clone());
-        let response = handlers::update_profile::update_profile(
-            request.into_inner(),
-            db,
-            &self.jwt_secret,
-        )
-        .await;
+        let response =
+            handlers::update_profile::update_profile(request.into_inner(), db, &self.jwt_secret)
+                .await;
         Ok(Response::new(response))
     }
 
@@ -330,7 +330,10 @@ async fn main() -> Result<()> {
         tracing::error!("JWT secret is too short (< 32 bytes) - this is insecure!");
     }
 
-    if jwt_secret.contains("DEV") || jwt_secret.contains("development") || jwt_secret.contains("UNSAFE") {
+    if jwt_secret.contains("DEV")
+        || jwt_secret.contains("development")
+        || jwt_secret.contains("UNSAFE")
+    {
         tracing::warn!("Using development JWT secret - DO NOT USE IN PRODUCTION");
     }
 

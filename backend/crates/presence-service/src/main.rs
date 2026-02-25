@@ -5,7 +5,6 @@
 /// - Last seen timestamps
 /// - Typing indicators
 /// - Presence subscriptions (real-time updates)
-
 mod db;
 mod handlers;
 mod jwt;
@@ -171,7 +170,8 @@ async fn main() -> Result<()> {
         .or_else(|_| std::env::var("GUARDYN_OBSERVABILITY__OTLP_ENDPOINT"))
         .ok()
         .filter(|s| !s.is_empty());
-    let _tracing_guard = observability::init_tracing("presence-service", &log_level, otlp_endpoint.as_deref());
+    let _tracing_guard =
+        observability::init_tracing("presence-service", &log_level, otlp_endpoint.as_deref());
 
     tracing::info!("Starting Presence Service");
 
@@ -206,7 +206,10 @@ async fn main() -> Result<()> {
     );
 
     // Connect to TiKV
-    let tikv_endpoints: Vec<String> = tikv_pd_endpoints.split(',').map(|s| s.to_string()).collect();
+    let tikv_endpoints: Vec<String> = tikv_pd_endpoints
+        .split(',')
+        .map(|s| s.to_string())
+        .collect();
     let db = db::DatabaseClient::new(tikv_endpoints).await?;
     tracing::info!("Connected to TiKV");
 

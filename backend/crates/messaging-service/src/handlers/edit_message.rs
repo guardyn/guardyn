@@ -3,18 +3,16 @@
 /// Allows users to edit their own messages after sending.
 /// Maintains edit version history for audit.
 /// RT-002: Broadcasts edit notifications to conversation participants via NATS.
-
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
 use crate::nats::NatsClient;
+use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
 use crate::proto::messaging::{
-    EditMessageRequest, EditMessageResponse, EditMessageSuccess,
-    edit_message_response,
+    edit_message_response, EditMessageRequest, EditMessageResponse, EditMessageSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tracing::{info, warn, error, instrument};
+use tracing::{error, info, instrument, warn};
 
 /// Edit a previously sent message
 /// RT-002: Broadcasts edit notification to conversation participants via NATS
@@ -25,7 +23,7 @@ pub async fn edit_message(
     request: Request<EditMessageRequest>,
 ) -> Result<Response<EditMessageResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -40,11 +38,11 @@ pub async fn edit_message(
             }));
         }
     };
-    
+
     let user_id = claims.sub.clone();
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("message_id", &req.message_id);
-    
+
     // Validate required fields
     if req.message_id.is_empty() || req.conversation_id.is_empty() {
         return Ok(Response::new(EditMessageResponse {
@@ -55,7 +53,7 @@ pub async fn edit_message(
             })),
         }));
     }
-    
+
     if req.encrypted_content.is_empty() {
         return Ok(Response::new(EditMessageResponse {
             result: Some(edit_message_response::Result::Error(ErrorResponse {
@@ -65,13 +63,12 @@ pub async fn edit_message(
             })),
         }));
     }
-    
+
     // Verify user owns the message
-    let message_owner = match db.get_message_owner(
-        &req.message_id,
-        &req.conversation_id,
-        req.is_group,
-    ).await {
+    let message_owner = match db
+        .get_message_owner(&req.message_id, &req.conversation_id, req.is_group)
+        .await
+    {
         Ok(Some(owner)) => owner,
         Ok(None) => {
             return Ok(Response::new(EditMessageResponse {
@@ -93,7 +90,7 @@ pub async fn edit_message(
             }));
         }
     };
-    
+
     if message_owner != user_id {
         warn!(
             user_id = %user_id,
@@ -109,21 +106,24 @@ pub async fn edit_message(
             })),
         }));
     }
-    
+
     let now = chrono::Utc::now();
     let server_timestamp = Timestamp {
         seconds: now.timestamp(),
         nanos: now.timestamp_subsec_nanos() as i32,
     };
-    
+
     // Update message content and increment edit version
-    match db.edit_message(
-        &req.message_id,
-        &req.conversation_id,
-        &user_id,
-        &req.encrypted_content,
-        req.is_group,
-    ).await {
+    match db
+        .edit_message(
+            &req.message_id,
+            &req.conversation_id,
+            &user_id,
+            &req.encrypted_content,
+            req.is_group,
+        )
+        .await
+    {
         Ok(new_version) => {
             info!(
                 user_id = %user_id,
@@ -131,14 +131,14 @@ pub async fn edit_message(
                 edit_version = new_version,
                 "Message edited successfully"
             );
-            
+
             // RT-002: Broadcast edit notification to conversation participants via NATS
             let topic = if req.is_group {
                 format!("group.{}.message_edits", req.conversation_id)
             } else {
                 format!("conversation.{}.message_edits", req.conversation_id)
             };
-            
+
             let edit_event = serde_json::json!({
                 "type": "message_edited",
                 "conversation_id": req.conversation_id,
@@ -149,7 +149,7 @@ pub async fn edit_message(
                 "timestamp_seconds": now.timestamp(),
                 "timestamp_nanos": now.timestamp_subsec_nanos(),
             });
-            
+
             let payload = serde_json::to_vec(&edit_event).unwrap_or_default();
             if let Err(e) = nats.publish(&topic, &payload).await {
                 // Log but don't fail - edit was saved successfully
@@ -163,7 +163,7 @@ pub async fn edit_message(
                     topic, req.message_id
                 );
             }
-            
+
             Ok(Response::new(EditMessageResponse {
                 result: Some(edit_message_response::Result::Success(EditMessageSuccess {
                     message_id: req.message_id,

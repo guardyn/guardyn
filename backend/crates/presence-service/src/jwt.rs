@@ -1,9 +1,8 @@
 /// JWT token validation and claims extraction
 ///
 /// Validates JWT tokens issued by auth-service and extracts user claims
-
 use anyhow::{anyhow, Result};
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 /// JWT claims structure (must match auth-service)
@@ -21,13 +20,14 @@ pub fn validate_token(token: &str, secret: &str) -> Result<Claims> {
     let validation = Validation::new(Algorithm::HS256);
     let key = DecodingKey::from_secret(secret.as_bytes());
 
-    let token_data = decode::<Claims>(token, &key, &validation)
-        .map_err(|e| anyhow!("Invalid token: {}", e))?;
+    let token_data =
+        decode::<Claims>(token, &key, &validation).map_err(|e| anyhow!("Invalid token: {}", e))?;
 
     Ok(token_data.claims)
 }
 
 /// Extract user_id from token (convenience function)
+#[allow(dead_code)]
 pub fn get_user_id_from_token(token: &str, secret: &str) -> Result<String> {
     let claims = validate_token(token, secret)?;
     Ok(claims.sub)
@@ -78,7 +78,7 @@ mod tests {
     fn test_validate_valid_token() {
         let token = create_test_token("user-123");
         let result = validate_token(&token, TEST_JWT_SECRET);
-        
+
         assert!(result.is_ok());
         let claims = result.unwrap();
         assert_eq!(claims.sub, "user-123");
@@ -90,7 +90,7 @@ mod tests {
     fn test_validate_expired_token() {
         let token = create_expired_token("user-expired");
         let result = validate_token(&token, TEST_JWT_SECRET);
-        
+
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         assert!(err_msg.contains("Invalid token") || err_msg.contains("ExpiredSignature"));
@@ -100,7 +100,7 @@ mod tests {
     fn test_validate_wrong_secret() {
         let token = create_test_token("user-wrong-secret");
         let result = validate_token(&token, "wrong-secret-key!!");
-        
+
         assert!(result.is_err());
     }
 
@@ -120,7 +120,7 @@ mod tests {
     fn test_get_user_id_from_token() {
         let token = create_test_token("user-456");
         let result = get_user_id_from_token(&token, TEST_JWT_SECRET);
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "user-456");
     }

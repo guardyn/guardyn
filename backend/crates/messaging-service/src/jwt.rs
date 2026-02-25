@@ -1,7 +1,7 @@
 /// JWT token validation for messaging service
 ///
 /// Validates JWT tokens issued by auth-service
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use tonic::Status;
@@ -12,7 +12,7 @@ pub struct Claims {
     pub sub: String,       // user_id
     pub device_id: String, // device_id
     #[serde(default)]
-    pub username: String,  // username for display purposes
+    pub username: String, // username for display purposes
     pub exp: i64,          // expiration time
     pub iat: i64,          // issued at
     pub permissions: Vec<String>, // user permissions
@@ -78,6 +78,7 @@ pub fn validate_access_token(token: &str) -> Result<Claims> {
 /// Validate token and extract user_id + device_id + username
 ///
 /// Returns (user_id, device_id, username) or gRPC Status error
+#[allow(clippy::result_large_err)]
 pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String, String), Status> {
     match validate_token(token, secret) {
         Ok(claims) => {
@@ -96,6 +97,8 @@ pub fn validate_and_extract(token: &str, secret: &str) -> Result<(String, String
 }
 
 /// Extract user_id from token (simplified version)
+#[allow(dead_code)]
+#[allow(clippy::result_large_err)]
 pub fn extract_user_id(token: &str, secret: &str) -> Result<String, Status> {
     let (user_id, _, _) = validate_and_extract(token, secret)?;
     Ok(user_id)

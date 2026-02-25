@@ -15,16 +15,17 @@ mod jwt;
 mod storage;
 mod thumbnail;
 
-use guardyn_common::{config::ServiceConfig, observability};
-use tonic::{transport::Server, Request, Response, Status, Streaming};
 use anyhow::Result;
+use guardyn_common::{config::ServiceConfig, observability};
 use std::sync::Arc;
+use tonic::{transport::Server, Request, Response, Status, Streaming};
 
 // Import generated protobuf code
 pub mod proto {
     pub mod common {
         include!("generated/guardyn.common.rs");
     }
+    #[allow(clippy::large_enum_variant)]
     pub mod media {
         include!("generated/guardyn.media.rs");
     }
@@ -32,14 +33,11 @@ pub mod proto {
 
 use proto::media::{
     media_service_server::{MediaService, MediaServiceServer},
-    UploadMediaRequest, UploadMediaResponse,
-    DownloadMediaRequest, DownloadMediaResponse,
-    GetMediaMetadataRequest, GetMediaMetadataResponse,
-    DeleteMediaRequest, DeleteMediaResponse,
-    GetUploadUrlRequest, GetUploadUrlResponse,
-    GetDownloadUrlRequest, GetDownloadUrlResponse,
-    GenerateThumbnailRequest, GenerateThumbnailResponse,
-    ListMediaRequest, ListMediaResponse,
+    DeleteMediaRequest, DeleteMediaResponse, DownloadMediaRequest, DownloadMediaResponse,
+    GenerateThumbnailRequest, GenerateThumbnailResponse, GetDownloadUrlRequest,
+    GetDownloadUrlResponse, GetMediaMetadataRequest, GetMediaMetadataResponse, GetUploadUrlRequest,
+    GetUploadUrlResponse, ListMediaRequest, ListMediaResponse, UploadMediaRequest,
+    UploadMediaResponse,
 };
 
 /// Media Service Implementation
@@ -68,7 +66,8 @@ impl MediaServiceImpl {
 
 #[tonic::async_trait]
 impl MediaService for MediaServiceImpl {
-    type DownloadMediaStream = futures::stream::BoxStream<'static, Result<DownloadMediaResponse, Status>>;
+    type DownloadMediaStream =
+        futures::stream::BoxStream<'static, Result<DownloadMediaResponse, Status>>;
 
     async fn upload_media(
         &self,
@@ -80,7 +79,8 @@ impl MediaService for MediaServiceImpl {
             self.storage.clone(),
             &self.jwt_secret,
             &self.config,
-        ).await
+        )
+        .await
     }
 
     async fn download_media(
@@ -92,18 +92,15 @@ impl MediaService for MediaServiceImpl {
             self.db.clone(),
             self.storage.clone(),
             &self.jwt_secret,
-        ).await
+        )
+        .await
     }
 
     async fn get_media_metadata(
         &self,
         request: Request<GetMediaMetadataRequest>,
     ) -> Result<Response<GetMediaMetadataResponse>, Status> {
-        handlers::metadata::get(
-            request,
-            self.db.clone(),
-            &self.jwt_secret,
-        ).await
+        handlers::metadata::get(request, self.db.clone(), &self.jwt_secret).await
     }
 
     async fn delete_media(
@@ -115,7 +112,8 @@ impl MediaService for MediaServiceImpl {
             self.db.clone(),
             self.storage.clone(),
             &self.jwt_secret,
-        ).await
+        )
+        .await
     }
 
     async fn get_upload_url(
@@ -128,7 +126,8 @@ impl MediaService for MediaServiceImpl {
             self.storage.clone(),
             &self.jwt_secret,
             &self.config,
-        ).await
+        )
+        .await
     }
 
     async fn get_download_url(
@@ -140,7 +139,8 @@ impl MediaService for MediaServiceImpl {
             self.db.clone(),
             self.storage.clone(),
             &self.jwt_secret,
-        ).await
+        )
+        .await
     }
 
     async fn generate_thumbnail(
@@ -153,18 +153,15 @@ impl MediaService for MediaServiceImpl {
             self.storage.clone(),
             &self.jwt_secret,
             &self.config,
-        ).await
+        )
+        .await
     }
 
     async fn list_media(
         &self,
         request: Request<ListMediaRequest>,
     ) -> Result<Response<ListMediaResponse>, Status> {
-        handlers::list::handle(
-            request,
-            self.db.clone(),
-            &self.jwt_secret,
-        ).await
+        handlers::list::handle(request, self.db.clone(), &self.jwt_secret).await
     }
 }
 
@@ -206,7 +203,9 @@ async fn main() -> Result<()> {
     tracing::info!("S3/MinIO connection established");
 
     // Ensure bucket exists
-    storage.ensure_bucket_exists(&media_config.bucket_name).await?;
+    storage
+        .ensure_bucket_exists(&media_config.bucket_name)
+        .await?;
     tracing::info!(bucket = %media_config.bucket_name, "Storage bucket ready");
 
     // Load JWT secret from environment (GUARDYN_AUTH__JWT_SECRET)
@@ -220,7 +219,10 @@ async fn main() -> Result<()> {
         tracing::error!("JWT secret is too short (< 32 bytes) - this is insecure!");
     }
 
-    if jwt_secret.contains("DEV") || jwt_secret.contains("development") || jwt_secret.contains("UNSAFE") {
+    if jwt_secret.contains("DEV")
+        || jwt_secret.contains("development")
+        || jwt_secret.contains("UNSAFE")
+    {
         tracing::warn!("Using development JWT secret - DO NOT USE IN PRODUCTION");
     }
 
@@ -228,12 +230,7 @@ async fn main() -> Result<()> {
     let service = MediaServiceImpl::new(db, storage, jwt_secret, media_config).await;
 
     // Start gRPC server
-    let addr = format!(
-        "{}:{}",
-        service_config.host,
-        service_config.port
-    )
-    .parse()?;
+    let addr = format!("{}:{}", service_config.host, service_config.port).parse()?;
 
     tracing::info!(%addr, "Media service listening");
 

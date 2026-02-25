@@ -1,7 +1,6 @@
 /// Get Status Handler
 ///
 /// Gets a single user's presence status
-
 use crate::db::DatabaseClient;
 use crate::jwt;
 use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};

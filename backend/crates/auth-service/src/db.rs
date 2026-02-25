@@ -5,11 +5,10 @@
 /// - Device management
 /// - Session tracking
 /// - Key bundle storage
-
-use anyhow::{Result, Context};
-use tikv_client::{RawClient, Error as TikvError};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tikv_client::RawClient;
 
 /// User profile stored in TiKV
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,9 +19,9 @@ pub struct UserProfile {
     pub password_hash: String,
     pub created_at: i64,
     pub last_seen: i64,
-    pub avatar_media_id: Option<String>,  // Reference to media in MediaService
-    pub display_name: Option<String>,     // Optional display name
-    pub bio: Option<String>,              // Optional bio text
+    pub avatar_media_id: Option<String>, // Reference to media in MediaService
+    pub display_name: Option<String>,    // Optional display name
+    pub bio: Option<String>,             // Optional bio text
 }
 
 /// Device information
@@ -59,11 +58,11 @@ pub struct KeyBundle {
 /// Contact relationship stored in TiKV
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contact {
-    pub contact_id: String,     // UUID of the contact relationship
-    pub owner_user_id: String,  // User who owns this contact
-    pub contact_user_id: String, // User who is the contact
+    pub contact_id: String,       // UUID of the contact relationship
+    pub owner_user_id: String,    // User who owns this contact
+    pub contact_user_id: String,  // User who is the contact
     pub nickname: Option<String>, // Custom nickname set by owner
-    pub notes: Option<String>,   // Private notes about contact
+    pub notes: Option<String>,    // Private notes about contact
     pub added_at: i64,
 }
 
@@ -105,7 +104,9 @@ impl DatabaseClient {
 
         // Store username -> user_id mapping
         let username_key = format!("/users/username/{}", profile.username).into_bytes();
-        self.client.put(username_key, profile.user_id.as_bytes().to_vec()).await?;
+        self.client
+            .put(username_key, profile.user_id.as_bytes().to_vec())
+            .await?;
 
         Ok(())
     }
@@ -154,7 +155,10 @@ impl DatabaseClient {
     ) -> Result<UserProfile> {
         // Get existing profile
         let profile_key = format!("/users/{}/profile", user_id).into_bytes();
-        let profile_data = self.client.get(profile_key.clone()).await?
+        let profile_data = self
+            .client
+            .get(profile_key.clone())
+            .await?
             .ok_or_else(|| anyhow::anyhow!("User not found"))?;
 
         let mut profile: UserProfile = serde_json::from_slice(&profile_data)?;
@@ -182,21 +186,30 @@ impl DatabaseClient {
 
     /// Search users by username prefix
     /// If exclude_user_id is provided, the user with that ID will be excluded from results
-    pub async fn search_users_by_username(&self, query: &str, limit: u32, exclude_user_id: Option<&str>) -> Result<Vec<UserProfile>> {
+    pub async fn search_users_by_username(
+        &self,
+        query: &str,
+        limit: u32,
+        exclude_user_id: Option<&str>,
+    ) -> Result<Vec<UserProfile>> {
         let query_lower = query.to_lowercase();
 
         // Create key range for scanning
         // Start: /users/username/ (include all usernames)
         // End: /users/username0 (0 is next char after /, ensuring we get all usernames)
-        let start_key = format!("/users/username/").into_bytes();
+        let start_key = "/users/username/".to_string().into_bytes();
         let mut end_key = start_key.clone();
         // Increment the last byte to get exclusive upper bound for the prefix
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1; // '/' + 1 = '0', so we scan /users/username/* up to /users/username0
+            *last += 1; // '/' + 1 = '0', so we scan /users/username/* up to /users/username0
         }
 
         // Scan the username index - request extra to account for potential exclusion
-        let scan_limit = if exclude_user_id.is_some() { limit + 1 } else { limit };
+        let scan_limit = if exclude_user_id.is_some() {
+            limit + 1
+        } else {
+            limit
+        };
         let keys = self.client.scan(start_key..end_key, scan_limit).await?;
 
         let mut results = Vec::new();
@@ -262,11 +275,19 @@ impl DatabaseClient {
         self.client.put(token_key, session_value.clone()).await?;
 
         // Store session in user index
-        let user_key = format!("/sessions/user/{}/{}", session.user_id, session.session_token).into_bytes();
+        let user_key = format!(
+            "/sessions/user/{}/{}",
+            session.user_id, session.session_token
+        )
+        .into_bytes();
         self.client.put(user_key, session_value.clone()).await?;
 
         // Store session in device index (for single-device logout)
-        let device_key = format!("/sessions/device/{}/{}/{}", session.user_id, session.device_id, session.session_token).into_bytes();
+        let device_key = format!(
+            "/sessions/device/{}/{}/{}",
+            session.user_id, session.device_id, session.session_token
+        )
+        .into_bytes();
         self.client.put(device_key, session_value).await?;
 
         Ok(())
@@ -300,7 +321,11 @@ impl DatabaseClient {
         let user_key = format!("/sessions/user/{}/{}", session.user_id, token).into_bytes();
         self.client.delete(user_key).await?;
 
-        let device_key = format!("/sessions/device/{}/{}/{}", session.user_id, session.device_id, token).into_bytes();
+        let device_key = format!(
+            "/sessions/device/{}/{}/{}",
+            session.user_id, session.device_id, token
+        )
+        .into_bytes();
         self.client.delete(device_key).await?;
 
         Ok(())
@@ -360,7 +385,11 @@ impl DatabaseClient {
                 // Parse session to get device_id
                 if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
                     // Delete from device index
-                    let device_key = format!("/sessions/device/{}/{}/{}", user_id, session.device_id, token).into_bytes();
+                    let device_key = format!(
+                        "/sessions/device/{}/{}/{}",
+                        user_id, session.device_id, token
+                    )
+                    .into_bytes();
                     self.client.delete(device_key).await?;
                 }
 
@@ -393,19 +422,31 @@ impl DatabaseClient {
     ) -> Result<()> {
         // Store identity key
         let identity_key = format!("/users/{}/identity_key", user_id).into_bytes();
-        self.client.put(identity_key, key_bundle.identity_key.clone()).await?;
+        self.client
+            .put(identity_key, key_bundle.identity_key.clone())
+            .await?;
 
         // Store signed pre-key
-        let signed_pre_key_path = format!("/devices/{}/{}/signed_pre_key", user_id, device_id).into_bytes();
-        self.client.put(signed_pre_key_path, key_bundle.signed_pre_key.clone()).await?;
+        let signed_pre_key_path =
+            format!("/devices/{}/{}/signed_pre_key", user_id, device_id).into_bytes();
+        self.client
+            .put(signed_pre_key_path, key_bundle.signed_pre_key.clone())
+            .await?;
 
         // Store signature
-        let sig_path = format!("/devices/{}/{}/signed_pre_key_signature", user_id, device_id).into_bytes();
-        self.client.put(sig_path, key_bundle.signed_pre_key_signature.clone()).await?;
+        let sig_path = format!(
+            "/devices/{}/{}/signed_pre_key_signature",
+            user_id, device_id
+        )
+        .into_bytes();
+        self.client
+            .put(sig_path, key_bundle.signed_pre_key_signature.clone())
+            .await?;
 
         // Store one-time pre-keys
         for (i, otk) in key_bundle.one_time_pre_keys.iter().enumerate() {
-            let otk_path = format!("/devices/{}/{}/one_time_keys/{}", user_id, device_id, i).into_bytes();
+            let otk_path =
+                format!("/devices/{}/{}/one_time_keys/{}", user_id, device_id, i).into_bytes();
             self.client.put(otk_path, otk.clone()).await?;
         }
 
@@ -426,14 +467,19 @@ impl DatabaseClient {
         };
 
         // Get signed pre-key
-        let signed_pre_key_path = format!("/devices/{}/{}/signed_pre_key", user_id, device_id).into_bytes();
+        let signed_pre_key_path =
+            format!("/devices/{}/{}/signed_pre_key", user_id, device_id).into_bytes();
         let signed_pre_key = match self.client.get(signed_pre_key_path).await? {
             Some(data) => data,
             None => return Ok(None),
         };
 
         // Get signature
-        let sig_path = format!("/devices/{}/{}/signed_pre_key_signature", user_id, device_id).into_bytes();
+        let sig_path = format!(
+            "/devices/{}/{}/signed_pre_key_signature",
+            user_id, device_id
+        )
+        .into_bytes();
         let signature = match self.client.get(sig_path).await? {
             Some(data) => data,
             None => return Ok(None),
@@ -445,7 +491,7 @@ impl DatabaseClient {
         let mut end_key = start_key.clone();
         // Increment the last byte to get exclusive upper bound for the prefix
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1; // '/' + 1 = '0', so we scan all keys under the prefix
+            *last += 1; // '/' + 1 = '0', so we scan all keys under the prefix
         }
 
         let otk_kvs = self.client.scan(start_key..end_key, 100).await?;
@@ -470,14 +516,19 @@ impl DatabaseClient {
     pub async fn health_check(&self) -> Result<()> {
         // Try to perform a simple operation to verify connectivity
         let test_key = b"/__health_check__";
-        self.client.get(test_key.to_vec()).await
+        self.client
+            .get(test_key.to_vec())
+            .await
             .context("TiKV health check failed")?;
         Ok(())
     }
 
     /// Generic put method for raw key-value storage
     pub async fn put(&self, key: &[u8], value: Vec<u8>) -> Result<()> {
-        self.client.put(key.to_vec(), value).await.map_err(Into::into)
+        self.client
+            .put(key.to_vec(), value)
+            .await
+            .map_err(Into::into)
     }
 
     /// Generic get method for raw key-value retrieval
@@ -493,7 +544,11 @@ impl DatabaseClient {
     /// Delete all user data from TiKV
     /// This removes: user profile, username mapping, identity key, devices, sessions, MLS key packages
     pub async fn delete_user(&self, user_id: &str, username: &str) -> Result<()> {
-        tracing::info!("Starting deletion of user data for: {} ({})", username, user_id);
+        tracing::info!(
+            "Starting deletion of user data for: {} ({})",
+            username,
+            user_id
+        );
 
         // 1. Delete user profile
         let profile_key = format!("/users/{}/profile", user_id).into_bytes();
@@ -514,7 +569,7 @@ impl DatabaseClient {
         let start_key = devices_prefix.clone().into_bytes();
         let mut end_key = start_key.clone();
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1;
+            *last += 1;
         }
 
         let device_keys = self.client.scan(start_key..end_key, 1000).await?;
@@ -528,7 +583,7 @@ impl DatabaseClient {
         let start_key = sessions_prefix.clone().into_bytes();
         let mut end_key = start_key.clone();
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1;
+            *last += 1;
         }
 
         let session_keys = self.client.scan(start_key..end_key, 1000).await?;
@@ -539,7 +594,11 @@ impl DatabaseClient {
                 let _ = self.client.delete(token_key).await;
 
                 // Delete from device index
-                let device_key = format!("/sessions/device/{}/{}/{}", user_id, session.device_id, session.session_token).into_bytes();
+                let device_key = format!(
+                    "/sessions/device/{}/{}/{}",
+                    user_id, session.device_id, session.session_token
+                )
+                .into_bytes();
                 let _ = self.client.delete(device_key).await;
             }
 
@@ -552,7 +611,7 @@ impl DatabaseClient {
         let start_key = mls_prefix.clone().into_bytes();
         let mut end_key = start_key.clone();
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1;
+            *last += 1;
         }
 
         let mls_keys = self.client.scan(start_key..end_key, 100).await?;
@@ -695,7 +754,7 @@ impl DatabaseClient {
 
         let mut end_key = prefix.clone().into_bytes();
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1;
+            *last += 1;
         }
 
         // Fetch one extra to determine if there are more results
@@ -724,7 +783,7 @@ impl DatabaseClient {
         let count_start = prefix.clone().into_bytes();
         let mut count_end = count_start.clone();
         if let Some(last) = count_end.last_mut() {
-            *last = *last + 1;
+            *last += 1;
         }
         let all_keys = self.client.scan(count_start..count_end, 10000).await?;
         let total_count = all_keys.len() as u32;
@@ -738,7 +797,7 @@ impl DatabaseClient {
         let start_key = prefix.clone().into_bytes();
         let mut end_key = start_key.clone();
         if let Some(last) = end_key.last_mut() {
-            *last = *last + 1;
+            *last += 1;
         }
 
         let keys = self.client.scan(start_key..end_key, 10000).await?;
@@ -749,4 +808,5 @@ impl DatabaseClient {
 
         tracing::info!("Deleted all contacts for user: {}", user_id);
         Ok(())
-    }}
+    }
+}

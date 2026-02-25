@@ -155,6 +155,7 @@ pub async fn update_profile(
 
 /// Validate JWT token and extract user_id
 /// Returns Ok(user_id) on success, Err(error_message) on failure
+#[allow(dead_code)]
 pub fn validate_jwt_token(token: &str, jwt_secret: &str) -> Result<String, String> {
     if token.is_empty() {
         return Err("Access token is required".to_string());
@@ -171,6 +172,7 @@ pub fn validate_jwt_token(token: &str, jwt_secret: &str) -> Result<String, Strin
 }
 
 /// Merge profile fields - returns new value if provided, otherwise keeps existing
+#[allow(dead_code)]
 pub fn merge_profile_field(new_value: &str, existing: Option<String>) -> Option<String> {
     if new_value.is_empty() {
         existing
@@ -182,7 +184,7 @@ pub fn merge_profile_field(new_value: &str, existing: Option<String>) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{encode, Header, EncodingKey};
+    use jsonwebtoken::{encode, EncodingKey, Header};
     use serde::Serialize;
 
     #[derive(Debug, Serialize)]
@@ -197,9 +199,15 @@ mod tests {
             exp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs() as i64 + exp_seconds,
+                .as_secs() as i64
+                + exp_seconds,
         };
-        encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes())).unwrap()
+        encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(secret.as_bytes()),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -213,7 +221,9 @@ mod tests {
     fn test_validate_jwt_token_invalid() {
         let result = validate_jwt_token("invalid_token", "test_secret");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid or expired access token"));
+        assert!(result
+            .unwrap_err()
+            .contains("Invalid or expired access token"));
     }
 
     #[test]

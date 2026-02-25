@@ -11,9 +11,7 @@
 //! - `Result<T, E>` → throws Dart exceptions
 
 use flutter_rust_bridge::frb;
-use rand::RngCore;
 use std::sync::atomic::{AtomicBool, Ordering};
-use subtle::ConstantTimeEq;
 
 // Re-export from guardyn-crypto FFI module
 use guardyn_crypto::ffi::{
@@ -522,7 +520,8 @@ mod tests {
         let key = crypto_random_bytes(32);
         let plaintext = b"Hello, Guardyn!".to_vec();
 
-        let encrypted = crypto_encrypt_chacha20(plaintext.clone(), key.clone(), None, None).unwrap();
+        let encrypted =
+            crypto_encrypt_chacha20(plaintext.clone(), key.clone(), None, None).unwrap();
         let decrypted = crypto_decrypt_chacha20(encrypted, key, None).unwrap();
 
         assert_eq!(plaintext, decrypted);

@@ -7,9 +7,7 @@ use anyhow::{anyhow, Result};
 use aws_config::Region;
 use aws_credential_types::Credentials;
 use aws_sdk_s3::{
-    config::Builder as S3ConfigBuilder,
-    presigning::PresigningConfig,
-    primitives::ByteStream,
+    config::Builder as S3ConfigBuilder, presigning::PresigningConfig, primitives::ByteStream,
     Client as S3Client,
 };
 use bytes::Bytes;
@@ -51,9 +49,11 @@ impl StorageClient {
         // Client for presigned URL generation (uses public endpoint)
         // This is necessary because presigned URL signature includes the host header,
         // so we need to sign with the same host that clients will use
-        let presign_endpoint = config.s3_public_endpoint.as_ref()
+        let presign_endpoint = config
+            .s3_public_endpoint
+            .as_ref()
             .unwrap_or(&config.s3_endpoint);
-        
+
         let presign_config = S3ConfigBuilder::new()
             .region(Region::new(config.s3_region.clone()))
             .endpoint_url(presign_endpoint)
@@ -98,12 +98,7 @@ impl StorageClient {
     }
 
     /// Upload a file to storage
-    pub async fn upload_file(
-        &self,
-        key: &str,
-        data: Bytes,
-        content_type: &str,
-    ) -> Result<()> {
+    pub async fn upload_file(&self, key: &str, data: Bytes, content_type: &str) -> Result<()> {
         self.client
             .put_object()
             .bucket(&self.bucket)
@@ -160,12 +155,7 @@ impl StorageClient {
     }
 
     /// Download a file with byte range (for resumable downloads)
-    pub async fn download_range(
-        &self,
-        key: &str,
-        offset: i64,
-        length: i64,
-    ) -> Result<Bytes> {
+    pub async fn download_range(&self, key: &str, offset: i64, length: i64) -> Result<Bytes> {
         let range = if length > 0 {
             format!("bytes={}-{}", offset, offset + length - 1)
         } else {
@@ -206,7 +196,14 @@ impl StorageClient {
 
     /// Check if a file exists
     pub async fn file_exists(&self, key: &str) -> Result<bool> {
-        match self.client.head_object().bucket(&self.bucket).key(key).send().await {
+        match self
+            .client
+            .head_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+        {
             Ok(_) => Ok(true),
             Err(e) => {
                 // Check if it's a not found error

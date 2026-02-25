@@ -14,6 +14,7 @@ pub fn validate_token(token: &str, jwt_secret: &str) -> Result<String, ErrorCode
     use serde::Deserialize;
 
     #[derive(Debug, Deserialize)]
+    #[allow(dead_code)]
     struct Claims {
         sub: String,
         exp: i64,
@@ -31,6 +32,7 @@ pub fn validate_token(token: &str, jwt_secret: &str) -> Result<String, ErrorCode
 
 /// Error codes for notification operations
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum ErrorCode {
     Unknown = 0,
     InvalidRequest = 1,

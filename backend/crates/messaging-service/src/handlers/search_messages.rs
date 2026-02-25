@@ -3,18 +3,15 @@
 /// Provides server-side message retrieval for client-side search.
 /// Since content is E2EE, actual search happens on the client.
 /// Server returns messages matching time/type filters for client to decrypt and search.
-
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
+use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
 use crate::proto::messaging::{
-    SearchMessagesRequest, SearchMessagesResponse, SearchMessagesSuccess,
-    SearchResult, MessageType,
-    search_messages_response,
+    search_messages_response, SearchMessagesRequest, SearchMessagesResponse, SearchMessagesSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tracing::{info, warn, error, instrument};
+use tracing::{error, info, instrument, warn};
 
 /// Search messages (returns encrypted content for client-side search)
 #[instrument(skip(db, request), fields(user_id, query))]
@@ -23,7 +20,7 @@ pub async fn search_messages(
     request: Request<SearchMessagesRequest>,
 ) -> Result<Response<SearchMessagesResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -38,30 +35,38 @@ pub async fn search_messages(
             }));
         }
     };
-    
+
     let user_id = claims.sub.clone();
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("query", &req.query);
-    
+
     // Validate limit
     let limit = if req.limit <= 0 || req.limit > 100 {
         50 // Default limit
     } else {
         req.limit
     };
-    
+
     // Build search parameters
     let search_params = SearchParams {
         user_id: user_id.clone(),
-        conversation_id: if req.conversation_id.is_empty() { None } else { Some(req.conversation_id.clone()) },
+        conversation_id: if req.conversation_id.is_empty() {
+            None
+        } else {
+            Some(req.conversation_id.clone())
+        },
         is_group: req.is_group,
-        start_time: req.start_time.clone(),
-        end_time: req.end_time.clone(),
+        start_time: req.start_time,
+        end_time: req.end_time,
         message_types: req.message_types.clone(),
         limit,
-        cursor: if req.cursor.is_empty() { None } else { Some(req.cursor.clone()) },
+        cursor: if req.cursor.is_empty() {
+            None
+        } else {
+            Some(req.cursor.clone())
+        },
     };
-    
+
     // Fetch messages from database
     // Note: Server cannot search encrypted content, so it returns messages for client-side search
     match db.fetch_messages_for_search(&search_params).await {
@@ -73,15 +78,17 @@ pub async fn search_messages(
                 total_count = total_count,
                 "Search results retrieved successfully"
             );
-            
+
             let has_more = next_cursor.is_some();
             Ok(Response::new(SearchMessagesResponse {
-                result: Some(search_messages_response::Result::Success(SearchMessagesSuccess {
-                    results,
-                    next_cursor: next_cursor.unwrap_or_default(),
-                    has_more,
-                    total_count: total_count as i32,
-                })),
+                result: Some(search_messages_response::Result::Success(
+                    SearchMessagesSuccess {
+                        results,
+                        next_cursor: next_cursor.unwrap_or_default(),
+                        has_more,
+                        total_count: total_count as i32,
+                    },
+                )),
             }))
         }
         Err(e) => {
@@ -98,6 +105,7 @@ pub async fn search_messages(
 }
 
 /// Parameters for message search
+#[allow(dead_code)]
 pub struct SearchParams {
     pub user_id: String,
     pub conversation_id: Option<String>,

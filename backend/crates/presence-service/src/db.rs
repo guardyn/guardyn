@@ -4,32 +4,19 @@
 /// - User presence status storage
 /// - Last seen timestamps
 /// - Typing indicators (ephemeral, stored in memory/NATS)
-
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tikv_client::RawClient;
 
 /// User presence stored in TiKV
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UserPresence {
     pub user_id: String,
     pub status: i32, // Maps to UserStatus enum
     pub custom_status_text: String,
-    pub last_seen: i64,     // Unix timestamp in milliseconds
-    pub updated_at: i64,    // Unix timestamp in milliseconds
-}
-
-impl Default for UserPresence {
-    fn default() -> Self {
-        Self {
-            user_id: String::new(),
-            status: 0, // OFFLINE
-            custom_status_text: String::new(),
-            last_seen: 0,
-            updated_at: 0,
-        }
-    }
+    pub last_seen: i64,  // Unix timestamp in milliseconds
+    pub updated_at: i64, // Unix timestamp in milliseconds
 }
 
 /// Typing indicator (ephemeral state)
@@ -117,7 +104,12 @@ impl DatabaseClient {
 
     /// Set typing indicator (ephemeral - short TTL would be ideal, but TiKV doesn't have TTL)
     /// In production, this would use Redis or similar with TTL support
-    pub async fn set_typing(&self, user_id: &str, conversation_user_id: &str, is_typing: bool) -> Result<()> {
+    pub async fn set_typing(
+        &self,
+        user_id: &str,
+        conversation_user_id: &str,
+        is_typing: bool,
+    ) -> Result<()> {
         let key = format!("/typing/{}/{}", user_id, conversation_user_id).into_bytes();
 
         if is_typing {
@@ -138,7 +130,11 @@ impl DatabaseClient {
     }
 
     /// Get typing indicator
-    pub async fn get_typing(&self, user_id: &str, conversation_user_id: &str) -> Result<Option<TypingIndicator>> {
+    pub async fn get_typing(
+        &self,
+        user_id: &str,
+        conversation_user_id: &str,
+    ) -> Result<Option<TypingIndicator>> {
         let key = format!("/typing/{}/{}", user_id, conversation_user_id).into_bytes();
 
         let indicator_data = match self.client.get(key).await? {
@@ -147,7 +143,6 @@ impl DatabaseClient {
         };
 
         let indicator: TypingIndicator = serde_json::from_slice(&indicator_data)?;
-
 
         // Check if typing indicator is stale (older than 10 seconds)
         let now = chrono::Utc::now().timestamp_millis();
@@ -175,7 +170,7 @@ mod tests {
     #[test]
     fn test_user_presence_default() {
         let presence = UserPresence::default();
-        
+
         assert_eq!(presence.user_id, "");
         assert_eq!(presence.status, 0); // OFFLINE
         assert_eq!(presence.custom_status_text, "");
@@ -225,7 +220,10 @@ mod tests {
         // Deserialize back
         let deserialized: TypingIndicator = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.user_id, indicator.user_id);
-        assert_eq!(deserialized.conversation_user_id, indicator.conversation_user_id);
+        assert_eq!(
+            deserialized.conversation_user_id,
+            indicator.conversation_user_id
+        );
         assert_eq!(deserialized.is_typing, indicator.is_typing);
     }
 
@@ -251,7 +249,7 @@ mod tests {
         // AWAY = 2
         // DO_NOT_DISTURB = 3
         // INVISIBLE = 4
-        
+
         let statuses = vec![
             (0, "OFFLINE"),
             (1, "ONLINE"),
@@ -273,7 +271,7 @@ mod tests {
     #[test]
     fn test_typing_indicator_stale_check_logic() {
         let now = chrono::Utc::now().timestamp_millis();
-        
+
         // Fresh indicator (1 second ago)
         let fresh = TypingIndicator {
             user_id: "a".to_string(),
@@ -282,7 +280,7 @@ mod tests {
             started_at: now - 1000,
         };
         assert!(now - fresh.started_at <= 10_000);
-        
+
         // Stale indicator (15 seconds ago)
         let stale = TypingIndicator {
             user_id: "a".to_string(),
@@ -301,7 +299,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(empty.custom_status_text.len(), 0);
-        
+
         // Max allowed (100 chars)
         let max_text = "a".repeat(100);
         let max = UserPresence {
@@ -309,7 +307,7 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(max.custom_status_text.len(), 100);
-        
+
         // Unicode status text
         let unicode = UserPresence {
             custom_status_text: "🎉 Celebrating! 🎊".to_string(),

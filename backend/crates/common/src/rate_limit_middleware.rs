@@ -159,9 +159,7 @@ pub enum RateLimitFuture<F, B> {
         remaining: u32,
     },
     /// Request was rate limited
-    Limited {
-        error: Option<RateLimitError>,
-    },
+    Limited { error: Option<RateLimitError> },
     /// Phantom for body type
     #[doc(hidden)]
     _Phantom(std::marker::PhantomData<B>),
@@ -255,7 +253,9 @@ pub fn rate_limit_interceptor(
                 let remaining = ip
                     .map(|ip| limiter.remaining_for_ip(ip))
                     .unwrap_or(u32::MAX);
-                request.extensions_mut().insert(RateLimitCheckResult::Allowed { remaining });
+                request
+                    .extensions_mut()
+                    .insert(RateLimitCheckResult::Allowed { remaining });
 
                 Ok(request)
             }
@@ -265,18 +265,12 @@ pub fn rate_limit_interceptor(
                     retry_after.as_secs()
                 )))
             }
-            Err(RateLimitError::IpBlocked { ip }) => {
-                Err(tonic::Status::permission_denied(format!(
-                    "IP address {} is blocked",
-                    ip
-                )))
-            }
-            Err(RateLimitError::UserBlocked { user_id }) => {
-                Err(tonic::Status::permission_denied(format!(
-                    "User {} is blocked",
-                    user_id
-                )))
-            }
+            Err(RateLimitError::IpBlocked { ip }) => Err(tonic::Status::permission_denied(
+                format!("IP address {} is blocked", ip),
+            )),
+            Err(RateLimitError::UserBlocked { user_id }) => Err(tonic::Status::permission_denied(
+                format!("User {} is blocked", user_id),
+            )),
         }
     }
 }

@@ -71,7 +71,7 @@ impl DatabaseClient {
     /// Store media metadata
     pub async fn store_media_metadata(&self, metadata: &MediaMetadataRecord) -> Result<()> {
         let data = serde_json::to_vec(metadata)?;
-        
+
         // Store main record
         self.client
             .put(Self::media_key(&metadata.media_id), data.clone())
@@ -115,7 +115,10 @@ impl DatabaseClient {
     }
 
     /// Delete media metadata
-    pub async fn delete_media_metadata(&self, media_id: &str) -> Result<Option<MediaMetadataRecord>> {
+    pub async fn delete_media_metadata(
+        &self,
+        media_id: &str,
+    ) -> Result<Option<MediaMetadataRecord>> {
         // First get the metadata to clean up indexes
         if let Some(metadata) = self.get_media_metadata(media_id).await? {
             // Delete main record
@@ -152,7 +155,8 @@ impl DatabaseClient {
             .unwrap_or_else(|| prefix.clone());
         let end_key = format!("{}{}", prefix, '\u{FFFF}');
 
-        let keys = self.client
+        let keys = self
+            .client
             .scan(start_key..end_key, (limit + 1) as u32)
             .await?;
 
@@ -191,7 +195,8 @@ impl DatabaseClient {
             .unwrap_or_else(|| prefix.clone());
         let end_key = format!("{}{}", prefix, '\u{FFFF}');
 
-        let keys = self.client
+        let keys = self
+            .client
             .scan(start_key..end_key, (limit + 1) as u32)
             .await?;
 

@@ -1,9 +1,9 @@
 /// Handler for deleting messages
 use crate::db::DatabaseClient;
+use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
     delete_message_response, DeleteMessageRequest, DeleteMessageResponse, DeleteMessageSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp};
 use std::sync::Arc;
 use tonic::{Response, Status};
 

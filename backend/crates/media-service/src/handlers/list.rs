@@ -24,7 +24,7 @@ pub async fn handle(
     let user_id = claims.sub;
 
     let req = request.into_inner();
-    
+
     // Determine limit
     let limit = if req.limit > 0 && req.limit <= 100 {
         req.limit as usize
@@ -76,7 +76,7 @@ pub async fn handle(
             if req.media_types.is_empty() {
                 true
             } else {
-                req.media_types.iter().any(|t| *t == r.media_type)
+                req.media_types.contains(&r.media_type)
             }
         })
         .map(|r| MediaMetadata {

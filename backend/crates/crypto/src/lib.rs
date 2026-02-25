@@ -1,3 +1,7 @@
+pub mod double_ratchet;
+pub mod key_storage;
+pub mod mls;
+pub mod sealed_sender;
 /// Cryptographic protocols and primitives for Guardyn
 ///
 /// This crate implements:
@@ -8,17 +12,12 @@
 /// - Sealed Sender for metadata protection
 /// - PADMÉ padding for traffic analysis protection
 /// - Key derivation and storage
-
 // Core protocols
 pub mod x3dh;
-pub mod double_ratchet;
-pub mod mls;
-pub mod key_storage;
-pub mod sealed_sender;
 
 // Post-quantum and privacy enhancements
-pub mod pqxdh;
 pub mod padding;
+pub mod pqxdh;
 
 // FFI bindings for Flutter (feature-gated)
 #[cfg(feature = "ffi")]
@@ -31,13 +30,16 @@ mod mls_tests;
 mod x3dh_conversion_tests;
 
 // Re-exports for convenience
-pub use x3dh::{X3DHKeyBundle, X3DHProtocol, X3DHKeyMaterial, X3DHPrekeyMessage, IdentityKeyPair, SignedPreKey, OneTimePreKey};
 pub use double_ratchet::DoubleRatchet;
-pub use mls::{MlsGroupManager, create_test_credential};
-pub use pqxdh::{HybridKeyBundle, HybridSharedSecret, generate_hybrid_key_bundle};
-pub use padding::{pad_message, unpad_message, next_padme_length};
+pub use key_storage::{create_test_storage, KeyMetadata, KeyStorage, KeyType};
+pub use mls::{create_test_credential, MlsGroupManager};
+pub use padding::{next_padme_length, pad_message, unpad_message};
+pub use pqxdh::{generate_hybrid_key_bundle, HybridKeyBundle, HybridSharedSecret};
 pub use sealed_sender::{SealedSender, SealedSenderEnvelope, SenderCertificate};
-pub use key_storage::{KeyStorage, KeyMetadata, KeyType, create_test_storage};
+pub use x3dh::{
+    IdentityKeyPair, OneTimePreKey, SignedPreKey, X3DHKeyBundle, X3DHKeyMaterial,
+    X3DHPrekeyMessage, X3DHProtocol,
+};
 
 use thiserror::Error;
 

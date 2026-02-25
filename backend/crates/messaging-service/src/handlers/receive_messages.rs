@@ -1,13 +1,13 @@
 /// ReceiveMessages handler - Server-side streaming for real-time message delivery
 use crate::db::DatabaseClient;
-use crate::nats::{NatsClient, MessageEnvelope};
-use crate::proto::messaging::{Message, MessageType, DeliveryStatus, ReceiveMessagesRequest};
+use crate::nats::NatsClient;
 use crate::proto::common::Timestamp;
+use crate::proto::messaging::{DeliveryStatus, Message, MessageType, ReceiveMessagesRequest};
+use async_nats::jetstream::consumer::PullConsumer;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
-use async_nats::jetstream::consumer::PullConsumer;
 
 /// Maximum messages to fetch per batch from NATS
 const BATCH_SIZE: usize = 10;
@@ -31,9 +31,14 @@ pub async fn receive_messages(
     // Validate access token and extract user_id + device_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (user_id, device_id, _username) = crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
+    let (user_id, device_id, _username) =
+        crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
 
-    tracing::info!("User {} ({}) connected to message stream", user_id, device_id);
+    tracing::info!(
+        "User {} ({}) connected to message stream",
+        user_id,
+        device_id
+    );
 
     // Create channel for streaming messages
     let (tx, rx) = mpsc::channel::<Result<Message, Status>>(32);
@@ -51,7 +56,9 @@ pub async fn receive_messages(
         .await
         {
             tracing::error!("Message streaming error for user {}: {}", user_id, e);
-            let _ = tx.send(Err(Status::internal("Message streaming error"))).await;
+            let _ = tx
+                .send(Err(Status::internal("Message streaming error")))
+                .await;
         }
     });
 
@@ -217,10 +224,17 @@ async fn poll_nats_messages(
 
         // Update delivery status in TiKV
         let _ = db
-            .update_delivery_status(&envelope.message_id, crate::models::DeliveryStatus::Delivered)
+            .update_delivery_status(
+                &envelope.message_id,
+                crate::models::DeliveryStatus::Delivered,
+            )
             .await;
 
-        tracing::debug!("Delivered message {} to client {}", envelope.message_id, user_id);
+        tracing::debug!(
+            "Delivered message {} to client {}",
+            envelope.message_id,
+            user_id
+        );
     }
 
     Ok(false)

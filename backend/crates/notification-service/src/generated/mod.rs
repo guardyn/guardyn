@@ -5,6 +5,7 @@ pub mod guardyn {
         include!("guardyn.notifications.rs");
     }
 
+    #[allow(dead_code)]
     pub mod common {
         include!("guardyn.common.rs");
     }

@@ -5,8 +5,8 @@
 
 use anyhow::{Context, Result};
 use async_nats::jetstream::{self, consumer::PullConsumer, stream::Stream};
-use tokio_stream::StreamExt;
 use serde::{Deserialize, Serialize};
+use tokio_stream::StreamExt;
 use tracing::{debug, error, info, warn};
 
 /// NATS subject prefixes for call events
@@ -29,12 +29,18 @@ pub mod subjects {
 
     /// Format ICE candidate subject
     pub fn ice_candidate(call_id: &str, target_user_id: &str) -> String {
-        format!("{}.{}.{}.{}", ICE_PREFIX, call_id, ICE_SUFFIX, target_user_id)
+        format!(
+            "{}.{}.{}.{}",
+            ICE_PREFIX, call_id, ICE_SUFFIX, target_user_id
+        )
     }
 
     /// Format SDP subject
     pub fn sdp(call_id: &str, target_user_id: &str) -> String {
-        format!("{}.{}.{}.{}", ICE_PREFIX, call_id, SDP_SUFFIX, target_user_id)
+        format!(
+            "{}.{}.{}.{}",
+            ICE_PREFIX, call_id, SDP_SUFFIX, target_user_id
+        )
     }
 
     /// Format call events subject
@@ -44,7 +50,10 @@ pub mod subjects {
 
     /// Format SFrame key subject
     pub fn sframe_key(call_id: &str, target_user_id: &str) -> String {
-        format!("{}.{}.{}.{}", ICE_PREFIX, call_id, SFRAME_SUFFIX, target_user_id)
+        format!(
+            "{}.{}.{}.{}",
+            ICE_PREFIX, call_id, SFRAME_SUFFIX, target_user_id
+        )
     }
 
     /// Format incoming call notification subject for a user
@@ -132,6 +141,7 @@ pub enum CallEventType {
 
 /// NATS client for call signaling
 pub struct CallNatsClient {
+    #[allow(dead_code)]
     client: async_nats::Client,
     pub context: jetstream::Context,
     calls_stream: Stream,
@@ -154,7 +164,7 @@ impl CallNatsClient {
                     "calls.>".to_string(), // All call-related subjects
                 ],
                 max_age: std::time::Duration::from_secs(3600), // 1 hour retention (calls are ephemeral)
-                max_bytes: 100 * 1024 * 1024, // 100MB max
+                max_bytes: 100 * 1024 * 1024,                  // 100MB max
                 ..Default::default()
             })
             .await
@@ -255,7 +265,11 @@ impl CallNatsClient {
     }
 
     /// Publish incoming call notification to target user
-    pub async fn publish_incoming_call(&self, target_user_id: &str, envelope: &IncomingCallEnvelope) -> Result<()> {
+    pub async fn publish_incoming_call(
+        &self,
+        target_user_id: &str,
+        envelope: &IncomingCallEnvelope,
+    ) -> Result<()> {
         let subject = subjects::incoming_call(target_user_id);
         let payload = serde_json::to_vec(envelope)?;
 
@@ -275,10 +289,7 @@ impl CallNatsClient {
     }
 
     /// Subscribe to incoming call notifications for a user
-    pub async fn subscribe_incoming_calls(
-        &self,
-        user_id: &str,
-    ) -> Result<PullConsumer> {
+    pub async fn subscribe_incoming_calls(&self, user_id: &str) -> Result<PullConsumer> {
         let subject = subjects::incoming_call(user_id);
         let consumer_name = format!("incoming-{}", user_id);
 
@@ -295,7 +306,8 @@ impl CallNatsClient {
         // This catches messages published just before consumer creation, but ignores old ones
         let start_time = std::time::SystemTime::now() - std::time::Duration::from_secs(10);
 
-        let consumer = self.calls_stream
+        let consumer = self
+            .calls_stream
             .create_consumer(jetstream::consumer::pull::Config {
                 durable_name: Some(consumer_name.clone()),
                 filter_subject: subject.clone(),
@@ -386,7 +398,11 @@ impl CallNatsClient {
 
     /// Subscribe to call events for a specific call and user
     /// Each user gets their own consumer to ensure all participants receive all events
-    pub async fn subscribe_call_events(&self, call_id: &str, user_id: &str) -> Result<PullConsumer> {
+    pub async fn subscribe_call_events(
+        &self,
+        call_id: &str,
+        user_id: &str,
+    ) -> Result<PullConsumer> {
         // Make consumer name unique per user to ensure each participant gets all events
         let consumer_name = format!("call-{}-events-{}", call_id, user_id);
         let subject_filter = subjects::events(call_id);
@@ -406,7 +422,10 @@ impl CallNatsClient {
             .await
             .context("Failed to create events consumer")?;
 
-        info!("Created events consumer {} for call {} user {}", consumer_name, call_id, user_id);
+        info!(
+            "Created events consumer {} for call {} user {}",
+            consumer_name, call_id, user_id
+        );
 
         Ok(consumer)
     }
@@ -462,9 +481,13 @@ impl CallNatsClient {
         while let Some(msg) = messages.next().await {
             match msg {
                 Ok(msg) => {
-                    if let Ok(envelope) = serde_json::from_slice::<IceCandidateEnvelope>(&msg.payload)
+                    if let Ok(envelope) =
+                        serde_json::from_slice::<IceCandidateEnvelope>(&msg.payload)
                     {
-                        debug!("Received ICE candidate from {} for call {}", envelope.from_user_id, envelope.call_id);
+                        debug!(
+                            "Received ICE candidate from {} for call {}",
+                            envelope.from_user_id, envelope.call_id
+                        );
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack ICE candidate message: {}", e);
@@ -502,7 +525,10 @@ impl CallNatsClient {
             match msg {
                 Ok(msg) => {
                     if let Ok(envelope) = serde_json::from_slice::<SdpEnvelope>(&msg.payload) {
-                        debug!("Received SDP from {} for call {}", envelope.from_user_id, envelope.call_id);
+                        debug!(
+                            "Received SDP from {} for call {}",
+                            envelope.from_user_id, envelope.call_id
+                        );
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack SDP message: {}", e);
@@ -538,21 +564,21 @@ impl CallNatsClient {
 
         while let Some(msg) = messages.next().await {
             match msg {
-                Ok(msg) => {
-                    match serde_json::from_slice::<CallEventEnvelope>(&msg.payload) {
-                        Ok(envelope) => {
-                            info!("📬 fetch_call_events: Received {:?} event for call {} from NATS", 
-                                  envelope.event_type, envelope.call_id);
-                            envelopes.push(envelope);
-                            if let Err(e) = msg.ack().await {
-                                warn!("Failed to ack call event message: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            warn!("📬 fetch_call_events: Failed to deserialize message: {}", e);
+                Ok(msg) => match serde_json::from_slice::<CallEventEnvelope>(&msg.payload) {
+                    Ok(envelope) => {
+                        info!(
+                            "📬 fetch_call_events: Received {:?} event for call {} from NATS",
+                            envelope.event_type, envelope.call_id
+                        );
+                        envelopes.push(envelope);
+                        if let Err(e) = msg.ack().await {
+                            warn!("Failed to ack call event message: {}", e);
                         }
                     }
-                }
+                    Err(e) => {
+                        warn!("📬 fetch_call_events: Failed to deserialize message: {}", e);
+                    }
+                },
                 Err(e) => {
                     if !e.to_string().contains("timeout") {
                         error!("Error receiving call event message: {}", e);
@@ -583,7 +609,8 @@ impl CallNatsClient {
         while let Some(msg) = messages.next().await {
             match msg {
                 Ok(msg) => {
-                    if let Ok(envelope) = serde_json::from_slice::<SFrameKeyEnvelope>(&msg.payload) {
+                    if let Ok(envelope) = serde_json::from_slice::<SFrameKeyEnvelope>(&msg.payload)
+                    {
                         debug!("Received SFrame key for call {}", envelope.call_id);
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
@@ -623,8 +650,13 @@ impl CallNatsClient {
         while let Some(msg) = messages.next().await {
             match msg {
                 Ok(msg) => {
-                    if let Ok(envelope) = serde_json::from_slice::<IncomingCallEnvelope>(&msg.payload) {
-                        debug!("Received incoming call notification for call {}", envelope.call_id);
+                    if let Ok(envelope) =
+                        serde_json::from_slice::<IncomingCallEnvelope>(&msg.payload)
+                    {
+                        debug!(
+                            "Received incoming call notification for call {}",
+                            envelope.call_id
+                        );
                         envelopes.push(envelope);
                         if let Err(e) = msg.ack().await {
                             warn!("Failed to ack incoming call message: {}", e);
@@ -644,11 +676,13 @@ impl CallNatsClient {
     }
 
     /// Check NATS connection state
+    #[allow(dead_code)]
     pub fn connection_state(&self) -> async_nats::connection::State {
         self.client.connection_state()
     }
 
     /// Cleanup consumers for a specific call (when call ends)
+    #[allow(dead_code)]
     pub async fn cleanup_call_consumers(&self, call_id: &str) -> Result<()> {
         // Note: Consumer cleanup is handled automatically by NATS when they expire
         // This method can be used for explicit cleanup if needed
@@ -736,6 +770,9 @@ mod tests {
         let deserialized: CallEventEnvelope = serde_json::from_str(&json).unwrap();
 
         assert_eq!(deserialized.call_id, envelope.call_id);
-        assert!(matches!(deserialized.event_type, CallEventType::ParticipantJoined));
+        assert!(matches!(
+            deserialized.event_type,
+            CallEventType::ParticipantJoined
+        ));
     }
 }

@@ -5,16 +5,18 @@
 use crate::config::MediaConfig;
 use anyhow::{anyhow, Result};
 use bytes::Bytes;
-use image::{GenericImageView, ImageFormat, imageops::FilterType};
+use image::{imageops::FilterType, GenericImageView, ImageFormat};
 use std::io::Cursor;
 
 /// Thumbnail generator
+#[allow(dead_code)]
 pub struct ThumbnailGenerator {
     max_width: u32,
     max_height: u32,
     quality: u8,
 }
 
+#[allow(dead_code)]
 impl ThumbnailGenerator {
     /// Create a new thumbnail generator with config
     pub fn new(config: &MediaConfig) -> Self {
@@ -50,13 +52,11 @@ impl ThumbnailGenerator {
         // Encode to output format
         let output_format = self.parse_format(format)?;
         let mut output = Cursor::new(Vec::new());
-        
+
         match output_format {
             ImageFormat::Jpeg => {
-                let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
-                    &mut output,
-                    self.quality,
-                );
+                let encoder =
+                    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut output, self.quality);
                 thumbnail
                     .write_with_encoder(encoder)
                     .map_err(|e| anyhow!("Failed to encode JPEG: {}", e))?;
@@ -127,8 +127,8 @@ impl ThumbnailGenerator {
 
 /// Extract image dimensions from image bytes
 pub fn get_image_dimensions(image_data: &[u8]) -> Result<(u32, u32)> {
-    let img = image::load_from_memory(image_data)
-        .map_err(|e| anyhow!("Failed to load image: {}", e))?;
+    let img =
+        image::load_from_memory(image_data).map_err(|e| anyhow!("Failed to load image: {}", e))?;
     Ok(img.dimensions())
 }
 

@@ -78,22 +78,26 @@ impl ServiceConfig {
         let _cfg = config::Config::builder()
             .add_source(config::Environment::with_prefix("GUARDYN").separator("__"))
             .build()?;
-        
+
         // Parse comma-separated strings into arrays
         let mut builder = config::Config::builder();
-        
+
         // TiKV endpoints
         if let Ok(tikv_str) = std::env::var("GUARDYN_DATABASE__TIKV_PD_ENDPOINTS") {
-            let endpoints: Vec<String> = tikv_str.split(',').map(|s| s.trim().to_string()).collect();
+            let endpoints: Vec<String> =
+                tikv_str.split(',').map(|s| s.trim().to_string()).collect();
             builder = builder.set_override("database.tikv_pd_endpoints", endpoints)?;
         }
-        
+
         // ScyllaDB nodes
         if let Ok(scylla_str) = std::env::var("GUARDYN_DATABASE__SCYLLADB_NODES") {
-            let nodes: Vec<String> = scylla_str.split(',').map(|s| s.trim().to_string()).collect();
+            let nodes: Vec<String> = scylla_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
             builder = builder.set_override("database.scylladb_nodes", nodes)?;
         }
-        
+
         // Other config from env
         if let Ok(service_name) = std::env::var("GUARDYN_SERVICE_NAME") {
             builder = builder.set_override("service_name", service_name)?;
@@ -124,7 +128,7 @@ impl ServiceConfig {
         if let Ok(refresh_exp) = std::env::var("GUARDYN_AUTH__REFRESH_EXPIRATION_SECS") {
             builder = builder.set_override("auth.refresh_expiration_secs", refresh_exp)?;
         }
-        
+
         builder.build()?.try_deserialize()
     }
 }

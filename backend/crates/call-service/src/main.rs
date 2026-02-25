@@ -60,7 +60,9 @@ async fn main() -> Result<()> {
     info!("Call service listening on {}", addr);
 
     Server::builder()
-        .add_service(generated::guardyn::calls::call_service_server::CallServiceServer::new(call_service))
+        .add_service(
+            generated::guardyn::calls::call_service_server::CallServiceServer::new(call_service),
+        )
         .serve(addr)
         .await?;
 
@@ -99,20 +101,19 @@ fn load_config() -> Result<Config> {
             .unwrap_or_else(|_| "nats://nats.messaging.svc.cluster.local:4222".to_string()),
         auth_service_url: std::env::var("AUTH_SERVICE_URL")
             .unwrap_or_else(|_| "http://auth-service.apps.svc.cluster.local:50051".to_string()),
-        jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| "development-secret-change-in-production".to_string()),
+        jwt_secret: std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "development-secret-change-in-production".to_string()),
         ice_servers,
     })
 }
 
 fn parse_ice_servers() -> Vec<IceServerConfig> {
     // Default STUN servers
-    let mut servers = vec![
-        IceServerConfig {
-            urls: vec!["stun:stun.l.google.com:19302".to_string()],
-            username: None,
-            credential: None,
-        },
-    ];
+    let mut servers = vec![IceServerConfig {
+        urls: vec!["stun:stun.l.google.com:19302".to_string()],
+        username: None,
+        credential: None,
+    }];
 
     // Add TURN server if configured
     if let Ok(turn_url) = std::env::var("TURN_SERVER_URL") {

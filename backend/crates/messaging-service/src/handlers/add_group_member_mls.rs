@@ -2,16 +2,15 @@
 ///
 /// Uses MLS protocol to securely add new members to the group.
 /// Creates Welcome messages for new members and Commit messages for existing members.
-
 use crate::db::DatabaseClient;
 use crate::mls_manager::MlsManager;
 use crate::models::{GroupMember, GroupRole};
 use crate::nats::NatsClient;
-use crate::proto::messaging::{
-    add_group_member_response, AddGroupMemberRequest, AddGroupMemberResponse,
-    AddGroupMemberSuccess,
-};
 use crate::proto::common::ErrorResponse;
+use crate::proto::messaging::{
+    add_group_member_response, AddGroupMemberRequest, AddGroupMemberResponse, AddGroupMemberSuccess,
+};
+#[allow(unused_imports)]
 use guardyn_crypto::mls::MlsGroupManager;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -102,7 +101,11 @@ pub async fn add_group_member_mls(
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to verify group".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -135,7 +138,11 @@ pub async fn add_group_member_mls(
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to verify membership".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -143,7 +150,11 @@ pub async fn add_group_member_mls(
 
     // Check if member is already in group
     match mls_manager
-        .is_member(&request.group_id, &request.member_user_id, &request.member_device_id)
+        .is_member(
+            &request.group_id,
+            &request.member_user_id,
+            &request.member_device_id,
+        )
         .await
     {
         Ok(true) => {
@@ -164,7 +175,11 @@ pub async fn add_group_member_mls(
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to check membership".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -185,7 +200,11 @@ pub async fn add_group_member_mls(
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to connect to auth service".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -202,7 +221,11 @@ pub async fn add_group_member_mls(
                 result: Some(add_group_member_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::NotFound as i32,
                     message: "MLS key package not found for user".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -242,21 +265,22 @@ pub async fn add_group_member_mls(
     // NOTE: This is a workaround for OpenMLS deserialization limitation
     // In production, we need to maintain in-memory group managers or implement custom serialization
     let requester_identity = format!("{}:{}", requester_user_id, requester_device_id);
-    let credential_bundle = match guardyn_crypto::mls::create_test_credential(requester_identity.as_bytes()) {
-        Ok(bundle) => bundle,
-        Err(e) => {
-            error!("Failed to create MLS credential: {}", e);
-            let mut details = HashMap::new();
-            details.insert("error".to_string(), e.to_string());
-            return Ok(Response::new(AddGroupMemberResponse {
-                result: Some(add_group_member_response::Result::Error(ErrorResponse {
-                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
-                    message: "Failed to create MLS credential".to_string(),
-                    details,
-                })),
-            }));
-        }
-    };
+    let credential_bundle =
+        match guardyn_crypto::mls::create_test_credential(requester_identity.as_bytes()) {
+            Ok(bundle) => bundle,
+            Err(e) => {
+                error!("Failed to create MLS credential: {}", e);
+                let mut details = HashMap::new();
+                details.insert("error".to_string(), e.to_string());
+                return Ok(Response::new(AddGroupMemberResponse {
+                    result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                        code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                        message: "Failed to create MLS credential".to_string(),
+                        details,
+                    })),
+                }));
+            }
+        };
 
     let mut group_manager = match MlsGroupManager::create_group(
         &request.group_id,
@@ -286,10 +310,13 @@ pub async fn add_group_member_mls(
                 error!("Failed to add member to MLS group: {}", e);
                 return Ok(Response::new(AddGroupMemberResponse {
                     result: Some(add_group_member_response::Result::Error(ErrorResponse {
-                        code: crate::proto::common::error_response::ErrorCode::InternalError
-                            as i32,
+                        code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                         message: "Failed to add member to MLS group".to_string(),
-                        details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                        details: {
+                            let mut map = HashMap::new();
+                            map.insert("error".to_string(), e.to_string());
+                            map
+                        },
                     })),
                 }));
             }
@@ -342,9 +369,9 @@ pub async fn add_group_member_mls(
 
     if let Err(e) = mls_manager
         .add_member_to_list(
-            &request.group_id, 
-            &request.member_user_id, 
-            &request.member_device_id
+            &request.group_id,
+            &request.member_user_id,
+            &request.member_device_id,
         )
         .await
     {
@@ -353,7 +380,11 @@ pub async fn add_group_member_mls(
             result: Some(add_group_member_response::Result::Error(ErrorResponse {
                 code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                 message: "Failed to update members list".to_string(),
-                details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                details: {
+                    let mut map = HashMap::new();
+                    map.insert("error".to_string(), e.to_string());
+                    map
+                },
             })),
         }));
     }
@@ -382,9 +413,7 @@ pub async fn add_group_member_mls(
     // Return success
     Ok(Response::new(AddGroupMemberResponse {
         result: Some(add_group_member_response::Result::Success(
-            AddGroupMemberSuccess {
-                added: true,
-            },
+            AddGroupMemberSuccess { added: true },
         )),
     }))
 }

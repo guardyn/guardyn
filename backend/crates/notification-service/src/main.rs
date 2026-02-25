@@ -37,12 +37,11 @@ async fn main() -> Result<()> {
     let db = NotificationDb::new(&config.scylla_hosts).await?;
 
     // Initialize push providers
-    let push_service =
-        push::PushService::new(
-            config.fcm_server_key.clone(), 
-            config.apns_config.clone(),
-            config.webpush_config.clone(),
-        );
+    let push_service = push::PushService::new(
+        config.fcm_server_key.clone(),
+        config.apns_config.clone(),
+        config.webpush_config.clone(),
+    );
 
     // Create service implementation
     let notification_service = NotificationServiceImpl::new(
@@ -102,11 +101,13 @@ fn load_config() -> Result<Config> {
                 .map(|v| v == "true")
                 .unwrap_or(false),
         }),
-        webpush_config: std::env::var("VAPID_PRIVATE_KEY").ok().map(|private_key| push::WebPushConfig {
-            vapid_private_key: private_key,
-            vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").unwrap_or_default(),
-            contact_email: std::env::var("VAPID_CONTACT_EMAIL")
-                .unwrap_or_else(|_| "admin@example.com".to_string()),
+        webpush_config: std::env::var("VAPID_PRIVATE_KEY").ok().map(|private_key| {
+            push::WebPushConfig {
+                vapid_private_key: private_key,
+                vapid_public_key: std::env::var("VAPID_PUBLIC_KEY").unwrap_or_default(),
+                contact_email: std::env::var("VAPID_CONTACT_EMAIL")
+                    .unwrap_or_else(|_| "admin@example.com".to_string()),
+            }
         }),
     })
 }

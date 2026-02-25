@@ -1,3 +1,5 @@
+use crate::db::{Device, Session};
+use crate::jwt;
 /// User login handler
 ///
 /// Flow:
@@ -7,22 +9,19 @@
 /// 4. Generate JWT tokens
 /// 5. Create session
 /// 6. Return tokens + device list
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
-use tonic::{Request, Response, Status};
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
 use argon2::{
     password_hash::{PasswordHash, PasswordVerifier},
     Argon2,
 };
-use crate::db::{Device, Session};
-use crate::jwt;
+use tonic::{Request, Response, Status};
 
 pub async fn handle(
     service: &AuthServiceImpl,
     request: Request<LoginRequest>,
 ) -> Result<Response<LoginResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Get user by username
     let user = match service.db.get_user_by_username(&req.username).await {
         Ok(Some(u)) => u,
@@ -48,7 +47,7 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Verify password
     if !verify_password(&req.password, &user.password_hash) {
         let error = ErrorResponse {
@@ -60,21 +59,25 @@ pub async fn handle(
             result: Some(login_response::Result::Error(error)),
         }));
     }
-    
+
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs() as i64;
-    
+
     // Generate device_id if not provided by client
     let device_id = if req.device_id.is_empty() {
         uuid::Uuid::new_v4().to_string()
     } else {
         req.device_id.clone()
     };
-    
-    tracing::info!("Login device_id: {} (from_request: {})", device_id, !req.device_id.is_empty());
-    
+
+    tracing::info!(
+        "Login device_id: {} (from_request: {})",
+        device_id,
+        !req.device_id.is_empty()
+    );
+
     // Check if device exists, create if new
     if let Ok(None) = service.db.get_device(&user.user_id, &device_id).await {
         let device = Device {
@@ -85,11 +88,11 @@ pub async fn handle(
             created_at: now,
             last_seen: now,
         };
-        
+
         if let Err(e) = service.db.create_device(&device).await {
             tracing::error!("Failed to create device: {}", e);
         }
-        
+
         // Store key bundle if provided
         if let Some(key_bundle) = req.key_bundle {
             let db_key_bundle = crate::db::KeyBundle {
@@ -99,15 +102,24 @@ pub async fn handle(
                 one_time_pre_keys: key_bundle.one_time_pre_keys,
                 created_at: now,
             };
-            
-            if let Err(e) = service.db.store_key_bundle(&user.user_id, &device_id, &db_key_bundle).await {
+
+            if let Err(e) = service
+                .db
+                .store_key_bundle(&user.user_id, &device_id, &db_key_bundle)
+                .await
+            {
                 tracing::error!("Failed to store key bundle: {}", e);
             }
         }
     }
-    
+
     // Generate JWT tokens
-    let access_token = match jwt::generate_access_token(&user.user_id, &device_id, &user.username, &service.jwt_secret) {
+    let access_token = match jwt::generate_access_token(
+        &user.user_id,
+        &device_id,
+        &user.username,
+        &service.jwt_secret,
+    ) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
@@ -121,8 +133,13 @@ pub async fn handle(
             }));
         }
     };
-    
-    let refresh_token = match jwt::generate_refresh_token(&user.user_id, &device_id, &user.username, &service.jwt_secret) {
+
+    let refresh_token = match jwt::generate_refresh_token(
+        &user.user_id,
+        &device_id,
+        &user.username,
+        &service.jwt_secret,
+    ) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate refresh token: {}", e);
@@ -136,7 +153,7 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Create session
     let session = Session {
         session_token: refresh_token.clone(),
@@ -145,29 +162,27 @@ pub async fn handle(
         created_at: now,
         expires_at: now + 30 * 24 * 60 * 60, // 30 days
     };
-    
+
     if let Err(e) = service.db.create_session(&session).await {
         tracing::error!("Failed to create session: {}", e);
     }
-    
+
     // TODO: Get list of user's devices
-    let devices = vec![
-        DeviceInfo {
-            device_id: device_id.clone(),
-            device_name: req.device_name.clone(),
-            device_type: req.device_type.clone(),
-            created_at: Some(Timestamp {
-                seconds: now,
-                nanos: 0,
-            }),
-            last_seen: Some(Timestamp {
-                seconds: now,
-                nanos: 0,
-            }),
-            is_current: true,
-        }
-    ];
-    
+    let devices = vec![DeviceInfo {
+        device_id: device_id.clone(),
+        device_name: req.device_name.clone(),
+        device_type: req.device_type.clone(),
+        created_at: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
+        last_seen: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
+        is_current: true,
+    }];
+
     // User profile
     let profile = Some(UserProfile {
         user_id: user.user_id.clone(),
@@ -185,7 +200,7 @@ pub async fn handle(
         display_name: user.display_name.clone().unwrap_or_default(),
         bio: user.bio.clone().unwrap_or_default(),
     });
-    
+
     // Return success response
     let success = LoginSuccess {
         user_id: user.user_id,
@@ -197,7 +212,7 @@ pub async fn handle(
         profile,
         devices,
     };
-    
+
     Ok(Response::new(LoginResponse {
         result: Some(login_response::Result::Success(success)),
     }))
@@ -209,7 +224,7 @@ fn verify_password(password: &str, hash: &str) -> bool {
         Ok(h) => h,
         Err(_) => return false,
     };
-    
+
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok()

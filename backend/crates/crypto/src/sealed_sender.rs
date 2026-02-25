@@ -354,10 +354,10 @@ impl SealedSender {
 
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill(&mut nonce_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        let nonce: Nonce<_> = nonce_bytes.into();
 
         let ciphertext = cipher
-            .encrypt(nonce, payload.as_ref())
+            .encrypt(&nonce, payload.as_ref())
             .map_err(|e| CryptoError::Encryption(e.to_string()))?;
 
         // 6. Prepend nonce to ciphertext
@@ -417,14 +417,16 @@ impl SealedSender {
         let cipher = Aes256Gcm::new_from_slice(&decryption_key)
             .map_err(|e| CryptoError::Decryption(e.to_string()))?;
 
-        let nonce = Nonce::from_slice(nonce_bytes);
+        let nonce_arr: [u8; 12] = nonce_bytes
+            .try_into()
+            .map_err(|_| CryptoError::Decryption("Invalid nonce length".to_string()))?;
+        let nonce: Nonce<_> = nonce_arr.into();
 
         let payload = cipher
-            .decrypt(nonce, ciphertext)
+            .decrypt(&nonce, ciphertext)
             .map_err(|e| CryptoError::Decryption(e.to_string()))?;
 
         // Clean up sensitive data
-        let mut decryption_key = decryption_key;
         decryption_key.zeroize();
 
         // 6. Parse payload: certificate_length || certificate || inner_message
@@ -568,8 +570,7 @@ mod tests {
 
         // Seal message
         let inner_message = b"Hello, this is a secret message!";
-        let envelope =
-            SealedSender::seal(&sender_cert, &recipient_public, inner_message).unwrap();
+        let envelope = SealedSender::seal(&sender_cert, &recipient_public, inner_message).unwrap();
 
         // Verify envelope structure
         assert_eq!(envelope.version, 1);

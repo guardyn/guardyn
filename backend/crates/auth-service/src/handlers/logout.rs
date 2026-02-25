@@ -1,6 +1,5 @@
 /// Logout handler - invalidates session(s)
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
 use tonic::{Request, Response, Status};
 
 pub async fn handle(
@@ -8,7 +7,7 @@ pub async fn handle(
     request: Request<LogoutRequest>,
 ) -> Result<Response<LogoutResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate access token
     let claims = match crate::jwt::validate_token(&req.access_token, &service.jwt_secret) {
         Ok(c) => c,
@@ -23,9 +22,9 @@ pub async fn handle(
             }));
         }
     };
-    
+
     let sessions_invalidated: u32;
-    
+
     // Logout all devices or just current?
     if req.all_devices {
         // Delete all sessions for this user
@@ -55,7 +54,11 @@ pub async fn handle(
         // Delete current session only
         // The session is identified by device_id in production
         // For now, we'll delete session associated with current device
-        match service.db.delete_session_by_device(&claims.sub, &claims.device_id).await {
+        match service
+            .db
+            .delete_session_by_device(&claims.sub, &claims.device_id)
+            .await
+        {
             Ok(deleted) => {
                 sessions_invalidated = if deleted { 1 } else { 0 };
                 tracing::info!(
@@ -77,7 +80,7 @@ pub async fn handle(
             }
         }
     }
-    
+
     Ok(Response::new(LogoutResponse {
         result: Some(logout_response::Result::Success(LogoutSuccess {
             sessions_invalidated,

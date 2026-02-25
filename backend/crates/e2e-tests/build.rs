@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parent()
         .and_then(|p| p.parent())
         .ok_or("Cannot find workspace root")?;
-    
+
     let proto_dir = workspace_root.join("proto");
     let common_proto = proto_dir.join("common.proto");
     let auth_proto = proto_dir.join("auth.proto");
@@ -26,12 +26,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ],
             &[proto_dir.as_path()],
         )?;
-    
+
     println!("cargo:rerun-if-changed={}", common_proto.display());
     println!("cargo:rerun-if-changed={}", auth_proto.display());
     println!("cargo:rerun-if-changed={}", messaging_proto.display());
     println!("cargo:rerun-if-changed={}", presence_proto.display());
     println!("cargo:rerun-if-changed={}", media_proto.display());
-    
+
     Ok(())
 }

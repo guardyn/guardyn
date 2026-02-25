@@ -9,12 +9,12 @@ use crate::{
     proto::{
         common::{error_response::ErrorCode, ErrorResponse},
         media::{
-            GenerateThumbnailRequest, GenerateThumbnailResponse,
-            MediaMetadata, MediaType, UploadStatus,
+            GenerateThumbnailRequest, GenerateThumbnailResponse, MediaMetadata, MediaType,
+            UploadStatus,
         },
     },
     storage::StorageClient,
-    thumbnail::{ThumbnailGenerator, get_image_dimensions},
+    thumbnail::{get_image_dimensions, ThumbnailGenerator},
 };
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -33,7 +33,7 @@ pub async fn handle(
     let user_id = claims.sub;
 
     let req = request.into_inner();
-    
+
     if req.media_id.is_empty() {
         return Ok(Response::new(GenerateThumbnailResponse {
             thumbnail_id: String::new(),
@@ -187,8 +187,8 @@ pub async fn handle(
     };
 
     // Get thumbnail dimensions
-    let (thumb_width, thumb_height) = get_image_dimensions(&thumbnail_data)
-        .unwrap_or((max_width, max_height));
+    let (thumb_width, thumb_height) =
+        get_image_dimensions(&thumbnail_data).unwrap_or((max_width, max_height));
 
     // Generate thumbnail ID and storage path
     let thumbnail_id = DatabaseClient::generate_media_id();

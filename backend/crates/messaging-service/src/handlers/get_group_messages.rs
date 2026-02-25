@@ -1,10 +1,10 @@
 /// Handler for retrieving group message history
 use crate::db::DatabaseClient;
+use crate::proto::common::{ErrorResponse, PaginationResponse};
 use crate::proto::messaging::{
     get_group_messages_response, GetGroupMessagesRequest, GetGroupMessagesResponse,
     GetGroupMessagesSuccess, GroupMessage,
 };
-use crate::proto::common::{ErrorResponse, PaginationResponse};
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -15,18 +15,19 @@ pub async fn get_group_messages(
     // Validate JWT token and extract user_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (requester_user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(GetGroupMessagesResponse {
-                result: Some(get_group_messages_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (requester_user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(GetGroupMessagesResponse {
+                    result: Some(get_group_messages_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group ID
     if request.group_id.is_empty() {
@@ -106,7 +107,7 @@ pub async fn get_group_messages(
     // Extract pagination parameters from request
     // Priority: PaginationRequest > limit field
     let (page, page_size) = if let Some(ref pagination_req) = request.pagination {
-        let page = pagination_req.page.max(0); // 0-indexed
+        let page = pagination_req.page; // 0-indexed
         let size = if pagination_req.page_size > 0 && pagination_req.page_size <= 100 {
             pagination_req.page_size
         } else {
@@ -165,17 +166,19 @@ pub async fn get_group_messages(
         .take(limit_usize)
         .map(|msg| {
             // Extract message_type from metadata (default to 0 if not found)
-            let message_type = msg.metadata
+            let message_type = msg
+                .metadata
                 .get("message_type")
                 .and_then(|s| s.parse::<i32>().ok())
                 .unwrap_or(0);
-            
+
             // Extract sender_username from metadata or use sender_user_id as fallback
-            let sender_username = msg.metadata
+            let sender_username = msg
+                .metadata
                 .get("sender_username")
                 .cloned()
                 .unwrap_or_else(|| msg.sender_user_id.clone());
-            
+
             GroupMessage {
                 message_id: msg.message_id,
                 group_id: msg.group_id,
@@ -194,7 +197,7 @@ pub async fn get_group_messages(
                     nanos: 0,
                 }),
                 media_id: String::new(), // Not stored in current schema
-                is_deleted: false, // New schema doesn't support soft delete
+                is_deleted: false,       // New schema doesn't support soft delete
                 // Phase 2 fields (not yet stored in DB)
                 thread_reference: None,
                 forward_info: None,
@@ -226,7 +229,7 @@ pub async fn get_group_messages(
     let total_pages = if estimated_total == 0 {
         0
     } else {
-        (estimated_total + page_size - 1) / page_size
+        estimated_total.div_ceil(page_size)
     };
 
     let pagination = Some(PaginationResponse {

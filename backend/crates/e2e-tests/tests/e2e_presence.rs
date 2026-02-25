@@ -24,6 +24,7 @@ use tonic::{transport::Channel, Request};
 use uuid::Uuid;
 
 // Import generated proto code
+#[allow(dead_code, clippy::large_enum_variant)]
 mod proto {
     pub mod auth {
         tonic::include_proto!("guardyn.auth");
@@ -90,7 +91,10 @@ fn mock_key_bundle() -> KeyBundle {
         signed_pre_key: vec![0u8; 32],
         signed_pre_key_signature: vec![0u8; 64],
         one_time_pre_keys: vec![vec![0u8; 32]],
-        created_at: Some(Timestamp { seconds: now, nanos: 0 }),
+        created_at: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
     }
 }
 
@@ -160,14 +164,14 @@ impl TestUser {
         self.access_token
             .as_ref()
             .ok_or("User not authenticated".into())
-            .map(|s| s.clone())
+            .cloned()
     }
 
     fn user_id(&self) -> Result<String, Box<dyn std::error::Error>> {
         self.user_id
             .as_ref()
             .ok_or("User ID not available".into())
-            .map(|s| s.clone())
+            .cloned()
     }
 }
 
@@ -280,12 +284,9 @@ async fn test_01_presence_flow_online_offline() -> Result<(), Box<dyn std::error
             );
         }
         Some(proto::presence::get_status_response::Result::Error(error)) => {
-            return Err(format!(
-                "Get status failed: {:?} - {}",
-                error.code(),
-                error.message
-            )
-            .into());
+            return Err(
+                format!("Get status failed: {:?} - {}", error.code(), error.message).into(),
+            );
         }
         None => return Err("No response from get_status".into()),
     }
@@ -416,12 +417,9 @@ async fn test_02_typing_indicator_e2e() -> Result<(), Box<dyn std::error::Error>
             println!("✅ Typing indicator sent (is_typing: true)");
         }
         Some(proto::presence::set_typing_response::Result::Error(error)) => {
-            return Err(format!(
-                "Set typing failed: {:?} - {}",
-                error.code(),
-                error.message
-            )
-            .into());
+            return Err(
+                format!("Set typing failed: {:?} - {}", error.code(), error.message).into(),
+            );
         }
         None => return Err("No response from set_typing".into()),
     }
@@ -603,8 +601,11 @@ async fn test_03_presence_persistence() -> Result<(), Box<dyn std::error::Error>
         Some(proto::presence::get_status_response::Result::Success(success)) => {
             assert!(success.last_seen.is_some(), "Last seen should be present");
             let retrieved_last_seen = success.last_seen.as_ref().map(|t| t.seconds).unwrap_or(0);
-            println!("✅ User A last_seen retrieved: {} seconds", retrieved_last_seen);
-            
+            println!(
+                "✅ User A last_seen retrieved: {} seconds",
+                retrieved_last_seen
+            );
+
             // Last seen should be at least as recent as our first update
             assert!(
                 retrieved_last_seen >= first_last_seen,
@@ -612,12 +613,9 @@ async fn test_03_presence_persistence() -> Result<(), Box<dyn std::error::Error>
             );
         }
         Some(proto::presence::get_status_response::Result::Error(error)) => {
-            return Err(format!(
-                "Get status failed: {:?} - {}",
-                error.code(),
-                error.message
-            )
-            .into());
+            return Err(
+                format!("Get status failed: {:?} - {}", error.code(), error.message).into(),
+            );
         }
         None => return Err("No response from get_status".into()),
     }
@@ -684,18 +682,24 @@ async fn test_03_presence_persistence() -> Result<(), Box<dyn std::error::Error>
         user_id: user_a.user_id()?,
     });
 
-    let final_response = presence_client.get_status(final_request).await?.into_inner();
+    let final_response = presence_client
+        .get_status(final_request)
+        .await?
+        .into_inner();
 
     match final_response.result {
         Some(proto::presence::get_status_response::Result::Success(success)) => {
             assert_eq!(success.status, UserStatus::Offline as i32);
-            assert!(success.last_seen.is_some(), "Last seen should persist after going offline");
+            assert!(
+                success.last_seen.is_some(),
+                "Last seen should persist after going offline"
+            );
             let final_last_seen = success.last_seen.as_ref().map(|t| t.seconds).unwrap_or(0);
             println!(
                 "✅ User A is OFFLINE with preserved last_seen: {} seconds",
                 final_last_seen
             );
-            
+
             // Last seen should be >= our second update
             assert!(
                 final_last_seen >= second_last_seen,
@@ -733,7 +737,10 @@ async fn test_00_presence_service_health() -> Result<(), Box<dyn std::error::Err
 
     // Check Presence Service
     match env.presence_client().await {
-        Ok(_) => println!("✅ Presence Service is reachable at {}", env.presence_endpoint),
+        Ok(_) => println!(
+            "✅ Presence Service is reachable at {}",
+            env.presence_endpoint
+        ),
         Err(e) => return Err(format!("❌ Presence Service unreachable: {}", e).into()),
     }
 

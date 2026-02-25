@@ -1,6 +1,7 @@
-/// Data models for Auth Service
+// Data models for Auth Service
 
 /// Username validation result
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum UsernameValidation {
     Valid,
@@ -10,6 +11,7 @@ pub enum UsernameValidation {
 }
 
 /// Validate username
+#[allow(dead_code)]
 pub fn validate_username(username: &str) -> UsernameValidation {
     if username.len() < 3 {
         return UsernameValidation::TooShort;
@@ -17,16 +19,17 @@ pub fn validate_username(username: &str) -> UsernameValidation {
     if username.len() > 32 {
         return UsernameValidation::TooLong;
     }
-    
+
     // Only alphanumeric and underscore allowed
     if !username.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return UsernameValidation::InvalidCharacters;
     }
-    
+
     UsernameValidation::Valid
 }
 
 /// Password validation result
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum PasswordValidation {
     Valid,
@@ -34,6 +37,7 @@ pub enum PasswordValidation {
 }
 
 /// Validate password (minimum 12 characters)
+#[allow(dead_code)]
 pub fn validate_password(password: &str) -> PasswordValidation {
     if password.len() < 12 {
         return PasswordValidation::TooShort;
@@ -42,6 +46,7 @@ pub fn validate_password(password: &str) -> PasswordValidation {
 }
 
 /// Device type validation
+#[allow(dead_code)]
 pub fn is_valid_device_type(device_type: &str) -> bool {
     matches!(device_type, "ios" | "android" | "web" | "desktop")
 }
@@ -52,9 +57,18 @@ mod tests {
 
     #[test]
     fn test_username_validation() {
-        assert!(matches!(validate_username("john_doe"), UsernameValidation::Valid));
-        assert!(matches!(validate_username("user123"), UsernameValidation::Valid));
-        assert!(matches!(validate_username("ab"), UsernameValidation::TooShort));
+        assert!(matches!(
+            validate_username("john_doe"),
+            UsernameValidation::Valid
+        ));
+        assert!(matches!(
+            validate_username("user123"),
+            UsernameValidation::Valid
+        ));
+        assert!(matches!(
+            validate_username("ab"),
+            UsernameValidation::TooShort
+        ));
         assert!(matches!(
             validate_username("this_is_a_very_long_username_that_exceeds_limit"),
             UsernameValidation::TooLong
@@ -71,9 +85,18 @@ mod tests {
 
     #[test]
     fn test_password_validation() {
-        assert!(matches!(validate_password("verylongpassword123"), PasswordValidation::Valid));
-        assert!(matches!(validate_password("short"), PasswordValidation::TooShort));
-        assert!(matches!(validate_password("exactlytwelv"), PasswordValidation::Valid));
+        assert!(matches!(
+            validate_password("verylongpassword123"),
+            PasswordValidation::Valid
+        ));
+        assert!(matches!(
+            validate_password("short"),
+            PasswordValidation::TooShort
+        ));
+        assert!(matches!(
+            validate_password("exactlytwelv"),
+            PasswordValidation::Valid
+        ));
     }
 
     #[test]

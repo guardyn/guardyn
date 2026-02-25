@@ -1,5 +1,5 @@
 /// Get conversations list handler
-use crate::{auth_client::AuthClient, db::DatabaseClient, proto::messaging::*, proto::common::*};
+use crate::{auth_client::AuthClient, db::DatabaseClient, proto::common::*, proto::messaging::*};
 use std::sync::Arc;
 use tonic::{Response, Status};
 use tracing::{error, info, warn};
@@ -11,18 +11,19 @@ pub async fn get_conversations(
     // Validate JWT token and extract user_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok((user_id, device_id, username)) => (user_id, device_id, username),
-        Err(_) => {
-            return Ok(Response::new(GetConversationsResponse {
-                result: Some(get_conversations_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok((user_id, device_id, username)) => (user_id, device_id, username),
+            Err(_) => {
+                return Ok(Response::new(GetConversationsResponse {
+                    result: Some(get_conversations_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     let limit = if request.limit == 0 {
         50
@@ -38,12 +39,13 @@ pub async fn get_conversations(
     // Try new optimized conversations table first
     match db.get_user_conversations(&user_id, limit as i32).await {
         Ok(conversations) if !conversations.is_empty() => {
-            info!("Successfully fetched {} conversations from conversations table", conversations.len());
+            info!(
+                "Successfully fetched {} conversations from conversations table",
+                conversations.len()
+            );
             Ok(Response::new(GetConversationsResponse {
                 result: Some(get_conversations_response::Result::Success(
-                    GetConversationsSuccess {
-                        conversations,
-                    },
+                    GetConversationsSuccess { conversations },
                 )),
             }))
         }
@@ -52,16 +54,17 @@ pub async fn get_conversations(
             info!("No conversations in optimized table, falling back to messages scan");
             match db.get_recent_conversations(&user_id, limit as i32).await {
                 Ok(mut conversations) => {
-                    info!("Successfully fetched {} conversations via fallback", conversations.len());
-                    
+                    info!(
+                        "Successfully fetched {} conversations via fallback",
+                        conversations.len()
+                    );
+
                     // Enrich conversations with usernames from auth-service
                     let conversations = enrich_conversations_with_usernames(conversations).await;
-                    
+
                     Ok(Response::new(GetConversationsResponse {
                         result: Some(get_conversations_response::Result::Success(
-                            GetConversationsSuccess {
-                                conversations,
-                            },
+                            GetConversationsSuccess { conversations },
                         )),
                     }))
                 }
@@ -101,28 +104,34 @@ async fn enrich_conversations_with_usernames(
         .filter(|c| c.username == c.user_id) // Only fetch if username equals user_id (UUID)
         .map(|c| c.user_id.clone())
         .collect();
-    
+
     if user_ids.is_empty() {
         return conversations;
     }
 
-    info!("Fetching usernames for {} users from auth-service", user_ids.len());
-    
+    info!(
+        "Fetching usernames for {} users from auth-service",
+        user_ids.len()
+    );
+
     // Connect to auth-service
     let auth_url = std::env::var("AUTH_SERVICE_URL")
         .unwrap_or_else(|_| "http://auth-service:50051".to_string());
-    
+
     let mut auth_client = match AuthClient::new(&auth_url).await {
         Ok(client) => client,
         Err(e) => {
-            warn!("Failed to connect to auth-service for username lookup: {}", e);
+            warn!(
+                "Failed to connect to auth-service for username lookup: {}",
+                e
+            );
             return conversations;
         }
     };
 
     // Fetch usernames
     let usernames = auth_client.get_usernames(&user_ids).await;
-    
+
     info!("Fetched {} usernames from auth-service", usernames.len());
 
     // Update conversations with fetched usernames

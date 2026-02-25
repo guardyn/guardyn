@@ -2,11 +2,10 @@
 use crate::db::DatabaseClient;
 use crate::mls_manager::MlsManager;
 use crate::models::{GroupMember, GroupRole};
-use crate::proto::messaging::{
-    add_group_member_response, AddGroupMemberRequest, AddGroupMemberResponse,
-    AddGroupMemberSuccess,
-};
 use crate::proto::common::ErrorResponse;
+use crate::proto::messaging::{
+    add_group_member_response, AddGroupMemberRequest, AddGroupMemberResponse, AddGroupMemberSuccess,
+};
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -16,19 +15,20 @@ pub async fn add_group_member(
 ) -> Result<Response<AddGroupMemberResponse>, Status> {
     // Validate JWT token and extract user_id (requester)
     let jwt_secret = crate::config::get_jwt_secret();
-    
-    let (requester_user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(AddGroupMemberResponse {
-                result: Some(add_group_member_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+
+    let (requester_user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(AddGroupMemberResponse {
+                    result: Some(add_group_member_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group ID
     if request.group_id.is_empty() {
@@ -91,7 +91,9 @@ pub async fn add_group_member(
     match db.get_group_members(&request.group_id).await {
         Ok(existing_members) => {
             // First verify requester has permission to add members
-            let requester_member = existing_members.iter().find(|m| m.user_id == requester_user_id);
+            let requester_member = existing_members
+                .iter()
+                .find(|m| m.user_id == requester_user_id);
             match requester_member {
                 None => {
                     tracing::warn!(
@@ -107,7 +109,10 @@ pub async fn add_group_member(
                         })),
                     }));
                 }
-                Some(member) if member.role == crate::models::GroupRole::Owner || member.role == crate::models::GroupRole::Admin => {
+                Some(member)
+                    if member.role == crate::models::GroupRole::Owner
+                        || member.role == crate::models::GroupRole::Admin =>
+                {
                     // Has permission, continue
                 }
                 Some(_) => {
@@ -127,7 +132,10 @@ pub async fn add_group_member(
             }
 
             // Check if target user is already a member
-            if existing_members.iter().any(|m| m.user_id == request.member_user_id) {
+            if existing_members
+                .iter()
+                .any(|m| m.user_id == request.member_user_id)
+            {
                 return Ok(Response::new(AddGroupMemberResponse {
                     result: Some(add_group_member_response::Result::Error(ErrorResponse {
                         code: 6, // ALREADY_EXISTS
@@ -148,7 +156,7 @@ pub async fn add_group_member(
     let new_member = GroupMember {
         group_id: request.group_id.clone(),
         user_id: request.member_user_id.clone(),
-        device_id: "primary".to_string(),  // Default device for non-MLS group members
+        device_id: "primary".to_string(), // Default device for non-MLS group members
         role: GroupRole::Member,
         joined_at: timestamp,
     };
@@ -167,11 +175,14 @@ pub async fn add_group_member(
     // MLS-001: Update MLS group state in TiKV
     // Add member to MLS members list for this group
     let mls_manager = MlsManager::new(db.clone());
-    if let Err(e) = mls_manager.add_member_to_list(
-        &request.group_id,
-        &request.member_user_id,
-        "primary", // Default device for non-MLS group members
-    ).await {
+    if let Err(e) = mls_manager
+        .add_member_to_list(
+            &request.group_id,
+            &request.member_user_id,
+            "primary", // Default device for non-MLS group members
+        )
+        .await
+    {
         tracing::warn!(
             "Failed to update MLS member list for group {}: {}",
             request.group_id,

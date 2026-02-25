@@ -44,6 +44,7 @@ pub struct StoredNotificationSettings {
 
 /// Muted conversation record
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct MutedConversation {
     pub user_id: String,
     pub conversation_id: String,
@@ -280,6 +281,7 @@ impl NotificationDb {
     }
 
     /// Get notification settings for a user
+    #[allow(clippy::type_complexity)]
     pub async fn get_notification_settings(
         &self,
         user_id: &str,
@@ -452,6 +454,7 @@ impl NotificationDb {
     }
 
     /// Check if a conversation is muted
+    #[allow(dead_code)]
     pub async fn is_conversation_muted(
         &self,
         user_id: &str,

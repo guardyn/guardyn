@@ -1,6 +1,5 @@
 /// Key bundle handlers - for E2EE key exchange
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
 use tonic::{Request, Response, Status};
 
 /// Get key bundle for a user
@@ -11,7 +10,11 @@ pub async fn get(
     let req = request.into_inner();
 
     // Get key bundle from database
-    match service.db.get_key_bundle(&req.user_id, &req.device_id).await {
+    match service
+        .db
+        .get_key_bundle(&req.user_id, &req.device_id)
+        .await
+    {
         Ok(Some(kb)) => {
             let key_bundle = KeyBundle {
                 identity_key: kb.identity_key,
@@ -24,11 +27,12 @@ pub async fn get(
                 }),
             };
 
-        let success = GetKeyBundleSuccess {
-            user_id: req.user_id.clone(),
-            device_id: req.device_id.clone(),
-            key_bundle: Some(key_bundle),
-        };            Ok(Response::new(GetKeyBundleResponse {
+            let success = GetKeyBundleSuccess {
+                user_id: req.user_id.clone(),
+                device_id: req.device_id.clone(),
+                key_bundle: Some(key_bundle),
+            };
+            Ok(Response::new(GetKeyBundleResponse {
                 result: Some(get_key_bundle_response::Result::Success(success)),
             }))
         }
@@ -85,8 +89,8 @@ pub async fn upload(
 
     // Update key bundle in database
     let key_bundle = crate::db::KeyBundle {
-        identity_key: vec![], // Keep existing identity key
-        signed_pre_key: vec![], // Signed pre-key not provided in this request
+        identity_key: vec![],             // Keep existing identity key
+        signed_pre_key: vec![],           // Signed pre-key not provided in this request
         signed_pre_key_signature: vec![], // Signature not provided in this request
         one_time_pre_keys: req.one_time_pre_keys.clone(),
         created_at: now,
@@ -94,7 +98,11 @@ pub async fn upload(
 
     let keys_count = req.one_time_pre_keys.len() as u32;
 
-    match service.db.store_key_bundle(&claims.sub, &claims.device_id, &key_bundle).await {
+    match service
+        .db
+        .store_key_bundle(&claims.sub, &claims.device_id, &key_bundle)
+        .await
+    {
         Ok(_) => {
             let success = UploadPreKeysSuccess {
                 keys_uploaded: keys_count,

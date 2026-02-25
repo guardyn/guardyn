@@ -16,11 +16,11 @@
 //! ```
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tokio::time::sleep;
 use tonic::{transport::Channel, Request};
 use uuid::Uuid;
 
 // Import generated proto code
+#[allow(dead_code, clippy::large_enum_variant)]
 mod proto {
     pub mod auth {
         tonic::include_proto!("guardyn.auth");
@@ -34,14 +34,12 @@ mod proto {
 }
 
 use proto::auth::{
-    auth_service_client::AuthServiceClient,
-    RegisterRequest, LoginRequest, LogoutRequest,
-};
-use proto::messaging::{
-    messaging_service_client::MessagingServiceClient,
-    SendMessageRequest, GetMessagesRequest, MessageType,
+    auth_service_client::AuthServiceClient, LoginRequest, LogoutRequest, RegisterRequest,
 };
 use proto::common::{KeyBundle, Timestamp};
+use proto::messaging::{
+    messaging_service_client::MessagingServiceClient, MessageType, SendMessageRequest,
+};
 
 /// Test environment configuration
 struct TestEnv {
@@ -67,7 +65,9 @@ impl TestEnv {
         Ok(AuthServiceClient::new(channel))
     }
 
-    async fn messaging_client(&self) -> Result<MessagingServiceClient<Channel>, Box<dyn std::error::Error>> {
+    async fn messaging_client(
+        &self,
+    ) -> Result<MessagingServiceClient<Channel>, Box<dyn std::error::Error>> {
         let channel = Channel::from_shared(self.messaging_endpoint.clone())?
             .timeout(Duration::from_secs(10))
             .connect()
@@ -106,7 +106,7 @@ async fn test_health_auth_service() -> Result<(), Box<dyn std::error::Error>> {
 
     let env = TestEnv::new();
     let client = env.auth_client().await;
-    
+
     match client {
         Ok(_) => {
             println!("✅ Auth service is healthy and accepting connections");
@@ -126,7 +126,7 @@ async fn test_health_messaging_service() -> Result<(), Box<dyn std::error::Error
 
     let env = TestEnv::new();
     let client = env.messaging_client().await;
-    
+
     match client {
         Ok(_) => {
             println!("✅ Messaging service is healthy and accepting connections");
@@ -165,7 +165,10 @@ async fn test_error_invalid_credentials() -> Result<(), Box<dyn std::error::Erro
     match response.result {
         Some(proto::auth::login_response::Result::Error(error)) => {
             println!("✅ Got expected error response: {:?}", error.code());
-            assert!(!error.message.is_empty(), "Error message should not be empty");
+            assert!(
+                !error.message.is_empty(),
+                "Error message should not be empty"
+            );
             Ok(())
         }
         Some(proto::auth::login_response::Result::Success(_)) => {
@@ -197,10 +200,13 @@ async fn test_error_duplicate_registration() -> Result<(), Box<dyn std::error::E
     });
 
     let response1 = client.register(request1).await?.into_inner();
-    assert!(matches!(
-        response1.result,
-        Some(proto::auth::register_response::Result::Success(_))
-    ), "First registration should succeed");
+    assert!(
+        matches!(
+            response1.result,
+            Some(proto::auth::register_response::Result::Success(_))
+        ),
+        "First registration should succeed"
+    );
     println!("✅ First registration succeeded");
 
     // Second registration with same username - should fail
@@ -216,7 +222,11 @@ async fn test_error_duplicate_registration() -> Result<(), Box<dyn std::error::E
     let response2 = client.register(request2).await?.into_inner();
     match response2.result {
         Some(proto::auth::register_response::Result::Error(error)) => {
-            println!("✅ Got expected duplicate error: {:?} - {}", error.code(), error.message);
+            println!(
+                "✅ Got expected duplicate error: {:?} - {}",
+                error.code(),
+                error.message
+            );
             Ok(())
         }
         Some(proto::auth::register_response::Result::Success(_)) => {
@@ -257,7 +267,11 @@ async fn test_error_invalid_token() -> Result<(), Box<dyn std::error::Error>> {
 
     match response.result {
         Some(proto::messaging::send_message_response::Result::Error(error)) => {
-            println!("✅ Got expected authentication error: {:?} - {}", error.code(), error.message);
+            println!(
+                "✅ Got expected authentication error: {:?} - {}",
+                error.code(),
+                error.message
+            );
             Ok(())
         }
         Some(proto::messaging::send_message_response::Result::Success(_)) => {
@@ -294,8 +308,9 @@ async fn test_edge_empty_message_content() -> Result<(), Box<dyn std::error::Err
 
     let reg_response = auth_client.register(reg_request).await?.into_inner();
     let (user_id, device_id, token) = match reg_response.result {
-        Some(proto::auth::register_response::Result::Success(s)) => 
-            (s.user_id, s.device_id, s.access_token),
+        Some(proto::auth::register_response::Result::Success(s)) => {
+            (s.user_id, s.device_id, s.access_token)
+        }
         _ => return Err("Registration failed".into()),
     };
 
@@ -407,7 +422,10 @@ async fn test_edge_large_message() -> Result<(), Box<dyn std::error::Error>> {
             println!("✅ Large message sent: {}", s.message_id);
         }
         Some(proto::messaging::send_message_response::Result::Error(error)) => {
-            println!("✅ Large message rejected (expected for size limits): {:?}", error.code());
+            println!(
+                "✅ Large message rejected (expected for size limits): {:?}",
+                error.code()
+            );
         }
         None => return Err("No response".into()),
     }
@@ -497,7 +515,10 @@ async fn test_concurrent_registrations() -> Result<(), Box<dyn std::error::Error
                     signed_pre_key_signature: vec![0u8; 64],
                     one_time_pre_keys: vec![vec![0u8; 32]],
                     created_at: Some(Timestamp {
-                        seconds: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
+                        seconds: SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64,
                         nanos: 0,
                     }),
                 }),
@@ -532,8 +553,14 @@ async fn test_concurrent_registrations() -> Result<(), Box<dyn std::error::Error
     println!("   Success rate: {}/{}", successes, num_users);
     println!("   Average registration time: {:?}", avg_duration);
 
-    assert!(successes == num_users, "All concurrent registrations should succeed");
-    assert!(avg_duration < Duration::from_secs(5), "Average time should be < 5s");
+    assert!(
+        successes == num_users,
+        "All concurrent registrations should succeed"
+    );
+    assert!(
+        avg_duration < Duration::from_secs(5),
+        "Average time should be < 5s"
+    );
 
     Ok(())
 }
@@ -581,7 +608,10 @@ async fn test_login_logout_flow() -> Result<(), Box<dyn std::error::Error>> {
     let logout_response = client.logout(logout_request).await?.into_inner();
     match logout_response.result {
         Some(proto::auth::logout_response::Result::Success(s)) => {
-            println!("✅ Logout succeeded, sessions invalidated: {}", s.sessions_invalidated);
+            println!(
+                "✅ Logout succeeded, sessions invalidated: {}",
+                s.sessions_invalidated
+            );
         }
         Some(proto::auth::logout_response::Result::Error(e)) => {
             println!("⚠️ Logout returned error: {:?}", e.code());
@@ -669,7 +699,10 @@ async fn test_registration_latency() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Max: {:?}", max);
     println!("   Avg: {:?}", avg);
 
-    assert!(avg < Duration::from_secs(2), "Average registration time should be < 2s");
+    assert!(
+        avg < Duration::from_secs(2),
+        "Average registration time should be < 2s"
+    );
 
     Ok(())
 }

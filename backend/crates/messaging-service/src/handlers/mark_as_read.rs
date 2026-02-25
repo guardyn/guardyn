@@ -1,10 +1,10 @@
 /// Handler for marking messages as read
 use crate::db::DatabaseClient;
 use crate::models::DeliveryStatus;
+use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
     mark_as_read_response, MarkAsReadRequest, MarkAsReadResponse, MarkAsReadSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp};
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -50,15 +50,13 @@ pub async fn mark_as_read(
     }
 
     Ok(Response::new(MarkAsReadResponse {
-        result: Some(mark_as_read_response::Result::Success(
-            MarkAsReadSuccess {
-                messages_marked: request.message_ids.len() as u32,
-                marked_count: request.message_ids.len() as i32,
-                timestamp: Some(Timestamp {
-                    seconds: timestamp,
-                    nanos: 0,
-                }),
-            },
-        )),
+        result: Some(mark_as_read_response::Result::Success(MarkAsReadSuccess {
+            messages_marked: request.message_ids.len() as u32,
+            marked_count: request.message_ids.len() as i32,
+            timestamp: Some(Timestamp {
+                seconds: timestamp,
+                nanos: 0,
+            }),
+        })),
     }))
 }

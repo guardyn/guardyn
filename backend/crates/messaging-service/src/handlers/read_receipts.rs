@@ -3,19 +3,18 @@
 /// Provides detailed read receipt tracking for conversations.
 /// Allows users to see who has read messages and when.
 /// Broadcasts read receipts to other participants in real-time via NATS.
-
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
 use crate::nats::NatsClient;
+use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
 use crate::proto::messaging::{
-    SendReadReceiptRequest, SendReadReceiptResponse, SendReadReceiptSuccess,
-    GetReadReceiptsRequest, GetReadReceiptsResponse, GetReadReceiptsSuccess,
-    send_read_receipt_response, get_read_receipts_response,
+    get_read_receipts_response, send_read_receipt_response, GetReadReceiptsRequest,
+    GetReadReceiptsResponse, GetReadReceiptsSuccess, SendReadReceiptRequest,
+    SendReadReceiptResponse, SendReadReceiptSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tracing::{info, warn, error, instrument};
+use tracing::{error, info, instrument, warn};
 
 /// Send a read receipt for a conversation
 /// RT-001: Broadcasts read receipt to other participants via NATS
@@ -26,7 +25,7 @@ pub async fn send_read_receipt(
     request: Request<SendReadReceiptRequest>,
 ) -> Result<Response<SendReadReceiptResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -41,11 +40,11 @@ pub async fn send_read_receipt(
             }));
         }
     };
-    
+
     let user_id = claims.sub.clone();
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("conversation_id", &req.conversation_id);
-    
+
     // Validate required fields
     if req.conversation_id.is_empty() || req.last_read_message_id.is_empty() {
         return Ok(Response::new(SendReadReceiptResponse {
@@ -56,20 +55,23 @@ pub async fn send_read_receipt(
             })),
         }));
     }
-    
+
     let now = chrono::Utc::now();
     let timestamp = Timestamp {
         seconds: now.timestamp(),
         nanos: now.timestamp_subsec_nanos() as i32,
     };
-    
+
     // Store read receipt in database
-    match db.save_read_receipt(
-        &req.conversation_id,
-        &user_id,
-        &req.last_read_message_id,
-        req.is_group,
-    ).await {
+    match db
+        .save_read_receipt(
+            &req.conversation_id,
+            &user_id,
+            &req.last_read_message_id,
+            req.is_group,
+        )
+        .await
+    {
         Ok(_) => {
             info!(
                 user_id = %user_id,
@@ -77,14 +79,14 @@ pub async fn send_read_receipt(
                 last_read_message_id = %req.last_read_message_id,
                 "Read receipt saved successfully"
             );
-            
+
             // RT-001: Broadcast read receipt to other participants via NATS
             let topic = if req.is_group {
                 format!("group.{}.read_receipts", req.conversation_id)
             } else {
                 format!("conversation.{}.read_receipts", req.conversation_id)
             };
-            
+
             let read_receipt_event = serde_json::json!({
                 "type": "read_receipt",
                 "conversation_id": req.conversation_id,
@@ -94,7 +96,7 @@ pub async fn send_read_receipt(
                 "timestamp_seconds": now.timestamp(),
                 "timestamp_nanos": now.timestamp_subsec_nanos(),
             });
-            
+
             let payload = serde_json::to_vec(&read_receipt_event).unwrap_or_default();
             if let Err(e) = nats.publish(&topic, &payload).await {
                 // Log but don't fail - read receipt was saved successfully
@@ -108,11 +110,13 @@ pub async fn send_read_receipt(
                     topic, user_id
                 );
             }
-            
+
             Ok(Response::new(SendReadReceiptResponse {
-                result: Some(send_read_receipt_response::Result::Success(SendReadReceiptSuccess {
-                    timestamp: Some(timestamp),
-                })),
+                result: Some(send_read_receipt_response::Result::Success(
+                    SendReadReceiptSuccess {
+                        timestamp: Some(timestamp),
+                    },
+                )),
             }))
         }
         Err(e) => {
@@ -135,7 +139,7 @@ pub async fn get_read_receipts(
     request: Request<GetReadReceiptsRequest>,
 ) -> Result<Response<GetReadReceiptsResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -150,9 +154,9 @@ pub async fn get_read_receipts(
             }));
         }
     };
-    
+
     tracing::Span::current().record("conversation_id", &req.conversation_id);
-    
+
     // Validate required fields
     if req.conversation_id.is_empty() {
         return Ok(Response::new(GetReadReceiptsResponse {
@@ -163,23 +167,23 @@ pub async fn get_read_receipts(
             })),
         }));
     }
-    
+
     // Get read receipts from database
-    match db.get_read_receipts(
-        &req.conversation_id,
-        req.is_group,
-    ).await {
+    match db
+        .get_read_receipts(&req.conversation_id, req.is_group)
+        .await
+    {
         Ok(receipts) => {
             info!(
                 conversation_id = %req.conversation_id,
                 receipt_count = receipts.len(),
                 "Retrieved read receipts successfully"
             );
-            
+
             Ok(Response::new(GetReadReceiptsResponse {
-                result: Some(get_read_receipts_response::Result::Success(GetReadReceiptsSuccess {
-                    receipts,
-                })),
+                result: Some(get_read_receipts_response::Result::Success(
+                    GetReadReceiptsSuccess { receipts },
+                )),
             }))
         }
         Err(e) => {

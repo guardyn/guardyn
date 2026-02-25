@@ -1,11 +1,11 @@
 /// Handler for getting all groups for a user
 use crate::auth_client::{AuthClient, UserProfileInfo};
 use crate::db::DatabaseClient;
-use crate::proto::messaging::{
-    get_groups_response, GetGroupsRequest, GetGroupsResponse, GetGroupsSuccess,
-    GroupInfo, GroupMemberInfo, GroupMessage as ProtoGroupMessage,
-};
 use crate::proto::common::{ErrorResponse, Timestamp};
+use crate::proto::messaging::{
+    get_groups_response, GetGroupsRequest, GetGroupsResponse, GetGroupsSuccess, GroupInfo,
+    GroupMemberInfo, GroupMessage as ProtoGroupMessage,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tonic::{Response, Status};
@@ -17,18 +17,19 @@ pub async fn get_groups(
     // Validate JWT token and extract user_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(GetGroupsResponse {
-                result: Some(get_groups_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(GetGroupsResponse {
+                    result: Some(get_groups_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Get limit (default 50, max 100)
     let limit = if request.limit > 0 && request.limit <= 100 {
@@ -62,7 +63,11 @@ pub async fn get_groups(
     };
 
     // Apply pagination: skip to offset, take limit+1 to check for more
-    let groups_with_extra: Vec<_> = user_groups.into_iter().skip(offset).take(limit + 1).collect();
+    let groups_with_extra: Vec<_> = user_groups
+        .into_iter()
+        .skip(offset)
+        .take(limit + 1)
+        .collect();
     let has_more = groups_with_extra.len() > limit;
     let groups_to_return: Vec<_> = groups_with_extra.into_iter().take(limit).collect();
 
@@ -80,7 +85,10 @@ pub async fn get_groups(
     let user_profiles: HashMap<String, UserProfileInfo> = match AuthClient::new(&auth_url).await {
         Ok(mut client) => client.get_user_profiles(&all_user_ids).await,
         Err(e) => {
-            tracing::warn!("Failed to connect to auth service for profile lookup: {}", e);
+            tracing::warn!(
+                "Failed to connect to auth service for profile lookup: {}",
+                e
+            );
             HashMap::new()
         }
     };
@@ -93,15 +101,13 @@ pub async fn get_groups(
             .map(|m| {
                 // Get full profile or create default with user_id as fallback
                 let profile = user_profiles.get(&m.user_id);
-                
+
                 let username = profile
                     .map(|p| p.username.clone())
                     .unwrap_or_else(|| m.user_id.clone());
-                
-                let display_name = profile
-                    .map(|p| p.display_name.clone())
-                    .unwrap_or_default();
-                
+
+                let display_name = profile.map(|p| p.display_name.clone()).unwrap_or_default();
+
                 let avatar_media_id = profile
                     .map(|p| p.avatar_media_id.clone())
                     .unwrap_or_default();
@@ -125,14 +131,20 @@ pub async fn get_groups(
         let last_message = match db.get_last_group_message(&group.group_id).await {
             Ok(Some(msg)) => {
                 // Extract sender_username from metadata, user profiles cache, or fall back to sender_user_id
-                let sender_username = msg.metadata
+                let sender_username = msg
+                    .metadata
                     .get("sender_username")
                     .cloned()
-                    .or_else(|| user_profiles.get(&msg.sender_user_id).map(|p| p.username.clone()))
+                    .or_else(|| {
+                        user_profiles
+                            .get(&msg.sender_user_id)
+                            .map(|p| p.username.clone())
+                    })
                     .unwrap_or_else(|| msg.sender_user_id.clone());
 
                 // Extract message_type from metadata (default to 0)
-                let message_type = msg.metadata
+                let message_type = msg
+                    .metadata
                     .get("message_type")
                     .and_then(|s| s.parse::<i32>().ok())
                     .unwrap_or(0);
@@ -166,7 +178,11 @@ pub async fn get_groups(
             }
             Ok(None) => None,
             Err(e) => {
-                tracing::warn!("Failed to fetch last message for group {}: {}", group.group_id, e);
+                tracing::warn!(
+                    "Failed to fetch last message for group {}: {}",
+                    group.group_id,
+                    e
+                );
                 None
             }
         };

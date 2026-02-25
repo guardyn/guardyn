@@ -7,13 +7,12 @@
 /// 4. Delete all user data from auth-service (TiKV)
 /// 5. TODO: Notify other services to delete user data (messaging, media, presence)
 /// 6. Return success confirmation
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
-use tonic::{Request, Response, Status};
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
 use argon2::{
     password_hash::{PasswordHash, PasswordVerifier},
     Argon2,
 };
+use tonic::{Request, Response, Status};
 
 /// Verify password against stored hash
 fn verify_password(password: &str, hash: &str) -> bool {
@@ -105,7 +104,7 @@ pub async fn handle(
     // Other services (messaging, media, presence) consume this event
     // and delete their data asynchronously (eventual consistency)
     if let Some(ref producer) = service.event_producer {
-        use guardyn_common::events::{EventEnvelope, topics, user};
+        use guardyn_common::events::{topics, user, EventEnvelope};
 
         let payload = user::UserDeletedPayload {
             user_id: user_id.clone(),
@@ -117,7 +116,10 @@ pub async fn handle(
 
         let event = EventEnvelope::new(user::TYPE_DELETED, "auth-service", payload);
 
-        match producer.send_json(topics::USER_EVENTS, &user_id, &event).await {
+        match producer
+            .send_json(topics::USER_EVENTS, &user_id, &event)
+            .await
+        {
             Ok(_) => {
                 tracing::info!(
                     user_id = %user_id,
@@ -145,9 +147,11 @@ pub async fn handle(
     tracing::info!("Account deleted for user: {} ({})", user.username, user_id);
 
     Ok(Response::new(DeleteAccountResponse {
-        result: Some(delete_account_response::Result::Success(DeleteAccountSuccess {
-            user_id: user_id.clone(),
-            message: format!("Account '{}' has been permanently deleted", user.username),
-        })),
+        result: Some(delete_account_response::Result::Success(
+            DeleteAccountSuccess {
+                user_id: user_id.clone(),
+                message: format!("Account '{}' has been permanently deleted", user.username),
+            },
+        )),
     }))
 }

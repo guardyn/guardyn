@@ -17,9 +17,11 @@ pub struct CallRecord {
     pub group_id: Option<String>,
     pub initiator_id: String,
     pub state: i32,
+    #[allow(dead_code)]
     pub end_reason: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub started_at: Option<DateTime<Utc>>,
+    #[allow(dead_code)]
     pub ended_at: Option<DateTime<Utc>>,
     pub duration_seconds: i32,
 }
@@ -34,6 +36,7 @@ pub struct CallParticipantRecord {
     pub has_video: bool,
     pub is_screen_sharing: bool,
     pub joined_at: DateTime<Utc>,
+    #[allow(dead_code)]
     pub left_at: Option<DateTime<Utc>>,
 }
 
@@ -198,6 +201,7 @@ impl CallDb {
     }
 
     /// Get call by ID
+    #[allow(clippy::type_complexity)]
     pub async fn get_call(&self, call_id: &str) -> Result<Option<CallRecord>> {
         let result = self
             .session
@@ -274,6 +278,7 @@ impl CallDb {
     }
 
     /// Set call as connected
+    #[allow(dead_code)]
     pub async fn set_call_connected(&self, call_id: &str) -> Result<()> {
         self.session
             .query_unpaged(
@@ -335,7 +340,12 @@ impl CallDb {
     }
 
     /// Update participant state
-    pub async fn update_participant_mute(&self, call_id: &str, user_id: &str, muted: bool) -> Result<()> {
+    pub async fn update_participant_mute(
+        &self,
+        call_id: &str,
+        user_id: &str,
+        muted: bool,
+    ) -> Result<()> {
         self.session
             .query_unpaged(
                 "UPDATE guardyn_calls.call_participants SET is_muted = ? WHERE call_id = ? AND user_id = ?",
@@ -348,7 +358,12 @@ impl CallDb {
     }
 
     /// Update participant video state
-    pub async fn update_participant_video(&self, call_id: &str, user_id: &str, video: bool) -> Result<()> {
+    pub async fn update_participant_video(
+        &self,
+        call_id: &str,
+        user_id: &str,
+        video: bool,
+    ) -> Result<()> {
         self.session
             .query_unpaged(
                 "UPDATE guardyn_calls.call_participants SET has_video = ? WHERE call_id = ? AND user_id = ?",
@@ -361,7 +376,12 @@ impl CallDb {
     }
 
     /// Update participant screen share state
-    pub async fn update_participant_screen_share(&self, call_id: &str, user_id: &str, sharing: bool) -> Result<()> {
+    pub async fn update_participant_screen_share(
+        &self,
+        call_id: &str,
+        user_id: &str,
+        sharing: bool,
+    ) -> Result<()> {
         self.session
             .query_unpaged(
                 "UPDATE guardyn_calls.call_participants SET is_screen_sharing = ? WHERE call_id = ? AND user_id = ?",
@@ -404,9 +424,18 @@ impl CallDb {
         let mut participants = Vec::new();
         if let Some(rows) = result.rows {
             for row in rows {
-                let (call_id, user_id, display_name, is_muted, has_video, is_screen_sharing, joined_at, left_at): (
-                    String, String, String, bool, bool, bool, i64, Option<i64>,
-                ) = row.into_typed().context("Failed to parse participant row")?;
+                let (
+                    call_id,
+                    user_id,
+                    display_name,
+                    is_muted,
+                    has_video,
+                    is_screen_sharing,
+                    joined_at,
+                    left_at,
+                ): (String, String, String, bool, bool, bool, i64, Option<i64>) = row
+                    .into_typed()
+                    .context("Failed to parse participant row")?;
 
                 // Only include active participants
                 if left_at.is_none() {
@@ -458,11 +487,12 @@ impl CallDb {
     }
 
     /// Get user's call history with cursor-based pagination
-    /// 
+    ///
     /// The cursor is a timestamp (millis) - returns calls older than this timestamp
+    #[allow(clippy::type_complexity)]
     pub async fn get_call_history(
-        &self, 
-        user_id: &str, 
+        &self,
+        user_id: &str,
         limit: i32,
         before_timestamp: Option<i64>,
     ) -> Result<Vec<UserCallHistoryEntry>> {
@@ -514,8 +544,17 @@ impl CallDb {
                     end_reason,
                     duration_seconds,
                 ): (
-                    String, i64, String, i32, bool, Option<String>,
-                    Option<String>, Option<String>, bool, i32, i32,
+                    String,
+                    i64,
+                    String,
+                    i32,
+                    bool,
+                    Option<String>,
+                    Option<String>,
+                    Option<String>,
+                    bool,
+                    i32,
+                    i32,
                 ) = row.into_typed().context("Failed to parse history row")?;
 
                 history.push(UserCallHistoryEntry {

@@ -3,7 +3,6 @@
 /// Implementation using OpenMLS library with RustCrypto backend.
 /// Provides secure group communication with forward secrecy, post-compromise security,
 /// and membership changes (add/remove members).
-
 use crate::{CryptoError, Result};
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
@@ -51,8 +50,9 @@ pub struct MlsGroupState {
 pub struct MlsGroupManager {
     mls_group: MlsGroup,
     crypto_backend: OpenMlsRustCrypto,
+    #[allow(dead_code)]
     credential_with_key: CredentialWithKey,
-    signature_keypair: SignatureKeyPair,  // Store the keypair for signing operations
+    signature_keypair: SignatureKeyPair, // Store the keypair for signing operations
 }
 
 impl MlsGroupManager {
@@ -71,7 +71,7 @@ impl MlsGroupManager {
         signature_keypair: SignatureKeyPair,
     ) -> Result<Self> {
         let crypto_backend = OpenMlsRustCrypto::default();
-        let group_id_bytes = group_id.as_bytes().to_vec();
+        let _group_id_bytes = group_id.as_bytes().to_vec();
 
         // Create credential (OpenMLS 0.7 API: credential_type first, then identity)
         let credential = Credential::new(CredentialType::Basic, creator_identity.to_vec());
@@ -131,14 +131,19 @@ impl MlsGroupManager {
         };
 
         // Deserialize Welcome message (OpenMLS 0.6 uses tls_deserialize)
-        let mut reader = welcome_bytes.as_ref();
-        let mls_message_in = MlsMessageIn::tls_deserialize(&mut reader)
-            .map_err(|e| CryptoError::Protocol(format!("Failed to deserialize Welcome: {:?}", e)))?;
+        let mut reader = welcome_bytes;
+        let mls_message_in = MlsMessageIn::tls_deserialize(&mut reader).map_err(|e| {
+            CryptoError::Protocol(format!("Failed to deserialize Welcome: {:?}", e))
+        })?;
 
         // Extract Welcome from MlsMessageIn
         let welcome = match mls_message_in.extract() {
             MlsMessageBodyIn::Welcome(w) => w,
-            _ => return Err(CryptoError::Protocol("Expected Welcome message".to_string())),
+            _ => {
+                return Err(CryptoError::Protocol(
+                    "Expected Welcome message".to_string(),
+                ))
+            }
         };
 
         // Configure MLS group (needed for joining)
@@ -150,7 +155,7 @@ impl MlsGroupManager {
             &crypto_backend,
             &group_config,
             welcome,
-            None,  // ratchet_tree is optional, usually included in Welcome
+            None, // ratchet_tree is optional, usually included in Welcome
         )
         .map_err(|e| CryptoError::Protocol(format!("Failed to stage welcome: {:?}", e)))?
         .into_group(&crypto_backend)
@@ -182,7 +187,9 @@ impl MlsGroupManager {
 
         // Generate signature keypair
         let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
-            .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
+            .map_err(|e| {
+                CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e))
+            })?;
 
         // Create credential with key bundle
         let credential_with_key = CredentialWithKey {
@@ -204,9 +211,9 @@ impl MlsGroupManager {
         let key_package = key_package_bundle.key_package();
 
         // Serialize key package
-        let key_package_bytes = key_package
-            .tls_serialize_detached()
-            .map_err(|e| CryptoError::Protocol(format!("Failed to serialize key package: {:?}", e)))?;
+        let key_package_bytes = key_package.tls_serialize_detached().map_err(|e| {
+            CryptoError::Protocol(format!("Failed to serialize key package: {:?}", e))
+        })?;
 
         // Get package ID (use RustCrypto for hash_ref as it implements OpenMlsCrypto)
         let rust_crypto = RustCrypto::default();
@@ -235,15 +242,15 @@ impl MlsGroupManager {
     /// Tuple of (commit_bytes, welcome_bytes) - commit for group, welcome for new member
     pub fn add_member(&mut self, member_key_package_bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
         // Deserialize key package (OpenMLS 0.6 - KeyPackageIn needs validation)
-        let mut reader = member_key_package_bytes.as_ref();
-        let key_package_in = KeyPackageIn::tls_deserialize(&mut reader)
-            .map_err(|e| {
-                CryptoError::Protocol(format!("Failed to deserialize key package: {:?}", e))
-            })?;
+        let mut reader = member_key_package_bytes;
+        let key_package_in = KeyPackageIn::tls_deserialize(&mut reader).map_err(|e| {
+            CryptoError::Protocol(format!("Failed to deserialize key package: {:?}", e))
+        })?;
 
         // Validate and convert KeyPackageIn to KeyPackage
         let rust_crypto = RustCrypto::default();
-        let key_package = key_package_in.validate(&rust_crypto, ProtocolVersion::default())
+        let key_package = key_package_in
+            .validate(&rust_crypto, ProtocolVersion::default())
             .map_err(|e| {
                 CryptoError::Protocol(format!("Failed to validate key package: {:?}", e))
             })?;
@@ -251,7 +258,11 @@ impl MlsGroupManager {
         // Propose adding the member
         let (commit, welcome, _group_info) = self
             .mls_group
-            .add_members(&self.crypto_backend, &self.signature_keypair, &[key_package])
+            .add_members(
+                &self.crypto_backend,
+                &self.signature_keypair,
+                &[key_package],
+            )
             .map_err(|e| CryptoError::Protocol(format!("Failed to add member: {:?}", e)))?;
 
         // Merge commit (apply changes to local state)
@@ -285,7 +296,11 @@ impl MlsGroupManager {
         // Propose removing the member
         let (commit, _welcome, _group_info) = self
             .mls_group
-            .remove_members(&self.crypto_backend, &self.signature_keypair, &[member_index])
+            .remove_members(
+                &self.crypto_backend,
+                &self.signature_keypair,
+                &[member_index],
+            )
             .map_err(|e| CryptoError::Protocol(format!("Failed to remove member: {:?}", e)))?;
 
         // Merge commit (apply changes to local state)
@@ -312,16 +327,18 @@ impl MlsGroupManager {
     /// Ok(()) if commit processed successfully
     pub fn process_commit(&mut self, commit_bytes: &[u8]) -> Result<()> {
         // Deserialize commit (OpenMLS 0.6)
-        let mut reader = commit_bytes.as_ref();
+        let mut reader = commit_bytes;
         let commit = MlsMessageIn::tls_deserialize(&mut reader)
             .map_err(|e| CryptoError::Protocol(format!("Failed to deserialize commit: {:?}", e)))?;
 
         // Convert MlsMessageIn to ProtocolMessage for processing
-        let protocol_message: ProtocolMessage = commit.try_into()
+        let protocol_message: ProtocolMessage = commit
+            .try_into()
             .map_err(|e| CryptoError::Protocol(format!("Failed to convert message: {:?}", e)))?;
 
         // Process commit (OpenMLS 0.6 API - pass message by reference)
-        let _processed = self.mls_group
+        let _processed = self
+            .mls_group
             .process_message(&self.crypto_backend, protocol_message)
             .map_err(|e| CryptoError::Protocol(format!("Failed to process commit: {:?}", e)))?;
 
@@ -345,9 +362,9 @@ impl MlsGroupManager {
             .map_err(|e| CryptoError::Encryption(format!("Failed to create message: {:?}", e)))?;
 
         // Serialize message
-        let ciphertext = message
-            .tls_serialize_detached()
-            .map_err(|e| CryptoError::Encryption(format!("Failed to serialize message: {:?}", e)))?;
+        let ciphertext = message.tls_serialize_detached().map_err(|e| {
+            CryptoError::Encryption(format!("Failed to serialize message: {:?}", e))
+        })?;
 
         Ok(ciphertext)
     }
@@ -361,12 +378,14 @@ impl MlsGroupManager {
     /// Tuple of (plaintext, aad) - decrypted message and associated data
     pub fn decrypt_message(&mut self, ciphertext: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
         // Deserialize message (OpenMLS 0.6)
-        let mut reader = ciphertext.as_ref();
-        let message = MlsMessageIn::tls_deserialize(&mut reader)
-            .map_err(|e| CryptoError::Decryption(format!("Failed to deserialize message: {:?}", e)))?;
+        let mut reader = ciphertext;
+        let message = MlsMessageIn::tls_deserialize(&mut reader).map_err(|e| {
+            CryptoError::Decryption(format!("Failed to deserialize message: {:?}", e))
+        })?;
 
         // Convert MlsMessageIn to ProtocolMessage for processing
-        let protocol_message: ProtocolMessage = message.try_into()
+        let protocol_message: ProtocolMessage = message
+            .try_into()
             .map_err(|e| CryptoError::Decryption(format!("Failed to convert message: {:?}", e)))?;
 
         // Process and decrypt message (OpenMLS 0.6 - provider first, message as ProtocolMessage)
@@ -392,9 +411,7 @@ impl MlsGroupManager {
                 let err_msg = String::from("Unexpected") + " " + "commit";
                 Err(CryptoError::Protocol(err_msg))
             }
-            _ => {
-                Err(CryptoError::Protocol("Unknown message type".to_string()))
-            }
+            _ => Err(CryptoError::Protocol("Unknown message type".to_string())),
         }
     }
 
@@ -451,13 +468,33 @@ pub fn create_test_keypair() -> Result<SignatureKeyPair> {
     Ok(signature_keypair)
 }
 
+/// Helper function to create test credential for MLS operations
+///
+/// This is a convenience function for testing and development.
+/// In production, use proper credential management with secure storage.
+///
+/// # Arguments
+/// * `identity` - User identity bytes (typically "user_id:device_id")
+///
+/// # Returns
+/// SignatureKeyPair for MLS operations
+pub fn create_test_credential(_identity: &[u8]) -> Result<SignatureKeyPair> {
+    // Note: identity parameter is kept for API compatibility but not used
+    // OpenMLS 0.6 SignatureKeyPair::new() only takes signature scheme
+    let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
+        .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
+    Ok(signature_keypair)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn create_test_keypair() -> Result<SignatureKeyPair> {
         let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
-            .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
+            .map_err(|e| {
+                CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e))
+            })?;
         Ok(signature_keypair)
     }
 
@@ -514,8 +551,7 @@ mod tests {
         let alice_keypair = create_test_keypair().unwrap();
         let alice_id = b"alice_device1";
         let mut alice_group =
-            MlsGroupManager::create_group("test_group", alice_id, alice_keypair)
-                .unwrap();
+            MlsGroupManager::create_group("test_group", alice_id, alice_keypair).unwrap();
 
         // Encrypt message
         let plaintext = b"Hello, MLS group!";
@@ -549,22 +585,3 @@ mod tests {
         assert!(!state.serialized_state.is_empty());
     }
 }
-
-/// Helper function to create test credential for MLS operations
-///
-/// This is a convenience function for testing and development.
-/// In production, use proper credential management with secure storage.
-///
-/// # Arguments
-/// * `identity` - User identity bytes (typically "user_id:device_id")
-///
-/// # Returns
-/// SignatureKeyPair for MLS operations
-pub fn create_test_credential(_identity: &[u8]) -> Result<SignatureKeyPair> {
-    // Note: identity parameter is kept for API compatibility but not used
-    // OpenMLS 0.6 SignatureKeyPair::new() only takes signature scheme
-    let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
-        .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
-    Ok(signature_keypair)
-}
-

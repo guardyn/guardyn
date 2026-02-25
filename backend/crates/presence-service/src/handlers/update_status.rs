@@ -1,7 +1,6 @@
 /// Update Status Handler
 ///
 /// Updates user's online/offline status
-
 use crate::db::DatabaseClient;
 use crate::jwt;
 use crate::nats::{NatsClient, PresenceEvent};

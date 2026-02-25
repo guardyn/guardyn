@@ -1,18 +1,17 @@
+use crate::crypto::SessionManager;
 /// E2EE-enabled message sending handler (migration version)
 ///
 /// This handler integrates X3DH key exchange and Double Ratchet encryption
 /// for end-to-end encrypted messaging.
 ///
 /// TODO: Replace existing send_message.rs with this implementation after testing
-
 use crate::db::DatabaseClient;
-use crate::models::{DeliveryState, DeliveryStatus, StoredMessage, RatchetSession};
+use crate::models::{DeliveryState, DeliveryStatus, RatchetSession, StoredMessage};
 use crate::nats::{MessageEnvelope, NatsClient};
-use crate::crypto::SessionManager;
+use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
     send_message_response, SendMessageRequest, SendMessageResponse, SendMessageSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp};
 use std::sync::Arc;
 use tonic::{Response, Status};
 use uuid::Uuid;
@@ -25,18 +24,19 @@ pub async fn send_message_e2ee(
     // Validate JWT token and extract user_id + device_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (sender_user_id, sender_device_id, sender_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok((user_id, device_id, username)) => (user_id, device_id, username),
-        Err(_) => {
-            return Ok(Response::new(SendMessageResponse {
-                result: Some(send_message_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (sender_user_id, sender_device_id, sender_username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok((user_id, device_id, username)) => (user_id, device_id, username),
+            Err(_) => {
+                return Ok(Response::new(SendMessageResponse {
+                    result: Some(send_message_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate recipient
     if request.recipient_user_id.is_empty() {
@@ -84,12 +84,15 @@ pub async fn send_message_e2ee(
     };
 
     // Get or initialize session
-    let mut ratchet = match session_manager.get_or_create_session(
-        &sender_user_id,
-        &sender_device_id,
-        &request.recipient_user_id,
-        &recipient_device_id,
-    ).await {
+    let mut ratchet = match session_manager
+        .get_or_create_session(
+            &sender_user_id,
+            &sender_device_id,
+            &request.recipient_user_id,
+            &recipient_device_id,
+        )
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::error!("Failed to get/create ratchet session: {}", e);
@@ -116,14 +119,20 @@ pub async fn send_message_e2ee(
 
     // Associated data for AEAD: "sender_id|recipient_id|timestamp"
     let server_timestamp = chrono::Utc::now().timestamp();
-    let associated_data = format!("{}|{}|{}", sender_user_id, request.recipient_user_id, server_timestamp);
+    let associated_data = format!(
+        "{}|{}|{}",
+        sender_user_id, request.recipient_user_id, server_timestamp
+    );
 
-    let encrypted_content = match session_manager.encrypt_and_save(
-        &session_id,
-        ratchet,
-        &request.encrypted_content, // Client should send plaintext, we encrypt server-side
-        associated_data.as_bytes(),
-    ).await {
+    let encrypted_content = match session_manager
+        .encrypt_and_save(
+            &session_id,
+            ratchet,
+            &request.encrypted_content, // Client should send plaintext, we encrypt server-side
+            associated_data.as_bytes(),
+        )
+        .await
+    {
         Ok(ciphertext) => ciphertext,
         Err(e) => {
             tracing::error!("Failed to encrypt message: {}", e);
@@ -209,30 +218,36 @@ pub async fn send_message_e2ee(
     let server_timestamp_ms = server_timestamp * 1000;
 
     // Update sender's conversation view
-    if let Err(e) = db.upsert_conversation(
-        &sender_user_id,
-        &conversation_id,
-        &request.recipient_user_id,
-        &request.recipient_username, // Use recipient username from request
-        &message_id,
-        &message_preview,
-        server_timestamp_ms,
-        false,
-    ).await {
+    if let Err(e) = db
+        .upsert_conversation(
+            &sender_user_id,
+            &conversation_id,
+            &request.recipient_user_id,
+            &request.recipient_username, // Use recipient username from request
+            &message_id,
+            &message_preview,
+            server_timestamp_ms,
+            false,
+        )
+        .await
+    {
         tracing::warn!("Failed to update sender conversation: {}", e);
     }
 
     // Update recipient's conversation view
-    if let Err(e) = db.upsert_conversation(
-        &request.recipient_user_id,
-        &conversation_id,
-        &sender_user_id,
-        &sender_username, // Use sender username from JWT
-        &message_id,
-        &message_preview,
-        server_timestamp_ms,
-        true,
-    ).await {
+    if let Err(e) = db
+        .upsert_conversation(
+            &request.recipient_user_id,
+            &conversation_id,
+            &sender_user_id,
+            &sender_username, // Use sender username from JWT
+            &message_id,
+            &message_preview,
+            server_timestamp_ms,
+            true,
+        )
+        .await
+    {
         tracing::warn!("Failed to update recipient conversation: {}", e);
     }
 
@@ -257,23 +272,21 @@ pub async fn send_message_e2ee(
 
     // Return success
     Ok(Response::new(SendMessageResponse {
-        result: Some(send_message_response::Result::Success(
-            SendMessageSuccess {
-                message_id,
-                server_timestamp: Some(Timestamp {
-                    seconds: server_timestamp,
-                    nanos: 0,
-                }),
-                delivery_status: DeliveryStatus::Sent.to_i32(),
-            },
-        )),
+        result: Some(send_message_response::Result::Success(SendMessageSuccess {
+            message_id,
+            server_timestamp: Some(Timestamp {
+                seconds: server_timestamp,
+                nanos: 0,
+            }),
+            delivery_status: DeliveryStatus::Sent.to_i32(),
+        })),
     }))
 }
 
 /// Generate deterministic conversation ID from two user IDs
 /// IMPORTANT: Uses NAMESPACE_DNS to match db.rs implementation
 fn generate_conversation_id(user1: &str, user2: &str) -> String {
-    let mut users = vec![user1, user2];
+    let mut users = [user1, user2];
     users.sort();
     // Use NAMESPACE_DNS to match the db.rs implementation
     let data = format!("{}:{}", users[0], users[1]);

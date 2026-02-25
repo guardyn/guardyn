@@ -19,6 +19,7 @@ pub fn validate_token(token: &str, jwt_secret: &str) -> Result<String, i32> {
     #[derive(Debug, Deserialize)]
     struct Claims {
         sub: String,
+        #[allow(dead_code)]
         exp: i64,
     }
 
@@ -111,7 +112,10 @@ pub async fn initiate_call(
     let display_name = match AuthClient::new(auth_service_url).await {
         Ok(mut client) => client.get_display_name(&user_id).await,
         Err(e) => {
-            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            warn!(
+                "Failed to connect to auth service: {}, using user_id as display name",
+                e
+            );
             user_id.clone()
         }
     };
@@ -192,7 +196,10 @@ pub async fn initiate_call(
             call_id, user_id, target_uid
         );
 
-        if let Err(e) = nats_client.publish_incoming_call(target_uid, &incoming_envelope).await {
+        if let Err(e) = nats_client
+            .publish_incoming_call(target_uid, &incoming_envelope)
+            .await
+        {
             warn!("Failed to notify callee about incoming call: {}", e);
         } else {
             info!(
@@ -214,20 +221,25 @@ pub async fn initiate_call(
         .map(|s| s.read().state)
         .unwrap_or(1); // Default to INITIATING
 
-    debug!("Created call {} initiated by {} with state {}", call_id, user_id, current_state);
+    debug!(
+        "Created call {} initiated by {} with state {}",
+        call_id, user_id, current_state
+    );
 
     InitiateCallResponse {
-        result: Some(initiate_call_response::Result::Success(InitiateCallSuccess {
-            call_id,
-            state: current_state,
-            created_at: Some(crate::generated::guardyn::common::Timestamp {
-                seconds: Utc::now().timestamp(),
-                nanos: 0,
-            }),
-            ice_servers: to_proto_ice_servers(ice_servers),
-            sframe_key_material: sframe_key,
-            sframe_key_id,
-        })),
+        result: Some(initiate_call_response::Result::Success(
+            InitiateCallSuccess {
+                call_id,
+                state: current_state,
+                created_at: Some(crate::generated::guardyn::common::Timestamp {
+                    seconds: Utc::now().timestamp(),
+                    nanos: 0,
+                }),
+                ice_servers: to_proto_ice_servers(ice_servers),
+                sframe_key_material: sframe_key,
+                sframe_key_id,
+            },
+        )),
     }
 }
 
@@ -257,7 +269,10 @@ pub async fn accept_call(
     let display_name = match AuthClient::new(auth_service_url).await {
         Ok(mut client) => client.get_display_name(&user_id).await,
         Err(e) => {
-            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            warn!(
+                "Failed to connect to auth service: {}, using user_id as display name",
+                e
+            );
             user_id.clone()
         }
     };
@@ -282,22 +297,18 @@ pub async fn accept_call(
         .map(|c| c.supports_video)
         .unwrap_or(false);
 
-    let (sframe_key_id, sframe_key) = match session_mgr.add_participant(
-        &request.call_id,
-        &user_id,
-        &display_name,
-        has_video,
-    ) {
-        Some(keys) => keys,
-        None => {
-            return AcceptCallResponse {
-                result: Some(accept_call_response::Result::Error(error_response(
-                    4,
-                    "Failed to join call",
-                ))),
-            };
-        }
-    };
+    let (sframe_key_id, sframe_key) =
+        match session_mgr.add_participant(&request.call_id, &user_id, &display_name, has_video) {
+            Some(keys) => keys,
+            None => {
+                return AcceptCallResponse {
+                    result: Some(accept_call_response::Result::Error(error_response(
+                        4,
+                        "Failed to join call",
+                    ))),
+                };
+            }
+        };
 
     // Update call state to CONNECTING
     session_mgr.update_state(&request.call_id, 3);
@@ -325,7 +336,9 @@ pub async fn accept_call(
     // Notify caller that call was accepted
     let caller_id = {
         let session_guard = session.read();
-        session_guard.participants.values()
+        session_guard
+            .participants
+            .values()
             .find(|p| p.user_id != user_id)
             .map(|p| p.user_id.clone())
     };
@@ -381,30 +394,35 @@ pub async fn reject_call(
         }
     };
 
-    info!("📞 reject_call: user {} rejecting call {}", user_id, request.call_id);
+    info!(
+        "📞 reject_call: user {} rejecting call {}",
+        user_id, request.call_id
+    );
 
     // Get the session to find the caller user ID (initiator)
-    let caller_id = session_mgr.get_session(&request.call_id)
-        .map(|s| {
-            let session = s.read();
-            info!("📞 reject_call: found session, initiator={}, participants={:?}", 
-                  session.initiator_id, 
-                  session.participants.keys().collect::<Vec<_>>());
-            // Find another participant who is not the one rejecting
-            session.participants.values()
-                .find(|p| p.user_id != user_id)
-                .map(|p| p.user_id.clone())
-                .or_else(|| {
-                    // If not found in participants, use initiator_id
-                    if session.initiator_id != user_id {
-                        Some(session.initiator_id.clone())
-                    } else {
-                        None
-                    }
-                })
-        })
-        .flatten();
-    
+    let caller_id = session_mgr.get_session(&request.call_id).and_then(|s| {
+        let session = s.read();
+        info!(
+            "📞 reject_call: found session, initiator={}, participants={:?}",
+            session.initiator_id,
+            session.participants.keys().collect::<Vec<_>>()
+        );
+        // Find another participant who is not the one rejecting
+        session
+            .participants
+            .values()
+            .find(|p| p.user_id != user_id)
+            .map(|p| p.user_id.clone())
+            .or_else(|| {
+                // If not found in participants, use initiator_id
+                if session.initiator_id != user_id {
+                    Some(session.initiator_id.clone())
+                } else {
+                    None
+                }
+            })
+    });
+
     info!("📞 reject_call: caller_id to notify = {:?}", caller_id);
 
     // End the session with DECLINED reason
@@ -429,16 +447,24 @@ pub async fn reject_call(
         info!("📞 reject_call: publishing CallRejected event for call {} to NATS subject calls.{}.events", 
               request.call_id, request.call_id);
         if let Err(e) = nats_client.publish_call_event(&event).await {
-            warn!("📞 reject_call: Failed to publish call rejected event: {}", e);
+            warn!(
+                "📞 reject_call: Failed to publish call rejected event: {}",
+                e
+            );
         } else {
-            info!("📞 reject_call: SUCCESS - published CallRejected event for call {} (caller: {})", 
-                  request.call_id, caller);
+            info!(
+                "📞 reject_call: SUCCESS - published CallRejected event for call {} (caller: {})",
+                request.call_id, caller
+            );
         }
     } else {
         warn!("📞 reject_call: No caller_id found - cannot notify caller about rejection!");
     }
 
-    info!("📞 reject_call: User {} rejected call {} - COMPLETE", user_id, request.call_id);
+    info!(
+        "📞 reject_call: User {} rejected call {} - COMPLETE",
+        user_id, request.call_id
+    );
 
     RejectCallResponse {
         result: Some(reject_call_response::Result::Success(RejectCallSuccess {
@@ -472,7 +498,10 @@ pub async fn end_call(
     // End the session
     if let Some(session) = session_mgr.end_session(&request.call_id) {
         // Persist to database
-        if let Err(e) = db.end_call(&request.call_id, request.reason, duration).await {
+        if let Err(e) = db
+            .end_call(&request.call_id, request.reason, duration)
+            .await
+        {
             warn!("Failed to update call: {}", e);
         }
 
@@ -569,7 +598,10 @@ pub async fn join_call(
     let display_name = match AuthClient::new(auth_service_url).await {
         Ok(mut client) => client.get_display_name(&user_id).await,
         Err(e) => {
-            warn!("Failed to connect to auth service: {}, using user_id as display name", e);
+            warn!(
+                "Failed to connect to auth service: {}, using user_id as display name",
+                e
+            );
             user_id.clone()
         }
     };
@@ -608,22 +640,18 @@ pub async fn join_call(
         .map(|c| c.supports_video)
         .unwrap_or(false);
 
-    let (sframe_key_id, sframe_key) = match session_mgr.add_participant(
-        &request.call_id,
-        &user_id,
-        &display_name,
-        has_video,
-    ) {
-        Some(keys) => keys,
-        None => {
-            return JoinCallResponse {
-                result: Some(join_call_response::Result::Error(error_response(
-                    4,
-                    "Failed to join call",
-                ))),
-            };
-        }
-    };
+    let (sframe_key_id, sframe_key) =
+        match session_mgr.add_participant(&request.call_id, &user_id, &display_name, has_video) {
+            Some(keys) => keys,
+            None => {
+                return JoinCallResponse {
+                    result: Some(join_call_response::Result::Error(error_response(
+                        4,
+                        "Failed to join call",
+                    ))),
+                };
+            }
+        };
 
     // Get current participants
     let participants: Vec<CallParticipant> = session_mgr
@@ -937,10 +965,10 @@ pub async fn get_call_history(
         }
     };
 
-    let limit = if request.limit > 0 && request.limit <= 100 { 
-        request.limit 
-    } else { 
-        50 
+    let limit = if request.limit > 0 && request.limit <= 100 {
+        request.limit
+    } else {
+        50
     };
 
     // Parse cursor - format: "ts:{timestamp_millis}"
@@ -953,16 +981,21 @@ pub async fn get_call_history(
     };
 
     // Fetch limit + 1 to determine if there are more results
-    match db.get_call_history(&user_id, limit + 1, before_timestamp).await {
+    match db
+        .get_call_history(&user_id, limit + 1, before_timestamp)
+        .await
+    {
         Ok(history) => {
             // Check if there are more results
             let has_more = history.len() > limit as usize;
 
             // Take only the requested limit
             let history_limited: Vec<_> = history.into_iter().take(limit as usize).collect();
-            
+
             // Get the timestamp of the last entry for the cursor
-            let last_timestamp = history_limited.last().map(|h| h.started_at.timestamp_millis());
+            let last_timestamp = history_limited
+                .last()
+                .map(|h| h.started_at.timestamp_millis());
 
             let calls: Vec<CallHistoryEntry> = history_limited
                 .into_iter()
@@ -994,10 +1027,7 @@ pub async fn get_call_history(
 
             GetCallHistoryResponse {
                 result: Some(get_call_history_response::Result::Success(
-                    GetCallHistorySuccess {
-                        calls,
-                        next_cursor,
-                    },
+                    GetCallHistorySuccess { calls, next_cursor },
                 )),
             }
         }

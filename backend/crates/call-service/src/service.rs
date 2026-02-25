@@ -14,7 +14,10 @@ use crate::db::CallDb;
 use crate::generated::guardyn::calls::call_service_server::CallService;
 use crate::generated::guardyn::calls::*;
 use crate::handlers;
-use crate::nats::{CallEventEnvelope, CallEventType, CallNatsClient, IceCandidateEnvelope, SdpEnvelope, SFrameKeyEnvelope};
+use crate::nats::{
+    CallEventEnvelope, CallEventType, CallNatsClient, IceCandidateEnvelope, SFrameKeyEnvelope,
+    SdpEnvelope,
+};
 use crate::session::CallSessionManager;
 use crate::IceServerConfig;
 
@@ -417,12 +420,18 @@ impl CallService for CallServiceImpl {
                 }
             };
 
-            info!("Incoming calls subscription loop started for user {}", user_id_clone);
+            info!(
+                "Incoming calls subscription loop started for user {}",
+                user_id_clone
+            );
 
             // Poll for incoming call notifications
             loop {
                 if tx.is_closed() {
-                    warn!("⚠️ Incoming call stream CLOSED for user {} - client disconnected", user_id_clone);
+                    warn!(
+                        "⚠️ Incoming call stream CLOSED for user {} - client disconnected",
+                        user_id_clone
+                    );
                     break;
                 }
 
@@ -449,11 +458,14 @@ impl CallService for CallServiceImpl {
                                 caller_id: notification.caller_id,
                                 caller_display_name: notification.caller_display_name,
                                 caller_avatar_url: notification.caller_avatar_url,
-                                ice_servers: ice_servers.iter().map(|c| IceServer {
-                                    urls: c.urls.clone(),
-                                    username: c.username.clone().unwrap_or_default(),
-                                    credential: c.credential.clone().unwrap_or_default(),
-                                }).collect(),
+                                ice_servers: ice_servers
+                                    .iter()
+                                    .map(|c| IceServer {
+                                        urls: c.urls.clone(),
+                                        username: c.username.clone().unwrap_or_default(),
+                                        credential: c.credential.clone().unwrap_or_default(),
+                                    })
+                                    .collect(),
                                 created_at: Some(crate::generated::guardyn::common::Timestamp {
                                     seconds: notification.timestamp,
                                     nanos: 0,
@@ -465,7 +477,10 @@ impl CallService for CallServiceImpl {
                         }
                     }
                     Err(e) => {
-                        warn!("Error fetching incoming calls for user {}: {}", user_id_clone, e);
+                        warn!(
+                            "Error fetching incoming calls for user {}: {}",
+                            user_id_clone, e
+                        );
                     }
                 }
 
@@ -506,13 +521,22 @@ impl CallService for CallServiceImpl {
         let call_id = req.call_id.clone();
         let user_id_clone = user_id.clone();
 
-        info!("📡 stream_call_events: Starting event stream for call {} user {}", call_id, user_id);
+        info!(
+            "📡 stream_call_events: Starting event stream for call {} user {}",
+            call_id, user_id
+        );
 
         tokio::spawn(async move {
-            info!("📡 stream_call_events: Spawned task for call {} user {}", call_id, user_id_clone);
-            
+            info!(
+                "📡 stream_call_events: Spawned task for call {} user {}",
+                call_id, user_id_clone
+            );
+
             // Subscribe to ICE candidates for this user
-            let ice_consumer = match nats_client.subscribe_ice_candidates(&call_id, &user_id_clone).await {
+            let ice_consumer = match nats_client
+                .subscribe_ice_candidates(&call_id, &user_id_clone)
+                .await
+            {
                 Ok(c) => Some(c),
                 Err(e) => {
                     warn!("Failed to subscribe to ICE candidates: {}", e);
@@ -530,9 +554,15 @@ impl CallService for CallServiceImpl {
             };
 
             // Subscribe to general call events
-            let events_consumer = match nats_client.subscribe_call_events(&call_id, &user_id_clone).await {
+            let events_consumer = match nats_client
+                .subscribe_call_events(&call_id, &user_id_clone)
+                .await
+            {
                 Ok(c) => {
-                    info!("📡 stream_call_events: Events consumer created for call {} user {}", call_id, user_id_clone);
+                    info!(
+                        "📡 stream_call_events: Events consumer created for call {} user {}",
+                        call_id, user_id_clone
+                    );
                     Some(c)
                 }
                 Err(e) => {
@@ -542,7 +572,10 @@ impl CallService for CallServiceImpl {
             };
 
             // Subscribe to SFrame keys for this user
-            let sframe_consumer = match nats_client.subscribe_sframe_keys(&call_id, &user_id_clone).await {
+            let sframe_consumer = match nats_client
+                .subscribe_sframe_keys(&call_id, &user_id_clone)
+                .await
+            {
                 Ok(c) => Some(c),
                 Err(e) => {
                     warn!("Failed to subscribe to SFrame keys: {}", e);
@@ -617,13 +650,20 @@ impl CallService for CallServiceImpl {
                 if let Some(ref consumer) = events_consumer {
                     if let Ok(events) = nats_client.fetch_call_events(consumer, 10).await {
                         if !events.is_empty() {
-                            info!("📨 stream_call_events: Fetched {} call events for call {} user {}", 
-                                  events.len(), call_id, user_id_clone);
+                            info!(
+                                "📨 stream_call_events: Fetched {} call events for call {} user {}",
+                                events.len(),
+                                call_id,
+                                user_id_clone
+                            );
                         }
                         for event_envelope in events {
-                            info!("📨 stream_call_events: Processing {:?} event for call {}", 
-                                  event_envelope.event_type, call_id);
-                            if let Some(call_event) = convert_call_event(&call_id, &event_envelope) {
+                            info!(
+                                "📨 stream_call_events: Processing {:?} event for call {}",
+                                event_envelope.event_type, call_id
+                            );
+                            if let Some(call_event) = convert_call_event(&call_id, &event_envelope)
+                            {
                                 info!("📨 stream_call_events: Converted event, sending to client for call {}", call_id);
                                 if tx.send(Ok(call_event)).await.is_err() {
                                     warn!("📨 stream_call_events: Failed to send event - channel closed for call {}", call_id);
@@ -647,11 +687,13 @@ impl CallService for CallServiceImpl {
                                     seconds: key.timestamp,
                                     nanos: 0,
                                 }),
-                                event: Some(call_event::Event::SframeKeyRotated(SFrameKeyRotated {
-                                    from_user_id: key.from_user_id,
-                                    new_key_id: key.key_id,
-                                    encrypted_key_material: key.encrypted_key_material,
-                                })),
+                                event: Some(call_event::Event::SframeKeyRotated(
+                                    SFrameKeyRotated {
+                                        from_user_id: key.from_user_id,
+                                        new_key_id: key.key_id,
+                                        encrypted_key_material: key.encrypted_key_material,
+                                    },
+                                )),
                             };
                             if tx.send(Ok(event)).await.is_err() {
                                 break;
@@ -764,21 +806,21 @@ impl CallService for CallServiceImpl {
         };
 
         // Rotate key in session manager
-        let (new_key_id, _new_key) = match self.session_mgr.rotate_sframe_key(&req.call_id, &user_id)
-        {
-            Some(keys) => keys,
-            None => {
-                return Ok(Response::new(RotateSFrameKeyResponse {
-                    result: Some(rotate_s_frame_key_response::Result::Error(
-                        crate::generated::guardyn::common::ErrorResponse {
-                            code: 3,
-                            message: "Call not found".to_string(),
-                            details: std::collections::HashMap::new(),
-                        },
-                    )),
-                }));
-            }
-        };
+        let (new_key_id, _new_key) =
+            match self.session_mgr.rotate_sframe_key(&req.call_id, &user_id) {
+                Some(keys) => keys,
+                None => {
+                    return Ok(Response::new(RotateSFrameKeyResponse {
+                        result: Some(rotate_s_frame_key_response::Result::Error(
+                            crate::generated::guardyn::common::ErrorResponse {
+                                code: 3,
+                                message: "Call not found".to_string(),
+                                details: std::collections::HashMap::new(),
+                            },
+                        )),
+                    }));
+                }
+            };
 
         // Distribute new key packages to participants via NATS
         let mut distributed_count = 0;
@@ -821,7 +863,9 @@ impl CallService for CallServiceImpl {
         &self,
         _request: Request<HealthRequest>,
     ) -> Result<Response<crate::generated::guardyn::common::HealthStatus>, Status> {
-        use crate::generated::guardyn::common::{health_status::Status as HealthStatusEnum, Timestamp};
+        use crate::generated::guardyn::common::{
+            health_status::Status as HealthStatusEnum, Timestamp,
+        };
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -853,7 +897,11 @@ fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<Cal
         CallEventType::StateChanged => {
             let old_state = envelope.payload.get("old_state")?.as_i64()? as i32;
             let new_state = envelope.payload.get("new_state")?.as_i64()? as i32;
-            let end_reason = envelope.payload.get("end_reason").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            let end_reason = envelope
+                .payload
+                .get("end_reason")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0) as i32;
             Some(call_event::Event::StateChanged(CallStateChanged {
                 old_state,
                 new_state,
@@ -871,13 +919,18 @@ fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<Cal
                     has_video: false,
                     is_screen_sharing: false,
                     is_speaking: false,
-                    joined_at: timestamp.clone(),
+                    joined_at: timestamp,
                 }),
             }))
         }
         CallEventType::ParticipantLeft => {
             let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
-            let reason = envelope.payload.get("reason").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let reason = envelope
+                .payload
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             Some(call_event::Event::ParticipantLeft(ParticipantLeft {
                 user_id,
                 reason,
@@ -894,10 +947,9 @@ fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<Cal
         CallEventType::ParticipantVideoChanged => {
             let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
             let has_video = envelope.payload.get("has_video")?.as_bool()?;
-            Some(call_event::Event::ParticipantVideoChanged(ParticipantVideoChanged {
-                user_id,
-                has_video,
-            }))
+            Some(call_event::Event::ParticipantVideoChanged(
+                ParticipantVideoChanged { user_id, has_video },
+            ))
         }
         CallEventType::ParticipantScreenShareChanged => {
             let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
@@ -912,12 +964,18 @@ fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<Cal
         CallEventType::ParticipantSpeaking => {
             let user_id = envelope.payload.get("user_id")?.as_str()?.to_string();
             let is_speaking = envelope.payload.get("is_speaking")?.as_bool()?;
-            let audio_level = envelope.payload.get("audio_level").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
-            Some(call_event::Event::ParticipantSpeaking(ParticipantSpeaking {
-                user_id,
-                is_speaking,
-                audio_level,
-            }))
+            let audio_level = envelope
+                .payload
+                .get("audio_level")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0) as f32;
+            Some(call_event::Event::ParticipantSpeaking(
+                ParticipantSpeaking {
+                    user_id,
+                    is_speaking,
+                    audio_level,
+                },
+            ))
         }
         CallEventType::QualityChanged => {
             let quality = envelope.payload.get("quality")?.as_i64()? as i32;
@@ -926,28 +984,32 @@ fn convert_call_event(call_id: &str, envelope: &CallEventEnvelope) -> Option<Cal
             }))
         }
         // These are handled directly from their respective consumers
-        CallEventType::IceCandidateReceived |
-        CallEventType::SdpReceived |
-        CallEventType::SFrameKeyRotated => None,
+        CallEventType::IceCandidateReceived
+        | CallEventType::SdpReceived
+        | CallEventType::SFrameKeyRotated => None,
         // Call accepted - convert to state change
         CallEventType::CallAccepted => {
             Some(call_event::Event::StateChanged(CallStateChanged {
-                old_state: 2, // RINGING
-                new_state: 3, // CONNECTING
+                old_state: 2,  // RINGING
+                new_state: 3,  // CONNECTING
                 end_reason: 0, // No end reason
             }))
         }
         // Call rejected - convert to state change with declined reason
         CallEventType::CallRejected => {
             Some(call_event::Event::StateChanged(CallStateChanged {
-                old_state: 2, // RINGING
-                new_state: 6, // ENDED
+                old_state: 2,  // RINGING
+                new_state: 6,  // ENDED
                 end_reason: 2, // DECLINED
             }))
         }
         // Call ended - convert to state change
         CallEventType::CallEnded => {
-            let end_reason = envelope.payload.get("end_reason").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
+            let end_reason = envelope
+                .payload
+                .get("end_reason")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(1) as i32;
             Some(call_event::Event::StateChanged(CallStateChanged {
                 old_state: 4, // CONNECTED
                 new_state: 6, // ENDED

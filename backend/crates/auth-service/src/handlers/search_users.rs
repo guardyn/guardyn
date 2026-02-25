@@ -1,9 +1,9 @@
 /// Search users by username handler
 use crate::{
-    db::DatabaseClient, 
+    db::DatabaseClient,
     jwt,
-    proto::auth::*, 
-    proto::common::{error_response::ErrorCode, *}
+    proto::auth::*,
+    proto::common::{error_response::ErrorCode, *},
 };
 use tracing::{error, info, warn};
 
@@ -62,12 +62,22 @@ pub async fn handle_search_users(
         request.limit.min(MAX_SEARCH_LIMIT)
     };
 
-    info!("User {} searching users with query: '{}', limit: {}", current_user_id, query, limit);
+    info!(
+        "User {} searching users with query: '{}', limit: {}",
+        current_user_id, query, limit
+    );
 
     // Search for users by username prefix, excluding the current user
-    match db.search_users_by_username(query, limit, Some(&current_user_id)).await {
+    match db
+        .search_users_by_username(query, limit, Some(&current_user_id))
+        .await
+    {
         Ok(users) => {
-            info!("Found {} users matching query '{}' (excluding current user)", users.len(), query);
+            info!(
+                "Found {} users matching query '{}' (excluding current user)",
+                users.len(),
+                query
+            );
 
             let results = users
                 .into_iter()
@@ -84,9 +94,9 @@ pub async fn handle_search_users(
                 .collect();
 
             SearchUsersResponse {
-                result: Some(search_users_response::Result::Success(
-                    SearchUsersSuccess { users: results },
-                )),
+                result: Some(search_users_response::Result::Success(SearchUsersSuccess {
+                    users: results,
+                })),
             }
         }
         Err(e) => {

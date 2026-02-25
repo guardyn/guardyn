@@ -1,18 +1,16 @@
-use std::collections::HashMap;
 /// Handler for sending MLS-encrypted group messages
 ///
 /// Uses MLS (Messaging Layer Security) protocol for group encryption.
 /// Encrypts messages with the current group epoch state.
-
 use crate::db::DatabaseClient;
 use crate::mls_manager::MlsManager;
 use crate::nats::NatsClient;
+use crate::proto::common::ErrorResponse;
 use crate::proto::messaging::{
     send_group_message_response, SendGroupMessageRequest, SendGroupMessageResponse,
     SendGroupMessageSuccess,
 };
-use crate::proto::common::ErrorResponse;
-use guardyn_crypto::mls::MlsGroupManager;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tonic::{Response, Status};
 use tracing::{error, info};
@@ -25,18 +23,19 @@ pub async fn send_group_message_mls(
     // Validate JWT token and extract user_id (sender)
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (sender_user_id, sender_device_id, _sender_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(SendGroupMessageResponse {
-                result: Some(send_group_message_response::Result::Error(ErrorResponse {
-                    code: crate::proto::common::error_response::ErrorCode::Unauthorized as i32,
-                    message: "Invalid or expired access token".to_string(),
-                    details: HashMap::new(),
-                })),
-            }));
-        }
-    };
+    let (sender_user_id, sender_device_id, _sender_username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(SendGroupMessageResponse {
+                    result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                        code: crate::proto::common::error_response::ErrorCode::Unauthorized as i32,
+                        message: "Invalid or expired access token".to_string(),
+                        details: HashMap::new(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group ID
     if request.group_id.is_empty() {
@@ -60,7 +59,10 @@ pub async fn send_group_message_mls(
         }));
     }
 
-    info!("Sending MLS-encrypted group message to group: {}", request.group_id);
+    info!(
+        "Sending MLS-encrypted group message to group: {}",
+        request.group_id
+    );
 
     // Initialize MLS manager
     let mls_manager = MlsManager::new(db.clone());
@@ -85,19 +87,29 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to verify group".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
     }
 
     // Verify sender is a member
-    match mls_manager.is_member(&request.group_id, &sender_user_id, &sender_device_id).await {
+    match mls_manager
+        .is_member(&request.group_id, &sender_user_id, &sender_device_id)
+        .await
+    {
         Ok(true) => {
             // Sender is a member, continue
         }
         Ok(false) => {
-            error!("User {} is not a member of group {}", sender_user_id, request.group_id);
+            error!(
+                "User {} is not a member of group {}",
+                sender_user_id, request.group_id
+            );
             return Ok(Response::new(SendGroupMessageResponse {
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::Unauthorized as i32,
@@ -112,7 +124,11 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to verify membership".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -127,7 +143,11 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to load group state".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -137,19 +157,24 @@ pub async fn send_group_message_mls(
     // Note: This requires the sender's credential bundle
     // For now, we'll use a test credential (production should fetch from secure storage)
     let sender_identity = format!("{}:{}", sender_user_id, sender_device_id);
-    let credential_bundle = match guardyn_crypto::mls::create_test_credential(sender_identity.as_bytes()) {
-        Ok(cred) => cred,
-        Err(e) => {
-            error!("Failed to create credential: {}", e);
-            return Ok(Response::new(SendGroupMessageResponse {
-                result: Some(send_group_message_response::Result::Error(ErrorResponse {
-                    code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
-                    message: "Failed to initialize encryption".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
-                })),
-            }));
-        }
-    };
+    let credential_bundle =
+        match guardyn_crypto::mls::create_test_credential(sender_identity.as_bytes()) {
+            Ok(cred) => cred,
+            Err(e) => {
+                error!("Failed to create credential: {}", e);
+                return Ok(Response::new(SendGroupMessageResponse {
+                    result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                        code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
+                        message: "Failed to initialize encryption".to_string(),
+                        details: {
+                            let mut map = HashMap::new();
+                            map.insert("error".to_string(), e.to_string());
+                            map
+                        },
+                    })),
+                }));
+            }
+        };
 
     // TODO: Deserialize group state and reconstruct MlsGroupManager
     // This is a limitation of the current OpenMLS API - it doesn't provide
@@ -169,7 +194,10 @@ pub async fn send_group_message_mls(
     let message_id = uuid::Uuid::new_v1(uuid_timestamp, &[1, 2, 3, 4, 5, 6]).to_string();
     let server_timestamp_millis = chrono::Utc::now().timestamp_millis();
 
-    info!("Generated message_id={}, MLS epoch={}", message_id, group_state.epoch);
+    info!(
+        "Generated message_id={}, MLS epoch={}",
+        message_id, group_state.epoch
+    );
 
     // Prepare metadata
     let mut metadata = std::collections::HashMap::new();
@@ -199,7 +227,11 @@ pub async fn send_group_message_mls(
             result: Some(send_group_message_response::Result::Error(ErrorResponse {
                 code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                 message: "Failed to store message".to_string(),
-                details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                details: {
+                    let mut map = HashMap::new();
+                    map.insert("error".to_string(), e.to_string());
+                    map
+                },
             })),
         }));
     }
@@ -213,7 +245,11 @@ pub async fn send_group_message_mls(
                 result: Some(send_group_message_response::Result::Error(ErrorResponse {
                     code: crate::proto::common::error_response::ErrorCode::InternalError as i32,
                     message: "Failed to fetch group members".to_string(),
-                    details: { let mut map = HashMap::new(); map.insert("error".to_string(), e.to_string()); map },
+                    details: {
+                        let mut map = HashMap::new();
+                        map.insert("error".to_string(), e.to_string());
+                        map
+                    },
                 })),
             }));
         }
@@ -241,7 +277,10 @@ pub async fn send_group_message_mls(
         let payload = serde_json::to_vec(&message_json).unwrap();
 
         if let Err(e) = nats.publish(&subject, &payload).await {
-            error!("Failed to publish to NATS for member {}: {}", member.user_id, e);
+            error!(
+                "Failed to publish to NATS for member {}: {}",
+                member.user_id, e
+            );
             // Continue with other members even if one fails
         } else {
             info!("Published group message to {}", subject);

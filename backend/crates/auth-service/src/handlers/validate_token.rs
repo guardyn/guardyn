@@ -1,15 +1,14 @@
-/// Token validation handler - internal use by other services
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
-use tonic::{Request, Response, Status};
 use crate::jwt;
+/// Token validation handler - internal use by other services
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
+use tonic::{Request, Response, Status};
 
 pub async fn handle(
     service: &AuthServiceImpl,
     request: Request<ValidateTokenRequest>,
 ) -> Result<Response<ValidateTokenResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match jwt::validate_token(&req.access_token, &service.jwt_secret) {
         Ok(c) => c,
@@ -24,7 +23,7 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Check if it's an access token
     if claims.token_type != Some("access".to_string()) {
         let error = ErrorResponse {
@@ -36,7 +35,7 @@ pub async fn handle(
             result: Some(validate_token_response::Result::Error(error)),
         }));
     }
-    
+
     // Return user info
     let success = ValidateTokenSuccess {
         user_id: claims.sub,
@@ -47,7 +46,7 @@ pub async fn handle(
         }),
         permissions: claims.permissions,
     };
-    
+
     Ok(Response::new(ValidateTokenResponse {
         result: Some(validate_token_response::Result::Success(success)),
     }))

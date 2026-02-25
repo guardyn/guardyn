@@ -1,7 +1,6 @@
 /// Get Bulk Status Handler
 ///
 /// Gets multiple users' presence statuses in a single request
-
 use crate::db::DatabaseClient;
 use crate::jwt;
 use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
@@ -69,14 +68,14 @@ pub async fn handle_get_bulk_status(
 
     // Track which user IDs we found
     let mut found_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
-    
+
     // Convert to proto UserPresence
     let mut result_presences = Vec::with_capacity(request.user_ids.len());
 
     // First, add presences we found
     for presence in presences {
         found_ids.insert(presence.user_id.clone());
-        
+
         // Handle INVISIBLE status - appear offline to others
         let (status, custom_status) = if presence.status == 4 {
             (0, String::new())

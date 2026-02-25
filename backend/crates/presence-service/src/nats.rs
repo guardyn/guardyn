@@ -1,7 +1,6 @@
 /// NATS client for real-time presence updates
 ///
 /// Publishes presence updates to NATS JetStream for real-time delivery
-
 use anyhow::{Context, Result};
 use async_nats::jetstream::{self, Context as JetStreamContext};
 use bytes::Bytes;
@@ -182,7 +181,10 @@ mod tests {
         // Deserialize back
         let deserialized: TypingEvent = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.user_id, event.user_id);
-        assert_eq!(deserialized.conversation_user_id, event.conversation_user_id);
+        assert_eq!(
+            deserialized.conversation_user_id,
+            event.conversation_user_id
+        );
         assert_eq!(deserialized.is_typing, event.is_typing);
     }
 
@@ -211,7 +213,7 @@ mod tests {
     #[test]
     fn test_presence_event_all_statuses() {
         let now = chrono::Utc::now().timestamp_millis();
-        
+
         for status in 0..=4 {
             let event = PresenceEvent {
                 user_id: format!("user-{}", status),
@@ -220,7 +222,7 @@ mod tests {
                 last_seen: now,
                 updated_at: now,
             };
-            
+
             let json = serde_json::to_string(&event).unwrap();
             let deserialized: PresenceEvent = serde_json::from_str(&json).unwrap();
             assert_eq!(deserialized.status, status);

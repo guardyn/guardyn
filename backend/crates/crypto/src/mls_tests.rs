@@ -6,11 +6,10 @@
 /// - Message encryption/decryption
 /// - Epoch advancement
 /// - Multi-member scenarios
-
 #[cfg(test)]
 mod mls_integration_tests {
-    use crate::mls::{MlsGroupManager, MlsKeyPackage};
-    use crate::{CryptoError, Result};
+    use crate::mls::MlsGroupManager;
+    use crate::Result;
 
     /// Helper to create a test keypair
     fn create_test_keypair() -> Result<openmls_basic_credential::SignatureKeyPair> {
@@ -83,7 +82,9 @@ mod mls_integration_tests {
 
         // Add Bob
         let bob_key_package = MlsGroupManager::generate_key_package(b"bob:device1").unwrap();
-        let _ = alice_group.add_member(&bob_key_package.key_package_bytes).unwrap();
+        let _ = alice_group
+            .add_member(&bob_key_package.key_package_bytes)
+            .unwrap();
 
         assert_eq!(alice_group.epoch(), 1);
         assert_eq!(alice_group.members().len(), 2);
@@ -118,7 +119,7 @@ mod mls_integration_tests {
 
         // Encrypt a message
         let plaintext = b"Hello, MLS group!";
-        let aad = b"metadata";
+        let _aad = b"metadata";
 
         let ciphertext = alice_group.encrypt_message(plaintext);
         assert!(ciphertext.is_ok());
@@ -163,7 +164,9 @@ mod mls_integration_tests {
 
         // Add Bob
         let bob_key_package = MlsGroupManager::generate_key_package(b"bob:device1").unwrap();
-        let _ = alice_group.add_member(&bob_key_package.key_package_bytes).unwrap();
+        let _ = alice_group
+            .add_member(&bob_key_package.key_package_bytes)
+            .unwrap();
 
         // Alice encrypts a message after adding Bob
         let plaintext = b"Welcome, Bob!";
@@ -191,7 +194,9 @@ mod mls_integration_tests {
 
         // Add Bob
         let bob_key_package = MlsGroupManager::generate_key_package(b"bob:device1").unwrap();
-        let _ = alice_group.add_member(&bob_key_package.key_package_bytes).unwrap();
+        let _ = alice_group
+            .add_member(&bob_key_package.key_package_bytes)
+            .unwrap();
 
         let members = alice_group.members();
         assert_eq!(members.len(), 2);
@@ -213,7 +218,9 @@ mod mls_integration_tests {
         for i in 1..=5 {
             let identity = format!("user{}:device1", i);
             let key_package = MlsGroupManager::generate_key_package(identity.as_bytes()).unwrap();
-            let _ = alice_group.add_member(&key_package.key_package_bytes).unwrap();
+            let _ = alice_group
+                .add_member(&key_package.key_package_bytes)
+                .unwrap();
             assert_eq!(alice_group.epoch(), i);
         }
     }
@@ -300,7 +307,6 @@ mod mls_integration_tests {
 
 #[cfg(test)]
 mod mls_error_handling_tests {
-    use super::*;
     use crate::mls::MlsGroupManager;
 
     #[test]

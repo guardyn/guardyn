@@ -5,8 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. Local build from workspace root: proto (relative to CARGO_MANIFEST_DIR)
     // 3. Docker build: ./proto (relative to workspace root)
 
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR not set");
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let workspace_root = std::path::Path::new(&manifest_dir)
         .parent() // crates/
         .and_then(|p| p.parent()) // backend/
@@ -14,8 +13,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Try multiple potential proto locations
     let proto_paths = [
-        workspace_root.join("proto"),           // backend/proto/ (most common)
-        std::path::PathBuf::from("./proto"),    // Docker: /app/proto/
+        workspace_root.join("proto"),            // backend/proto/ (most common)
+        std::path::PathBuf::from("./proto"),     // Docker: /app/proto/
         std::path::PathBuf::from("../../proto"), // Fallback
     ];
 

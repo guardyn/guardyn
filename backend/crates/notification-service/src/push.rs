@@ -3,12 +3,11 @@
 //! Handles sending push notifications via FCM, APNs, and WebPush.
 
 use anyhow::{Context, Result};
-use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 use web_push::{
     ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder,
-    WebPushMessageBuilder, WebPushClient as _,
+    WebPushClient as _, WebPushMessageBuilder,
 };
 
 use crate::ApnsConfig;
@@ -54,6 +53,7 @@ struct FcmNotification {
 
 /// FCM response
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct FcmResponse {
     success: i32,
     failure: i32,
@@ -61,6 +61,7 @@ struct FcmResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct FcmResult {
     message_id: Option<String>,
     error: Option<String>,
@@ -82,6 +83,7 @@ pub struct PushPayload {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum PushPriority {
     Normal,
     High,
@@ -183,11 +185,9 @@ impl PushService {
         let content = notification_json.to_string();
 
         // Build VAPID signature
-        let mut sig_builder = VapidSignatureBuilder::from_base64(
-            &config.vapid_private_key,
-            &subscription_info,
-        )
-        .context("Failed to build VAPID signature")?;
+        let mut sig_builder =
+            VapidSignatureBuilder::from_base64(&config.vapid_private_key, &subscription_info)
+                .context("Failed to build VAPID signature")?;
 
         sig_builder.add_claim("sub", format!("mailto:{}", config.contact_email));
         let vapid_signature = sig_builder

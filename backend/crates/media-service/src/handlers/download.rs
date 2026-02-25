@@ -6,8 +6,8 @@ use crate::{
     db::DatabaseClient,
     jwt,
     proto::media::{
-        download_media_response::Content,
-        DownloadMediaRequest, DownloadMediaResponse, MediaMetadata, UploadStatus,
+        download_media_response::Content, DownloadMediaRequest, DownloadMediaResponse,
+        MediaMetadata, UploadStatus,
     },
     storage::StorageClient,
 };
@@ -46,7 +46,9 @@ pub async fn handle(
             requester = %user_id,
             "Access denied to media"
         );
-        return Err(Status::permission_denied("Not authorized to access this media"));
+        return Err(Status::permission_denied(
+            "Not authorized to access this media",
+        ));
     }
 
     tracing::info!(
@@ -122,5 +124,9 @@ pub async fn handle(
         );
     };
 
-    Ok(Response::new(Box::pin(output_stream) as BoxStream<'static, Result<DownloadMediaResponse, Status>>))
+    Ok(Response::new(Box::pin(output_stream)
+        as BoxStream<
+            'static,
+            Result<DownloadMediaResponse, Status>,
+        >))
 }

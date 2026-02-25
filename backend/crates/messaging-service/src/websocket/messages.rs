@@ -2,7 +2,6 @@
 ///
 /// Defines the JSON message format for WebSocket communication.
 /// Matches the protocol used by the Flutter client.
-
 use serde::{Deserialize, Serialize};
 
 /// Message types sent over WebSocket

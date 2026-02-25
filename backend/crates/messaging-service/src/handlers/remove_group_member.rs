@@ -1,11 +1,11 @@
 /// Handler for removing members from group chats
 use crate::db::DatabaseClient;
 use crate::mls_manager::MlsManager;
+use crate::proto::common::ErrorResponse;
 use crate::proto::messaging::{
     remove_group_member_response, RemoveGroupMemberRequest, RemoveGroupMemberResponse,
     RemoveGroupMemberSuccess,
 };
-use crate::proto::common::ErrorResponse;
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -15,19 +15,20 @@ pub async fn remove_group_member(
 ) -> Result<Response<RemoveGroupMemberResponse>, Status> {
     // Validate JWT token and extract user_id (requester)
     let jwt_secret = crate::config::get_jwt_secret();
-    
-    let (requester_user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(RemoveGroupMemberResponse {
-                result: Some(remove_group_member_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+
+    let (requester_user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(RemoveGroupMemberResponse {
+                    result: Some(remove_group_member_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group ID
     if request.group_id.is_empty() {
@@ -134,7 +135,10 @@ pub async fn remove_group_member(
                 }));
             }
         }
-        Some(member) if member.role == crate::models::GroupRole::Owner || member.role == crate::models::GroupRole::Admin => {
+        Some(member)
+            if member.role == crate::models::GroupRole::Owner
+                || member.role == crate::models::GroupRole::Admin =>
+        {
             // Owners and admins can remove members
             // But check that target is not the owner
             let target_member = members.iter().find(|m| m.user_id == request.member_user_id);
@@ -174,7 +178,10 @@ pub async fn remove_group_member(
     );
 
     // Remove member from group in TiKV
-    if let Err(e) = db.remove_group_member(&request.group_id, &request.member_user_id).await {
+    if let Err(e) = db
+        .remove_group_member(&request.group_id, &request.member_user_id)
+        .await
+    {
         tracing::error!("Failed to remove group member: {}", e);
         return Ok(Response::new(RemoveGroupMemberResponse {
             result: Some(remove_group_member_response::Result::Error(ErrorResponse {
@@ -188,11 +195,14 @@ pub async fn remove_group_member(
     // MLS-002: Update MLS group state in TiKV
     // Remove member from MLS members list for this group
     let mls_manager = MlsManager::new(db.clone());
-    if let Err(e) = mls_manager.remove_member_from_list(
-        &request.group_id,
-        &request.member_user_id,
-        "primary", // Default device
-    ).await {
+    if let Err(e) = mls_manager
+        .remove_member_from_list(
+            &request.group_id,
+            &request.member_user_id,
+            "primary", // Default device
+        )
+        .await
+    {
         tracing::warn!(
             "Failed to update MLS member list for group {}: {}",
             request.group_id,

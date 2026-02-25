@@ -1,3 +1,11 @@
+// Allow common development-time warnings for code under active development
+#![allow(unused_variables, unused_mut, dead_code, unused_imports)]
+
+mod auth_client;
+mod config;
+mod crypto;
+mod db;
+mod event_consumer;
 /// Messaging Service
 ///
 /// Handles:
@@ -7,25 +15,20 @@
 /// - Delivery guarantees
 /// - Group chat logic
 /// - WebSocket real-time messaging
-
 mod handlers;
-mod models;
-mod db;
-mod nats;
 mod jwt;
-mod crypto;
 mod mls_manager;
-mod auth_client;
-mod config;
+mod models;
+mod nats;
 mod websocket;
-mod event_consumer;
 
-use guardyn_common::{config::ServiceConfig, observability};
-use tonic::{transport::Server, Request, Response, Status};
 use anyhow::Result;
+use guardyn_common::{config::ServiceConfig, observability};
 use std::sync::Arc;
+use tonic::{transport::Server, Request, Response, Status};
 
 // Import generated protobuf code
+#[allow(clippy::large_enum_variant, dead_code)]
 pub mod proto {
     pub mod common {
         tonic::include_proto!("guardyn.common");
@@ -38,52 +41,85 @@ pub mod proto {
     }
 }
 
+use proto::common::HealthStatus;
 use proto::messaging::{
     messaging_service_server::{MessagingService, MessagingServiceServer},
-    SendMessageRequest, SendMessageResponse,
-    ReceiveMessagesRequest, Message,
-    GetMessagesRequest, GetMessagesResponse,
-    GetConversationsRequest, GetConversationsResponse,
-    MarkAsReadRequest, MarkAsReadResponse,
-    DeleteMessageRequest, DeleteMessageResponse,
-    ClearChatRequest, ClearChatResponse,
-    TypingIndicatorRequest, TypingIndicatorResponse,
-    CreateGroupRequest, CreateGroupResponse,
-    AddGroupMemberRequest, AddGroupMemberResponse,
-    RemoveGroupMemberRequest, RemoveGroupMemberResponse,
-    ChangeMemberRoleRequest, ChangeMemberRoleResponse,
-    SendGroupMessageRequest, SendGroupMessageResponse,
-    GetGroupMessagesRequest, GetGroupMessagesResponse,
-    GetGroupsRequest, GetGroupsResponse,
-    GetGroupByIdRequest, GetGroupByIdResponse,
-    UpdateGroupRequest, UpdateGroupResponse,
-    LeaveGroupRequest, LeaveGroupResponse,
-    DeleteGroupRequest, DeleteGroupResponse,
-    HealthRequest,
+    AddGroupMemberRequest,
+    AddGroupMemberResponse,
     // Phase 2: Reactions
-    AddReactionRequest, AddReactionResponse,
-    RemoveReactionRequest, RemoveReactionResponse,
-    GetReactionsRequest, GetReactionsResponse,
-    // Phase 2: Read Receipts
-    SendReadReceiptRequest, SendReadReceiptResponse,
-    GetReadReceiptsRequest, GetReadReceiptsResponse,
-    // Phase 2: Forward/Reply
-    ForwardMessageRequest, ForwardMessageResponse,
-    // Phase 2: Edit
-    EditMessageRequest, EditMessageResponse,
-    // Phase 2: Search
-    SearchMessagesRequest, SearchMessagesResponse,
-    // Phase 2: Disappearing Messages
-    SetDisappearingMessagesRequest, SetDisappearingMessagesResponse,
-    GetDisappearingConfigRequest, GetDisappearingConfigResponse,
+    AddReactionRequest,
+    AddReactionResponse,
     // Phase 3: Block User
-    BlockUserRequest, BlockUserResponse,
-    UnblockUserRequest, UnblockUserResponse,
-    GetBlockedUsersRequest, GetBlockedUsersResponse,
+    BlockUserRequest,
+    BlockUserResponse,
+    ChangeMemberRoleRequest,
+    ChangeMemberRoleResponse,
+    ClearChatRequest,
+    ClearChatResponse,
+    CreateGroupRequest,
+    CreateGroupResponse,
     // Phase 3: Delete Conversation
-    DeleteConversationRequest, DeleteConversationResponse,
+    DeleteConversationRequest,
+    DeleteConversationResponse,
+    DeleteGroupRequest,
+    DeleteGroupResponse,
+    DeleteMessageRequest,
+    DeleteMessageResponse,
+    // Phase 2: Edit
+    EditMessageRequest,
+    EditMessageResponse,
+    // Phase 2: Forward/Reply
+    ForwardMessageRequest,
+    ForwardMessageResponse,
+    GetBlockedUsersRequest,
+    GetBlockedUsersResponse,
+    GetConversationsRequest,
+    GetConversationsResponse,
+    GetDisappearingConfigRequest,
+    GetDisappearingConfigResponse,
+    GetGroupByIdRequest,
+    GetGroupByIdResponse,
+    GetGroupMessagesRequest,
+    GetGroupMessagesResponse,
+    GetGroupsRequest,
+    GetGroupsResponse,
+    GetMessagesRequest,
+    GetMessagesResponse,
+    GetReactionsRequest,
+    GetReactionsResponse,
+    GetReadReceiptsRequest,
+    GetReadReceiptsResponse,
+    HealthRequest,
+    LeaveGroupRequest,
+    LeaveGroupResponse,
+    MarkAsReadRequest,
+    MarkAsReadResponse,
+    Message,
+    ReceiveMessagesRequest,
+    RemoveGroupMemberRequest,
+    RemoveGroupMemberResponse,
+    RemoveReactionRequest,
+    RemoveReactionResponse,
+    // Phase 2: Search
+    SearchMessagesRequest,
+    SearchMessagesResponse,
+    SendGroupMessageRequest,
+    SendGroupMessageResponse,
+    SendMessageRequest,
+    SendMessageResponse,
+    // Phase 2: Read Receipts
+    SendReadReceiptRequest,
+    SendReadReceiptResponse,
+    // Phase 2: Disappearing Messages
+    SetDisappearingMessagesRequest,
+    SetDisappearingMessagesResponse,
+    TypingIndicatorRequest,
+    TypingIndicatorResponse,
+    UnblockUserRequest,
+    UnblockUserResponse,
+    UpdateGroupRequest,
+    UpdateGroupResponse,
 };
-use proto::common::HealthStatus;
 
 pub struct MessagingServiceImpl {
     db: Arc<db::DatabaseClient>,
@@ -100,7 +136,8 @@ impl MessagingService for MessagingServiceImpl {
         // Use E2EE configuration from service config
         if self.config.e2ee.enabled {
             tracing::info!("E2EE enabled, using send_message_e2ee handler");
-            handlers::send_message_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
+            handlers::send_message_e2ee(request.into_inner(), self.db.clone(), self.nats.clone())
+                .await
         } else {
             tracing::debug!("E2EE disabled, using legacy send_message handler");
             handlers::send_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
@@ -116,10 +153,16 @@ impl MessagingService for MessagingServiceImpl {
         // Use E2EE configuration from service config
         if self.config.e2ee.enabled {
             tracing::info!("E2EE enabled, using receive_messages_e2ee handler");
-            handlers::receive_messages_e2ee(request.into_inner(), self.db.clone(), self.nats.clone()).await
+            handlers::receive_messages_e2ee(
+                request.into_inner(),
+                self.db.clone(),
+                self.nats.clone(),
+            )
+            .await
         } else {
             tracing::debug!("E2EE disabled, using legacy receive_messages handler");
-            handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone()).await
+            handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone())
+                .await
         }
     }
 
@@ -191,7 +234,10 @@ impl MessagingService for MessagingServiceImpl {
         &self,
         request: Request<SendGroupMessageRequest>,
     ) -> Result<Response<SendGroupMessageResponse>, Status> {
-        tracing::info!("MAIN: Received SendGroupMessageRequest for group_id={}", request.get_ref().group_id);
+        tracing::info!(
+            "MAIN: Received SendGroupMessageRequest for group_id={}",
+            request.get_ref().group_id
+        );
         handlers::send_group_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
     }
 
@@ -451,7 +497,11 @@ async fn main() -> Result<()> {
         otlp_endpoint,
     );
 
-    tracing::info!("Starting messaging service on {}:{}", config.host, config.port);
+    tracing::info!(
+        "Starting messaging service on {}:{}",
+        config.host,
+        config.port
+    );
 
     // Load messaging-specific configuration (feature flags, etc.)
     let messaging_config = config::MessagingConfig::from_env();
@@ -480,11 +530,12 @@ async fn main() -> Result<()> {
     // Start event consumer for cross-service events (user deletion, etc.)
     let event_consumer_enabled = std::env::var("ENABLE_EVENT_CONSUMER")
         .unwrap_or_else(|_| "true".to_string())
-        .to_lowercase() == "true";
+        .to_lowercase()
+        == "true";
 
     if event_consumer_enabled {
-        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
-        
+        let (_shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel::<()>(1);
+
         match event_consumer::EventConsumer::new(db.clone(), shutdown_rx) {
             Ok(consumer) => {
                 tracing::info!("Starting event consumer for cross-service events");
@@ -515,7 +566,8 @@ async fn main() -> Result<()> {
     // Start WebSocket server if enabled
     let ws_enabled = std::env::var("ENABLE_WEBSOCKET")
         .unwrap_or_else(|_| "true".to_string())
-        .to_lowercase() == "true";
+        .to_lowercase()
+        == "true";
 
     if ws_enabled {
         let ws_port: u16 = std::env::var("WEBSOCKET_PORT")

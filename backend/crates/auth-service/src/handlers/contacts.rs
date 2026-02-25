@@ -19,9 +19,7 @@ fn db_contact_to_proto(
     Contact {
         contact_id: db_contact.contact_id.clone(),
         user_id: db_contact.contact_user_id.clone(),
-        username: user_profile
-            .map(|p| p.username.clone())
-            .unwrap_or_default(),
+        username: user_profile.map(|p| p.username.clone()).unwrap_or_default(),
         display_name: user_profile
             .and_then(|p| p.display_name.clone())
             .unwrap_or_default(),
@@ -129,10 +127,7 @@ pub async fn handle_add_contact(
 
     match db.add_contact(&db_contact).await {
         Ok(()) => {
-            info!(
-                "User {} added contact {}",
-                owner_user_id, contact_user_id
-            );
+            info!("User {} added contact {}", owner_user_id, contact_user_id);
 
             AddContactResponse {
                 result: Some(add_contact_response::Result::Contact(db_contact_to_proto(
@@ -205,10 +200,7 @@ pub async fn handle_remove_contact(
 
     match db.remove_contact(&owner_user_id, contact_user_id).await {
         Ok(()) => {
-            info!(
-                "User {} removed contact {}",
-                owner_user_id, contact_user_id
-            );
+            info!("User {} removed contact {}", owner_user_id, contact_user_id);
 
             RemoveContactResponse {
                 result: Some(remove_contact_response::Result::Success(
@@ -292,7 +284,11 @@ pub async fn handle_list_contacts(
             // Enrich contacts with user profiles
             let mut proto_contacts = Vec::new();
             for contact in &contacts {
-                let profile = db.get_user_by_id(&contact.contact_user_id).await.ok().flatten();
+                let profile = db
+                    .get_user_by_id(&contact.contact_user_id)
+                    .await
+                    .ok()
+                    .flatten();
                 proto_contacts.push(db_contact_to_proto(contact, profile.as_ref()));
             }
 
@@ -449,10 +445,7 @@ pub async fn handle_update_contact(
         .await
     {
         Ok(contact) => {
-            info!(
-                "User {} updated contact {}",
-                owner_user_id, contact_user_id
-            );
+            info!("User {} updated contact {}", owner_user_id, contact_user_id);
 
             // Get user profile for enrichment
             let profile = db.get_user_by_id(contact_user_id).await.ok().flatten();

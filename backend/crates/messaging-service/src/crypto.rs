@@ -1,26 +1,23 @@
 /// E2EE Crypto Integration Module
 ///
 /// Integrates X3DH and Double Ratchet protocols for secure messaging
-
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use guardyn_crypto::{
-    x3dh::{X3DHProtocol, X3DHKeyBundle, X3DHKeyMaterial, X3DHPrekeyMessage, IdentityKeyPair},
     double_ratchet::DoubleRatchet,
+    x3dh::{IdentityKeyPair, X3DHKeyBundle, X3DHKeyMaterial, X3DHPrekeyMessage, X3DHProtocol},
     KeyStorage, KeyType,
 };
 use std::sync::Arc;
 
 // Import generated proto types
-use crate::proto::auth::{
-    auth_service_client::AuthServiceClient,
-    GetKeyBundleRequest,
-};
+use crate::proto::auth::{auth_service_client::AuthServiceClient, GetKeyBundleRequest};
 
 /// Crypto manager for E2EE operations
 ///
 /// Handles key storage and session management for end-to-end encryption.
 /// In production, keys are loaded from secure storage; in development,
 /// ephemeral keys may be generated.
+#[allow(dead_code)]
 pub struct CryptoManager {
     auth_service_url: String,
     /// Secure key storage for identity and session keys
@@ -91,12 +88,14 @@ impl CryptoManager {
                         .context("Failed to generate identity key pair")?;
 
                     // Store the private key
-                    storage.store_key_simple(
-                        &key_id,
-                        &identity.private_key_bytes(),
-                        KeyType::Identity,
-                        self.local_device_id.clone(),
-                    ).map_err(|e| anyhow!("Failed to store identity key: {}", e))?;
+                    storage
+                        .store_key_simple(
+                            &key_id,
+                            &identity.private_key_bytes(),
+                            KeyType::Identity,
+                            self.local_device_id.clone(),
+                        )
+                        .map_err(|e| anyhow!("Failed to store identity key: {}", e))?;
 
                     tracing::info!("Generated and stored new identity key for {}", key_id);
                     Ok(identity)
@@ -105,8 +104,7 @@ impl CryptoManager {
         } else {
             // Development mode: generate ephemeral key
             tracing::warn!("No key storage configured, generating ephemeral identity key");
-            IdentityKeyPair::generate()
-                .context("Failed to generate identity key pair")
+            IdentityKeyPair::generate().context("Failed to generate identity key pair")
         }
     }
 
@@ -126,7 +124,9 @@ impl CryptoManager {
         _local_identity_key: &[u8], // Deprecated: now loaded from storage
     ) -> Result<(DoubleRatchet, Vec<u8>)> {
         // Fetch remote key bundle from auth-service
-        let key_bundle = self.fetch_key_bundle(remote_user_id, remote_device_id).await
+        let key_bundle = self
+            .fetch_key_bundle(remote_user_id, remote_device_id)
+            .await
             .context("Failed to fetch recipient's key bundle")?;
 
         // Parse key bundle into X3DH types
@@ -141,12 +141,13 @@ impl CryptoManager {
             &local_identity,
             &x3dh_bundle,
             false, // Don't use one-time keys for MVP
-        ).context("X3DH key agreement failed")?;
+        )
+        .context("X3DH key agreement failed")?;
 
         // Initialize Double Ratchet with shared secret
         let remote_signed_prekey_pub = x25519_dalek::PublicKey::from(
             <[u8; 32]>::try_from(key_bundle.signed_pre_key.as_slice())
-                .context("Invalid signed pre-key length")?
+                .context("Invalid signed pre-key length")?,
         );
 
         let ratchet = DoubleRatchet::init_alice(&shared_secret, remote_signed_prekey_pub)
@@ -171,19 +172,22 @@ impl CryptoManager {
             device_id: device_id.to_string(),
         });
 
-        let response = client.get_key_bundle(request)
+        let response = client
+            .get_key_bundle(request)
             .await
             .context("GetKeyBundle RPC failed")?
             .into_inner();
 
         match response.result {
-            Some(crate::proto::auth::get_key_bundle_response::Result::Success(success)) => {
-                success.key_bundle.ok_or_else(|| anyhow!("Key bundle missing in response"))
-            }
-            Some(crate::proto::auth::get_key_bundle_response::Result::Error(err)) => {
-                Err(anyhow!("Auth service error: {} (code: {:?})", err.message, err.code))
-            }
-            None => Err(anyhow!("Empty response from auth-service"))
+            Some(crate::proto::auth::get_key_bundle_response::Result::Success(success)) => success
+                .key_bundle
+                .ok_or_else(|| anyhow!("Key bundle missing in response")),
+            Some(crate::proto::auth::get_key_bundle_response::Result::Error(err)) => Err(anyhow!(
+                "Auth service error: {} (code: {:?})",
+                err.message,
+                err.code
+            )),
+            None => Err(anyhow!("Empty response from auth-service")),
         }
     }
 
@@ -195,31 +199,33 @@ impl CryptoManager {
         // Parse identity key (Ed25519)
         let identity_key = VerifyingKey::from_bytes(
             <&[u8; 32]>::try_from(bundle.identity_key.as_slice())
-                .context("Invalid identity key length")?
-        ).context("Invalid Ed25519 identity key")?;
+                .context("Invalid identity key length")?,
+        )
+        .context("Invalid Ed25519 identity key")?;
 
         // Parse signed pre-key (X25519)
         let signed_pre_key = X25519PublicKey::from(
             <[u8; 32]>::try_from(bundle.signed_pre_key.as_slice())
-                .context("Invalid signed pre-key length")?
+                .context("Invalid signed pre-key length")?,
         );
 
         // Parse signature
         let signature = ed25519_dalek::Signature::from_bytes(
             <&[u8; 64]>::try_from(bundle.signed_pre_key_signature.as_slice())
-                .context("Invalid signature length")?
+                .context("Invalid signature length")?,
         );
 
         // Convert one-time pre-keys to the format expected by crypto crate
-        let one_time_pre_keys: Vec<guardyn_crypto::x3dh::OneTimePreKeyPublic> = bundle.one_time_pre_keys
+        let one_time_pre_keys: Vec<guardyn_crypto::x3dh::OneTimePreKeyPublic> = bundle
+            .one_time_pre_keys
             .iter()
             .enumerate()
-            .map(|(idx, key_bytes)| {
-                guardyn_crypto::x3dh::OneTimePreKeyPublic {
+            .map(
+                |(idx, key_bytes)| guardyn_crypto::x3dh::OneTimePreKeyPublic {
                     key_id: idx as u32,
                     public_key: key_bytes.clone(),
-                }
-            })
+                },
+            )
             .collect();
 
         Ok(X3DHKeyBundle {
@@ -273,7 +279,8 @@ impl CryptoManager {
             &prekey_msg.sender_identity_key,
             &prekey_msg.ephemeral_key,
             prekey_msg.used_one_time_key_id,
-        ).map_err(|e| anyhow!("X3DH responder key agreement failed: {}", e))?;
+        )
+        .map_err(|e| anyhow!("X3DH responder key agreement failed: {}", e))?;
 
         tracing::debug!(
             "X3DH responder completed, shared secret derived ({} bytes)",
@@ -310,7 +317,8 @@ impl CryptoManager {
         plaintext: &[u8],
         associated_data: &[u8],
     ) -> Result<Vec<u8>> {
-        let encrypted_msg = ratchet.encrypt(plaintext, associated_data)
+        let encrypted_msg = ratchet
+            .encrypt(plaintext, associated_data)
             .context("Failed to encrypt message with Double Ratchet")?;
 
         Ok(encrypted_msg.to_bytes())
@@ -327,7 +335,8 @@ impl CryptoManager {
         let encrypted_msg = EncryptedMessage::from_bytes(ciphertext)
             .context("Failed to parse encrypted message")?;
 
-        let plaintext = ratchet.decrypt(&encrypted_msg, associated_data)
+        let plaintext = ratchet
+            .decrypt(&encrypted_msg, associated_data)
             .context("Failed to decrypt message with Double Ratchet")?;
 
         Ok(plaintext)
@@ -335,6 +344,7 @@ impl CryptoManager {
 }
 
 /// Session manager for Double Ratchet sessions
+#[allow(dead_code)]
 pub struct SessionManager {
     db: Arc<crate::db::DatabaseClient>,
     crypto: CryptoManager,
@@ -357,12 +367,16 @@ impl SessionManager {
         remote_device_id: &str,
     ) -> Result<DoubleRatchet> {
         // Try to load existing session
-        if let Some(session) = self.db.get_ratchet_session_by_devices(
-            local_user_id,
-            local_device_id,
-            remote_user_id,
-            remote_device_id,
-        ).await? {
+        if let Some(session) = self
+            .db
+            .get_ratchet_session_by_devices(
+                local_user_id,
+                local_device_id,
+                remote_user_id,
+                remote_device_id,
+            )
+            .await?
+        {
             // Deserialize ratchet state
             return CryptoManager::deserialize_ratchet(&session.ratchet_state);
         }
@@ -375,13 +389,11 @@ impl SessionManager {
     }
 
     /// Save Double Ratchet session after encryption/decryption
-    pub async fn save_session(
-        &self,
-        session_id: &str,
-        ratchet: &DoubleRatchet,
-    ) -> Result<()> {
+    pub async fn save_session(&self, session_id: &str, ratchet: &DoubleRatchet) -> Result<()> {
         let new_state = CryptoManager::serialize_ratchet(ratchet)?;
-        self.db.update_ratchet_session_state(session_id, new_state).await?;
+        self.db
+            .update_ratchet_session_state(session_id, new_state)
+            .await?;
         Ok(())
     }
 

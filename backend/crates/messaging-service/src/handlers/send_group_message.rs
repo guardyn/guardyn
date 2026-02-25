@@ -2,11 +2,11 @@
 use crate::db::DatabaseClient;
 use crate::mls_manager::MlsManager;
 use crate::nats::NatsClient;
+use crate::proto::common::ErrorResponse;
 use crate::proto::messaging::{
     send_group_message_response, SendGroupMessageRequest, SendGroupMessageResponse,
     SendGroupMessageSuccess,
 };
-use crate::proto::common::ErrorResponse;
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -18,18 +18,19 @@ pub async fn send_group_message(
     // Validate JWT token and extract user_id (sender)
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (sender_user_id, sender_device_id, _sender_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(SendGroupMessageResponse {
-                result: Some(send_group_message_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (sender_user_id, sender_device_id, _sender_username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(SendGroupMessageResponse {
+                    result: Some(send_group_message_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group ID
     if request.group_id.is_empty() {
@@ -122,7 +123,11 @@ pub async fn send_group_message(
     let message_id = uuid::Uuid::new_v1(uuid_timestamp, &[1, 2, 3, 4, 5, 6]).to_string();
     let server_timestamp_millis = chrono::Utc::now().timestamp_millis();
 
-    tracing::info!("Generated message_id={}, timestamp={}", message_id, server_timestamp_millis);
+    tracing::info!(
+        "Generated message_id={}, timestamp={}",
+        message_id,
+        server_timestamp_millis
+    );
 
     // Prepare metadata (empty for MVP)
     let mut metadata = std::collections::HashMap::new();
@@ -133,7 +138,11 @@ pub async fn send_group_message(
     let mls_epoch = match mls_manager.get_current_epoch(&request.group_id).await {
         Ok(epoch) => epoch as i64,
         Err(e) => {
-            tracing::debug!("MLS epoch not available for group {}: {}", request.group_id, e);
+            tracing::debug!(
+                "MLS epoch not available for group {}: {}",
+                request.group_id,
+                e
+            );
             0 // Default to epoch 0 if MLS state not initialized
         }
     };
@@ -152,7 +161,9 @@ pub async fn send_group_message(
 
     tracing::info!(
         "HANDLER: About to store group message: message_id={}, group_id={}, sender={}",
-        message_id, request.group_id, sender_user_id
+        message_id,
+        request.group_id,
+        sender_user_id
     );
 
     if let Err(e) = db.store_group_message(&group_message).await {
@@ -199,7 +210,7 @@ pub async fn send_group_message(
             recipient_user_id: member.user_id.clone(),
             encrypted_content: request.encrypted_content.clone(),
             timestamp: server_timestamp_millis / 1000, // Convert millis to seconds for NATS
-            x3dh_prekey: None, // Group messages don't use X3DH prekey
+            x3dh_prekey: None,                         // Group messages don't use X3DH prekey
         };
 
         // Publish to NATS
@@ -234,7 +245,7 @@ pub async fn send_group_message(
             SendGroupMessageSuccess {
                 message_id,
                 server_timestamp: Some(crate::proto::common::Timestamp {
-                    seconds: (server_timestamp_millis / 1000) as i64,
+                    seconds: server_timestamp_millis / 1000,
                     nanos: ((server_timestamp_millis % 1000) * 1_000_000) as i32,
                 }),
             },

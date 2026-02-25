@@ -2,14 +2,12 @@
 ///
 /// - TiKV: Delivery state, session tracking
 /// - ScyllaDB: Message history, media metadata
-
 use crate::models::*;
 use anyhow::{Context, Result};
-use serde_json;
-use tikv_client::{RawClient, TransactionClient};
-use scylla::{Session, SessionBuilder};
 use scylla::statement::Consistency;
+use scylla::{Session, SessionBuilder};
 use std::sync::Arc;
+use tikv_client::RawClient;
 
 /// Combined database client
 pub struct DatabaseClient {
@@ -41,7 +39,7 @@ impl DatabaseClient {
             "local_one" => Consistency::LocalOne,
             "quorum" => Consistency::Quorum,
             "all" => Consistency::All,
-            "local_quorum" | _ => Consistency::LocalQuorum,
+            _ => Consistency::LocalQuorum,
         };
 
         tracing::info!("ScyllaDB consistency level: {:?}", consistency);
@@ -255,10 +253,7 @@ impl DatabaseClient {
 
         // Add Phase 2 columns to existing messages table (migration)
         let _ = session
-            .query_unpaged(
-                "ALTER TABLE guardyn.messages ADD edit_version INT",
-                &[],
-            )
+            .query_unpaged("ALTER TABLE guardyn.messages ADD edit_version INT", &[])
             .await;
         let _ = session
             .query_unpaged(
@@ -267,10 +262,7 @@ impl DatabaseClient {
             )
             .await;
         let _ = session
-            .query_unpaged(
-                "ALTER TABLE guardyn.messages ADD forward_info TEXT",
-                &[],
-            )
+            .query_unpaged("ALTER TABLE guardyn.messages ADD forward_info TEXT", &[])
             .await;
         let _ = session
             .query_unpaged(
@@ -279,10 +271,7 @@ impl DatabaseClient {
             )
             .await;
         let _ = session
-            .query_unpaged(
-                "ALTER TABLE guardyn.messages ADD voice_metadata TEXT",
-                &[],
-            )
+            .query_unpaged("ALTER TABLE guardyn.messages ADD voice_metadata TEXT", &[])
             .await;
 
         // Add Phase 2 columns to group_messages table
@@ -311,7 +300,11 @@ impl DatabaseClient {
     {
         let mut query = scylla::query::Query::new(query_str);
         query.set_consistency(self.consistency);
-        tracing::debug!("Executing ScyllaDB query with consistency {:?}: {}", self.consistency, query_str);
+        tracing::debug!(
+            "Executing ScyllaDB query with consistency {:?}: {}",
+            self.consistency,
+            query_str
+        );
         match self.scylla.query_unpaged(query, values).await {
             Ok(result) => {
                 tracing::debug!("ScyllaDB query successful");
@@ -339,10 +332,7 @@ impl DatabaseClient {
 
     /// Get a value from TiKV by key
     pub async fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        self.tikv
-            .get(key.to_vec())
-            .await
-            .context("TiKV get failed")
+        self.tikv.get(key.to_vec()).await.context("TiKV get failed")
     }
 
     /// Delete a key from TiKV
@@ -359,56 +349,69 @@ impl DatabaseClient {
         // Note: This is inefficient as it requires scanning, but needed for E2EE
         // In production, consider maintaining a message_id -> conversation_id index
         let query = "SELECT * FROM guardyn.messages WHERE message_id = ? ALLOW FILTERING";
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
 
-        let rows = self.scylla_query(query, (message_uuid,))
+        let rows = self
+            .scylla_query(query, (message_uuid,))
             .await
             .context("Failed to query message by ID")?;
 
         if let Some(row) = rows.rows.and_then(|r| r.into_iter().next()) {
-            let conversation_id: uuid::Uuid = row.columns[0].as_ref()
+            let conversation_id: uuid::Uuid = row.columns[0]
+                .as_ref()
                 .and_then(|v| v.as_uuid())
                 .context("Missing conversation_id")?;
-            let message_id: uuid::Uuid = row.columns[1].as_ref()
+            let message_id: uuid::Uuid = row.columns[1]
+                .as_ref()
                 .and_then(|v| v.as_uuid())
                 .context("Missing message_id")?;
-            let sender_user_id: String = row.columns[2].as_ref()
+            let sender_user_id: String = row.columns[2]
+                .as_ref()
                 .and_then(|v| v.as_text())
                 .context("Missing sender_user_id")?
                 .to_string();
-            let sender_device_id: String = row.columns[3].as_ref()
+            let sender_device_id: String = row.columns[3]
+                .as_ref()
                 .and_then(|v| v.as_text())
                 .context("Missing sender_device_id")?
                 .to_string();
-            let recipient_user_id: String = row.columns[4].as_ref()
+            let recipient_user_id: String = row.columns[4]
+                .as_ref()
                 .and_then(|v| v.as_text())
                 .context("Missing recipient_user_id")?
                 .to_string();
-            let recipient_device_id: String = row.columns[5].as_ref()
+            let recipient_device_id: String = row.columns[5]
+                .as_ref()
                 .and_then(|v| v.as_text())
                 .context("Missing recipient_device_id")?
                 .to_string();
-            let encrypted_content: Vec<u8> = row.columns[6].as_ref()
+            let encrypted_content: Vec<u8> = row.columns[6]
+                .as_ref()
                 .and_then(|v| v.as_blob())
                 .context("Missing encrypted_content")?
                 .to_vec();
-            let message_type: i32 = row.columns[7].as_ref()
+            let message_type: i32 = row.columns[7]
+                .as_ref()
                 .and_then(|v| v.as_int())
                 .context("Missing message_type")?;
-            let server_timestamp: i64 = row.columns[8].as_ref()
+            let server_timestamp: i64 = row.columns[8]
+                .as_ref()
                 .and_then(|v| v.as_bigint())
                 .context("Missing server_timestamp")?;
-            let client_timestamp: i64 = row.columns[9].as_ref()
+            let client_timestamp: i64 = row.columns[9]
+                .as_ref()
                 .and_then(|v| v.as_bigint())
                 .context("Missing client_timestamp")?;
-            let delivery_status: i32 = row.columns[10].as_ref()
+            let delivery_status: i32 = row.columns[10]
+                .as_ref()
                 .and_then(|v| v.as_int())
                 .context("Missing delivery_status")?;
-            let is_deleted: bool = row.columns[11].as_ref()
+            let is_deleted: bool = row.columns[11]
+                .as_ref()
                 .and_then(|v| v.as_boolean())
                 .unwrap_or(false);
-            let x3dh_prekey: Option<String> = row.columns[12].as_ref()
+            let x3dh_prekey: Option<String> = row.columns[12]
+                .as_ref()
                 .and_then(|v| v.as_text())
                 .map(|s| s.to_string());
 
@@ -432,7 +435,6 @@ impl DatabaseClient {
             Ok(None)
         }
     }
-
 
     // ========================================================================
     // Delivery State Operations (TiKV)
@@ -485,7 +487,10 @@ impl DatabaseClient {
     }
 
     /// Get pending messages for a recipient
-    pub async fn get_pending_messages(&self, recipient_user_id: &str) -> Result<Vec<DeliveryState>> {
+    pub async fn get_pending_messages(
+        &self,
+        recipient_user_id: &str,
+    ) -> Result<Vec<DeliveryState>> {
         let prefix = format!("/delivery/{}/", recipient_user_id);
         let keys = self.tikv.scan(prefix.into_bytes().., 1000).await?;
 
@@ -515,23 +520,26 @@ impl DatabaseClient {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         tracing::debug!("Parsing conversation_id: {}", msg.conversation_id);
-        let conversation_uuid = uuid::Uuid::parse_str(&msg.conversation_id)
-            .map_err(|e| {
-                tracing::error!("Failed to parse conversation_id '{}': {:?}", msg.conversation_id, e);
+        let conversation_uuid = uuid::Uuid::parse_str(&msg.conversation_id).map_err(|e| {
+            tracing::error!(
+                "Failed to parse conversation_id '{}': {:?}",
+                msg.conversation_id,
                 e
-            })?;
+            );
+            e
+        })?;
 
         tracing::debug!("Parsing message_id: {}", msg.message_id);
-        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)
-            .map_err(|e| {
-                tracing::error!("Failed to parse message_id '{}': {:?}", msg.message_id, e);
-                e
-            })?;
+        let message_uuid = uuid::Uuid::parse_str(&msg.message_id).map_err(|e| {
+            tracing::error!("Failed to parse message_id '{}': {:?}", msg.message_id, e);
+            e
+        })?;
 
         tracing::debug!("Executing ScyllaDB query with {} params", 13);
         let mut scylla_query = scylla::query::Query::new(query);
         scylla_query.set_consistency(self.consistency);
-        let result = self.scylla
+        let result = self
+            .scylla
             .query_unpaged(
                 scylla_query,
                 (
@@ -559,7 +567,10 @@ impl DatabaseClient {
             }
             Err(e) => {
                 tracing::error!("ScyllaDB query failed: {:?}", e);
-                Err(anyhow::anyhow!("Failed to store message in ScyllaDB: {}", e))
+                Err(anyhow::anyhow!(
+                    "Failed to store message in ScyllaDB: {}",
+                    e
+                ))
             }
         }
     }
@@ -580,7 +591,8 @@ impl DatabaseClient {
 
         let conversation_uuid = uuid::Uuid::parse_str(conversation_id)?;
 
-        let rows = self.scylla_query(query, (conversation_uuid, limit))
+        let rows = self
+            .scylla_query(query, (conversation_uuid, limit))
             .await
             .context("Failed to fetch messages from ScyllaDB")?;
 
@@ -595,73 +607,99 @@ impl DatabaseClient {
                 // 10: delivery_status, 11: is_deleted, 12: x3dh_prekey (nullable)
 
                 // Safe extraction with error context
-                let conversation_id = row.columns.get(0)
+                let conversation_id = row
+                    .columns
+                    .first()
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid())
                     .map(|u| u.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing conversation_id"))?;
 
-                let message_id = row.columns.get(1)
+                let message_id = row
+                    .columns
+                    .get(1)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid())
                     .map(|u| u.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing message_id"))?;
 
-                let sender_user_id = row.columns.get(2)
+                let sender_user_id = row
+                    .columns
+                    .get(2)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing sender_user_id"))?;
 
-                let sender_device_id = row.columns.get(3)
+                let sender_device_id = row
+                    .columns
+                    .get(3)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing sender_device_id"))?;
 
-                let recipient_user_id = row.columns.get(4)
+                let recipient_user_id = row
+                    .columns
+                    .get(4)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing recipient_user_id"))?;
 
-                let recipient_device_id = row.columns.get(5)
+                let recipient_device_id = row
+                    .columns
+                    .get(5)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string()); // Nullable field - no error
 
-                let encrypted_content = row.columns.get(6)
+                let encrypted_content = row
+                    .columns
+                    .get(6)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_blob())
                     .map(|b| b.to_vec())
                     .ok_or_else(|| anyhow::anyhow!("Missing encrypted_content"))?;
 
-                let message_type = row.columns.get(7)
+                let message_type = row
+                    .columns
+                    .get(7)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_int())
                     .ok_or_else(|| anyhow::anyhow!("Missing message_type"))?;
 
-                let server_timestamp = row.columns.get(8)
+                let server_timestamp = row
+                    .columns
+                    .get(8)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_bigint())
                     .ok_or_else(|| anyhow::anyhow!("Missing server_timestamp"))?;
 
-                let client_timestamp = row.columns.get(9)
+                let client_timestamp = row
+                    .columns
+                    .get(9)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_bigint())
                     .ok_or_else(|| anyhow::anyhow!("Missing client_timestamp"))?;
 
-                let delivery_status = row.columns.get(10)
+                let delivery_status = row
+                    .columns
+                    .get(10)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_int())
                     .ok_or_else(|| anyhow::anyhow!("Missing delivery_status"))?;
 
-                let is_deleted = row.columns.get(11)
+                let is_deleted = row
+                    .columns
+                    .get(11)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_boolean())
                     .ok_or_else(|| anyhow::anyhow!("Missing is_deleted"))?;
 
-                let x3dh_prekey = row.columns.get(12)
+                let x3dh_prekey = row
+                    .columns
+                    .get(12)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string()); // Nullable field
@@ -708,7 +746,8 @@ impl DatabaseClient {
                      LIMIT ? \
                      ALLOW FILTERING";
 
-        let query_recipient = "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
+        let query_recipient =
+            "SELECT conversation_id, message_id, sender_user_id, sender_device_id, \
                             recipient_user_id, recipient_device_id, encrypted_content, \
                             message_type, server_timestamp, client_timestamp, \
                             delivery_status, is_deleted, x3dh_prekey \
@@ -723,10 +762,10 @@ impl DatabaseClient {
             self.scylla_query(query_recipient, (user_id.to_string(), limit * 5))
         );
 
-        let sender_rows = sender_result
-            .context("Failed to fetch sender conversations from ScyllaDB")?;
-        let recipient_rows = recipient_result
-            .context("Failed to fetch recipient conversations from ScyllaDB")?;
+        let sender_rows =
+            sender_result.context("Failed to fetch sender conversations from ScyllaDB")?;
+        let recipient_rows =
+            recipient_result.context("Failed to fetch recipient conversations from ScyllaDB")?;
 
         // Combine rows from both queries
         let mut all_rows = Vec::new();
@@ -738,149 +777,178 @@ impl DatabaseClient {
         }
 
         use std::collections::HashMap;
-        let mut conversations_map: HashMap<String, crate::proto::messaging::Conversation> = HashMap::new();
+        let mut conversations_map: HashMap<String, crate::proto::messaging::Conversation> =
+            HashMap::new();
 
         for row in all_rows {
-                let conversation_id = row.columns.get(0)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_uuid())
-                    .map(|u| u.to_string())
-                    .unwrap_or_default();
+            let conversation_id = row
+                .columns
+                .first()
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_uuid())
+                .map(|u| u.to_string())
+                .unwrap_or_default();
 
-                let message_id = row.columns.get(1)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_uuid())
-                    .map(|u| u.to_string())
-                    .unwrap_or_default();
+            let message_id = row
+                .columns
+                .get(1)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_uuid())
+                .map(|u| u.to_string())
+                .unwrap_or_default();
 
-                let sender_user_id = row.columns.get(2)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_text())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
+            let sender_user_id = row
+                .columns
+                .get(2)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_text())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
 
-                let sender_device_id = row.columns.get(3)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_text())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
+            let sender_device_id = row
+                .columns
+                .get(3)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_text())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
 
-                let recipient_user_id = row.columns.get(4)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_text())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
+            let recipient_user_id = row
+                .columns
+                .get(4)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_text())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
 
-                let recipient_device_id = row.columns.get(5)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_text())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
+            let recipient_device_id = row
+                .columns
+                .get(5)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_text())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
 
-                let encrypted_content = row.columns.get(6)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_blob())
-                    .map(|b| b.to_vec())
-                    .unwrap_or_default();
+            let encrypted_content = row
+                .columns
+                .get(6)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_blob())
+                .map(|b| b.to_vec())
+                .unwrap_or_default();
 
-                let message_type = row.columns.get(7)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_int())
-                    .unwrap_or(0);
+            let message_type = row
+                .columns
+                .get(7)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_int())
+                .unwrap_or(0);
 
-                let server_timestamp = row.columns.get(8)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_cql_timestamp())
-                    .map(|ts| ts.0) // CqlTimestamp.0 is milliseconds
-                    .unwrap_or(0);
+            let server_timestamp = row
+                .columns
+                .get(8)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_cql_timestamp())
+                .map(|ts| ts.0) // CqlTimestamp.0 is milliseconds
+                .unwrap_or(0);
 
-                let client_timestamp = row.columns.get(9)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_bigint())
-                    .unwrap_or(0);
+            let client_timestamp = row
+                .columns
+                .get(9)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_bigint())
+                .unwrap_or(0);
 
-                let delivery_status = row.columns.get(10)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_int())
-                    .unwrap_or(0);
+            let delivery_status = row
+                .columns
+                .get(10)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_int())
+                .unwrap_or(0);
 
-                let is_deleted = row.columns.get(11)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_boolean())
-                    .unwrap_or(false);
+            let is_deleted = row
+                .columns
+                .get(11)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_boolean())
+                .unwrap_or(false);
 
-                let x3dh_prekey = row.columns.get(12)
-                    .and_then(|c| c.as_ref())
-                    .and_then(|c| c.as_text())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
+            let x3dh_prekey = row
+                .columns
+                .get(12)
+                .and_then(|c| c.as_ref())
+                .and_then(|c| c.as_text())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
 
-                // Determine the other user in the conversation
-                let other_user_id = if sender_user_id == user_id {
-                    recipient_user_id.clone()
-                } else {
-                    sender_user_id.clone()
-                };
+            // Determine the other user in the conversation
+            let other_user_id = if sender_user_id == user_id {
+                recipient_user_id.clone()
+            } else {
+                sender_user_id.clone()
+            };
 
-                // Create message proto
-                let message = crate::proto::messaging::Message {
-                    message_id,
-                    sender_user_id,
-                    sender_device_id,
-                    recipient_user_id,
-                    recipient_device_id,
-                    encrypted_content,
-                    message_type,
-                    client_message_id: String::new(), // Not stored in messages table
-                    client_timestamp: Some(crate::proto::common::Timestamp {
-                        seconds: client_timestamp / 1000,
-                        nanos: ((client_timestamp % 1000) * 1_000_000) as i32,
-                    }),
-                    server_timestamp: Some(crate::proto::common::Timestamp {
-                        seconds: server_timestamp / 1000,
-                        nanos: ((server_timestamp % 1000) * 1_000_000) as i32,
-                    }),
-                    delivery_status,
-                    media_id: String::new(),
-                    is_deleted,
-                    x3dh_prekey,
-                    // Phase 2 fields (not yet stored in DB)
-                    thread_reference: None,
-                    forward_info: None,
-                    edit_version: 0,
-                    last_edited_at: None,
-                    voice_metadata: None,
-                    reaction_summaries: Vec::new(),
-                };
+            // Create message proto
+            let message = crate::proto::messaging::Message {
+                message_id,
+                sender_user_id,
+                sender_device_id,
+                recipient_user_id,
+                recipient_device_id,
+                encrypted_content,
+                message_type,
+                client_message_id: String::new(), // Not stored in messages table
+                client_timestamp: Some(crate::proto::common::Timestamp {
+                    seconds: client_timestamp / 1000,
+                    nanos: ((client_timestamp % 1000) * 1_000_000) as i32,
+                }),
+                server_timestamp: Some(crate::proto::common::Timestamp {
+                    seconds: server_timestamp / 1000,
+                    nanos: ((server_timestamp % 1000) * 1_000_000) as i32,
+                }),
+                delivery_status,
+                media_id: String::new(),
+                is_deleted,
+                x3dh_prekey,
+                // Phase 2 fields (not yet stored in DB)
+                thread_reference: None,
+                forward_info: None,
+                edit_version: 0,
+                last_edited_at: None,
+                voice_metadata: None,
+                reaction_summaries: Vec::new(),
+            };
 
-                // Update or create conversation
-                conversations_map
-                    .entry(conversation_id.clone())
-                    .and_modify(|conv| {
-                        // Update with more recent message
-                        if let (Some(existing_ts), Some(new_ts)) = (
-                            conv.last_message.as_ref().and_then(|m| m.server_timestamp.as_ref()),
-                            message.server_timestamp.as_ref(),
-                        ) {
-                            if new_ts.seconds > existing_ts.seconds {
-                                conv.last_message = Some(message.clone());
-                                conv.updated_at = message.server_timestamp.clone();
-                            }
+            // Update or create conversation
+            conversations_map
+                .entry(conversation_id.clone())
+                .and_modify(|conv| {
+                    // Update with more recent message
+                    if let (Some(existing_ts), Some(new_ts)) = (
+                        conv.last_message
+                            .as_ref()
+                            .and_then(|m| m.server_timestamp.as_ref()),
+                        message.server_timestamp.as_ref(),
+                    ) {
+                        if new_ts.seconds > existing_ts.seconds {
+                            conv.last_message = Some(message.clone());
+                            conv.updated_at = message.server_timestamp;
                         }
-                    })
-                    .or_insert_with(|| crate::proto::messaging::Conversation {
-                        conversation_id: conversation_id.clone(),
-                        user_id: other_user_id.clone(),
-                        username: other_user_id, // Will need to fetch actual username from auth service
-                        last_message: Some(message.clone()),
-                        unread_count: 0, // Will be calculated below
-                        updated_at: message.server_timestamp,
-                    });
+                    }
+                })
+                .or_insert_with(|| crate::proto::messaging::Conversation {
+                    conversation_id: conversation_id.clone(),
+                    user_id: other_user_id.clone(),
+                    username: other_user_id, // Will need to fetch actual username from auth service
+                    last_message: Some(message.clone()),
+                    unread_count: 0, // Will be calculated below
+                    updated_at: message.server_timestamp,
+                });
 
-                if conversations_map.len() >= limit as usize {
-                    break;
-                }
+            if conversations_map.len() >= limit as usize {
+                break;
             }
+        }
 
         let mut conversations: Vec<_> = conversations_map.into_values().collect();
 
@@ -891,7 +959,8 @@ impl DatabaseClient {
                 Err(e) => {
                     tracing::warn!(
                         "Failed to get unread count for conversation {}: {}",
-                        conv.conversation_id, e
+                        conv.conversation_id,
+                        e
                     );
                     // Keep default 0 on error
                 }
@@ -935,7 +1004,8 @@ impl DatabaseClient {
                            WHERE conversation_id = ? AND is_deleted = false 
                            ALLOW FILTERING";
 
-        let result = self.scylla_query(select_query, (conversation_uuid,))
+        let result = self
+            .scylla_query(select_query, (conversation_uuid,))
             .await
             .context("Failed to fetch messages for clearing")?;
 
@@ -949,7 +1019,9 @@ impl DatabaseClient {
         if let Some(rows) = result.rows {
             for row in rows {
                 // Extract message_id from row
-                let message_id = row.columns.get(0)
+                let message_id = row
+                    .columns
+                    .first()
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid());
 
@@ -977,6 +1049,7 @@ impl DatabaseClient {
 
     /// Update conversation for a user (upsert)
     /// This is called for both sender and recipient when a message is sent
+    #[allow(clippy::too_many_arguments)]
     pub async fn upsert_conversation(
         &self,
         user_id: &str,
@@ -1039,7 +1112,8 @@ impl DatabaseClient {
 
         tracing::debug!(
             "Upserted conversation for user {} with {}",
-            user_id, other_user_id
+            user_id,
+            other_user_id
         );
 
         Ok(())
@@ -1052,17 +1126,27 @@ impl DatabaseClient {
         user_id: &str,
         limit: i32,
     ) -> Result<Vec<crate::proto::messaging::Conversation>> {
-        tracing::debug!("get_user_conversations called for user_id: {}, limit: {}", user_id, limit);
-        
+        tracing::debug!(
+            "get_user_conversations called for user_id: {}, limit: {}",
+            user_id,
+            limit
+        );
+
         let query_str = "SELECT conversation_id, other_user_id, other_username, 
                                 last_message_id, last_message_preview, last_message_time, unread_count
                          FROM guardyn.conversations 
                          WHERE user_id = ? 
                          LIMIT ?";
 
-        let rows = match self.scylla_query(query_str, (user_id.to_string(), limit)).await {
+        let rows = match self
+            .scylla_query(query_str, (user_id.to_string(), limit))
+            .await
+        {
             Ok(result) => {
-                tracing::debug!("ScyllaDB query succeeded, rows count: {:?}", result.rows.as_ref().map(|r| r.len()));
+                tracing::debug!(
+                    "ScyllaDB query succeeded, rows count: {:?}",
+                    result.rows.as_ref().map(|r| r.len())
+                );
                 result
             }
             Err(e) => {
@@ -1076,7 +1160,9 @@ impl DatabaseClient {
 
         if let Some(rows) = rows.rows {
             for row in rows {
-                let conversation_id = row.columns.get(0)
+                let conversation_id = row
+                    .columns
+                    .first()
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid())
                     .map(|u| u.to_string())
@@ -1088,37 +1174,49 @@ impl DatabaseClient {
                 }
                 seen_conversations.insert(conversation_id.clone());
 
-                let other_user_id = row.columns.get(1)
+                let other_user_id = row
+                    .columns
+                    .get(1)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
 
-                let other_username = row.columns.get(2)
+                let other_username = row
+                    .columns
+                    .get(2)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| other_user_id.clone());
 
-                let last_message_id = row.columns.get(3)
+                let last_message_id = row
+                    .columns
+                    .get(3)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_uuid())
                     .map(|u| u.to_string())
                     .unwrap_or_default();
 
-                let last_message_preview = row.columns.get(4)
+                let last_message_preview = row
+                    .columns
+                    .get(4)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
 
-                let last_message_time = row.columns.get(5)
+                let last_message_time = row
+                    .columns
+                    .get(5)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_cql_timestamp())
                     .map(|ts| ts.0) // milliseconds
                     .unwrap_or(0);
 
-                let unread_count = row.columns.get(6)
+                let unread_count = row
+                    .columns
+                    .get(6)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_int())
                     .unwrap_or(0) as u32;
@@ -1177,32 +1275,39 @@ impl DatabaseClient {
     /// Reset unread count for a conversation
     /// RT-005: Properly resets unread count by updating the read receipt
     /// to the latest message in the conversation
+    #[allow(dead_code)]
     pub async fn reset_unread_count(&self, user_id: &str, conversation_id: &str) -> Result<()> {
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
 
         tracing::debug!(
             "Reset unread count requested for user {} conversation {}",
-            user_id, conversation_id
+            user_id,
+            conversation_id
         );
 
         // RT-005: Find the latest message in the conversation where user is recipient
-        let latest_message_rows = self.scylla_query(
-            "SELECT message_id, server_timestamp FROM guardyn.messages 
+        let latest_message_rows = self
+            .scylla_query(
+                "SELECT message_id, server_timestamp FROM guardyn.messages 
              WHERE conversation_id = ? AND recipient_user_id = ?
              ORDER BY server_timestamp DESC
              LIMIT 1
              ALLOW FILTERING",
-            (conversation_uuid, user_id.to_string()),
-        ).await?;
+                (conversation_uuid, user_id.to_string()),
+            )
+            .await?;
 
         let (latest_message_id, latest_timestamp) = if let Some(rows) = latest_message_rows.rows {
-            rows.into_iter().next()
+            rows.into_iter()
+                .next()
                 .map(|row| {
-                    let message_id: uuid::Uuid = row.columns[0].as_ref()
+                    let message_id: uuid::Uuid = row.columns[0]
+                        .as_ref()
                         .and_then(|v| v.as_uuid())
                         .unwrap_or_default();
-                    let timestamp: i64 = row.columns[1].as_ref()
+                    let timestamp: i64 = row.columns[1]
+                        .as_ref()
                         .and_then(|v| v.as_cql_timestamp())
                         .map(|ts| ts.0)
                         .unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
@@ -1219,19 +1324,31 @@ impl DatabaseClient {
             "INSERT INTO guardyn.read_receipts (
                 conversation_id, user_id, last_read_message_id, timestamp, is_group
             ) VALUES (?, ?, ?, ?, false)",
-            (conversation_uuid, user_id.to_string(), latest_message_id, latest_timestamp, false),
-        ).await.context("Failed to update read receipt")?;
+            (
+                conversation_uuid,
+                user_id.to_string(),
+                latest_message_id,
+                latest_timestamp,
+                false,
+            ),
+        )
+        .await
+        .context("Failed to update read receipt")?;
 
         // Also update the conversations table for backward compatibility
         self.scylla_query(
             "UPDATE guardyn.conversations SET unread_count = 0 
              WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
             (user_id.to_string(), conversation_uuid),
-        ).await.ok(); // Ignore errors for legacy table update
+        )
+        .await
+        .ok(); // Ignore errors for legacy table update
 
         tracing::info!(
             "Reset unread count for user {} in conversation {} (latest_message: {})",
-            user_id, conversation_id, latest_message_id
+            user_id,
+            conversation_id,
+            latest_message_id
         );
 
         Ok(())
@@ -1280,7 +1397,7 @@ impl DatabaseClient {
                 group.group_name = name.to_string();
                 group.icon_media_id = icon_media_id.map(String::from);
                 group.description = description.map(String::from);
-                
+
                 let updated_value = serde_json::to_vec(&group)?;
                 self.tikv.put(key.into_bytes(), updated_value).await?;
                 tracing::info!("Updated group {} info", group_id);
@@ -1352,7 +1469,10 @@ impl DatabaseClient {
     }
 
     /// Get all groups for a user
-    pub async fn get_user_groups(&self, user_id: &str) -> Result<Vec<(GroupMetadata, Vec<GroupMember>)>> {
+    pub async fn get_user_groups(
+        &self,
+        user_id: &str,
+    ) -> Result<Vec<(GroupMetadata, Vec<GroupMember>)>> {
         // Scan all groups to find where user is a member
         // This is not optimal for large number of groups, but works for MVP
         let groups_prefix = b"/groups/".to_vec();
@@ -1398,10 +1518,10 @@ impl DatabaseClient {
             encrypted_content, mls_epoch, sent_at, metadata
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        let group_uuid = uuid::Uuid::parse_str(&msg.group_id)
-            .context("Failed to parse group_id as UUID")?;
-        let message_uuid = uuid::Uuid::parse_str(&msg.message_id)
-            .context("Failed to parse message_id as UUID")?;
+        let group_uuid =
+            uuid::Uuid::parse_str(&msg.group_id).context("Failed to parse group_id as UUID")?;
+        let message_uuid =
+            uuid::Uuid::parse_str(&msg.message_id).context("Failed to parse message_id as UUID")?;
 
         // Convert message_id to CqlTimeuuid (required for TIMEUUID type in ScyllaDB)
         use scylla::frame::response::result::CqlValue;
@@ -1409,10 +1529,12 @@ impl DatabaseClient {
         let message_timeuuid = CqlValue::Timeuuid(CqlTimeuuid::from(message_uuid));
 
         // Convert sent_at (millis) to CqlTimestamp
-        let sent_at_timestamp = CqlValue::Timestamp(scylla::frame::value::CqlTimestamp(msg.sent_at));
+        let sent_at_timestamp =
+            CqlValue::Timestamp(scylla::frame::value::CqlTimestamp(msg.sent_at));
 
         // Convert HashMap to CqlValue::Map
-        let metadata_map: Vec<(CqlValue, CqlValue)> = msg.metadata
+        let metadata_map: Vec<(CqlValue, CqlValue)> = msg
+            .metadata
             .iter()
             .map(|(k, v)| (CqlValue::Text(k.clone()), CqlValue::Text(v.clone())))
             .collect();
@@ -1425,7 +1547,8 @@ impl DatabaseClient {
 
         let mut store_query = scylla::query::Query::new(query);
         store_query.set_consistency(self.consistency);
-        let result = self.scylla
+        let result = self
+            .scylla
             .query_unpaged(
                 store_query,
                 (
@@ -1444,14 +1567,18 @@ impl DatabaseClient {
         if let Err(ref e) = result {
             tracing::error!(
                 "ScyllaDB error details: {:?}, query: {}, params: group_id={}, message_id={}",
-                e, query, group_uuid, message_uuid
+                e,
+                query,
+                group_uuid,
+                message_uuid
             );
         }
 
         result.context("Failed to store group message in ScyllaDB")?;
 
         Ok(())
-    }    /// Get group message history
+    }
+    /// Get group message history
     pub async fn get_group_messages(
         &self,
         group_id: &str,
@@ -1466,7 +1593,8 @@ impl DatabaseClient {
 
         let group_uuid = uuid::Uuid::parse_str(group_id)?;
 
-        let rows = self.scylla_query(query, (group_uuid, limit))
+        let rows = self
+            .scylla_query(query, (group_uuid, limit))
             .await
             .context("Failed to fetch group messages from ScyllaDB")?;
 
@@ -1479,41 +1607,53 @@ impl DatabaseClient {
 
                 // message_id is TIMEUUID in ScyllaDB
                 use scylla::frame::response::result::CqlValue;
-                let message_id = row.columns.get(1)
+                let message_id = row
+                    .columns
+                    .get(1)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| match c {
                         CqlValue::Timeuuid(tu) => {
                             let uuid: uuid::Uuid = (*tu).into();
                             Some(uuid.to_string())
-                        },
+                        }
                         _ => None,
                     })
                     .ok_or_else(|| anyhow::anyhow!("Missing message_id"))?;
 
-                let sender_user_id = row.columns.get(2)
+                let sender_user_id = row
+                    .columns
+                    .get(2)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing sender_user_id"))?;
 
-                let sender_device_id = row.columns.get(3)
+                let sender_device_id = row
+                    .columns
+                    .get(3)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_text())
                     .map(|s| s.to_string())
                     .ok_or_else(|| anyhow::anyhow!("Missing sender_device_id"))?;
 
-                let encrypted_content = row.columns.get(4)
+                let encrypted_content = row
+                    .columns
+                    .get(4)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_blob())
                     .map(|b| b.to_vec())
                     .ok_or_else(|| anyhow::anyhow!("Missing encrypted_content"))?;
 
-                let mls_epoch = row.columns.get(5)
+                let mls_epoch = row
+                    .columns
+                    .get(5)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_bigint())
                     .ok_or_else(|| anyhow::anyhow!("Missing mls_epoch"))?;
 
-                let sent_at_timestamp = row.columns.get(6)
+                let sent_at_timestamp = row
+                    .columns
+                    .get(6)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_cql_timestamp())
                     .ok_or_else(|| anyhow::anyhow!("Missing sent_at"))?;
@@ -1521,7 +1661,9 @@ impl DatabaseClient {
                 // CqlTimestamp is in milliseconds
                 let sent_at = sent_at_timestamp.0;
 
-                let metadata = row.columns.get(7)
+                let metadata = row
+                    .columns
+                    .get(7)
                     .and_then(|c| c.as_ref())
                     .and_then(|c| c.as_map())
                     .map(|map| {
@@ -1555,10 +1697,7 @@ impl DatabaseClient {
     /// Get the most recent message for a group
     ///
     /// Returns the last message sent in the group, if any
-    pub async fn get_last_group_message(
-        &self,
-        group_id: &str,
-    ) -> Result<Option<GroupMessage>> {
+    pub async fn get_last_group_message(&self, group_id: &str) -> Result<Option<GroupMessage>> {
         let messages = self.get_group_messages(group_id, 1).await?;
         Ok(messages.into_iter().next())
     }
@@ -1596,7 +1735,12 @@ impl DatabaseClient {
             session.remote_user_id,
             session.remote_device_id
         );
-        self.tikv.put(user_key.into_bytes(), session.session_id.as_bytes().to_vec()).await?;
+        self.tikv
+            .put(
+                user_key.into_bytes(),
+                session.session_id.as_bytes().to_vec(),
+            )
+            .await?;
 
         tracing::info!("Stored ratchet session: {}", session.session_id);
         Ok(())
@@ -1652,6 +1796,7 @@ impl DatabaseClient {
     }
 
     /// Delete Double Ratchet session (e.g., user logout, session reset)
+    #[allow(dead_code)]
     pub async fn delete_ratchet_session(&self, session_id: &str) -> Result<()> {
         // Get session to find user index
         let session = self.get_ratchet_session(session_id).await?;
@@ -1677,6 +1822,7 @@ impl DatabaseClient {
     }
 
     /// List all sessions for a user+device
+    #[allow(dead_code)]
     pub async fn list_ratchet_sessions_for_device(
         &self,
         user_id: &str,
@@ -1703,6 +1849,7 @@ impl DatabaseClient {
     // ========================================================================
 
     /// Execute a message insert for WebSocket handler
+    #[allow(clippy::too_many_arguments)]
     pub async fn execute_message_insert(
         &self,
         message_id: &str,
@@ -1717,8 +1864,8 @@ impl DatabaseClient {
     ) -> Result<()> {
         // Generate conversation ID (deterministic for 1-on-1)
         let conversation_id = self.generate_conversation_id(sender_id, recipient_id);
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .unwrap_or_else(|_| uuid::Uuid::new_v4());
+        let message_uuid =
+            uuid::Uuid::parse_str(message_id).unwrap_or_else(|_| uuid::Uuid::new_v4());
 
         // Store message in ScyllaDB
         let insert_query = "INSERT INTO guardyn.messages (
@@ -1726,21 +1873,21 @@ impl DatabaseClient {
                     encrypted_content, message_type, server_timestamp, delivery_status, is_deleted
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         self.scylla_query(
-                insert_query,
-                (
-                    conversation_id,
-                    message_uuid,
-                    sender_id.to_string(),
-                    recipient_id.to_string(),
-                    content.as_bytes().to_vec(),
-                    if content_type == "text" { 0i32 } else { 1i32 },
-                    timestamp.timestamp_millis(),
-                    0i32, // Sent
-                    false,
-                ),
-            )
-            .await
-            .context("Failed to store message")?;
+            insert_query,
+            (
+                conversation_id,
+                message_uuid,
+                sender_id.to_string(),
+                recipient_id.to_string(),
+                content.as_bytes().to_vec(),
+                if content_type == "text" { 0i32 } else { 1i32 },
+                timestamp.timestamp_millis(),
+                0i32, // Sent
+                false,
+            ),
+        )
+        .await
+        .context("Failed to store message")?;
 
         // Update conversation metadata for both users
         let now = chrono::Utc::now();
@@ -1752,8 +1899,16 @@ impl DatabaseClient {
         };
 
         // Use actual usernames for conversation display
-        let recipient_display = if recipient_username.is_empty() { recipient_id } else { recipient_username };
-        let sender_display = if sender_username.is_empty() { sender_id } else { sender_username };
+        let recipient_display = if recipient_username.is_empty() {
+            recipient_id
+        } else {
+            recipient_username
+        };
+        let sender_display = if sender_username.is_empty() {
+            sender_id
+        } else {
+            sender_username
+        };
 
         self.upsert_conversation(
             sender_id,
@@ -1764,7 +1919,8 @@ impl DatabaseClient {
             preview,
             time_ms,
             false,
-        ).await?;
+        )
+        .await?;
 
         self.upsert_conversation(
             recipient_id,
@@ -1775,7 +1931,8 @@ impl DatabaseClient {
             preview,
             time_ms,
             true, // Increment unread for recipient
-        ).await?;
+        )
+        .await?;
 
         Ok(())
     }
@@ -1797,21 +1954,16 @@ impl DatabaseClient {
     }
 
     /// Mark a message as read
-    pub async fn mark_message_read(
-        &self,
-        message_id: &str,
-        reader_user_id: &str,
-    ) -> Result<()> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message ID")?;
+    pub async fn mark_message_read(&self, message_id: &str, reader_user_id: &str) -> Result<()> {
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message ID")?;
 
         // Update delivery status to Read (2)
         self.scylla_query(
-                "UPDATE guardyn.messages SET delivery_status = 2 WHERE message_id = ? ALLOW FILTERING",
-                (message_uuid,),
-            )
-            .await
-            .context("Failed to mark message as read")?;
+            "UPDATE guardyn.messages SET delivery_status = 2 WHERE message_id = ? ALLOW FILTERING",
+            (message_uuid,),
+        )
+        .await
+        .context("Failed to mark message as read")?;
 
         tracing::debug!(message_id = %message_id, reader = %reader_user_id, "Message marked as read");
         Ok(())
@@ -1831,12 +1983,11 @@ impl DatabaseClient {
         reaction_id: &str,
         is_group: bool,
     ) -> Result<()> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
-        let reaction_uuid = uuid::Uuid::parse_str(reaction_id)
-            .context("Invalid reaction_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
+        let reaction_uuid =
+            uuid::Uuid::parse_str(reaction_id).context("Invalid reaction_id UUID")?;
         let now = chrono::Utc::now().timestamp_millis();
 
         // First, check if user already reacted with this emoji (upsert behavior)
@@ -1844,9 +1995,18 @@ impl DatabaseClient {
             "INSERT INTO guardyn.reactions (
                 message_id, conversation_id, user_id, emoji, reaction_id, created_at, is_group
             ) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (message_uuid, conversation_uuid, user_id.to_string(), emoji.to_string(), 
-             reaction_uuid, now, is_group),
-        ).await.context("Failed to insert reaction")?;
+            (
+                message_uuid,
+                conversation_uuid,
+                user_id.to_string(),
+                emoji.to_string(),
+                reaction_uuid,
+                now,
+                is_group,
+            ),
+        )
+        .await
+        .context("Failed to insert reaction")?;
 
         tracing::debug!(
             message_id = %message_id,
@@ -1866,15 +2026,16 @@ impl DatabaseClient {
         emoji: &str,
         _is_group: bool,
     ) -> Result<bool> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
 
         // Delete reaction by message_id + user_id + emoji
-        let result = self.scylla_query(
-            "DELETE FROM guardyn.reactions 
+        let result = self
+            .scylla_query(
+                "DELETE FROM guardyn.reactions 
              WHERE message_id = ? AND user_id = ? AND emoji = ?",
-            (message_uuid, user_id.to_string(), emoji.to_string()),
-        ).await;
+                (message_uuid, user_id.to_string(), emoji.to_string()),
+            )
+            .await;
 
         match result {
             Ok(_) => Ok(true),
@@ -1892,30 +2053,35 @@ impl DatabaseClient {
         _conversation_id: &str,
         _is_group: bool,
     ) -> Result<Vec<crate::proto::messaging::Reaction>> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
 
-        let rows = self.scylla_query(
-            "SELECT reaction_id, message_id, user_id, emoji, created_at 
+        let rows = self
+            .scylla_query(
+                "SELECT reaction_id, message_id, user_id, emoji, created_at 
              FROM guardyn.reactions WHERE message_id = ?",
-            (message_uuid,),
-        ).await?;
+                (message_uuid,),
+            )
+            .await?;
 
         let mut reactions = Vec::new();
         if let Some(rows) = rows.rows {
             for row in rows {
-                let reaction_id: uuid::Uuid = row.columns[0].as_ref()
+                let reaction_id: uuid::Uuid = row.columns[0]
+                    .as_ref()
                     .and_then(|v| v.as_uuid())
                     .unwrap_or_default();
-                let user_id: String = row.columns[2].as_ref()
+                let user_id: String = row.columns[2]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let emoji: String = row.columns[3].as_ref()
+                let emoji: String = row.columns[3]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let created_at: i64 = row.columns[4].as_ref()
+                let created_at: i64 = row.columns[4]
+                    .as_ref()
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
@@ -1947,25 +2113,35 @@ impl DatabaseClient {
         last_read_message_id: &str,
         is_group: bool,
     ) -> Result<()> {
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
-        let message_uuid = uuid::Uuid::parse_str(last_read_message_id)
-            .context("Invalid message_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
+        let message_uuid =
+            uuid::Uuid::parse_str(last_read_message_id).context("Invalid message_id UUID")?;
         let now = chrono::Utc::now().timestamp_millis();
 
         self.scylla_query(
             "INSERT INTO guardyn.read_receipts (
                 conversation_id, user_id, last_read_message_id, timestamp, is_group
             ) VALUES (?, ?, ?, ?, ?)",
-            (conversation_uuid, user_id.to_string(), message_uuid, now, is_group),
-        ).await.context("Failed to save read receipt")?;
+            (
+                conversation_uuid,
+                user_id.to_string(),
+                message_uuid,
+                now,
+                is_group,
+            ),
+        )
+        .await
+        .context("Failed to save read receipt")?;
 
         // Also update unread count in conversations table
         self.scylla_query(
             "UPDATE guardyn.conversations SET unread_count = 0 
              WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
             (user_id.to_string(), conversation_uuid),
-        ).await.ok(); // Ignore errors for unread count update
+        )
+        .await
+        .ok(); // Ignore errors for unread count update
 
         Ok(())
     }
@@ -1976,26 +2152,31 @@ impl DatabaseClient {
         conversation_id: &str,
         _is_group: bool,
     ) -> Result<Vec<crate::proto::messaging::ReadReceipt>> {
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
 
-        let rows = self.scylla_query(
-            "SELECT conversation_id, user_id, last_read_message_id, timestamp 
+        let rows = self
+            .scylla_query(
+                "SELECT conversation_id, user_id, last_read_message_id, timestamp 
              FROM guardyn.read_receipts WHERE conversation_id = ?",
-            (conversation_uuid,),
-        ).await?;
+                (conversation_uuid,),
+            )
+            .await?;
 
         let mut receipts = Vec::new();
         if let Some(rows) = rows.rows {
             for row in rows {
-                let user_id: String = row.columns[1].as_ref()
+                let user_id: String = row.columns[1]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let last_read_message_id: uuid::Uuid = row.columns[2].as_ref()
+                let last_read_message_id: uuid::Uuid = row.columns[2]
+                    .as_ref()
                     .and_then(|v| v.as_uuid())
                     .unwrap_or_default();
-                let timestamp: i64 = row.columns[3].as_ref()
+                let timestamp: i64 = row.columns[3]
+                    .as_ref()
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
@@ -2016,50 +2197,46 @@ impl DatabaseClient {
 
     /// RT-004: Get unread message count for a user in a conversation
     /// Counts messages where server_timestamp > last_read_message_timestamp
-    pub async fn get_unread_count(
-        &self,
-        conversation_id: &str,
-        user_id: &str,
-    ) -> Result<i32> {
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
+    pub async fn get_unread_count(&self, conversation_id: &str, user_id: &str) -> Result<i32> {
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
 
         // First, get the last read message timestamp for this user
-        let read_receipt_rows = self.scylla_query(
-            "SELECT last_read_message_id, timestamp 
+        let read_receipt_rows = self
+            .scylla_query(
+                "SELECT last_read_message_id, timestamp 
              FROM guardyn.read_receipts 
              WHERE conversation_id = ? AND user_id = ?",
-            (conversation_uuid, user_id.to_string()),
-        ).await?;
+                (conversation_uuid, user_id.to_string()),
+            )
+            .await?;
 
         let last_read_timestamp = if let Some(rows) = read_receipt_rows.rows {
-            rows.into_iter().next()
-                .and_then(|row| {
-                    row.columns[1].as_ref()
-                        .and_then(|v| v.as_bigint())
-                })
+            rows.into_iter()
+                .next()
+                .and_then(|row| row.columns[1].as_ref().and_then(|v| v.as_bigint()))
                 .unwrap_or(0)
         } else {
             0 // No read receipt means all messages are unread
         };
 
         // Count messages after the last read timestamp where user is recipient
-        let count_rows = self.scylla_query(
-            "SELECT COUNT(*) FROM guardyn.messages 
+        let count_rows = self
+            .scylla_query(
+                "SELECT COUNT(*) FROM guardyn.messages 
              WHERE conversation_id = ? 
              AND recipient_user_id = ?
              AND server_timestamp > ?
              AND is_deleted = false
              ALLOW FILTERING",
-            (conversation_uuid, user_id.to_string(), last_read_timestamp),
-        ).await?;
+                (conversation_uuid, user_id.to_string(), last_read_timestamp),
+            )
+            .await?;
 
         let count = if let Some(rows) = count_rows.rows {
-            rows.into_iter().next()
-                .and_then(|row| {
-                    row.columns[0].as_ref()
-                        .and_then(|v| v.as_bigint())
-                })
+            rows.into_iter()
+                .next()
+                .and_then(|row| row.columns[0].as_ref().and_then(|v| v.as_bigint()))
                 .unwrap_or(0) as i32
         } else {
             0
@@ -2079,24 +2256,34 @@ impl DatabaseClient {
         conversation_id: &str,
         is_group: bool,
     ) -> Result<Option<String>> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
 
-        let table = if is_group { "group_messages" } else { "messages" };
-        let id_column = if is_group { "group_id" } else { "conversation_id" };
+        let table = if is_group {
+            "group_messages"
+        } else {
+            "messages"
+        };
+        let id_column = if is_group {
+            "group_id"
+        } else {
+            "conversation_id"
+        };
 
         let query = format!(
             "SELECT sender_user_id FROM guardyn.{} WHERE {} = ? AND message_id = ?",
             table, id_column
         );
 
-        let rows = self.scylla_query(&query, (conversation_uuid, message_uuid)).await?;
+        let rows = self
+            .scylla_query(&query, (conversation_uuid, message_uuid))
+            .await?;
 
         if let Some(rows) = rows.rows {
             if let Some(row) = rows.into_iter().next() {
-                let sender: String = row.columns[0].as_ref()
+                let sender: String = row.columns[0]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
@@ -2116,22 +2303,31 @@ impl DatabaseClient {
         encrypted_content: &[u8],
         is_group: bool,
     ) -> Result<i32> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
         let now = chrono::Utc::now().timestamp_millis();
 
-        let table = if is_group { "group_messages" } else { "messages" };
-        let id_column = if is_group { "group_id" } else { "conversation_id" };
+        let table = if is_group {
+            "group_messages"
+        } else {
+            "messages"
+        };
+        let id_column = if is_group {
+            "group_id"
+        } else {
+            "conversation_id"
+        };
 
         // Get current edit version
         let version_query = format!(
             "SELECT edit_version FROM guardyn.{} WHERE {} = ? AND message_id = ?",
             table, id_column
         );
-        let rows = self.scylla_query(&version_query, (conversation_uuid, message_uuid)).await?;
-        
+        let rows = self
+            .scylla_query(&version_query, (conversation_uuid, message_uuid))
+            .await?;
+
         let current_version: i32 = if let Some(rows) = rows.rows {
             if let Some(row) = rows.into_iter().next() {
                 if let Some(Some(cql_value)) = row.columns.into_iter().next() {
@@ -2157,8 +2353,16 @@ impl DatabaseClient {
 
         self.scylla_query(
             &update_query,
-            (encrypted_content.to_vec(), new_version, now, conversation_uuid, message_uuid),
-        ).await.context("Failed to edit message")?;
+            (
+                encrypted_content.to_vec(),
+                new_version,
+                now,
+                conversation_uuid,
+                message_uuid,
+            ),
+        )
+        .await
+        .context("Failed to edit message")?;
 
         Ok(new_version)
     }
@@ -2174,13 +2378,20 @@ impl DatabaseClient {
         conversation_id: &str,
         is_group: bool,
     ) -> Result<Option<MessageMetadata>> {
-        let message_uuid = uuid::Uuid::parse_str(message_id)
-            .context("Invalid message_id UUID")?;
-        let conversation_uuid = uuid::Uuid::parse_str(conversation_id)
-            .context("Invalid conversation_id UUID")?;
+        let message_uuid = uuid::Uuid::parse_str(message_id).context("Invalid message_id UUID")?;
+        let conversation_uuid =
+            uuid::Uuid::parse_str(conversation_id).context("Invalid conversation_id UUID")?;
 
-        let table = if is_group { "group_messages" } else { "messages" };
-        let id_column = if is_group { "group_id" } else { "conversation_id" };
+        let table = if is_group {
+            "group_messages"
+        } else {
+            "messages"
+        };
+        let id_column = if is_group {
+            "group_id"
+        } else {
+            "conversation_id"
+        };
 
         let query = format!(
             "SELECT sender_user_id, message_type, server_timestamp FROM guardyn.{} 
@@ -2188,18 +2399,23 @@ impl DatabaseClient {
             table, id_column
         );
 
-        let rows = self.scylla_query(&query, (conversation_uuid, message_uuid)).await?;
+        let rows = self
+            .scylla_query(&query, (conversation_uuid, message_uuid))
+            .await?;
 
         if let Some(rows) = rows.rows {
             if let Some(row) = rows.into_iter().next() {
-                let sender_user_id: String = row.columns[0].as_ref()
+                let sender_user_id: String = row.columns[0]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let message_type: i32 = row.columns[1].as_ref()
+                let message_type: i32 = row.columns[1]
+                    .as_ref()
                     .and_then(|v| v.as_int())
                     .unwrap_or(0);
-                let server_timestamp: i64 = row.columns[2].as_ref()
+                let server_timestamp: i64 = row.columns[2]
+                    .as_ref()
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
@@ -2220,6 +2436,7 @@ impl DatabaseClient {
     }
 
     /// Store a forwarded message (1-on-1)
+    #[allow(clippy::too_many_arguments)]
     pub async fn store_forwarded_message(
         &self,
         message_id: &str,
@@ -2242,7 +2459,8 @@ impl DatabaseClient {
             "original_sender_id": forward_info.original_sender_id,
             "original_sender_name": forward_info.original_sender_name,
             "forward_count": forward_info.forward_count,
-        }).to_string();
+        })
+        .to_string();
 
         self.scylla_query(
             "INSERT INTO guardyn.messages (
@@ -2251,16 +2469,26 @@ impl DatabaseClient {
                 server_timestamp, delivery_status, is_deleted, forward_info
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                conversation_uuid, message_uuid, sender_user_id.to_string(),
-                sender_device_id.to_string(), recipient_user_id.to_string(),
-                encrypted_content.to_vec(), message_type, now, 0i32, false, forward_json,
+                conversation_uuid,
+                message_uuid,
+                sender_user_id.to_string(),
+                sender_device_id.to_string(),
+                recipient_user_id.to_string(),
+                encrypted_content.to_vec(),
+                message_type,
+                now,
+                0i32,
+                false,
+                forward_json,
             ),
-        ).await?;
+        )
+        .await?;
 
         Ok(())
     }
 
     /// Store a forwarded group message
+    #[allow(clippy::too_many_arguments)]
     pub async fn store_forwarded_group_message(
         &self,
         message_id: &str,
@@ -2281,7 +2509,8 @@ impl DatabaseClient {
             "original_sender_id": forward_info.original_sender_id,
             "original_sender_name": forward_info.original_sender_name,
             "forward_count": forward_info.forward_count,
-        }).to_string();
+        })
+        .to_string();
 
         self.scylla_query(
             "INSERT INTO guardyn.group_messages (
@@ -2289,14 +2518,18 @@ impl DatabaseClient {
                 encrypted_content, sent_at, metadata
             ) VALUES (?, now(), ?, ?, ?, ?, ?)",
             (
-                group_uuid, sender_user_id.to_string(), sender_device_id.to_string(),
-                encrypted_content.to_vec(), now.timestamp_millis(),
+                group_uuid,
+                sender_user_id.to_string(),
+                sender_device_id.to_string(),
+                encrypted_content.to_vec(),
+                now.timestamp_millis(),
                 std::collections::HashMap::from([
                     ("message_type".to_string(), message_type.to_string()),
                     ("forward_info".to_string(), forward_json),
                 ]),
             ),
-        ).await?;
+        )
+        .await?;
 
         Ok(())
     }
@@ -2309,7 +2542,11 @@ impl DatabaseClient {
     pub async fn fetch_messages_for_search(
         &self,
         params: &crate::handlers::SearchParams,
-    ) -> Result<(Vec<crate::proto::messaging::SearchResult>, Option<String>, usize)> {
+    ) -> Result<(
+        Vec<crate::proto::messaging::SearchResult>,
+        Option<String>,
+        usize,
+    )> {
         // Build query based on parameters
         let mut results = Vec::new();
         let mut total_count = 0usize;
@@ -2317,8 +2554,16 @@ impl DatabaseClient {
         // If conversation_id is specified, search only that conversation
         if let Some(ref conv_id) = params.conversation_id {
             let conv_uuid = uuid::Uuid::parse_str(conv_id)?;
-            let table = if params.is_group { "group_messages" } else { "messages" };
-            let id_col = if params.is_group { "group_id" } else { "conversation_id" };
+            let table = if params.is_group {
+                "group_messages"
+            } else {
+                "messages"
+            };
+            let id_col = if params.is_group {
+                "group_id"
+            } else {
+                "conversation_id"
+            };
 
             let query = format!(
                 "SELECT message_id, sender_user_id, encrypted_content, server_timestamp, message_type 
@@ -2331,21 +2576,26 @@ impl DatabaseClient {
             if let Some(rows) = rows.rows {
                 total_count = rows.len();
                 for row in rows {
-                    let message_id: uuid::Uuid = row.columns[0].as_ref()
+                    let message_id: uuid::Uuid = row.columns[0]
+                        .as_ref()
                         .and_then(|v| v.as_uuid())
                         .unwrap_or_default();
-                    let sender: String = row.columns[1].as_ref()
+                    let sender: String = row.columns[1]
+                        .as_ref()
                         .and_then(|v| v.as_text())
                         .map(|s| s.to_string())
                         .unwrap_or_default();
-                    let content: Vec<u8> = row.columns[2].as_ref()
+                    let content: Vec<u8> = row.columns[2]
+                        .as_ref()
                         .and_then(|v| v.as_blob())
                         .map(|b| b.to_vec())
                         .unwrap_or_default();
-                    let timestamp: i64 = row.columns[3].as_ref()
+                    let timestamp: i64 = row.columns[3]
+                        .as_ref()
                         .and_then(|v| v.as_bigint())
                         .unwrap_or(0);
-                    let msg_type: i32 = row.columns[4].as_ref()
+                    let msg_type: i32 = row.columns[4]
+                        .as_ref()
                         .and_then(|v| v.as_int())
                         .unwrap_or(0);
 
@@ -2368,7 +2618,9 @@ impl DatabaseClient {
             // Search all conversations for user - get from conversations table first
             let conv_query = "SELECT conversation_id FROM guardyn.conversations 
                              WHERE user_id = ? LIMIT 50";
-            let conv_rows = self.scylla_query(conv_query, (params.user_id.clone(),)).await?;
+            let conv_rows = self
+                .scylla_query(conv_query, (params.user_id.clone(),))
+                .await?;
 
             if let Some(rows) = conv_rows.rows {
                 for row in rows {
@@ -2377,28 +2629,34 @@ impl DatabaseClient {
                         let msg_query = "SELECT message_id, sender_user_id, encrypted_content, 
                                         server_timestamp, message_type 
                                         FROM guardyn.messages WHERE conversation_id = ? LIMIT ?";
-                        if let Ok(msg_rows) = self.scylla_query(msg_query, (conv_uuid, 10i32)).await {
+                        if let Ok(msg_rows) = self.scylla_query(msg_query, (conv_uuid, 10i32)).await
+                        {
                             if let Some(msgs) = msg_rows.rows {
                                 total_count += msgs.len();
                                 for msg_row in msgs {
                                     if results.len() >= params.limit as usize {
                                         break;
                                     }
-                                    let message_id: uuid::Uuid = msg_row.columns[0].as_ref()
+                                    let message_id: uuid::Uuid = msg_row.columns[0]
+                                        .as_ref()
                                         .and_then(|v| v.as_uuid())
                                         .unwrap_or_default();
-                                    let sender: String = msg_row.columns[1].as_ref()
+                                    let sender: String = msg_row.columns[1]
+                                        .as_ref()
                                         .and_then(|v| v.as_text())
                                         .map(|s| s.to_string())
                                         .unwrap_or_default();
-                                    let content: Vec<u8> = msg_row.columns[2].as_ref()
+                                    let content: Vec<u8> = msg_row.columns[2]
+                                        .as_ref()
                                         .and_then(|v| v.as_blob())
                                         .map(|b| b.to_vec())
                                         .unwrap_or_default();
-                                    let timestamp: i64 = msg_row.columns[3].as_ref()
+                                    let timestamp: i64 = msg_row.columns[3]
+                                        .as_ref()
                                         .and_then(|v| v.as_bigint())
                                         .unwrap_or(0);
-                                    let msg_type: i32 = msg_row.columns[4].as_ref()
+                                    let msg_type: i32 = msg_row.columns[4]
+                                        .as_ref()
                                         .and_then(|v| v.as_int())
                                         .unwrap_or(0);
 
@@ -2448,19 +2706,23 @@ impl DatabaseClient {
 
         if is_group {
             // Check group membership
-            let rows = self.scylla_query(
-                "SELECT user_id FROM guardyn.group_members 
+            let rows = self
+                .scylla_query(
+                    "SELECT user_id FROM guardyn.group_members 
                  WHERE group_id = ? AND user_id = ? ALLOW FILTERING",
-                (conv_uuid, user_id.to_string()),
-            ).await?;
+                    (conv_uuid, user_id.to_string()),
+                )
+                .await?;
             Ok(rows.rows.map(|r| !r.is_empty()).unwrap_or(false))
         } else {
             // For 1-on-1, check conversations table
-            let rows = self.scylla_query(
-                "SELECT conversation_id FROM guardyn.conversations 
+            let rows = self
+                .scylla_query(
+                    "SELECT conversation_id FROM guardyn.conversations 
                  WHERE user_id = ? AND conversation_id = ? ALLOW FILTERING",
-                (user_id.to_string(), conv_uuid),
-            ).await?;
+                    (user_id.to_string(), conv_uuid),
+                )
+                .await?;
             Ok(rows.rows.map(|r| !r.is_empty()).unwrap_or(false))
         }
     }
@@ -2481,7 +2743,8 @@ impl DatabaseClient {
                 conversation_id, ttl_seconds, set_by_user_id, updated_at, is_group
             ) VALUES (?, ?, ?, ?, ?)",
             (conv_uuid, ttl_seconds, user_id.to_string(), now, is_group),
-        ).await?;
+        )
+        .await?;
 
         Ok(())
     }
@@ -2494,22 +2757,27 @@ impl DatabaseClient {
     ) -> Result<crate::proto::messaging::DisappearingConfig> {
         let conv_uuid = uuid::Uuid::parse_str(conversation_id)?;
 
-        let rows = self.scylla_query(
-            "SELECT ttl_seconds, set_by_user_id, updated_at 
+        let rows = self
+            .scylla_query(
+                "SELECT ttl_seconds, set_by_user_id, updated_at 
              FROM guardyn.disappearing_config WHERE conversation_id = ?",
-            (conv_uuid,),
-        ).await?;
+                (conv_uuid,),
+            )
+            .await?;
 
         if let Some(rows) = rows.rows {
             if let Some(row) = rows.into_iter().next() {
-                let ttl: i32 = row.columns[0].as_ref()
+                let ttl: i32 = row.columns[0]
+                    .as_ref()
                     .and_then(|v| v.as_int())
                     .unwrap_or(0);
-                let set_by: String = row.columns[1].as_ref()
+                let set_by: String = row.columns[1]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let updated_at: i64 = row.columns[2].as_ref()
+                let updated_at: i64 = row.columns[2]
+                    .as_ref()
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
@@ -2578,7 +2846,8 @@ impl DatabaseClient {
         self.scylla_query(
             "DELETE FROM guardyn.blocked_users WHERE user_id = ? AND blocked_user_id = ?",
             (user_id, blocked_user_id),
-        ).await?;
+        )
+        .await?;
 
         tracing::info!(
             user_id = %user_id,
@@ -2590,37 +2859,48 @@ impl DatabaseClient {
     }
 
     /// Check if a user is blocked
+    #[allow(dead_code)]
     pub async fn is_user_blocked(&self, user_id: &str, potential_blocked_id: &str) -> Result<bool> {
-        let rows = self.scylla_query(
-            "SELECT blocked_user_id FROM guardyn.blocked_users 
+        let rows = self
+            .scylla_query(
+                "SELECT blocked_user_id FROM guardyn.blocked_users 
              WHERE user_id = ? AND blocked_user_id = ?",
-            (user_id, potential_blocked_id),
-        ).await?;
+                (user_id, potential_blocked_id),
+            )
+            .await?;
 
-        Ok(rows.rows.map_or(false, |r| !r.is_empty()))
+        Ok(rows.rows.is_some_and(|r| !r.is_empty()))
     }
 
     /// Get all blocked users for a user
-    pub async fn get_blocked_users(&self, user_id: &str) -> Result<Vec<crate::proto::messaging::BlockedUser>> {
-        let rows = self.scylla_query(
-            "SELECT blocked_user_id, blocked_username, blocked_at 
+    pub async fn get_blocked_users(
+        &self,
+        user_id: &str,
+    ) -> Result<Vec<crate::proto::messaging::BlockedUser>> {
+        let rows = self
+            .scylla_query(
+                "SELECT blocked_user_id, blocked_username, blocked_at 
              FROM guardyn.blocked_users WHERE user_id = ?",
-            (user_id,),
-        ).await?;
+                (user_id,),
+            )
+            .await?;
 
         let mut blocked_users = Vec::new();
 
         if let Some(rows) = rows.rows {
             for row in rows {
-                let blocked_user_id: String = row.columns[0].as_ref()
+                let blocked_user_id: String = row.columns[0]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let blocked_username: String = row.columns[1].as_ref()
+                let blocked_username: String = row.columns[1]
+                    .as_ref()
                     .and_then(|v| v.as_text())
                     .map(|s| s.to_string())
                     .unwrap_or_default();
-                let blocked_at: i64 = row.columns[2].as_ref()
+                let blocked_at: i64 = row.columns[2]
+                    .as_ref()
                     .and_then(|v| v.as_bigint())
                     .unwrap_or(0);
 
@@ -2650,7 +2930,8 @@ impl DatabaseClient {
              WHERE user_id = ? AND conversation_id = ?
              ALLOW FILTERING",
             (user_id, conv_uuid),
-        ).await?;
+        )
+        .await?;
 
         tracing::info!(
             user_id = %user_id,
@@ -2685,11 +2966,7 @@ impl DatabaseClient {
             deleted_count += 1;
         }
 
-        tracing::info!(
-            "Deleted {} members from group {}",
-            deleted_count,
-            group_id
-        );
+        tracing::info!("Deleted {} members from group {}", deleted_count, group_id);
         Ok(())
     }
 
@@ -2705,11 +2982,7 @@ impl DatabaseClient {
             deleted_count += 1;
         }
 
-        tracing::info!(
-            "Deleted {} messages from group {}",
-            deleted_count,
-            group_id
-        );
+        tracing::info!("Deleted {} messages from group {}", deleted_count, group_id);
         Ok(())
     }
 }

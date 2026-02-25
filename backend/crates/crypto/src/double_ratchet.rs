@@ -35,8 +35,9 @@ impl ChainKey {
     fn next(&self) -> Result<Self> {
         let hkdf = Hkdf::<Sha256>::new(None, &self.key);
         let mut next_key = [0u8; 32];
-        hkdf.expand(CHAIN_KEY_INFO, &mut next_key)
-            .map_err(|e| CryptoError::KeyGeneration(format!("Chain key derivation failed: {}", e)))?;
+        hkdf.expand(CHAIN_KEY_INFO, &mut next_key).map_err(|e| {
+            CryptoError::KeyGeneration(format!("Chain key derivation failed: {}", e))
+        })?;
         Ok(Self::new(next_key))
     }
 
@@ -44,8 +45,9 @@ impl ChainKey {
     fn message_key(&self) -> Result<MessageKey> {
         let hkdf = Hkdf::<Sha256>::new(None, &self.key);
         let mut msg_key = [0u8; 32];
-        hkdf.expand(MESSAGE_KEY_INFO, &mut msg_key)
-            .map_err(|e| CryptoError::KeyGeneration(format!("Message key derivation failed: {}", e)))?;
+        hkdf.expand(MESSAGE_KEY_INFO, &mut msg_key).map_err(|e| {
+            CryptoError::KeyGeneration(format!("Message key derivation failed: {}", e))
+        })?;
         Ok(MessageKey::new(msg_key))
     }
 }
@@ -64,14 +66,20 @@ impl MessageKey {
     /// Encrypt plaintext with AES-256-GCM
     fn encrypt(&self, plaintext: &[u8], associated_data: &[u8]) -> Result<Vec<u8>> {
         let cipher = Aes256Gcm::new((&self.key).into());
-        
+
         // Generate cryptographically secure random nonce (12 bytes)
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        let nonce: Nonce<_> = nonce_bytes.into();
 
         let mut ciphertext = cipher
-            .encrypt(nonce, aes_gcm::aead::Payload { msg: plaintext, aad: associated_data })
+            .encrypt(
+                &nonce,
+                aes_gcm::aead::Payload {
+                    msg: plaintext,
+                    aad: associated_data,
+                },
+            )
             .map_err(|e| CryptoError::Encryption(format!("AES-GCM encryption failed: {}", e)))?;
 
         // Prepend nonce to ciphertext
@@ -87,11 +95,20 @@ impl MessageKey {
         }
 
         let (nonce_bytes, actual_ciphertext) = ciphertext.split_at(12);
-        let nonce = Nonce::from_slice(nonce_bytes);
+        let nonce_arr: [u8; 12] = nonce_bytes
+            .try_into()
+            .map_err(|_| CryptoError::Decryption("Invalid nonce length".to_string()))?;
+        let nonce: Nonce<_> = nonce_arr.into();
         let cipher = Aes256Gcm::new((&self.key).into());
 
         cipher
-            .decrypt(nonce, aes_gcm::aead::Payload { msg: actual_ciphertext, aad: associated_data })
+            .decrypt(
+                &nonce,
+                aes_gcm::aead::Payload {
+                    msg: actual_ciphertext,
+                    aad: associated_data,
+                },
+            )
             .map_err(|e| CryptoError::Decryption(format!("AES-GCM decryption failed: {}", e)))
     }
 }
@@ -115,8 +132,9 @@ impl RootKey {
         let mut new_chain_key = [0u8; 32];
         let mut output = [0u8; 64];
 
-        hkdf.expand(ROOT_KEY_INFO, &mut output)
-            .map_err(|e| CryptoError::KeyGeneration(format!("Root key derivation failed: {}", e)))?;
+        hkdf.expand(ROOT_KEY_INFO, &mut output).map_err(|e| {
+            CryptoError::KeyGeneration(format!("Root key derivation failed: {}", e))
+        })?;
 
         new_root_key.copy_from_slice(&output[..32]);
         new_chain_key.copy_from_slice(&output[32..]);
@@ -240,7 +258,9 @@ impl DoubleRatchet {
         // Derive initial root key from X3DH shared secret
         let mut root_key_bytes = [0u8; 32];
         if shared_secret.len() != 32 {
-            return Err(CryptoError::InvalidKey("Shared secret must be 32 bytes".to_string()));
+            return Err(CryptoError::InvalidKey(
+                "Shared secret must be 32 bytes".to_string(),
+            ));
         }
         root_key_bytes.copy_from_slice(shared_secret);
         let root_key = RootKey::new(root_key_bytes);
@@ -267,7 +287,9 @@ impl DoubleRatchet {
 
         let mut root_key_bytes = [0u8; 32];
         if shared_secret.len() != 32 {
-            return Err(CryptoError::InvalidKey("Shared secret must be 32 bytes".to_string()));
+            return Err(CryptoError::InvalidKey(
+                "Shared secret must be 32 bytes".to_string(),
+            ));
         }
         root_key_bytes.copy_from_slice(shared_secret);
         let root_key = RootKey::new(root_key_bytes);
@@ -291,8 +313,14 @@ impl DoubleRatchet {
     }
 
     /// Encrypt a message
-    pub fn encrypt(&mut self, plaintext: &[u8], associated_data: &[u8]) -> Result<EncryptedMessage> {
-        let chain_key = self.sending_chain_key.as_ref()
+    pub fn encrypt(
+        &mut self,
+        plaintext: &[u8],
+        associated_data: &[u8],
+    ) -> Result<EncryptedMessage> {
+        let chain_key = self
+            .sending_chain_key
+            .as_ref()
             .ok_or_else(|| CryptoError::Protocol("No sending chain key".to_string()))?;
 
         let message_key = chain_key.message_key()?;
@@ -312,7 +340,11 @@ impl DoubleRatchet {
     }
 
     /// Decrypt a message
-    pub fn decrypt(&mut self, message: &EncryptedMessage, associated_data: &[u8]) -> Result<Vec<u8>> {
+    pub fn decrypt(
+        &mut self,
+        message: &EncryptedMessage,
+        associated_data: &[u8],
+    ) -> Result<Vec<u8>> {
         // Check if we have a skipped message key
         let key = (message.header.dh_public_key, message.header.message_number);
         if let Some(message_key) = self.skipped_message_keys.remove(&key) {
@@ -333,7 +365,9 @@ impl DoubleRatchet {
         self.skip_message_keys(message.header.message_number)?;
 
         // Decrypt the message
-        let chain_key = self.receiving_chain_key.as_ref()
+        let chain_key = self
+            .receiving_chain_key
+            .as_ref()
             .ok_or_else(|| CryptoError::Protocol("No receiving chain key".to_string()))?;
 
         let message_key = chain_key.message_key()?;
@@ -379,19 +413,19 @@ impl DoubleRatchet {
 
             while self.receiving_message_number < until {
                 if self.skipped_message_keys.len() >= MAX_SKIP {
-                    return Err(CryptoError::Protocol(
-                        format!("Too many skipped messages (max: {})", MAX_SKIP)
-                    ));
+                    return Err(CryptoError::Protocol(format!(
+                        "Too many skipped messages (max: {})",
+                        MAX_SKIP
+                    )));
                 }
 
                 let message_key = current_chain_key.message_key()?;
-                let remote_key = self.dh_remote
+                let remote_key = self
+                    .dh_remote
                     .ok_or_else(|| CryptoError::Protocol("No remote key".to_string()))?;
 
-                self.skipped_message_keys.insert(
-                    (remote_key, self.receiving_message_number),
-                    message_key,
-                );
+                self.skipped_message_keys
+                    .insert((remote_key, self.receiving_message_number), message_key);
 
                 current_chain_key = current_chain_key.next()?;
                 self.receiving_message_number += 1;
@@ -482,9 +516,11 @@ impl DoubleRatchet {
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
         let min_size = 32 + 1 + 32 + 32 + 1 + 32 + 4 + 1 + 32 + 4 + 4 + 4;
         if bytes.len() < min_size {
-            return Err(CryptoError::Protocol(
-                format!("Serialized data too short: {} bytes (need at least {})", bytes.len(), min_size)
-            ));
+            return Err(CryptoError::Protocol(format!(
+                "Serialized data too short: {} bytes (need at least {})",
+                bytes.len(),
+                min_size
+            )));
         }
 
         let mut offset = 0;
@@ -562,7 +598,9 @@ impl DoubleRatchet {
         let mut skipped_message_keys = HashMap::new();
         for _ in 0..skipped_count {
             if offset + 68 > bytes.len() {
-                return Err(CryptoError::Protocol("Truncated skipped keys data".to_string()));
+                return Err(CryptoError::Protocol(
+                    "Truncated skipped keys data".to_string(),
+                ));
             }
 
             let mut dh_key_bytes = [0u8; 32];
@@ -622,10 +660,12 @@ mod tests {
         let plaintext = b"Hello, World!";
         let associated_data = b"metadata";
 
-        let ciphertext = message_key.encrypt(plaintext, associated_data)
+        let ciphertext = message_key
+            .encrypt(plaintext, associated_data)
             .expect("Encryption failed");
 
-        let decrypted = message_key.decrypt(&ciphertext, associated_data)
+        let decrypted = message_key
+            .decrypt(&ciphertext, associated_data)
             .expect("Decryption failed");
 
         assert_eq!(plaintext, &decrypted[..]);
@@ -637,7 +677,8 @@ mod tests {
         let message_key = MessageKey::new(key);
 
         let plaintext = b"Hello, World!";
-        let ciphertext = message_key.encrypt(plaintext, b"correct")
+        let ciphertext = message_key
+            .encrypt(plaintext, b"correct")
             .expect("Encryption failed");
 
         let result = message_key.decrypt(&ciphertext, b"wrong");
@@ -649,8 +690,7 @@ mod tests {
         let root_key = RootKey::new([42u8; 32]);
         let dh_output = [99u8; 32];
 
-        let (new_root_key, chain_key) = root_key.dh_ratchet(&dh_output)
-            .expect("DH ratchet failed");
+        let (new_root_key, chain_key) = root_key.dh_ratchet(&dh_output).expect("DH ratchet failed");
 
         assert_ne!(root_key.key, new_root_key.key);
         assert_ne!(root_key.key, chain_key.key);
@@ -670,7 +710,10 @@ mod tests {
         let bytes = header.to_bytes();
         let decoded = MessageHeader::from_bytes(&bytes).expect("Deserialization failed");
 
-        assert_eq!(header.dh_public_key.as_bytes(), decoded.dh_public_key.as_bytes());
+        assert_eq!(
+            header.dh_public_key.as_bytes(),
+            decoded.dh_public_key.as_bytes()
+        );
         assert_eq!(header.previous_chain_length, decoded.previous_chain_length);
         assert_eq!(header.message_number, decoded.message_number);
     }
@@ -705,30 +748,31 @@ mod tests {
         let bob_public = X25519PublicKey::from(&bob_dh);
 
         // Alice initializes with Bob's public key
-        let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public)
-            .expect("Alice init failed");
+        let mut alice =
+            DoubleRatchet::init_alice(&shared_secret, bob_public).expect("Alice init failed");
 
         // Bob initializes
-        let mut bob = DoubleRatchet::init_bob(&shared_secret)
-            .expect("Bob init failed");
+        let mut bob = DoubleRatchet::init_bob(&shared_secret).expect("Bob init failed");
 
         // Alice sends first message
         let plaintext1 = b"Hello from Alice!";
-        let encrypted1 = alice.encrypt(plaintext1, b"msg1")
+        let encrypted1 = alice
+            .encrypt(plaintext1, b"msg1")
             .expect("Encryption failed");
 
         // Bob receives and decrypts
-        let decrypted1 = bob.decrypt(&encrypted1, b"msg1")
+        let decrypted1 = bob
+            .decrypt(&encrypted1, b"msg1")
             .expect("Decryption failed");
         assert_eq!(plaintext1, &decrypted1[..]);
 
         // Bob sends reply
         let plaintext2 = b"Hello from Bob!";
-        let encrypted2 = bob.encrypt(plaintext2, b"msg2")
-            .expect("Encryption failed");
+        let encrypted2 = bob.encrypt(plaintext2, b"msg2").expect("Encryption failed");
 
         // Alice receives
-        let decrypted2 = alice.decrypt(&encrypted2, b"msg2")
+        let decrypted2 = alice
+            .decrypt(&encrypted2, b"msg2")
             .expect("Decryption failed");
         assert_eq!(plaintext2, &decrypted2[..]);
     }
@@ -824,11 +868,11 @@ mod tests {
 
         // Serialize Bob's state
         let serialized = bob.serialize();
-        assert!(serialized.len() > 0);
+        assert!(!serialized.is_empty());
 
         // Deserialize into new instance
-        let mut bob_restored = DoubleRatchet::deserialize(&serialized)
-            .expect("Failed to deserialize ratchet");
+        let mut bob_restored =
+            DoubleRatchet::deserialize(&serialized).expect("Failed to deserialize ratchet");
 
         // Verify state by continuing conversation
         let msg4 = alice.encrypt(b"After restore", b"ad4").unwrap();
@@ -836,9 +880,10 @@ mod tests {
         assert_eq!(b"After restore", &decrypted[..]);
 
         // Bob can also send
-        let reply = bob_restored.encrypt(b"Reply after restore", b"ad5").unwrap();
+        let reply = bob_restored
+            .encrypt(b"Reply after restore", b"ad5")
+            .unwrap();
         let decrypted_reply = alice.decrypt(&reply, b"ad5").unwrap();
         assert_eq!(b"Reply after restore", &decrypted_reply[..]);
     }
 }
-

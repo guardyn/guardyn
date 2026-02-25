@@ -2,10 +2,9 @@
 use crate::db::DatabaseClient;
 use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
-    block_user_response, unblock_user_response, get_blocked_users_response,
-    BlockUserRequest, BlockUserResponse, BlockUserSuccess,
-    UnblockUserRequest, UnblockUserResponse, UnblockUserSuccess,
-    GetBlockedUsersRequest, GetBlockedUsersResponse, GetBlockedUsersSuccess,
+    block_user_response, get_blocked_users_response, unblock_user_response, BlockUserRequest,
+    BlockUserResponse, BlockUserSuccess, GetBlockedUsersRequest, GetBlockedUsersResponse,
+    GetBlockedUsersSuccess, UnblockUserRequest, UnblockUserResponse, UnblockUserSuccess,
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -202,9 +201,9 @@ pub async fn get_blocked_users(
             );
 
             Ok(Response::new(GetBlockedUsersResponse {
-                result: Some(get_blocked_users_response::Result::Success(GetBlockedUsersSuccess {
-                    blocked_users,
-                })),
+                result: Some(get_blocked_users_response::Result::Success(
+                    GetBlockedUsersSuccess { blocked_users },
+                )),
             }))
         }
         Err(e) => {

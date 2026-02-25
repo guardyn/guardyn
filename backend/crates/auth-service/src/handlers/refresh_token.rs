@@ -1,15 +1,14 @@
-/// Refresh token handler - issues new access token
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
-use tonic::{Request, Response, Status};
 use crate::jwt;
+/// Refresh token handler - issues new access token
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
+use tonic::{Request, Response, Status};
 
 pub async fn handle(
     service: &AuthServiceImpl,
     request: Request<RefreshTokenRequest>,
 ) -> Result<Response<RefreshTokenResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate refresh token
     let claims = match jwt::validate_token(&req.refresh_token, &service.jwt_secret) {
         Ok(c) => c,
@@ -24,7 +23,7 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Check if token type is refresh
     if claims.token_type != Some("refresh".to_string()) {
         let error = ErrorResponse {
@@ -36,10 +35,10 @@ pub async fn handle(
             result: Some(refresh_token_response::Result::Error(error)),
         }));
     }
-    
+
     // Check if session exists in database
     match service.db.get_session(&req.refresh_token).await {
-        Ok(Some(_)) => {},
+        Ok(Some(_)) => {}
         Ok(None) => {
             let error = ErrorResponse {
                 code: error_response::ErrorCode::Unauthorized as i32,
@@ -62,9 +61,14 @@ pub async fn handle(
             }));
         }
     }
-    
+
     // Generate new access token
-    let access_token = match jwt::generate_access_token(&claims.sub, &claims.device_id, &claims.username, &service.jwt_secret) {
+    let access_token = match jwt::generate_access_token(
+        &claims.sub,
+        &claims.device_id,
+        &claims.username,
+        &service.jwt_secret,
+    ) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
@@ -78,9 +82,14 @@ pub async fn handle(
             }));
         }
     };
-    
+
     // Generate new refresh token as well (rotation)
-    let new_refresh_token = match jwt::generate_refresh_token(&claims.sub, &claims.device_id, &claims.username, &service.jwt_secret) {
+    let new_refresh_token = match jwt::generate_refresh_token(
+        &claims.sub,
+        &claims.device_id,
+        &claims.username,
+        &service.jwt_secret,
+    ) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate new refresh token: {}", e);
@@ -94,13 +103,13 @@ pub async fn handle(
             }));
         }
     };
-    
+
     let success = RefreshTokenSuccess {
         access_token,
         access_token_expires_in: 15 * 60, // 15 minutes
         refresh_token: new_refresh_token,
     };
-    
+
     Ok(Response::new(RefreshTokenResponse {
         result: Some(refresh_token_response::Result::Success(success)),
     }))

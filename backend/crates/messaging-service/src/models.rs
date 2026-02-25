@@ -54,6 +54,7 @@ impl DeliveryStatus {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_i32(value: i32) -> Self {
         match value {
             0 => DeliveryStatus::Pending,
@@ -68,6 +69,7 @@ impl DeliveryStatus {
 
 /// Group chat metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct GroupMetadata {
     pub group_id: String,
     pub group_name: String,
@@ -75,8 +77,8 @@ pub struct GroupMetadata {
     pub created_at: i64,
     pub mls_group_id: Vec<u8>, // OpenMLS group identifier
     pub mls_epoch: u64,
-    pub icon_media_id: Option<String>,  // Reference to media in MediaService
-    pub description: Option<String>,     // Optional group description
+    pub icon_media_id: Option<String>, // Reference to media in MediaService
+    pub description: Option<String>,   // Optional group description
 }
 
 /// Group member
@@ -84,7 +86,7 @@ pub struct GroupMetadata {
 pub struct GroupMember {
     pub group_id: String,
     pub user_id: String,
-    pub device_id: String,  // Added for MLS operations
+    pub device_id: String, // Added for MLS operations
     pub role: GroupRole,
     pub joined_at: i64,
 }
@@ -96,15 +98,18 @@ pub enum GroupRole {
     Member,
 }
 
-impl GroupRole {
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for GroupRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GroupRole::Owner => "owner".to_string(),
-            GroupRole::Admin => "admin".to_string(),
-            GroupRole::Member => "member".to_string(),
+            GroupRole::Owner => write!(f, "owner"),
+            GroupRole::Admin => write!(f, "admin"),
+            GroupRole::Member => write!(f, "member"),
         }
     }
+}
 
+impl GroupRole {
+    #[allow(dead_code)]
     pub fn from_string(s: &str) -> Self {
         match s {
             "owner" => GroupRole::Owner,

@@ -47,7 +47,10 @@ pub enum PaddingError {
 /// ```
 pub fn pad_message(plaintext: &[u8]) -> Result<Vec<u8>, PaddingError> {
     if plaintext.len() > MAX_MESSAGE_LENGTH {
-        return Err(PaddingError::MessageTooLarge(plaintext.len(), MAX_MESSAGE_LENGTH));
+        return Err(PaddingError::MessageTooLarge(
+            plaintext.len(),
+            MAX_MESSAGE_LENGTH,
+        ));
     }
 
     let padded_len = next_padme_length(plaintext.len());
@@ -115,7 +118,7 @@ pub fn next_padme_length(len: usize) -> usize {
 
     if needed <= 256 {
         // 16-byte alignment for small messages
-        return ((needed + 15) / 16) * 16;
+        return needed.div_ceil(16) * 16;
     }
 
     // PADMÉ algorithm for larger messages
@@ -131,7 +134,7 @@ pub fn next_padme_length(len: usize) -> usize {
     }
 
     let granularity = 1usize << (e - s);
-    let padded = ((needed + granularity - 1) / granularity) * granularity;
+    let padded = needed.div_ceil(granularity) * granularity;
 
     // Ensure result is at least as large as input + padding marker
     padded.max(needed)

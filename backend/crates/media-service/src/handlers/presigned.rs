@@ -9,9 +9,8 @@ use crate::{
     proto::{
         common::{error_response::ErrorCode, ErrorResponse},
         media::{
-            GetDownloadUrlRequest, GetDownloadUrlResponse,
-            GetUploadUrlRequest, GetUploadUrlResponse,
-            MediaMetadata, MediaType, UploadStatus,
+            GetDownloadUrlRequest, GetDownloadUrlResponse, GetUploadUrlRequest,
+            GetUploadUrlResponse, MediaMetadata, MediaType, UploadStatus,
         },
     },
     storage::StorageClient,
@@ -34,7 +33,7 @@ pub async fn get_upload_url(
     let user_id = claims.sub;
 
     let req = request.into_inner();
-    
+
     if req.filename.is_empty() {
         return Ok(Response::new(GetUploadUrlResponse {
             upload_url: String::new(),
@@ -51,10 +50,7 @@ pub async fn get_upload_url(
 
     // Generate media ID and storage path
     let media_id = DatabaseClient::generate_media_id();
-    let extension = req.filename
-        .rsplit('.')
-        .next()
-        .unwrap_or("bin");
+    let extension = req.filename.rsplit('.').next().unwrap_or("bin");
     let storage_path = format!("{}/{}.{}", &user_id, &media_id, extension);
 
     // Determine content type
@@ -170,7 +166,7 @@ pub async fn get_download_url(
     let user_id = claims.sub;
 
     let req = request.into_inner();
-    
+
     if req.media_id.is_empty() {
         return Ok(Response::new(GetDownloadUrlResponse {
             download_url: String::new(),
@@ -229,7 +225,10 @@ pub async fn get_download_url(
     }
 
     // Generate pre-signed URL
-    let download_url = match storage.generate_download_url(&metadata.storage_path, None).await {
+    let download_url = match storage
+        .generate_download_url(&metadata.storage_path, None)
+        .await
+    {
         Ok(url) => url,
         Err(e) => {
             tracing::error!(error = %e, "Failed to generate download URL");

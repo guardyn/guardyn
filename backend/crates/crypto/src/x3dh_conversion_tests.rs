@@ -12,11 +12,10 @@
 /// IMPORTANT: We use to_scalar_bytes() + clamp_integer() which applies ONLY clamping,
 /// matching TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk().
 /// Do NOT use to_scalar() which also performs modular reduction - this breaks compatibility!
-
 use crate::x3dh::IdentityKeyPair;
 use curve25519_dalek::scalar::clamp_integer;
 use ed25519_dalek::SigningKey;
-use sha2::{Sha512, Digest};
+use sha2::{Digest, Sha512};
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
 /// Test that Ed25519 → X25519 conversion is internally consistent
@@ -48,10 +47,9 @@ fn test_ed25519_to_x25519_internal_consistency() {
 fn test_ed25519_to_x25519_deterministic() {
     // Fixed seed for reproducibility (32 bytes)
     let seed: [u8; 32] = [
-        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-        0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10,
-        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-        0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e,
+        0x1f, 0x20,
     ];
 
     // Create Ed25519 signing key from seed
@@ -75,9 +73,18 @@ fn test_ed25519_to_x25519_deterministic() {
     // Print the values for cross-platform verification
     println!("=== Ed25519 → X25519 Test Vectors ===");
     println!("Ed25519 Seed (32 bytes):     {:02x?}", seed);
-    println!("Ed25519 Public Key (32 bytes): {:02x?}", verifying_key.to_bytes());
-    println!("X25519 Public Key (32 bytes):  {:02x?}", x25519_public.as_bytes());
-    println!("X25519 Secret Key (32 bytes):  {:02x?}", x25519_secret_bytes);
+    println!(
+        "Ed25519 Public Key (32 bytes): {:02x?}",
+        verifying_key.to_bytes()
+    );
+    println!(
+        "X25519 Public Key (32 bytes):  {:02x?}",
+        x25519_public.as_bytes()
+    );
+    println!(
+        "X25519 Secret Key (32 bytes):  {:02x?}",
+        x25519_secret_bytes
+    );
 }
 
 /// Test that to_scalar_bytes() + clamp_integer() matches manual SHA512 + clamping
@@ -92,10 +99,9 @@ fn test_ed25519_to_x25519_deterministic() {
 #[test]
 fn test_clamp_integer_matches_manual_clamping() {
     let seed: [u8; 32] = [
-        0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
-        0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
-        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd,
+        0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
+        0x66, 0x77,
     ];
 
     // Method 1: Use to_scalar_bytes() + clamp_integer() (TweetNaCl compatible)
@@ -105,16 +111,16 @@ fn test_clamp_integer_matches_manual_clamping() {
     // Method 2: Manual SHA512 + clamping
     // This is exactly what TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk does
     let mut hasher = Sha512::new();
-    hasher.update(&seed);
+    hasher.update(seed);
     let hash = hasher.finalize();
 
     let mut manual_scalar = [0u8; 32];
     manual_scalar.copy_from_slice(&hash[..32]);
 
     // Apply X25519 scalar clamping (per RFC 7748)
-    manual_scalar[0] &= 0xF8;      // Clear bottom 3 bits (248 = 0xF8)
-    manual_scalar[31] &= 0x7F;     // Clear top bit (127 = 0x7F)
-    manual_scalar[31] |= 0x40;     // Set bit 6 (64 = 0x40)
+    manual_scalar[0] &= 0xF8; // Clear bottom 3 bits (248 = 0xF8)
+    manual_scalar[31] &= 0x7F; // Clear top bit (127 = 0x7F)
+    manual_scalar[31] |= 0x40; // Set bit 6 (64 = 0x40)
 
     // Print both values for comparison
     println!("=== SHA512 + Clamping Test ===");
@@ -125,8 +131,10 @@ fn test_clamp_integer_matches_manual_clamping() {
     // Byte-by-byte comparison for debugging
     for i in 0..32 {
         if clamped_bytes[i] != manual_scalar[i] {
-            println!("DIFF at byte {}: clamp_integer={:02x}, manual={:02x}",
-                i, clamped_bytes[i], manual_scalar[i]);
+            println!(
+                "DIFF at byte {}: clamp_integer={:02x}, manual={:02x}",
+                i, clamped_bytes[i], manual_scalar[i]
+            );
         }
     }
 
@@ -162,10 +170,9 @@ fn generate_dart_test_vectors() {
 
     // Test vector 4: Random-looking pattern
     let seed4: [u8; 32] = [
-        0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
-        0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4,
-        0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19,
-        0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+        0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c,
+        0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae,
+        0x7f, 0x60,
     ];
     print_test_vector("random_pattern", &seed4);
 
@@ -181,14 +188,39 @@ fn print_test_vector(name: &str, seed: &[u8; 32]) {
     let x25519_secret = clamp_integer(signing_key.to_scalar_bytes());
 
     println!("Test Vector: {}", name);
-    println!("  ed25519_seed:      [{}]",
-        seed.iter().map(|b| format!("0x{:02x}", b)).collect::<Vec<_>>().join(", "));
-    println!("  ed25519_public:    [{}]",
-        verifying_key.to_bytes().iter().map(|b| format!("0x{:02x}", b)).collect::<Vec<_>>().join(", "));
-    println!("  x25519_public:     [{}]",
-        x25519_public.as_bytes().iter().map(|b| format!("0x{:02x}", b)).collect::<Vec<_>>().join(", "));
-    println!("  x25519_secret:     [{}]",
-        x25519_secret.iter().map(|b| format!("0x{:02x}", b)).collect::<Vec<_>>().join(", "));
+    println!(
+        "  ed25519_seed:      [{}]",
+        seed.iter()
+            .map(|b| format!("0x{:02x}", b))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  ed25519_public:    [{}]",
+        verifying_key
+            .to_bytes()
+            .iter()
+            .map(|b| format!("0x{:02x}", b))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  x25519_public:     [{}]",
+        x25519_public
+            .as_bytes()
+            .iter()
+            .map(|b| format!("0x{:02x}", b))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  x25519_secret:     [{}]",
+        x25519_secret
+            .iter()
+            .map(|b| format!("0x{:02x}", b))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
     println!();
 }
 

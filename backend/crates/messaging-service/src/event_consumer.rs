@@ -31,10 +31,7 @@ impl EventConsumer {
         let consumer = KafkaConsumer::new(&config)?;
         consumer.subscribe(&[topics::USER_EVENTS])?;
 
-        Ok(Self {
-            consumer,
-            db,
-        })
+        Ok(Self { consumer, db })
     }
 
     /// Run the event consumer loop
@@ -44,15 +41,19 @@ impl EventConsumer {
         let db = self.db.clone();
 
         // Use the consume method with a handler
-        if let Err(e) = self.consumer.consume(|msg: ReceivedMessage| {
-            let db = db.clone();
-            async move {
-                if let Err(e) = handle_message(&db, &msg).await {
-                    error!(error = %e, "Failed to handle event message");
+        if let Err(e) = self
+            .consumer
+            .consume(|msg: ReceivedMessage| {
+                let db = db.clone();
+                async move {
+                    if let Err(e) = handle_message(&db, &msg).await {
+                        error!(error = %e, "Failed to handle event message");
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
-        }).await {
+            })
+            .await
+        {
             error!(error = %e, "Event consumer error");
         }
 
@@ -85,7 +86,10 @@ async fn handle_user_event(db: &DatabaseClient, payload: &[u8]) -> anyhow::Resul
 }
 
 /// Handle user.deleted event - clean up all user data from messaging service
-async fn handle_user_deleted(db: &DatabaseClient, event: &EventEnvelope<user::UserDeletedPayload>) -> anyhow::Result<()> {
+async fn handle_user_deleted(
+    db: &DatabaseClient,
+    event: &EventEnvelope<user::UserDeletedPayload>,
+) -> anyhow::Result<()> {
     let user_id = &event.payload.user_id;
     let scope = &event.payload.delete_data;
 
@@ -140,7 +144,7 @@ async fn delete_user_messages(db: &DatabaseClient, user_id: &str) -> anyhow::Res
     // Note: This is a tombstone-based deletion for eventual consistency
     let scylla = db.scylla();
     let query = "DELETE FROM guardyn.messages WHERE sender_user_id = ? ALLOW FILTERING";
-    
+
     match scylla.query_unpaged(query, (user_id,)).await {
         Ok(_) => {
             // ScyllaDB doesn't return count from DELETE, log as success
@@ -158,7 +162,7 @@ async fn delete_user_messages(db: &DatabaseClient, user_id: &str) -> anyhow::Res
 /// Remove user from all groups they're a member of
 async fn remove_user_from_groups(db: &DatabaseClient, user_id: &str) -> anyhow::Result<u64> {
     let tikv = db.tikv();
-    
+
     // Scan TiKV for group memberships
     let prefix = format!("/groups/member/{}/", user_id);
     let start_key = prefix.as_bytes().to_vec();
@@ -171,7 +175,7 @@ async fn remove_user_from_groups(db: &DatabaseClient, user_id: &str) -> anyhow::
         // Extract group_id from membership key
         let key_bytes: Vec<u8> = kv.0.into();
         let key_str = String::from_utf8_lossy(&key_bytes);
-        
+
         if let Some(group_id) = key_str.strip_prefix(&prefix) {
             // Delete the membership record
             let membership_key = format!("/groups/member/{}/{}", user_id, group_id);

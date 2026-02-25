@@ -7,12 +7,12 @@
 /// Montgomery curve (Curve25519/X25519). This is the same approach used by Signal Protocol.
 use crate::{CryptoError, Result};
 use curve25519_dalek::scalar::clamp_integer;
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
-use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use hkdf::Hkdf;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
-use hkdf::Hkdf;
 use sha2::Sha256;
+use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
 /// Identity key pair (Ed25519 for signing)
 #[derive(Debug, Clone)]
@@ -27,10 +27,7 @@ impl IdentityKeyPair {
         let secret = SigningKey::from_bytes(&rand::random::<[u8; 32]>());
         let public = secret.verifying_key();
 
-        Ok(Self {
-            public,
-            secret,
-        })
+        Ok(Self { public, secret })
     }
 
     /// Sign data with identity key
@@ -41,18 +38,21 @@ impl IdentityKeyPair {
 
     /// Verify signature
     pub fn verify(public_key: &[u8], data: &[u8], signature: &[u8]) -> Result<()> {
-        let public = VerifyingKey::from_bytes(
-            public_key.try_into()
-                .map_err(|_| CryptoError::InvalidKey("Invalid Ed25519 public key length".into()))?
-        ).map_err(|e| CryptoError::InvalidKey(format!("Invalid Ed25519 public key: {}", e)))?;
+        let public =
+            VerifyingKey::from_bytes(public_key.try_into().map_err(|_| {
+                CryptoError::InvalidKey("Invalid Ed25519 public key length".into())
+            })?)
+            .map_err(|e| CryptoError::InvalidKey(format!("Invalid Ed25519 public key: {}", e)))?;
 
         let sig = Signature::from_bytes(
-            signature.try_into()
-                .map_err(|_| CryptoError::InvalidSignature("Invalid signature length".into()))?
+            signature
+                .try_into()
+                .map_err(|_| CryptoError::InvalidSignature("Invalid signature length".into()))?,
         );
 
-        public.verify(data, &sig)
-            .map_err(|e| CryptoError::InvalidSignature(format!("Signature verification failed: {}", e)))?;
+        public.verify(data, &sig).map_err(|e| {
+            CryptoError::InvalidSignature(format!("Signature verification failed: {}", e))
+        })?;
 
         Ok(())
     }
@@ -193,8 +193,8 @@ impl OneTimePreKey {
 /// Key bundle for publishing to server
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct X3DHKeyBundle {
-    pub identity_key: Vec<u8>,           // Ed25519 public key
-    pub signed_pre_key: Vec<u8>,         // X25519 public key
+    pub identity_key: Vec<u8>,   // Ed25519 public key
+    pub signed_pre_key: Vec<u8>, // X25519 public key
     pub signed_pre_key_id: u32,
     pub signed_pre_key_signature: Vec<u8>,
     pub one_time_pre_keys: Vec<OneTimePreKeyPublic>,
@@ -257,7 +257,7 @@ impl X3DHPrekeyMessage {
     pub fn from_bytes(bytes: &[u8]) -> crate::Result<Self> {
         if bytes.len() < 65 {
             return Err(crate::CryptoError::Protocol(
-                "X3DH prekey message too short".into()
+                "X3DH prekey message too short".into(),
             ));
         }
 
@@ -268,10 +268,11 @@ impl X3DHPrekeyMessage {
         let used_one_time_key_id = if otk_flag == 1 {
             if bytes.len() < 69 {
                 return Err(crate::CryptoError::Protocol(
-                    "X3DH prekey message missing OTK ID".into()
+                    "X3DH prekey message missing OTK ID".into(),
                 ));
             }
-            let id_bytes: [u8; 4] = bytes[65..69].try_into()
+            let id_bytes: [u8; 4] = bytes[65..69]
+                .try_into()
                 .map_err(|_| crate::CryptoError::Protocol("Invalid OTK ID bytes".into()))?;
             Some(u32::from_le_bytes(id_bytes))
         } else {
@@ -287,14 +288,15 @@ impl X3DHPrekeyMessage {
 
     /// Encode to base64 for transmission in proto messages
     pub fn to_base64(&self) -> String {
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
         STANDARD.encode(self.to_bytes())
     }
 
     /// Decode from base64
     pub fn from_base64(s: &str) -> crate::Result<Self> {
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
-        let bytes = STANDARD.decode(s)
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+        let bytes = STANDARD
+            .decode(s)
             .map_err(|e| crate::CryptoError::Protocol(format!("Invalid base64: {}", e)))?;
         Self::from_bytes(&bytes)
     }
@@ -332,12 +334,14 @@ impl X3DHKeyMaterial {
             signed_pre_key: self.signed_pre_key.public_bytes(),
             signed_pre_key_id: self.signed_pre_key.key_id,
             signed_pre_key_signature: self.signed_pre_key.signature.clone(),
-            one_time_pre_keys: self.one_time_pre_keys.iter().map(|key| {
-                OneTimePreKeyPublic {
+            one_time_pre_keys: self
+                .one_time_pre_keys
+                .iter()
+                .map(|key| OneTimePreKeyPublic {
                     key_id: key.key_id,
                     public_key: key.public_bytes(),
-                }
-            }).collect(),
+                })
+                .collect(),
         }
     }
 }
@@ -401,9 +405,8 @@ impl X3DHProtocol {
         ];
 
         if use_one_time_key && !peer_bundle.one_time_pre_keys.is_empty() {
-            let peer_one_time_key = x25519_public_from_bytes(
-                &peer_bundle.one_time_pre_keys[0].public_key
-            )?;
+            let peer_one_time_key =
+                x25519_public_from_bytes(&peer_bundle.one_time_pre_keys[0].public_key)?;
             let dh4 = ephemeral_secret.diffie_hellman(&peer_one_time_key);
             dh_outputs.push(dh4.as_bytes().to_vec());
         }
@@ -441,20 +444,23 @@ impl X3DHProtocol {
         let dh1 = key_material.signed_pre_key.dh(&peer_identity_x25519);
 
         // DH2 = DH(IK_B, EK_A) - Bob's identity (converted to X25519) with Alice's ephemeral
-        let dh2_bytes = local_identity_x25519.diffie_hellman(&peer_ephemeral).as_bytes().to_vec();
+        let dh2_bytes = local_identity_x25519
+            .diffie_hellman(&peer_ephemeral)
+            .as_bytes()
+            .to_vec();
 
         // DH3 = DH(SPK_B, EK_A)
         let dh3 = key_material.signed_pre_key.dh(&peer_ephemeral);
 
-        let mut dh_outputs: Vec<Vec<u8>> = vec![
-            dh1,
-            dh2_bytes,
-            dh3,
-        ];
+        let mut dh_outputs: Vec<Vec<u8>> = vec![dh1, dh2_bytes, dh3];
 
         // Optional DH4 with one-time key
         if let Some(key_id) = one_time_key_id {
-            if let Some(otk) = key_material.one_time_pre_keys.iter().find(|k| k.key_id == key_id) {
+            if let Some(otk) = key_material
+                .one_time_pre_keys
+                .iter()
+                .find(|k| k.key_id == key_id)
+            {
                 let dh4 = otk.dh(&peer_ephemeral);
                 dh_outputs.push(dh4);
             }
@@ -470,13 +476,17 @@ impl X3DHProtocol {
 /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
 fn ed25519_public_to_x25519(ed25519_bytes: &[u8]) -> Result<X25519PublicKey> {
     if ed25519_bytes.len() != 32 {
-        return Err(CryptoError::InvalidKey("Ed25519 public key must be 32 bytes".into()));
+        return Err(CryptoError::InvalidKey(
+            "Ed25519 public key must be 32 bytes".into(),
+        ));
     }
 
     let verifying_key = VerifyingKey::from_bytes(
-        ed25519_bytes.try_into()
-            .map_err(|_| CryptoError::InvalidKey("Invalid Ed25519 public key length".into()))?
-    ).map_err(|e| CryptoError::InvalidKey(format!("Invalid Ed25519 public key: {}", e)))?;
+        ed25519_bytes
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKey("Invalid Ed25519 public key length".into()))?,
+    )
+    .map_err(|e| CryptoError::InvalidKey(format!("Invalid Ed25519 public key: {}", e)))?;
 
     let montgomery = verifying_key.to_montgomery();
     Ok(X25519PublicKey::from(montgomery.to_bytes()))
@@ -485,7 +495,9 @@ fn ed25519_public_to_x25519(ed25519_bytes: &[u8]) -> Result<X25519PublicKey> {
 /// Helper: Convert bytes to X25519 public key (for already X25519 formatted keys)
 fn x25519_public_from_bytes(bytes: &[u8]) -> Result<X25519PublicKey> {
     if bytes.len() != 32 {
-        return Err(CryptoError::InvalidKey("X25519 public key must be 32 bytes".into()));
+        return Err(CryptoError::InvalidKey(
+            "X25519 public key must be 32 bytes".into(),
+        ));
     }
     let mut key_bytes = [0u8; 32];
     key_bytes.copy_from_slice(bytes);
@@ -565,11 +577,9 @@ mod tests {
         let bob_bundle = bob_material.export_bundle();
 
         // Alice initiates key agreement with Bob's bundle
-        let (alice_shared_secret, alice_ephemeral) = X3DHProtocol::initiate_key_agreement(
-            &alice_material.identity_key,
-            &bob_bundle,
-            true,
-        ).unwrap();
+        let (alice_shared_secret, alice_ephemeral) =
+            X3DHProtocol::initiate_key_agreement(&alice_material.identity_key, &bob_bundle, true)
+                .unwrap();
 
         assert_eq!(alice_shared_secret.len(), 32);
 
@@ -579,13 +589,16 @@ mod tests {
             &alice_material.identity_key.public_bytes(),
             alice_ephemeral.as_bytes(),
             Some(0), // Using first one-time prekey
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(bob_shared_secret.len(), 32);
 
         // Both sides should derive the same shared secret
-        assert_eq!(alice_shared_secret, bob_shared_secret,
-            "Alice and Bob should derive identical shared secrets");
+        assert_eq!(
+            alice_shared_secret, bob_shared_secret,
+            "Alice and Bob should derive identical shared secrets"
+        );
     }
 
     #[test]
@@ -598,8 +611,11 @@ mod tests {
 
         // Verify the conversion is consistent
         let derived_public = X25519PublicKey::from(&x25519_secret);
-        assert_eq!(x25519_public.as_bytes(), derived_public.as_bytes(),
-            "X25519 public key derived from secret should match converted public key");
+        assert_eq!(
+            x25519_public.as_bytes(),
+            derived_public.as_bytes(),
+            "X25519 public key derived from secret should match converted public key"
+        );
     }
 
     #[test]
@@ -613,7 +629,8 @@ mod tests {
             &alice_material.identity_key,
             &bob_bundle,
             false, // No one-time key
-        ).unwrap();
+        )
+        .unwrap();
 
         // Bob responds
         let bob_shared_secret = X3DHProtocol::respond_key_agreement(
@@ -621,7 +638,8 @@ mod tests {
             &alice_material.identity_key.public_bytes(),
             alice_ephemeral.as_bytes(),
             None, // No one-time key
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(alice_shared_secret, bob_shared_secret);
     }
@@ -632,11 +650,7 @@ mod tests {
         let ephemeral_key = vec![2u8; 32];
 
         // Test without OTK
-        let msg = X3DHPrekeyMessage::new(
-            sender_identity.clone(),
-            ephemeral_key.clone(),
-            None,
-        );
+        let msg = X3DHPrekeyMessage::new(sender_identity.clone(), ephemeral_key.clone(), None);
 
         let bytes = msg.to_bytes();
         assert_eq!(bytes.len(), 65); // 32 + 32 + 1
@@ -653,11 +667,7 @@ mod tests {
         let ephemeral_key = vec![4u8; 32];
 
         // Test with OTK
-        let msg = X3DHPrekeyMessage::new(
-            sender_identity.clone(),
-            ephemeral_key.clone(),
-            Some(42),
-        );
+        let msg = X3DHPrekeyMessage::new(sender_identity.clone(), ephemeral_key.clone(), Some(42));
 
         let bytes = msg.to_bytes();
         assert_eq!(bytes.len(), 69); // 32 + 32 + 1 + 4
@@ -673,11 +683,7 @@ mod tests {
         let sender_identity = vec![5u8; 32];
         let ephemeral_key = vec![6u8; 32];
 
-        let msg = X3DHPrekeyMessage::new(
-            sender_identity.clone(),
-            ephemeral_key.clone(),
-            Some(123),
-        );
+        let msg = X3DHPrekeyMessage::new(sender_identity.clone(), ephemeral_key.clone(), Some(123));
 
         let base64 = msg.to_base64();
         let decoded = X3DHPrekeyMessage::from_base64(&base64).unwrap();
@@ -699,7 +705,8 @@ mod tests {
             &alice_material.identity_key,
             &bob_bundle,
             true, // Use one-time key
-        ).unwrap();
+        )
+        .unwrap();
 
         // Alice creates prekey message to send with first encrypted message
         let prekey_msg = X3DHPrekeyMessage::new(
@@ -722,11 +729,14 @@ mod tests {
             &received_prekey.sender_identity_key,
             &received_prekey.ephemeral_key,
             received_prekey.used_one_time_key_id,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Both parties should have identical shared secrets
-        assert_eq!(alice_shared_secret, bob_shared_secret,
-            "X3DH key agreement should produce identical shared secrets");
+        assert_eq!(
+            alice_shared_secret, bob_shared_secret,
+            "X3DH key agreement should produce identical shared secrets"
+        );
     }
 
     #[test]

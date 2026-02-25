@@ -2,7 +2,6 @@
 ///
 /// Handles incoming WebSocket messages and generates appropriate responses.
 /// Integrates with the database and NATS for message persistence and fanout.
-
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -17,7 +16,7 @@ use super::messages::*;
 /// Generate deterministic conversation ID from two user IDs
 /// IMPORTANT: Uses NAMESPACE_DNS to match db.rs implementation
 fn generate_conversation_id(user1: &str, user2: &str) -> String {
-    let mut users = vec![user1, user2];
+    let mut users = [user1, user2];
     users.sort();
     // Use NAMESPACE_DNS to match the db.rs implementation
     let data = format!("{}:{}", users[0], users[1]);
@@ -162,11 +161,15 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
     };
 
     // Get sender's username from connection
-    let sender_username = ctx.connection_manager.get_username(&ctx.connection_id)
+    let sender_username = ctx
+        .connection_manager
+        .get_username(&ctx.connection_id)
         .unwrap_or_else(|| sender_id.clone());
 
     // Get recipient username from send payload or use recipient_id as fallback
-    let recipient_username = send.recipient_username.clone()
+    let recipient_username = send
+        .recipient_username
+        .clone()
         .unwrap_or_else(|| send.recipient_id.clone());
 
     let message_id = Uuid::new_v4().to_string();
@@ -194,7 +197,8 @@ async fn handle_send_message(ctx: &WsContext, send: SendMessagePayload) -> Optio
     };
 
     // Store in ScyllaDB via the database client
-    if let Err(e) = store_message_in_db(ctx, &message, &sender_username, &recipient_username).await {
+    if let Err(e) = store_message_in_db(ctx, &message, &sender_username, &recipient_username).await
+    {
         error!(
             message_id = %message_id,
             error = %e,
@@ -342,7 +346,11 @@ async fn handle_typing(ctx: &WsContext, mut typing: TypingPayload) -> Option<WsM
 /// Handle subscription request
 async fn handle_subscribe(ctx: &WsContext, sub: SubscribePayload) -> Option<WsMessage> {
     // Ensure connection is authenticated
-    if ctx.connection_manager.get_user_id(&ctx.connection_id).is_none() {
+    if ctx
+        .connection_manager
+        .get_user_id(&ctx.connection_id)
+        .is_none()
+    {
         return Some(WsMessage::error("UNAUTHORIZED", "Not authenticated"));
     }
 
@@ -380,7 +388,11 @@ async fn handle_subscribe(ctx: &WsContext, sub: SubscribePayload) -> Option<WsMe
 /// Handle unsubscription request
 async fn handle_unsubscribe(ctx: &WsContext, unsub: UnsubscribePayload) -> Option<WsMessage> {
     // Ensure connection is authenticated
-    if ctx.connection_manager.get_user_id(&ctx.connection_id).is_none() {
+    if ctx
+        .connection_manager
+        .get_user_id(&ctx.connection_id)
+        .is_none()
+    {
         return Some(WsMessage::error("UNAUTHORIZED", "Not authenticated"));
     }
 

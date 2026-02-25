@@ -3,7 +3,6 @@
 /// Provides a high-level interface to manage MLS group state,
 /// including serialization, TiKV storage, and integration with
 /// the crypto crate's MlsGroupManager.
-
 use crate::db::DatabaseClient;
 use anyhow::{Context, Result};
 use guardyn_crypto::mls::{MlsGroupManager, MlsGroupState};
@@ -19,6 +18,7 @@ const MLS_GROUP_MEMBERS_PREFIX: &str = "/mls/group_members";
 ///
 /// Manages MLS group state persistence and provides helper methods
 /// for group operations (create, add/remove members, encrypt/decrypt).
+#[allow(dead_code)]
 pub struct MlsManager {
     db: Arc<DatabaseClient>,
 }
@@ -61,23 +61,18 @@ impl MlsManager {
         // Create MLS group using crypto crate
         // Note: In a real implementation, we need to pass the actual credential bundle
         // For now, we'll generate it on the fly (should be fetched from user's stored credentials)
-        let credential_bundle = guardyn_crypto::mls::create_test_credential(
-            creator_identity
-        )?;
+        let credential_bundle = guardyn_crypto::mls::create_test_credential(creator_identity)?;
 
-        let group_manager = MlsGroupManager::create_group(
-            group_id,
-            creator_identity,
-            credential_bundle,
-        )?;
+        let group_manager =
+            MlsGroupManager::create_group(group_id, creator_identity, credential_bundle)?;
 
         // Serialize group state
         let group_state = group_manager.serialize_state()?;
 
         // Store group state in TiKV
         let state_key = format!("{}/{}/state", MLS_GROUP_STATE_PREFIX, group_id);
-        let state_json = serde_json::to_vec(&group_state)
-            .context("Failed to serialize group state")?;
+        let state_json =
+            serde_json::to_vec(&group_state).context("Failed to serialize group state")?;
         self.db.put(state_key.as_bytes(), state_json).await?;
 
         // Store group metadata
@@ -91,12 +86,13 @@ impl MlsManager {
         };
 
         let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-        let metadata_json = serde_json::to_vec(&metadata)
-            .context("Failed to serialize metadata")?;
+        let metadata_json =
+            serde_json::to_vec(&metadata).context("Failed to serialize metadata")?;
         self.db.put(metadata_key.as_bytes(), metadata_json).await?;
 
         // Add creator to members list
-        self.add_member_to_list(group_id, creator_user_id, creator_device_id).await?;
+        self.add_member_to_list(group_id, creator_user_id, creator_device_id)
+            .await?;
 
         info!("MLS group created: {}", group_id);
         Ok(group_state)
@@ -111,12 +107,15 @@ impl MlsManager {
     /// Deserialized MLS group state
     pub async fn load_group_state(&self, group_id: &str) -> Result<MlsGroupState> {
         let state_key = format!("{}/{}/state", MLS_GROUP_STATE_PREFIX, group_id);
-        
-        let state_bytes = self.db.get(state_key.as_bytes()).await?
+
+        let state_bytes = self
+            .db
+            .get(state_key.as_bytes())
+            .await?
             .ok_or_else(|| anyhow::anyhow!("Group state not found: {}", group_id))?;
 
-        let group_state: MlsGroupState = serde_json::from_slice(&state_bytes)
-            .context("Failed to deserialize group state")?;
+        let group_state: MlsGroupState =
+            serde_json::from_slice(&state_bytes).context("Failed to deserialize group state")?;
 
         Ok(group_state)
     }
@@ -126,11 +125,15 @@ impl MlsManager {
     /// # Arguments
     /// * `group_id` - Unique group identifier
     /// * `group_state` - Serialized group state to save
-    pub async fn save_group_state(&self, group_id: &str, group_state: &MlsGroupState) -> Result<()> {
+    pub async fn save_group_state(
+        &self,
+        group_id: &str,
+        group_state: &MlsGroupState,
+    ) -> Result<()> {
         let state_key = format!("{}/{}/state", MLS_GROUP_STATE_PREFIX, group_id);
-        let state_json = serde_json::to_vec(group_state)
-            .context("Failed to serialize group state")?;
-        
+        let state_json =
+            serde_json::to_vec(group_state).context("Failed to serialize group state")?;
+
         self.db.put(state_key.as_bytes(), state_json).await?;
 
         // Update epoch in metadata
@@ -142,15 +145,15 @@ impl MlsManager {
     /// Update group epoch in metadata
     async fn update_epoch(&self, group_id: &str, epoch: u64) -> Result<()> {
         let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-        
+
         if let Some(metadata_bytes) = self.db.get(metadata_key.as_bytes()).await? {
             let mut metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
                 .context("Failed to deserialize metadata")?;
-            
+
             metadata.current_epoch = epoch;
-            
-            let updated_json = serde_json::to_vec(&metadata)
-                .context("Failed to serialize metadata")?;
+
+            let updated_json =
+                serde_json::to_vec(&metadata).context("Failed to serialize metadata")?;
             self.db.put(metadata_key.as_bytes(), updated_json).await?;
         }
 
@@ -171,10 +174,7 @@ impl MlsManager {
     ) -> Result<()> {
         let member_key = format!(
             "{}/{}/{}:{}",
-            MLS_GROUP_MEMBERS_PREFIX,
-            group_id,
-            user_id,
-            device_id
+            MLS_GROUP_MEMBERS_PREFIX, group_id, user_id, device_id
         );
 
         let member_data = serde_json::to_vec(&serde_json::json!({
@@ -205,10 +205,7 @@ impl MlsManager {
     ) -> Result<()> {
         let member_key = format!(
             "{}/{}/{}:{}",
-            MLS_GROUP_MEMBERS_PREFIX,
-            group_id,
-            user_id,
-            device_id
+            MLS_GROUP_MEMBERS_PREFIX, group_id, user_id, device_id
         );
 
         self.db.delete(member_key.as_bytes()).await?;
@@ -222,15 +219,15 @@ impl MlsManager {
     /// Increment member count in metadata
     async fn increment_member_count(&self, group_id: &str) -> Result<()> {
         let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-        
+
         if let Some(metadata_bytes) = self.db.get(metadata_key.as_bytes()).await? {
             let mut metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
                 .context("Failed to deserialize metadata")?;
-            
+
             metadata.member_count += 1;
-            
-            let updated_json = serde_json::to_vec(&metadata)
-                .context("Failed to serialize metadata")?;
+
+            let updated_json =
+                serde_json::to_vec(&metadata).context("Failed to serialize metadata")?;
             self.db.put(metadata_key.as_bytes(), updated_json).await?;
         }
 
@@ -240,17 +237,17 @@ impl MlsManager {
     /// Decrement member count in metadata
     async fn decrement_member_count(&self, group_id: &str) -> Result<()> {
         let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-        
+
         if let Some(metadata_bytes) = self.db.get(metadata_key.as_bytes()).await? {
             let mut metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
                 .context("Failed to deserialize metadata")?;
-            
+
             if metadata.member_count > 0 {
                 metadata.member_count -= 1;
             }
-            
-            let updated_json = serde_json::to_vec(&metadata)
-                .context("Failed to serialize metadata")?;
+
+            let updated_json =
+                serde_json::to_vec(&metadata).context("Failed to serialize metadata")?;
             self.db.put(metadata_key.as_bytes(), updated_json).await?;
         }
 
@@ -266,7 +263,7 @@ impl MlsManager {
     /// Group metadata if exists
     pub async fn get_metadata(&self, group_id: &str) -> Result<Option<GroupMetadata>> {
         let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-        
+
         match self.db.get(metadata_key.as_bytes()).await? {
             Some(metadata_bytes) => {
                 let metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
@@ -308,18 +305,10 @@ impl MlsManager {
     ///
     /// # Returns
     /// true if user/device is a member
-    pub async fn is_member(
-        &self,
-        group_id: &str,
-        user_id: &str,
-        device_id: &str,
-    ) -> Result<bool> {
+    pub async fn is_member(&self, group_id: &str, user_id: &str, device_id: &str) -> Result<bool> {
         let member_key = format!(
             "{}/{}/{}:{}",
-            MLS_GROUP_MEMBERS_PREFIX,
-            group_id,
-            user_id,
-            device_id
+            MLS_GROUP_MEMBERS_PREFIX, group_id, user_id, device_id
         );
 
         Ok(self.db.get(member_key.as_bytes()).await?.is_some())
@@ -328,6 +317,7 @@ impl MlsManager {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[tokio::test]

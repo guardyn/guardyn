@@ -22,6 +22,7 @@ use tonic::{transport::Channel, Request};
 use uuid::Uuid;
 
 // Import generated proto code
+#[allow(dead_code, clippy::large_enum_variant)]
 mod proto {
     pub mod auth {
         tonic::include_proto!("guardyn.auth");
@@ -34,15 +35,12 @@ mod proto {
     }
 }
 
-use proto::auth::{
-    auth_service_client::AuthServiceClient,
-    RegisterRequest,
-};
-use proto::messaging::{
-    messaging_service_client::MessagingServiceClient,
-    SendMessageRequest, GetMessagesRequest, MessageType,
-};
+use proto::auth::{auth_service_client::AuthServiceClient, RegisterRequest};
 use proto::common::{KeyBundle, Timestamp};
+use proto::messaging::{
+    messaging_service_client::MessagingServiceClient, GetMessagesRequest, MessageType,
+    SendMessageRequest,
+};
 
 /// Test environment configuration
 struct TestEnv {
@@ -68,7 +66,9 @@ impl TestEnv {
         Ok(AuthServiceClient::new(channel))
     }
 
-    async fn messaging_client(&self) -> Result<MessagingServiceClient<Channel>, Box<dyn std::error::Error>> {
+    async fn messaging_client(
+        &self,
+    ) -> Result<MessagingServiceClient<Channel>, Box<dyn std::error::Error>> {
         let channel = Channel::from_shared(self.messaging_endpoint.clone())?
             .timeout(Duration::from_secs(10))
             .connect()
@@ -85,10 +85,10 @@ fn mock_key_bundle() -> KeyBundle {
         .as_secs() as i64;
 
     KeyBundle {
-        identity_key: vec![0u8; 32], // Mock Ed25519 public key
-        signed_pre_key: vec![0u8; 32], // Mock X25519 public key
+        identity_key: vec![0u8; 32],             // Mock Ed25519 public key
+        signed_pre_key: vec![0u8; 32],           // Mock X25519 public key
         signed_pre_key_signature: vec![0u8; 64], // Mock Ed25519 signature
-        one_time_pre_keys: vec![vec![0u8; 32]], // One mock X25519 pre-key
+        one_time_pre_keys: vec![vec![0u8; 32]],  // One mock X25519 pre-key
         created_at: Some(Timestamp {
             seconds: now,
             nanos: 0,
@@ -141,39 +141,47 @@ impl TestUser {
                 self.user_id = Some(success.user_id.clone());
                 self.device_id = Some(success.device_id.clone());
                 self.access_token = Some(success.access_token.clone());
-                println!("✅ User '{}' registered (user_id: {}, device_id: {})",
-                    self.username, success.user_id, success.device_id);
+                println!(
+                    "✅ User '{}' registered (user_id: {}, device_id: {})",
+                    self.username, success.user_id, success.device_id
+                );
                 Ok(())
             }
-            Some(proto::auth::register_response::Result::Error(error)) => {
-                Err(format!("Registration failed: {:?} - {}", error.code(), error.message).into())
-            }
+            Some(proto::auth::register_response::Result::Error(error)) => Err(format!(
+                "Registration failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into()),
             None => Err("No response from registration".into()),
         }
     }
 
     fn token(&self) -> Result<String, Box<dyn std::error::Error>> {
-        self.access_token.as_ref()
+        self.access_token
+            .as_ref()
             .ok_or("User not authenticated".into())
-            .map(|s| s.clone())
+            .cloned()
     }
 
     fn user_id(&self) -> Result<String, Box<dyn std::error::Error>> {
-        self.user_id.as_ref()
+        self.user_id
+            .as_ref()
             .ok_or("User ID not available".into())
-            .map(|s| s.clone())
+            .cloned()
     }
 
     fn device_id(&self) -> Result<String, Box<dyn std::error::Error>> {
-        self.device_id.as_ref()
+        self.device_id
+            .as_ref()
             .ok_or("Device ID not available".into())
-            .map(|s| s.clone())
+            .cloned()
     }
 }
 
 /// Generate deterministic conversation ID from two user IDs (same logic as messaging service)
 fn generate_conversation_id(user1: &str, user2: &str) -> String {
-    let mut users = vec![user1, user2];
+    let mut users = [user1, user2];
     users.sort();
     let namespace = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let data = format!("{}:{}", users[0], users[1]);
@@ -199,7 +207,10 @@ async fn test_00_service_health_check() -> Result<(), Box<dyn std::error::Error>
 
     // Check Messaging Service
     match env.messaging_client().await {
-        Ok(_) => println!("✅ Messaging Service is reachable at {}", env.messaging_endpoint),
+        Ok(_) => println!(
+            "✅ Messaging Service is reachable at {}",
+            env.messaging_endpoint
+        ),
         Err(e) => return Err(format!("❌ Messaging Service unreachable: {}", e).into()),
     }
 
@@ -221,12 +232,18 @@ async fn test_01_user_registration() -> Result<(), Box<dyn std::error::Error>> {
     // Register user 1
     user1.register(&env).await?;
     assert!(user1.user_id.is_some(), "User 1 should have user_id");
-    assert!(user1.access_token.is_some(), "User 1 should have access_token");
+    assert!(
+        user1.access_token.is_some(),
+        "User 1 should have access_token"
+    );
 
     // Register user 2
     user2.register(&env).await?;
     assert!(user2.user_id.is_some(), "User 2 should have user_id");
-    assert!(user2.access_token.is_some(), "User 2 should have access_token");
+    assert!(
+        user2.access_token.is_some(),
+        "User 2 should have access_token"
+    );
 
     println!("✅ Both users registered successfully");
     Ok(())
@@ -251,9 +268,7 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
     let mut messaging_client = env.messaging_client().await?;
 
     let message_content = b"Hello from MVP E2E test!".to_vec();
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
 
     let send_request = Request::new(SendMessageRequest {
         access_token: user1.token()?,
@@ -273,7 +288,10 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
         voice_metadata: None,
     });
 
-    let send_response = messaging_client.send_message(send_request).await?.into_inner();
+    let send_response = messaging_client
+        .send_message(send_request)
+        .await?
+        .into_inner();
 
     let message_id = match send_response.result {
         Some(proto::messaging::send_message_response::Result::Success(success)) => {
@@ -306,24 +324,44 @@ async fn test_02_send_and_receive_message() -> Result<(), Box<dyn std::error::Er
     });
 
     println!("🔍 Calling GetMessages...");
-    let get_response = messaging_client.get_messages(get_request).await?.into_inner();
+    let get_response = messaging_client
+        .get_messages(get_request)
+        .await?
+        .into_inner();
     println!("✅ GetMessages response received");
 
     match get_response.result {
         Some(proto::messaging::get_messages_response::Result::Success(success)) => {
-            assert!(!success.messages.is_empty(), "Should have at least one message");
+            assert!(
+                !success.messages.is_empty(),
+                "Should have at least one message"
+            );
 
-            let received_msg = success.messages.iter()
+            let received_msg = success
+                .messages
+                .iter()
                 .find(|m| m.message_id == message_id)
                 .expect("Should find the sent message");
 
-            assert_eq!(received_msg.encrypted_content, message_content, "Message content should match");
-            assert_eq!(received_msg.sender_user_id, user1.user_id()?, "Sender should match");
+            assert_eq!(
+                received_msg.encrypted_content, message_content,
+                "Message content should match"
+            );
+            assert_eq!(
+                received_msg.sender_user_id,
+                user1.user_id()?,
+                "Sender should match"
+            );
 
             println!("✅ Message retrieved successfully by recipient");
         }
         Some(proto::messaging::get_messages_response::Result::Error(error)) => {
-            return Err(format!("Get messages failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_messages".into()),
     }
@@ -352,9 +390,7 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
 
     for i in 1..=3 {
         let message_content = format!("Test message {}", i).into_bytes();
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs() as i64;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
 
         let send_request = Request::new(SendMessageRequest {
             access_token: user1.token()?,
@@ -374,9 +410,14 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
             voice_metadata: None,
         });
 
-        let send_response = messaging_client.send_message(send_request).await?.into_inner();
+        let send_response = messaging_client
+            .send_message(send_request)
+            .await?
+            .into_inner();
 
-        if let Some(proto::messaging::send_message_response::Result::Success(success)) = send_response.result {
+        if let Some(proto::messaging::send_message_response::Result::Success(success)) =
+            send_response.result
+        {
             message_ids.push(success.message_id.clone());
             println!("✅ Message {} sent: {}", i, success.message_id);
         }
@@ -393,15 +434,27 @@ async fn test_03_mark_messages_as_read() -> Result<(), Box<dyn std::error::Error
         message_ids: message_ids.clone(),
     });
 
-    let mark_read_response = messaging_client.mark_as_read(mark_read_request).await?.into_inner();
+    let mark_read_response = messaging_client
+        .mark_as_read(mark_read_request)
+        .await?
+        .into_inner();
 
     match mark_read_response.result {
         Some(proto::messaging::mark_as_read_response::Result::Success(success)) => {
-            assert_eq!(success.marked_count, message_ids.len() as i32, "Should mark all messages");
+            assert_eq!(
+                success.marked_count,
+                message_ids.len() as i32,
+                "Should mark all messages"
+            );
             println!("✅ Marked {} messages as read", success.marked_count);
         }
         Some(proto::messaging::mark_as_read_response::Result::Error(error)) => {
-            return Err(format!("Mark as read failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Mark as read failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from mark_as_read".into()),
     }
@@ -430,9 +483,7 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
 
     for i in 1..=2 {
         let message_content = format!("Message to delete {}", i).into_bytes();
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)?
-            .as_secs() as i64;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
 
         let send_request = Request::new(SendMessageRequest {
             access_token: user1.token()?,
@@ -452,9 +503,14 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
             voice_metadata: None,
         });
 
-        let send_response = messaging_client.send_message(send_request).await?.into_inner();
+        let send_response = messaging_client
+            .send_message(send_request)
+            .await?
+            .into_inner();
 
-        if let Some(proto::messaging::send_message_response::Result::Success(success)) = send_response.result {
+        if let Some(proto::messaging::send_message_response::Result::Success(success)) =
+            send_response.result
+        {
             message_ids.push(success.message_id.clone());
             println!("✅ Message {} sent: {}", i, success.message_id);
         }
@@ -472,7 +528,10 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
         delete_for_everyone: false,
     });
 
-    let delete_response = messaging_client.delete_message(delete_request).await?.into_inner();
+    let delete_response = messaging_client
+        .delete_message(delete_request)
+        .await?
+        .into_inner();
 
     match delete_response.result {
         Some(proto::messaging::delete_message_response::Result::Success(_)) => {
@@ -497,15 +556,25 @@ async fn test_04_delete_message() -> Result<(), Box<dyn std::error::Error>> {
         limit: 10,
     });
 
-    let get_response = messaging_client.get_messages(get_request).await?.into_inner();
+    let get_response = messaging_client
+        .get_messages(get_request)
+        .await?
+        .into_inner();
 
-    if let Some(proto::messaging::get_messages_response::Result::Success(success)) = get_response.result {
-        let deleted_msg = success.messages.iter()
+    if let Some(proto::messaging::get_messages_response::Result::Success(success)) =
+        get_response.result
+    {
+        let deleted_msg = success
+            .messages
+            .iter()
             .find(|m| m.message_id == message_ids[0]);
 
         // Message should either not exist or have is_deleted=true
         if let Some(msg) = deleted_msg {
-            assert!(msg.is_deleted, "Deleted message should have is_deleted=true");
+            assert!(
+                msg.is_deleted,
+                "Deleted message should have is_deleted=true"
+            );
             println!("✅ Message marked as deleted (is_deleted=true)");
         } else {
             println!("✅ Deleted message not returned in query");
@@ -546,7 +615,10 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
         description: String::new(),
     });
 
-    let create_response = messaging_client.create_group(create_group_request).await?.into_inner();
+    let create_response = messaging_client
+        .create_group(create_group_request)
+        .await?
+        .into_inner();
 
     let group_id = match create_response.result {
         Some(proto::messaging::create_group_response::Result::Success(success)) => {
@@ -554,7 +626,12 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(format!("Create group failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -579,7 +656,10 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
         voice_metadata: None,
     });
 
-    let send_group_response = messaging_client.send_group_message(send_group_request).await?.into_inner();
+    let send_group_response = messaging_client
+        .send_group_message(send_group_request)
+        .await?
+        .into_inner();
 
     let message_id = match send_group_response.result {
         Some(proto::messaging::send_group_message_response::Result::Success(success)) => {
@@ -587,7 +667,12 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
             success.message_id
         }
         Some(proto::messaging::send_group_message_response::Result::Error(error)) => {
-            return Err(format!("Send group message failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Send group message failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from send_group_message".into()),
     };
@@ -604,23 +689,43 @@ async fn test_05_group_chat_flow() -> Result<(), Box<dyn std::error::Error>> {
         limit: 10,
     });
 
-    let get_group_response = messaging_client.get_group_messages(get_group_request).await?.into_inner();
+    let get_group_response = messaging_client
+        .get_group_messages(get_group_request)
+        .await?
+        .into_inner();
 
     match get_group_response.result {
         Some(proto::messaging::get_group_messages_response::Result::Success(success)) => {
-            assert!(!success.messages.is_empty(), "Should have at least one group message");
+            assert!(
+                !success.messages.is_empty(),
+                "Should have at least one group message"
+            );
 
-            let received_msg = success.messages.iter()
+            let received_msg = success
+                .messages
+                .iter()
                 .find(|m| m.message_id == message_id)
                 .expect("Should find the sent group message");
 
-            assert_eq!(received_msg.encrypted_content, group_message, "Message content should match");
-            assert_eq!(received_msg.sender_user_id, user1.user_id()?, "Sender should match");
+            assert_eq!(
+                received_msg.encrypted_content, group_message,
+                "Message content should match"
+            );
+            assert_eq!(
+                received_msg.sender_user_id,
+                user1.user_id()?,
+                "Sender should match"
+            );
 
             println!("✅ Group message retrieved successfully");
         }
         Some(proto::messaging::get_group_messages_response::Result::Error(error)) => {
-            return Err(format!("Get group messages failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get group messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_group_messages".into()),
     }
@@ -647,9 +752,7 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
 
     // User 1 sends message to User 2 (who is "offline" - not listening)
     let message_content = b"Message while offline".to_vec();
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)?
-        .as_secs() as i64;
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
 
     let send_request = Request::new(SendMessageRequest {
         access_token: user1.token()?,
@@ -669,9 +772,14 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
         voice_metadata: None,
     });
 
-    let send_response = messaging_client.send_message(send_request).await?.into_inner();
+    let send_response = messaging_client
+        .send_message(send_request)
+        .await?
+        .into_inner();
 
-    if let Some(proto::messaging::send_message_response::Result::Success(success)) = send_response.result {
+    if let Some(proto::messaging::send_message_response::Result::Success(success)) =
+        send_response.result
+    {
         println!("✅ Message sent to offline user: {}", success.message_id);
     }
 
@@ -690,21 +798,34 @@ async fn test_06_offline_message_delivery() -> Result<(), Box<dyn std::error::Er
         limit: 10,
     });
 
-    let get_response = messaging_client.get_messages(get_request).await?.into_inner();
+    let get_response = messaging_client
+        .get_messages(get_request)
+        .await?
+        .into_inner();
 
     match get_response.result {
         Some(proto::messaging::get_messages_response::Result::Success(success)) => {
             assert!(!success.messages.is_empty(), "Should have offline messages");
 
-            let offline_msg = success.messages.iter()
+            let offline_msg = success
+                .messages
+                .iter()
                 .find(|m| m.encrypted_content == message_content)
                 .expect("Should find the offline message");
 
             println!("✅ Offline message retrieved successfully");
-            println!("✅ Delivery status: {} (0=SENT, 1=DELIVERED)", offline_msg.delivery_status);
+            println!(
+                "✅ Delivery status: {} (0=SENT, 1=DELIVERED)",
+                offline_msg.delivery_status
+            );
         }
         Some(proto::messaging::get_messages_response::Result::Error(error)) => {
-            return Err(format!("Get messages failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_messages".into()),
     }
@@ -746,7 +867,10 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         description: String::new(),
     });
 
-    let create_response = messaging_client.create_group(create_group_request).await?.into_inner();
+    let create_response = messaging_client
+        .create_group(create_group_request)
+        .await?
+        .into_inner();
 
     let group_id = match create_response.result {
         Some(proto::messaging::create_group_response::Result::Success(success)) => {
@@ -767,14 +891,19 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         mls_group_state: vec![], // Mock MLS state
     });
 
-    let add_response = messaging_client.add_group_member(add_member_request).await?.into_inner();
+    let add_response = messaging_client
+        .add_group_member(add_member_request)
+        .await?
+        .into_inner();
 
     match add_response.result {
         Some(proto::messaging::add_group_member_response::Result::Success(_)) => {
             println!("✅ User 4 added to group");
         }
         Some(proto::messaging::add_group_member_response::Result::Error(error)) => {
-            return Err(format!("Add member failed: {:?} - {}", error.code(), error.message).into());
+            return Err(
+                format!("Add member failed: {:?} - {}", error.code(), error.message).into(),
+            );
         }
         None => return Err("No response from add_group_member".into()),
     }
@@ -789,14 +918,22 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         mls_group_state: vec![], // Mock MLS state
     });
 
-    let remove_response = messaging_client.remove_group_member(remove_member_request).await?.into_inner();
+    let remove_response = messaging_client
+        .remove_group_member(remove_member_request)
+        .await?
+        .into_inner();
 
     match remove_response.result {
         Some(proto::messaging::remove_group_member_response::Result::Success(_)) => {
             println!("✅ User 3 removed from group");
         }
         Some(proto::messaging::remove_group_member_response::Result::Error(error)) => {
-            return Err(format!("Remove member failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Remove member failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from remove_group_member".into()),
     }
@@ -813,11 +950,17 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         limit: 10,
     });
 
-    let get_group_response = messaging_client.get_group_messages(get_group_request).await?.into_inner();
+    let get_group_response = messaging_client
+        .get_group_messages(get_group_request)
+        .await?
+        .into_inner();
 
     match get_group_response.result {
         Some(proto::messaging::get_group_messages_response::Result::Error(error)) => {
-            println!("✅ Removed user cannot access group (expected error: {:?})", error.code());
+            println!(
+                "✅ Removed user cannot access group (expected error: {:?})",
+                error.code()
+            );
         }
         Some(proto::messaging::get_group_messages_response::Result::Success(_)) => {
             return Err("Removed user should not have access to group messages".into());
@@ -835,7 +978,10 @@ async fn test_07_group_member_management() -> Result<(), Box<dyn std::error::Err
         limit: 10,
     });
 
-    let get_group_response_user4 = messaging_client.get_group_messages(get_group_request_user4).await?.into_inner();
+    let get_group_response_user4 = messaging_client
+        .get_group_messages(get_group_request_user4)
+        .await?
+        .into_inner();
 
     match get_group_response_user4.result {
         Some(proto::messaging::get_group_messages_response::Result::Success(_)) => {

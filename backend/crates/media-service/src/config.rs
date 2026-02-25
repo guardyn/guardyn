@@ -44,8 +44,8 @@ impl Default for MediaConfig {
             s3_secret_key: "minioadmin".to_string(),
             bucket_name: "guardyn-media".to_string(),
             max_file_size_bytes: 100 * 1024 * 1024, // 100 MB
-            chunk_size_bytes: 1024 * 1024, // 1 MB
-            presigned_url_expiry_seconds: 3600, // 1 hour
+            chunk_size_bytes: 1024 * 1024,          // 1 MB
+            presigned_url_expiry_seconds: 3600,     // 1 hour
             thumbnail_max_width: 256,
             thumbnail_max_height: 256,
             thumbnail_quality: 80,
@@ -58,7 +58,7 @@ impl MediaConfig {
     /// Load configuration from environment variables
     pub fn from_env() -> Self {
         let mut config = Self::default();
-        
+
         if let Ok(val) = std::env::var("S3_ENDPOINT") {
             config.s3_endpoint = val;
         }
@@ -110,7 +110,7 @@ impl MediaConfig {
         if let Ok(val) = std::env::var("THUMBNAILS_ENABLED") {
             config.thumbnails_enabled = val.to_lowercase() == "true" || val == "1";
         }
-        
+
         config
     }
 }

@@ -2,7 +2,6 @@
 ///
 /// Provides methods to interact with the auth-service, primarily for
 /// fetching MLS key packages during group member addition and user profile lookups.
-
 use crate::proto::auth::{
     auth_service_client::AuthServiceClient, GetMlsKeyPackageRequest, GetMlsKeyPackageResponse,
     GetUserProfileRequest, UserProfile,
@@ -162,16 +161,27 @@ impl AuthClient {
 
         match response_inner.result {
             Some(crate::proto::auth::get_user_profile_response::Result::Success(success)) => {
-                info!("Successfully fetched username for {}: {}", user_id, success.username);
+                info!(
+                    "Successfully fetched username for {}: {}",
+                    user_id, success.username
+                );
                 Ok(success.username)
             }
             Some(crate::proto::auth::get_user_profile_response::Result::Error(err)) => {
-                debug!("Auth service returned error for user {}: {}", user_id, err.message);
-                Err(anyhow::anyhow!("Failed to fetch user profile: {}", err.message))
+                debug!(
+                    "Auth service returned error for user {}: {}",
+                    user_id, err.message
+                );
+                Err(anyhow::anyhow!(
+                    "Failed to fetch user profile: {}",
+                    err.message
+                ))
             }
             None => {
                 debug!("Auth service returned empty response for user {}", user_id);
-                Err(anyhow::anyhow!("Empty response from auth service GetUserProfile"))
+                Err(anyhow::anyhow!(
+                    "Empty response from auth service GetUserProfile"
+                ))
             }
         }
     }
@@ -208,12 +218,20 @@ impl AuthClient {
                 Ok(UserProfileInfo::from(profile))
             }
             Some(crate::proto::auth::get_user_profile_response::Result::Error(err)) => {
-                debug!("Auth service returned error for user {}: {}", user_id, err.message);
-                Err(anyhow::anyhow!("Failed to fetch user profile: {}", err.message))
+                debug!(
+                    "Auth service returned error for user {}: {}",
+                    user_id, err.message
+                );
+                Err(anyhow::anyhow!(
+                    "Failed to fetch user profile: {}",
+                    err.message
+                ))
             }
             None => {
                 debug!("Auth service returned empty response for user {}", user_id);
-                Err(anyhow::anyhow!("Empty response from auth service GetUserProfile"))
+                Err(anyhow::anyhow!(
+                    "Empty response from auth service GetUserProfile"
+                ))
             }
         }
     }
@@ -253,7 +271,11 @@ impl AuthClient {
             }
         }
 
-        debug!("Fetched {} user profiles out of {} requested", profiles.len(), user_ids.len());
+        debug!(
+            "Fetched {} user profiles out of {} requested",
+            profiles.len(),
+            user_ids.len()
+        );
         profiles
     }
 }
@@ -281,7 +303,7 @@ mod tests {
             avatar_media_id: "avatar-456".to_string(),
             bio: "Hello, world!".to_string(),
         };
-        
+
         let cloned = profile.clone();
         assert_eq!(cloned.user_id, "user-123");
         assert_eq!(cloned.username, "testuser");
@@ -321,7 +343,7 @@ mod tests {
             .expect("Failed to connect");
 
         let result = client.get_user_profile("test-user-id").await;
-        
+
         // This will fail if user doesn't exist
         println!("Result: {:?}", result);
     }

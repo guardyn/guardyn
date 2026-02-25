@@ -26,6 +26,7 @@ use tonic::{transport::Channel, Request};
 use uuid::Uuid;
 
 // Import generated proto code
+#[allow(dead_code, clippy::large_enum_variant)]
 mod proto {
     pub mod auth {
         tonic::include_proto!("guardyn.auth");
@@ -88,10 +89,10 @@ fn mock_key_bundle() -> KeyBundle {
         .as_secs() as i64;
 
     KeyBundle {
-        identity_key: vec![0u8; 32],           // Mock Ed25519 public key
-        signed_pre_key: vec![0u8; 32],         // Mock X25519 public key
+        identity_key: vec![0u8; 32],             // Mock Ed25519 public key
+        signed_pre_key: vec![0u8; 32],           // Mock X25519 public key
         signed_pre_key_signature: vec![0u8; 64], // Mock Ed25519 signature
-        one_time_pre_keys: vec![vec![0u8; 32]], // One mock X25519 pre-key
+        one_time_pre_keys: vec![vec![0u8; 32]],  // One mock X25519 pre-key
         created_at: Some(Timestamp {
             seconds: now,
             nanos: 0,
@@ -140,9 +141,12 @@ impl TestUser {
                 self.token = Some(success.access_token.clone());
                 Ok(())
             }
-            Some(proto::auth::register_response::Result::Error(error)) => {
-                Err(format!("Registration failed: {:?} - {}", error.code(), error.message).into())
-            }
+            Some(proto::auth::register_response::Result::Error(error)) => Err(format!(
+                "Registration failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into()),
             None => Err("No response from registration".into()),
         }
     }
@@ -205,7 +209,10 @@ async fn test_phase2_01_add_and_remove_reaction() -> Result<(), Box<dyn std::err
         recipient_device_id: user2.device_id()?,
         encrypted_content: message_content,
         client_message_id: Uuid::new_v4().to_string(),
-        client_timestamp: Some(Timestamp { seconds: now, nanos: 0 }),
+        client_timestamp: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
         message_type: MessageType::Text as i32,
         media_id: String::new(),
         recipient_username: user2.username.clone(),
@@ -214,7 +221,10 @@ async fn test_phase2_01_add_and_remove_reaction() -> Result<(), Box<dyn std::err
         voice_metadata: None,
     });
 
-    let send_response = messaging_client.send_message(send_request).await?.into_inner();
+    let send_response = messaging_client
+        .send_message(send_request)
+        .await?
+        .into_inner();
     let message_id = match send_response.result {
         Some(proto::messaging::send_message_response::Result::Success(success)) => {
             println!("✅ Message sent: {}", success.message_id);
@@ -241,14 +251,26 @@ async fn test_phase2_01_add_and_remove_reaction() -> Result<(), Box<dyn std::err
 
     match add_response.result {
         Some(proto::messaging::add_reaction_response::Result::Success(success)) => {
-            println!("✅ Reaction added: {} by user", success.reaction.as_ref().map(|r| r.emoji.as_str()).unwrap_or("?"));
+            println!(
+                "✅ Reaction added: {} by user",
+                success
+                    .reaction
+                    .as_ref()
+                    .map(|r| r.emoji.as_str())
+                    .unwrap_or("?")
+            );
             assert!(success.reaction.is_some());
             let reaction = success.reaction.unwrap();
             assert_eq!(reaction.emoji, "👍");
             assert_eq!(reaction.message_id, message_id);
         }
         Some(proto::messaging::add_reaction_response::Result::Error(error)) => {
-            return Err(format!("Add reaction failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Add reaction failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from add_reaction".into()),
     }
@@ -268,13 +290,21 @@ async fn test_phase2_01_add_and_remove_reaction() -> Result<(), Box<dyn std::err
 
     match get_response.result {
         Some(proto::messaging::get_reactions_response::Result::Success(success)) => {
-            assert!(!success.reactions.is_empty(), "Should have at least one reaction");
+            assert!(
+                !success.reactions.is_empty(),
+                "Should have at least one reaction"
+            );
             let reaction = success.reactions.iter().find(|r| r.emoji == "👍");
             assert!(reaction.is_some(), "Should find the thumbs up reaction");
             println!("✅ Got {} reaction(s) for message", success.reactions.len());
         }
         Some(proto::messaging::get_reactions_response::Result::Error(error)) => {
-            return Err(format!("Get reactions failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get reactions failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_reactions".into()),
     }
@@ -299,7 +329,12 @@ async fn test_phase2_01_add_and_remove_reaction() -> Result<(), Box<dyn std::err
             println!("✅ Reaction removed successfully");
         }
         Some(proto::messaging::remove_reaction_response::Result::Error(error)) => {
-            return Err(format!("Remove reaction failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Remove reaction failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from remove_reaction".into()),
     }
@@ -317,13 +352,15 @@ async fn test_phase2_01_add_and_remove_reaction() -> Result<(), Box<dyn std::err
         .await?
         .into_inner();
 
-    match verify_response.result {
-        Some(proto::messaging::get_reactions_response::Result::Success(success)) => {
-            let thumbs_up = success.reactions.iter().find(|r| r.emoji == "👍" && r.user_id == user2.user_id().unwrap());
-            assert!(thumbs_up.is_none(), "Reaction should be removed");
-            println!("✅ Verified reaction was removed");
-        }
-        _ => {}
+    if let Some(proto::messaging::get_reactions_response::Result::Success(success)) =
+        verify_response.result
+    {
+        let thumbs_up = success
+            .reactions
+            .iter()
+            .find(|r| r.emoji == "👍" && r.user_id == user2.user_id().unwrap());
+        assert!(thumbs_up.is_none(), "Reaction should be removed");
+        println!("✅ Verified reaction was removed");
     }
 
     Ok(())
@@ -363,7 +400,10 @@ async fn test_phase2_02_read_receipts() -> Result<(), Box<dyn std::error::Error>
             recipient_device_id: user2.device_id()?,
             encrypted_content: message_content,
             client_message_id: Uuid::new_v4().to_string(),
-            client_timestamp: Some(Timestamp { seconds: now, nanos: 0 }),
+            client_timestamp: Some(Timestamp {
+                seconds: now,
+                nanos: 0,
+            }),
             message_type: MessageType::Text as i32,
             media_id: String::new(),
             recipient_username: user2.username.clone(),
@@ -372,8 +412,13 @@ async fn test_phase2_02_read_receipts() -> Result<(), Box<dyn std::error::Error>
             voice_metadata: None,
         });
 
-        let send_response = messaging_client.send_message(send_request).await?.into_inner();
-        if let Some(proto::messaging::send_message_response::Result::Success(success)) = send_response.result {
+        let send_response = messaging_client
+            .send_message(send_request)
+            .await?
+            .into_inner();
+        if let Some(proto::messaging::send_message_response::Result::Success(success)) =
+            send_response.result
+        {
             message_ids.push(success.message_id);
         }
         sleep(Duration::from_millis(100)).await;
@@ -402,7 +447,12 @@ async fn test_phase2_02_read_receipts() -> Result<(), Box<dyn std::error::Error>
             println!("✅ Read receipt sent at {:?}", success.timestamp);
         }
         Some(proto::messaging::send_read_receipt_response::Result::Error(error)) => {
-            return Err(format!("Send read receipt failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Send read receipt failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from send_read_receipt".into()),
     }
@@ -423,16 +473,32 @@ async fn test_phase2_02_read_receipts() -> Result<(), Box<dyn std::error::Error>
 
     match get_receipts_response.result {
         Some(proto::messaging::get_read_receipts_response::Result::Success(success)) => {
-            let user2_receipt = success.receipts.iter()
+            let user2_receipt = success
+                .receipts
+                .iter()
                 .find(|r| r.user_id == user2.user_id().unwrap());
 
-            assert!(user2_receipt.is_some(), "Should have read receipt from User 2");
+            assert!(
+                user2_receipt.is_some(),
+                "Should have read receipt from User 2"
+            );
             let receipt = user2_receipt.unwrap();
-            assert_eq!(receipt.last_read_message_id, last_message_id, "Last read message should match");
-            println!("✅ Got read receipt: User 2 read up to message {}", receipt.last_read_message_id);
+            assert_eq!(
+                receipt.last_read_message_id, last_message_id,
+                "Last read message should match"
+            );
+            println!(
+                "✅ Got read receipt: User 2 read up to message {}",
+                receipt.last_read_message_id
+            );
         }
         Some(proto::messaging::get_read_receipts_response::Result::Error(error)) => {
-            return Err(format!("Get read receipts failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get read receipts failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_read_receipts".into()),
     }
@@ -476,7 +542,10 @@ async fn test_phase2_03_forward_message() -> Result<(), Box<dyn std::error::Erro
         recipient_device_id: user2.device_id()?,
         encrypted_content: original_content.clone(),
         client_message_id: Uuid::new_v4().to_string(),
-        client_timestamp: Some(Timestamp { seconds: now, nanos: 0 }),
+        client_timestamp: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
         message_type: MessageType::Text as i32,
         media_id: String::new(),
         recipient_username: user2.username.clone(),
@@ -485,7 +554,10 @@ async fn test_phase2_03_forward_message() -> Result<(), Box<dyn std::error::Erro
         voice_metadata: None,
     });
 
-    let send_response = messaging_client.send_message(send_request).await?.into_inner();
+    let send_response = messaging_client
+        .send_message(send_request)
+        .await?
+        .into_inner();
     let source_message_id = match send_response.result {
         Some(proto::messaging::send_message_response::Result::Success(success)) => {
             println!("✅ Original message sent: {}", success.message_id);
@@ -538,24 +610,40 @@ async fn test_phase2_03_forward_message() -> Result<(), Box<dyn std::error::Erro
         limit: 10,
     });
 
-    let get_response = messaging_client.get_messages(get_request).await?.into_inner();
+    let get_response = messaging_client
+        .get_messages(get_request)
+        .await?
+        .into_inner();
 
     match get_response.result {
         Some(proto::messaging::get_messages_response::Result::Success(success)) => {
-            let forwarded_msg = success.messages.iter()
+            let forwarded_msg = success
+                .messages
+                .iter()
                 .find(|m| m.message_id == forwarded_message_id);
 
             assert!(forwarded_msg.is_some(), "Should find forwarded message");
             let msg = forwarded_msg.unwrap();
-            assert_eq!(msg.encrypted_content, original_content, "Content should match");
+            assert_eq!(
+                msg.encrypted_content, original_content,
+                "Content should match"
+            );
             assert!(msg.forward_info.is_some(), "Should have forward_info");
 
             let forward_info = msg.forward_info.as_ref().unwrap();
-            assert_eq!(forward_info.original_message_id, source_message_id, "Original message ID should match");
+            assert_eq!(
+                forward_info.original_message_id, source_message_id,
+                "Original message ID should match"
+            );
             println!("✅ User 3 received forwarded message with forward_info");
         }
         Some(proto::messaging::get_messages_response::Result::Error(error)) => {
-            return Err(format!("Get messages failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_messages".into()),
     }
@@ -595,7 +683,10 @@ async fn test_phase2_04_edit_message() -> Result<(), Box<dyn std::error::Error>>
         recipient_device_id: user2.device_id()?,
         encrypted_content: original_content,
         client_message_id: Uuid::new_v4().to_string(),
-        client_timestamp: Some(Timestamp { seconds: now, nanos: 0 }),
+        client_timestamp: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
         message_type: MessageType::Text as i32,
         media_id: String::new(),
         recipient_username: user2.username.clone(),
@@ -604,7 +695,10 @@ async fn test_phase2_04_edit_message() -> Result<(), Box<dyn std::error::Error>>
         voice_metadata: None,
     });
 
-    let send_response = messaging_client.send_message(send_request).await?.into_inner();
+    let send_response = messaging_client
+        .send_message(send_request)
+        .await?
+        .into_inner();
     let message_id = match send_response.result {
         Some(proto::messaging::send_message_response::Result::Success(success)) => {
             println!("✅ Original message sent: {}", success.message_id);
@@ -625,10 +719,16 @@ async fn test_phase2_04_edit_message() -> Result<(), Box<dyn std::error::Error>>
         conversation_id: conversation_id.clone(),
         is_group: false,
         encrypted_content: edited_content.clone(),
-        client_timestamp: Some(Timestamp { seconds: edit_now, nanos: 0 }),
+        client_timestamp: Some(Timestamp {
+            seconds: edit_now,
+            nanos: 0,
+        }),
     });
 
-    let edit_response = messaging_client.edit_message(edit_request).await?.into_inner();
+    let edit_response = messaging_client
+        .edit_message(edit_request)
+        .await?
+        .into_inner();
 
     match edit_response.result {
         Some(proto::messaging::edit_message_response::Result::Success(success)) => {
@@ -654,7 +754,10 @@ async fn test_phase2_04_edit_message() -> Result<(), Box<dyn std::error::Error>>
         limit: 10,
     });
 
-    let get_response = messaging_client.get_messages(get_request).await?.into_inner();
+    let get_response = messaging_client
+        .get_messages(get_request)
+        .await?
+        .into_inner();
 
     match get_response.result {
         Some(proto::messaging::get_messages_response::Result::Success(success)) => {
@@ -662,13 +765,27 @@ async fn test_phase2_04_edit_message() -> Result<(), Box<dyn std::error::Error>>
 
             assert!(edited_msg.is_some(), "Should find the message");
             let msg = edited_msg.unwrap();
-            assert_eq!(msg.encrypted_content, edited_content, "Content should be edited");
+            assert_eq!(
+                msg.encrypted_content, edited_content,
+                "Content should be edited"
+            );
             assert!(msg.edit_version >= 1, "Edit version should be >= 1");
-            assert!(msg.last_edited_at.is_some(), "Should have last_edited_at timestamp");
-            println!("✅ User 2 sees edited content, version: {}", msg.edit_version);
+            assert!(
+                msg.last_edited_at.is_some(),
+                "Should have last_edited_at timestamp"
+            );
+            println!(
+                "✅ User 2 sees edited content, version: {}",
+                msg.edit_version
+            );
         }
         Some(proto::messaging::get_messages_response::Result::Error(error)) => {
-            return Err(format!("Get messages failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_messages".into()),
     }
@@ -717,11 +834,23 @@ async fn test_phase2_05_disappearing_messages() -> Result<(), Box<dyn std::error
         Some(proto::messaging::set_disappearing_messages_response::Result::Success(success)) => {
             let config = success.config.unwrap();
             assert_eq!(config.ttl_seconds, ttl_seconds, "TTL should match");
-            assert_eq!(config.set_by_user_id, user1.user_id()?, "Set by should be User 1");
-            println!("✅ Disappearing messages enabled: {} seconds TTL", config.ttl_seconds);
+            assert_eq!(
+                config.set_by_user_id,
+                user1.user_id()?,
+                "Set by should be User 1"
+            );
+            println!(
+                "✅ Disappearing messages enabled: {} seconds TTL",
+                config.ttl_seconds
+            );
         }
         Some(proto::messaging::set_disappearing_messages_response::Result::Error(error)) => {
-            return Err(format!("Set disappearing failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Set disappearing failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from set_disappearing_messages".into()),
     }
@@ -741,11 +870,19 @@ async fn test_phase2_05_disappearing_messages() -> Result<(), Box<dyn std::error
     match get_config_response.result {
         Some(proto::messaging::get_disappearing_config_response::Result::Success(success)) => {
             let config = success.config.unwrap();
-            assert_eq!(config.ttl_seconds, ttl_seconds, "TTL should match for User 2");
-            println!("✅ User 2 sees disappearing config: {} seconds", config.ttl_seconds);
+            assert_eq!(
+                config.ttl_seconds, ttl_seconds,
+                "TTL should match for User 2"
+            );
+            println!(
+                "✅ User 2 sees disappearing config: {} seconds",
+                config.ttl_seconds
+            );
         }
         Some(proto::messaging::get_disappearing_config_response::Result::Error(error)) => {
-            return Err(format!("Get config failed: {:?} - {}", error.code(), error.message).into());
+            return Err(
+                format!("Get config failed: {:?} - {}", error.code(), error.message).into(),
+            );
         }
         None => return Err("No response from get_disappearing_config".into()),
     }
@@ -770,7 +907,12 @@ async fn test_phase2_05_disappearing_messages() -> Result<(), Box<dyn std::error
             println!("✅ Disappearing messages disabled");
         }
         Some(proto::messaging::set_disappearing_messages_response::Result::Error(error)) => {
-            return Err(format!("Disable disappearing failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Disable disappearing failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from set_disappearing_messages".into()),
     }
@@ -809,9 +951,14 @@ async fn test_phase2_06_multiple_reactions() -> Result<(), Box<dyn std::error::E
         group_name: "Reaction Test Group".to_string(),
         member_user_ids: vec![user2.user_id()?, user3.user_id()?],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
-    let create_response = messaging_client.create_group(create_group_request).await?.into_inner();
+    let create_response = messaging_client
+        .create_group(create_group_request)
+        .await?
+        .into_inner();
     let group_id = match create_response.result {
         Some(proto::messaging::create_group_response::Result::Success(success)) => {
             println!("✅ Group created: {}", success.group_id);
@@ -832,13 +979,19 @@ async fn test_phase2_06_multiple_reactions() -> Result<(), Box<dyn std::error::E
         encrypted_content: message_content,
         message_type: MessageType::Text as i32,
         client_message_id: Uuid::new_v4().to_string(),
-        client_timestamp: Some(Timestamp { seconds: now, nanos: 0 }),
+        client_timestamp: Some(Timestamp {
+            seconds: now,
+            nanos: 0,
+        }),
         media_id: String::new(),
         thread_reference: None,
         voice_metadata: None,
     });
 
-    let send_response = messaging_client.send_group_message(send_group_request).await?.into_inner();
+    let send_response = messaging_client
+        .send_group_message(send_group_request)
+        .await?
+        .into_inner();
     let message_id = match send_response.result {
         Some(proto::messaging::send_group_message_response::Result::Success(success)) => {
             println!("✅ Group message sent: {}", success.message_id);
@@ -880,25 +1033,39 @@ async fn test_phase2_06_multiple_reactions() -> Result<(), Box<dyn std::error::E
         is_group: true,
     });
 
-    let get_response = messaging_client.get_reactions(get_reactions_request).await?.into_inner();
+    let get_response = messaging_client
+        .get_reactions(get_reactions_request)
+        .await?
+        .into_inner();
 
     match get_response.result {
         Some(proto::messaging::get_reactions_response::Result::Success(success)) => {
-            assert!(success.reactions.len() >= 3, "Should have at least 3 reactions");
+            assert!(
+                success.reactions.len() >= 3,
+                "Should have at least 3 reactions"
+            );
 
             // Count unique emojis
             let thumbs_up = success.reactions.iter().filter(|r| r.emoji == "👍").count();
             let hearts = success.reactions.iter().filter(|r| r.emoji == "❤️").count();
             let laughs = success.reactions.iter().filter(|r| r.emoji == "😂").count();
 
-            println!("✅ Reactions: 👍={}, ❤️={}, 😂={}", thumbs_up, hearts, laughs);
+            println!(
+                "✅ Reactions: 👍={}, ❤️={}, 😂={}",
+                thumbs_up, hearts, laughs
+            );
 
             assert!(thumbs_up >= 2, "Should have 2 thumbs up reactions");
             assert!(hearts >= 1, "Should have 1 heart reaction");
             assert!(laughs >= 1, "Should have 1 laugh reaction");
         }
         Some(proto::messaging::get_reactions_response::Result::Error(error)) => {
-            return Err(format!("Get reactions failed: {:?} - {}", error.code(), error.message).into());
+            return Err(format!(
+                "Get reactions failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_reactions".into()),
     }

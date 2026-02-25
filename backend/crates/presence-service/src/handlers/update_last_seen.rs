@@ -1,7 +1,6 @@
 /// Update Last Seen Handler
 ///
 /// Updates the user's last_seen timestamp (heartbeat)
-
 use crate::db::DatabaseClient;
 use crate::jwt;
 use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};

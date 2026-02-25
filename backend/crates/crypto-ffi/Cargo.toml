@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 description = "Flutter Rust Bridge bindings for guardyn-crypto"
 
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(frb_expand)'] }
+
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
 name = "guardyn_crypto_ffi"

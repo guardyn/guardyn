@@ -2,7 +2,6 @@
 ///
 /// Axum-based WebSocket server that runs alongside the gRPC server.
 /// Handles WebSocket connections, authentication, and message routing.
-
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -46,6 +45,7 @@ pub struct WebSocketServerConfig {
     /// Maximum connections per user
     pub max_connections_per_user: usize,
     /// Heartbeat interval in seconds
+    #[allow(dead_code)]
     pub heartbeat_interval: u64,
     /// Connection timeout in seconds (no heartbeat)
     pub connection_timeout: u64,
@@ -89,6 +89,7 @@ impl WebSocketServer {
     }
 
     /// Get the connection manager
+    #[allow(dead_code)]
     pub fn connection_manager(&self) -> Arc<ConnectionManager> {
         self.state.connection_manager.clone()
     }
@@ -142,7 +143,9 @@ impl WebSocketServer {
     }
 
     /// Start the server in a background task
-    pub fn spawn(self) -> tokio::task::JoinHandle<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+    pub fn spawn(
+        self,
+    ) -> tokio::task::JoinHandle<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         tokio::spawn(async move { self.start().await })
     }
 }
@@ -187,7 +190,7 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
         while let Some(msg) = rx.recv().await {
             match serde_json::to_string(&msg) {
                 Ok(json) => {
-                    if sender.send(Message::Text(json.into())).await.is_err() {
+                    if sender.send(Message::Text(json)).await.is_err() {
                         debug!(connection_id = %send_connection_id, "WebSocket send failed");
                         break;
                     }
@@ -220,7 +223,8 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
                         }
                         Err(e) => {
                             warn!(error = %e, "Failed to parse WebSocket message");
-                            let error_msg = WsMessage::error("PARSE_ERROR", "Invalid message format");
+                            let error_msg =
+                                WsMessage::error("PARSE_ERROR", "Invalid message format");
                             let _ = recv_ctx
                                 .connection_manager
                                 .send_to_connection(&recv_ctx.connection_id, error_msg)
@@ -268,7 +272,7 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
 /// Generate deterministic conversation ID from two user IDs
 /// IMPORTANT: Uses NAMESPACE_DNS to match db.rs implementation
 fn generate_conversation_id(user1: &str, user2: &str) -> String {
-    let mut users = vec![user1, user2];
+    let mut users = [user1, user2];
     users.sort();
     // Use NAMESPACE_DNS to match the db.rs implementation
     let data = format!("{}:{}", users[0], users[1]);
@@ -276,7 +280,9 @@ fn generate_conversation_id(user1: &str, user2: &str) -> String {
 }
 
 /// Start NATS message relay - listens to all messages and forwards to WebSocket clients
-async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn start_nats_message_relay(
+    state: WsState,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use async_nats::jetstream::consumer::pull::Config as ConsumerConfig;
     use futures::StreamExt;
 
@@ -285,8 +291,7 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
     // Generate unique consumer name for this pod instance
     // This allows multiple messaging-service pods to each receive all messages
     // (broadcast pattern instead of queue group)
-    let pod_id = std::env::var("HOSTNAME")
-        .unwrap_or_else(|_| Uuid::new_v4().to_string());
+    let pod_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
     let consumer_name = format!("websocket-relay-{}", pod_id);
 
     info!(consumer_name = %consumer_name, "Creating ephemeral NATS consumer");
@@ -294,7 +299,9 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
     // Create an ephemeral consumer that listens to all messages (messages.*.*)
     // Each pod creates its own consumer with unique name to receive ALL messages (broadcast)
     // This is necessary because WebSocket connections are local to each pod
-    let consumer = state.nats.context
+    let consumer = state
+        .nats
+        .context
         .create_consumer_on_stream(
             ConsumerConfig {
                 name: Some(consumer_name.clone()),
@@ -312,18 +319,20 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
 
     // Process messages
     let mut messages = consumer.messages().await?;
-    
+
     while let Some(msg_result) = messages.next().await {
         match msg_result {
             Ok(msg) => {
                 let subject = msg.subject.as_str();
                 debug!(subject = %subject, "NATS message received");
-                
+
                 // First, try to parse as MessageEnvelope (from gRPC handlers)
                 // Subject format: messages.{recipient_id}.{message_id}
-                if let Ok(envelope) = serde_json::from_slice::<crate::nats::MessageEnvelope>(&msg.payload) {
+                if let Ok(envelope) =
+                    serde_json::from_slice::<crate::nats::MessageEnvelope>(&msg.payload)
+                {
                     let recipient_id = &envelope.recipient_user_id;
-                    
+
                     info!(
                         message_id = %envelope.message_id,
                         recipient_id = %recipient_id,
@@ -339,7 +348,8 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                     let content = String::from_utf8_lossy(&envelope.encrypted_content).to_string();
 
                     // Generate deterministic conversation ID for 1-on-1 chat
-                    let conversation_id = generate_conversation_id(&envelope.sender_user_id, recipient_id);
+                    let conversation_id =
+                        generate_conversation_id(&envelope.sender_user_id, recipient_id);
 
                     // Create WebSocket message from envelope
                     let ws_message = WsMessage::Message(super::messages::MessagePayload {
@@ -359,15 +369,21 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                     });
 
                     // Send to recipient's WebSocket connections
-                    let conn_count = state.connection_manager.get_user_connection_ids(recipient_id).len();
+                    let conn_count = state
+                        .connection_manager
+                        .get_user_connection_ids(recipient_id)
+                        .len();
                     info!(
                         recipient_id = %recipient_id,
                         connection_count = conn_count,
                         "Sending message to WebSocket connections"
                     );
-                    
-                    state.connection_manager.send_to_user(recipient_id, ws_message).await;
-                    
+
+                    state
+                        .connection_manager
+                        .send_to_user(recipient_id, ws_message)
+                        .await;
+
                     // Acknowledge the message
                     if let Err(e) = msg.ack().await {
                         warn!("Failed to ack NATS message: {}", e);
@@ -379,16 +395,19 @@ async fn start_nats_message_relay(state: WsState) -> Result<(), Box<dyn std::err
                     let subject_parts: Vec<&str> = subject.split('.').collect();
                     if subject_parts.len() >= 3 && subject_parts[1] == "user" {
                         let recipient_id = subject_parts[2];
-                        
+
                         debug!(
                             recipient_id = %recipient_id,
                             "Relaying WsMessage via WebSocket"
                         );
 
                         // Send to recipient's WebSocket connections
-                        state.connection_manager.send_to_user(recipient_id, ws_message).await;
+                        state
+                            .connection_manager
+                            .send_to_user(recipient_id, ws_message)
+                            .await;
                     }
-                    
+
                     // Acknowledge the message
                     if let Err(e) = msg.ack().await {
                         warn!("Failed to ack NATS message: {}", e);

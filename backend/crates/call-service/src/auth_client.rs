@@ -14,7 +14,9 @@ use tracing::{debug, info, warn};
 /// User profile information fetched from auth service
 #[derive(Debug, Clone, Default)]
 pub struct UserProfileInfo {
+    #[allow(dead_code)]
     pub user_id: String,
+    #[allow(dead_code)]
     pub username: String,
     pub display_name: String,
 }
@@ -85,7 +87,9 @@ impl AuthClient {
                     display_name,
                 })
             }
-            Some(crate::generated::guardyn::auth::get_user_profile_response::Result::Error(err)) => {
+            Some(crate::generated::guardyn::auth::get_user_profile_response::Result::Error(
+                err,
+            )) => {
                 debug!(
                     "Auth service returned error for user {}: {}",
                     user_id, err.message
@@ -125,6 +129,7 @@ impl AuthClient {
     ///
     /// Returns a HashMap of user_id -> display_name
     /// For users that can't be found, their user_id is used as display name
+    #[allow(dead_code)]
     pub async fn get_display_names(&mut self, user_ids: &[String]) -> HashMap<String, String> {
         let mut display_names = HashMap::new();
 

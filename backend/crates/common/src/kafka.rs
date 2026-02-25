@@ -133,8 +133,7 @@ impl KafkaConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(5),
-            compression: std::env::var("KAFKA_COMPRESSION")
-                .unwrap_or_else(|_| "lz4".to_string()),
+            compression: std::env::var("KAFKA_COMPRESSION").unwrap_or_else(|_| "lz4".to_string()),
         }
     }
 
@@ -214,7 +213,10 @@ impl KafkaProducer {
         let owned_headers = headers.map(|h| {
             let mut owned = OwnedHeaders::new();
             for (k, v) in h {
-                owned = owned.insert(Header { key: k, value: Some(v) });
+                owned = owned.insert(Header {
+                    key: k,
+                    value: Some(v),
+                });
             }
             owned
         });
@@ -240,8 +242,8 @@ impl KafkaProducer {
     /// Send a serializable message as JSON
     #[instrument(skip(self, message), fields(topic = %topic, key = %key))]
     pub async fn send_json<T: Serialize>(&self, topic: &str, key: &str, message: &T) -> Result<()> {
-        let payload = serde_json::to_vec(message)
-            .map_err(|e| KafkaError::Serialization(e.to_string()))?;
+        let payload =
+            serde_json::to_vec(message).map_err(|e| KafkaError::Serialization(e.to_string()))?;
 
         self.send(topic, key, &payload).await
     }
@@ -266,7 +268,9 @@ impl ReceivedMessage {
     }
 
     /// Deserialize payload as JSON
-    pub fn payload_json<T: for<'de> Deserialize<'de>>(&self) -> std::result::Result<T, serde_json::Error> {
+    pub fn payload_json<T: for<'de> Deserialize<'de>>(
+        &self,
+    ) -> std::result::Result<T, serde_json::Error> {
         serde_json::from_slice(&self.payload)
     }
 }
@@ -325,7 +329,9 @@ impl KafkaConsumer {
     pub async fn consume<F, Fut>(&self, mut handler: F) -> Result<()>
     where
         F: FnMut(ReceivedMessage) -> Fut,
-        Fut: std::future::Future<Output = std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>,
+        Fut: std::future::Future<
+            Output = std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>,
+        >,
     {
         use futures::StreamExt;
 

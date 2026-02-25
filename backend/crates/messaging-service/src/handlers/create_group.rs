@@ -1,13 +1,12 @@
 /// Handler for creating group chats
 use crate::db::DatabaseClient;
-use crate::models::{GroupMetadata, GroupMember, GroupRole};
+use crate::models::{GroupMember, GroupMetadata, GroupRole};
+use crate::proto::common::{ErrorResponse, Timestamp};
 use crate::proto::messaging::{
     create_group_response, CreateGroupRequest, CreateGroupResponse, CreateGroupSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp};
 use std::sync::Arc;
 use tonic::{Response, Status};
-use uuid::Uuid;
 
 pub async fn create_group(
     request: CreateGroupRequest,
@@ -16,18 +15,19 @@ pub async fn create_group(
     // Validate JWT token and extract user_id (group creator)
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (creator_user_id, creator_device_id, _creator_username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(CreateGroupResponse {
-                result: Some(create_group_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (creator_user_id, creator_device_id, _creator_username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(CreateGroupResponse {
+                    result: Some(create_group_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate group name
     if request.group_name.is_empty() || request.group_name.len() > 100 {
@@ -63,8 +63,16 @@ pub async fn create_group(
         created_at: timestamp,
         mls_group_id: request.mls_group_state.clone(),
         mls_epoch: 0, // Initial epoch
-        icon_media_id: if request.icon_media_id.is_empty() { None } else { Some(request.icon_media_id.clone()) },
-        description: if request.description.is_empty() { None } else { Some(request.description.clone()) },
+        icon_media_id: if request.icon_media_id.is_empty() {
+            None
+        } else {
+            Some(request.icon_media_id.clone())
+        },
+        description: if request.description.is_empty() {
+            None
+        } else {
+            Some(request.description.clone())
+        },
     };
 
     // Store group in TiKV
@@ -102,7 +110,7 @@ pub async fn create_group(
         let member = GroupMember {
             group_id: group_id.clone(),
             user_id: member_user_id.clone(),
-            device_id: "primary".to_string(),  // Default device for initial members
+            device_id: "primary".to_string(), // Default device for initial members
             role: GroupRole::Member,
             joined_at: timestamp,
         };
@@ -121,14 +129,12 @@ pub async fn create_group(
     );
 
     Ok(Response::new(CreateGroupResponse {
-        result: Some(create_group_response::Result::Success(
-            CreateGroupSuccess {
-                group_id,
-                created_at: Some(Timestamp {
-                    seconds: timestamp,
-                    nanos: 0,
-                }),
-            },
-        )),
+        result: Some(create_group_response::Result::Success(CreateGroupSuccess {
+            group_id,
+            created_at: Some(Timestamp {
+                seconds: timestamp,
+                nanos: 0,
+            }),
+        })),
     }))
 }

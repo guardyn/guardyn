@@ -74,13 +74,13 @@ impl KeyType {
     /// Returns the default expiration period for this key type in seconds
     pub fn default_expiration_seconds(&self) -> Option<u64> {
         match self {
-            KeyType::Identity => None, // Never expires
-            KeyType::SignedPreKey => Some(7 * 24 * 60 * 60), // 1 week
-            KeyType::OneTimePreKey => Some(0), // Immediate deletion after use
-            KeyType::RatchetChain => Some(30 * 24 * 60 * 60), // 30 days
+            KeyType::Identity => None,                         // Never expires
+            KeyType::SignedPreKey => Some(7 * 24 * 60 * 60),   // 1 week
+            KeyType::OneTimePreKey => Some(0),                 // Immediate deletion after use
+            KeyType::RatchetChain => Some(30 * 24 * 60 * 60),  // 30 days
             KeyType::RatchetMessage => Some(7 * 24 * 60 * 60), // 7 days
-            KeyType::MlsEpoch => Some(7 * 24 * 60 * 60), // 7 days
-            KeyType::MasterKey => None, // Never expires
+            KeyType::MlsEpoch => Some(7 * 24 * 60 * 60),       // 7 days
+            KeyType::MasterKey => None,                        // Never expires
         }
     }
 }
@@ -231,11 +231,16 @@ impl KeyStorage {
     /// Store a key securely
     ///
     /// The key material is encrypted with AES-256-GCM before storage.
-    pub fn store_key(&self, key_id: &str, key_material: &[u8], metadata: KeyMetadata) -> Result<()> {
+    pub fn store_key(
+        &self,
+        key_id: &str,
+        key_material: &[u8],
+        metadata: KeyMetadata,
+    ) -> Result<()> {
         // Generate random nonce
         let mut nonce_bytes = [0u8; 12];
         rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut nonce_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        let nonce: Nonce<_> = nonce_bytes.into();
 
         // Encrypt key material
         let cipher = Aes256Gcm::new_from_slice(&self.encryption_key)
@@ -243,10 +248,13 @@ impl KeyStorage {
 
         // Use key_id as associated data for authentication
         let ciphertext = cipher
-            .encrypt(nonce, aes_gcm::aead::Payload {
-                msg: key_material,
-                aad: key_id.as_bytes(),
-            })
+            .encrypt(
+                &nonce,
+                aes_gcm::aead::Payload {
+                    msg: key_material,
+                    aad: key_id.as_bytes(),
+                },
+            )
             .map_err(|e| CryptoError::Encryption(format!("Encryption failed: {}", e)))?;
 
         let entry = EncryptedKeyEntry {
@@ -260,9 +268,10 @@ impl KeyStorage {
 
     /// Retrieve and decrypt a key
     pub fn get_key(&self, key_id: &str) -> Result<Vec<u8>> {
-        let entry = self.backend.get(key_id)?.ok_or_else(|| {
-            CryptoError::InvalidKey(format!("Key not found: {}", key_id))
-        })?;
+        let entry = self
+            .backend
+            .get(key_id)?
+            .ok_or_else(|| CryptoError::InvalidKey(format!("Key not found: {}", key_id)))?;
 
         // Check expiration
         if let Some(expires_at) = entry.metadata.expires_at {
@@ -282,12 +291,15 @@ impl KeyStorage {
         let cipher = Aes256Gcm::new_from_slice(&self.encryption_key)
             .map_err(|e| CryptoError::Decryption(format!("Cipher init failed: {}", e)))?;
 
-        let nonce = Nonce::from_slice(&entry.nonce);
+        let nonce: Nonce<_> = entry.nonce.into();
         let plaintext = cipher
-            .decrypt(nonce, aes_gcm::aead::Payload {
-                msg: &entry.ciphertext,
-                aad: key_id.as_bytes(),
-            })
+            .decrypt(
+                &nonce,
+                aes_gcm::aead::Payload {
+                    msg: &entry.ciphertext,
+                    aad: key_id.as_bytes(),
+                },
+            )
             .map_err(|e| CryptoError::Decryption(format!("Decryption failed: {}", e)))?;
 
         Ok(plaintext)
@@ -444,7 +456,12 @@ mod tests {
 
         let key_id = "meta-key";
         storage
-            .store_key_simple(key_id, b"secret", KeyType::SignedPreKey, Some("device-123".to_string()))
+            .store_key_simple(
+                key_id,
+                b"secret",
+                KeyType::SignedPreKey,
+                Some("device-123".to_string()),
+            )
             .unwrap();
 
         let metadata = storage.get_metadata(key_id).unwrap().unwrap();

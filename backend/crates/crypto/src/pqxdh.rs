@@ -8,6 +8,7 @@
 //! Based on Signal's PQXDH specification.
 //!
 //! Reference: https://signal.org/docs/specifications/pqxdh/
+#![allow(unused_assignments)]
 
 use crate::{CryptoError, Result};
 use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
@@ -54,16 +55,16 @@ impl<'de> Deserialize<'de> for SignatureBytes {
         D: serde::Deserializer<'de>,
     {
         use serde::de::{Error, Visitor};
-        
+
         struct BytesVisitor;
-        
+
         impl<'de> Visitor<'de> for BytesVisitor {
             type Value = SignatureBytes;
-            
+
             fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 write!(f, "64 bytes")
             }
-            
+
             fn visit_bytes<E: Error>(self, v: &[u8]) -> std::result::Result<Self::Value, E> {
                 if v.len() != 64 {
                     return Err(E::custom(format!("expected 64 bytes, got {}", v.len())));
@@ -72,20 +73,21 @@ impl<'de> Deserialize<'de> for SignatureBytes {
                 arr.copy_from_slice(v);
                 Ok(SignatureBytes(arr))
             }
-            
+
             fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
             where
                 A: serde::de::SeqAccess<'de>,
             {
                 let mut arr = [0u8; 64];
                 for (i, byte) in arr.iter_mut().enumerate() {
-                    *byte = seq.next_element()?
+                    *byte = seq
+                        .next_element()?
                         .ok_or_else(|| Error::invalid_length(i, &self))?;
                 }
                 Ok(SignatureBytes(arr))
             }
         }
-        
+
         deserializer.deserialize_bytes(BytesVisitor)
     }
 }
@@ -116,6 +118,7 @@ pub struct HybridKeyBundle {
 
 /// Private keys for the hybrid key bundle
 #[derive(Zeroize, ZeroizeOnDrop)]
+#[allow(unused_assignments)]
 pub struct HybridPrivateKeys {
     /// Ed25519 identity signing key
     identity_key: [u8; 32],
@@ -129,6 +132,7 @@ pub struct HybridPrivateKeys {
     /// ML-KEM decapsulation key
     #[cfg(feature = "pq")]
     #[zeroize(skip)] // ML-KEM key handles its own zeroization
+    #[allow(unused_assignments)]
     pq_decapsulation_key: Option<Vec<u8>>,
 }
 
@@ -170,6 +174,7 @@ impl HybridSharedSecret {
 }
 
 /// Generate a new hybrid key bundle
+#[allow(unused_assignments)]
 pub fn generate_hybrid_key_bundle(
     include_one_time_prekey: bool,
     #[allow(unused_variables)] include_pq_key: bool,
@@ -211,28 +216,34 @@ pub fn generate_hybrid_key_bundle(
     };
 
     // Build private keys
-    #[allow(unused_mut)]
-    let mut private_keys = HybridPrivateKeys {
+    // Generate ML-KEM keys if requested
+    #[cfg(feature = "pq")]
+    let pq_result: Option<(Vec<u8>, Vec<u8>, SignatureBytes)> = if include_pq_key {
+        let (dk, ek) = MlKem768::generate(&mut rng);
+        let ek_bytes = ek.as_bytes().to_vec();
+        let pq_signature = identity_signing_key.sign(&ek_bytes);
+        Some((
+            dk.as_bytes().to_vec(),
+            ek_bytes,
+            SignatureBytes(pq_signature.to_bytes()),
+        ))
+    } else {
+        None
+    };
+
+    #[cfg(feature = "pq")]
+    if let Some((_, ref ek_bytes, ref pq_sig)) = pq_result {
+        bundle.pq_prekey = Some(ek_bytes.clone());
+        bundle.pq_prekey_signature = Some(pq_sig.clone());
+    }
+
+    let private_keys = HybridPrivateKeys {
         identity_key: identity_signing_key.to_bytes(),
         signed_prekey: signed_prekey_secret.to_bytes(),
         one_time_prekey: one_time_secret,
         #[cfg(feature = "pq")]
-        pq_decapsulation_key: None,
+        pq_decapsulation_key: pq_result.map(|(dk, _, _)| dk),
     };
-
-    // Generate ML-KEM keys if requested
-    #[cfg(feature = "pq")]
-    if include_pq_key {
-        let (dk, ek) = MlKem768::generate(&mut rng);
-        let ek_bytes = ek.as_bytes().to_vec();
-
-        // Sign the PQ prekey
-        let pq_signature = identity_signing_key.sign(&ek_bytes);
-
-        bundle.pq_prekey = Some(ek_bytes);
-        bundle.pq_prekey_signature = Some(SignatureBytes(pq_signature.to_bytes()));
-        private_keys.pq_decapsulation_key = Some(dk.as_bytes().to_vec());
-    }
 
     Ok((bundle, private_keys))
 }
@@ -253,8 +264,7 @@ pub fn verify_hybrid_bundle(bundle: &HybridKeyBundle) -> Result<()> {
 
     // Verify PQ prekey signature if present
     #[cfg(feature = "pq")]
-    if let (Some(pq_prekey), Some(pq_sig_bytes)) =
-        (&bundle.pq_prekey, &bundle.pq_prekey_signature)
+    if let (Some(pq_prekey), Some(pq_sig_bytes)) = (&bundle.pq_prekey, &bundle.pq_prekey_signature)
     {
         let pq_signature = Signature::from_bytes(&pq_sig_bytes.0);
         identity_key
@@ -276,12 +286,10 @@ pub fn derive_sender_shared_secret(
     recipient_bundle: &HybridKeyBundle,
 ) -> Result<(HybridSharedSecret, Vec<u8>)> {
     // Classical X25519 DH operations (X3DH)
-    let sender_identity_secret =
-        X25519Secret::from(*sender_identity_key);
+    let sender_identity_secret = X25519Secret::from(*sender_identity_key);
     let sender_ephemeral = X25519Secret::from(*sender_ephemeral_secret);
 
-    let recipient_identity =
-        X25519PublicKey::from(recipient_bundle.identity_key);
+    let recipient_identity = X25519PublicKey::from(recipient_bundle.identity_key);
     let recipient_spk = X25519PublicKey::from(recipient_bundle.signed_prekey);
 
     // DH1 = DH(IK_A, SPK_B)
@@ -317,14 +325,12 @@ pub fn derive_sender_shared_secret(
     #[cfg(feature = "pq")]
     let pq_shared = if let Some(ref pq_prekey) = recipient_bundle.pq_prekey {
         use ml_kem::EncodedSizeUser;
-        use ml_kem::array::Array;
         let ek_bytes: &[u8; 1184] = pq_prekey
             .as_slice()
             .try_into()
             .map_err(|_| CryptoError::InvalidKey("Invalid PQ prekey size".to_string()))?;
-        let ek = ml_kem::kem::EncapsulationKey::<ml_kem::MlKem768Params>::from_bytes(
-            Array::from_slice(ek_bytes),
-        );
+        let ek =
+            ml_kem::kem::EncapsulationKey::<ml_kem::MlKem768Params>::from_bytes(ek_bytes.into());
         let (ciphertext, shared_secret) = ek.encapsulate(&mut rand::thread_rng()).unwrap();
         additional_data.extend_from_slice(ciphertext.as_slice());
         Some(shared_secret)
@@ -348,7 +354,12 @@ pub fn derive_sender_shared_secret(
     // Clear intermediate values
     ikm.zeroize();
 
-    Ok((HybridSharedSecret { secret: shared_secret }, additional_data))
+    Ok((
+        HybridSharedSecret {
+            secret: shared_secret,
+        },
+        additional_data,
+    ))
 }
 
 /// Derive a hybrid shared secret (recipient side)
@@ -395,19 +406,17 @@ pub fn derive_recipient_shared_secret(
         (&recipient_private_keys.pq_decapsulation_key, pq_ciphertext)
     {
         use ml_kem::EncodedSizeUser;
-        use ml_kem::array::Array;
         let dk_arr: &[u8; 2400] = dk_bytes
             .as_slice()
             .try_into()
             .map_err(|_| CryptoError::InvalidKey("Invalid PQ decapsulation key".to_string()))?;
-        let dk = ml_kem::kem::DecapsulationKey::<ml_kem::MlKem768Params>::from_bytes(
-            Array::from_slice(dk_arr),
-        );
+        let dk = ml_kem::kem::DecapsulationKey::<ml_kem::MlKem768Params>::from_bytes(dk_arr.into());
         let ct_arr: &[u8; 1088] = ct
             .try_into()
             .map_err(|_| CryptoError::InvalidKey("Invalid PQ ciphertext".to_string()))?;
-        let ciphertext = Array::from_slice(ct_arr);
-        let shared_secret = dk.decapsulate(ciphertext)
+        let ciphertext = ct_arr.into();
+        let shared_secret = dk
+            .decapsulate(ciphertext)
             .map_err(|_| CryptoError::Decryption("ML-KEM decapsulation failed".to_string()))?;
         Some(shared_secret)
     } else {
@@ -430,7 +439,9 @@ pub fn derive_recipient_shared_secret(
     // Clear intermediate values
     ikm.zeroize();
 
-    Ok(HybridSharedSecret { secret: shared_secret })
+    Ok(HybridSharedSecret {
+        secret: shared_secret,
+    })
 }
 
 #[cfg(test)]
@@ -463,7 +474,7 @@ mod tests {
         let sender_identity = SigningKey::generate(&mut rng);
         let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
 
-        let (sender_secret, additional_data) = derive_sender_shared_secret(
+        let (sender_secret, _additional_data) = derive_sender_shared_secret(
             &sender_identity.to_bytes(),
             &sender_ephemeral.to_bytes(),
             &recipient_bundle,
@@ -488,8 +499,7 @@ mod tests {
     #[test]
     fn test_hybrid_key_exchange() {
         // Generate recipient bundle with PQ keys
-        let (recipient_bundle, recipient_private) =
-            generate_hybrid_key_bundle(true, true).unwrap();
+        let (recipient_bundle, recipient_private) = generate_hybrid_key_bundle(true, true).unwrap();
 
         assert!(recipient_bundle.pq_prekey.is_some());
 

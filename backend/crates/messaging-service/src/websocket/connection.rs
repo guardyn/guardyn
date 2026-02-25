@@ -2,7 +2,6 @@
 ///
 /// Manages active WebSocket connections, routing messages to the correct
 /// recipients, and handling connection lifecycle events.
-
 use dashmap::DashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -21,6 +20,7 @@ pub type DeviceId = String;
 
 /// Information about an active connection
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ConnectionInfo {
     /// User ID (set after authentication)
     pub user_id: Option<UserId>,
@@ -255,7 +255,8 @@ impl ConnectionManager {
     /// Remove subscription from a connection
     pub fn unsubscribe_conversation(&self, connection_id: &str, conversation_id: &str) {
         if let Some(mut conn) = self.connections.get_mut(connection_id) {
-            conn.subscribed_conversations.retain(|id| id != conversation_id);
+            conn.subscribed_conversations
+                .retain(|id| id != conversation_id);
         }
     }
 
@@ -279,7 +280,11 @@ impl ConnectionManager {
     pub fn get_conversation_subscribers(&self, conversation_id: &str) -> Vec<ConnectionId> {
         self.connections
             .iter()
-            .filter(|entry| entry.subscribed_conversations.contains(&conversation_id.to_string()))
+            .filter(|entry| {
+                entry
+                    .subscribed_conversations
+                    .contains(&conversation_id.to_string())
+            })
             .map(|entry| entry.key().clone())
             .collect()
     }
@@ -299,9 +304,7 @@ impl ConnectionManager {
         let stale: Vec<ConnectionId> = self
             .connections
             .iter()
-            .filter(|entry| {
-                (now - entry.last_activity).num_seconds() > max_idle_seconds
-            })
+            .filter(|entry| (now - entry.last_activity).num_seconds() > max_idle_seconds)
             .map(|entry| entry.key().clone())
             .collect();
 
@@ -328,7 +331,7 @@ mod tests {
 
         // Authenticate
         manager
-            .authenticate_connection("conn-1", "user-1".to_string(), None)
+            .authenticate_connection("conn-1", "user-1".to_string(), None, None)
             .unwrap();
         assert!(manager.is_user_online("user-1"));
         assert_eq!(manager.get_user_id("conn-1"), Some("user-1".to_string()));
@@ -348,7 +351,7 @@ mod tests {
             let conn_id = format!("conn-{}", i);
             manager.register_connection(conn_id.clone(), tx);
             manager
-                .authenticate_connection(&conn_id, "user-1".to_string(), None)
+                .authenticate_connection(&conn_id, "user-1".to_string(), None, None)
                 .unwrap();
         }
 
@@ -364,7 +367,7 @@ mod tests {
 
         manager.register_connection("conn-1".to_string(), tx);
         manager
-            .authenticate_connection("conn-1", "user-1".to_string(), None)
+            .authenticate_connection("conn-1", "user-1".to_string(), None, None)
             .unwrap();
 
         // Subscribe to conversation

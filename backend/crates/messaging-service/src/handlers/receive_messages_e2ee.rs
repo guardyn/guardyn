@@ -1,16 +1,15 @@
+use crate::crypto::SessionManager;
 /// E2EE-enabled message receiving handler (migration version)
 ///
 /// This handler integrates Double Ratchet decryption for incoming encrypted messages.
 ///
 /// TODO: Replace existing receive_messages.rs with this implementation after testing
-
 use crate::db::DatabaseClient;
-use crate::nats::{NatsClient, MessageEnvelope};
 use crate::models::RatchetSession;
-use crate::crypto::SessionManager;
-use futures::StreamExt; // For async iterator on NATS Batch
-use crate::proto::messaging::{Message, MessageType, DeliveryStatus, ReceiveMessagesRequest};
+use crate::nats::{MessageEnvelope, NatsClient};
 use crate::proto::common::Timestamp;
+use crate::proto::messaging::{DeliveryStatus, Message, MessageType, ReceiveMessagesRequest};
+use futures::StreamExt; // For async iterator on NATS Batch
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -28,9 +27,14 @@ pub async fn receive_messages_e2ee(
     // Validate access token and extract user_id + device_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (user_id, device_id, _username) = crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
+    let (user_id, device_id, _username) =
+        crate::jwt::validate_and_extract(&request.access_token, &jwt_secret)?;
 
-    tracing::info!("User {} ({}) connected to E2EE message stream", user_id, device_id);
+    tracing::info!(
+        "User {} ({}) connected to E2EE message stream",
+        user_id,
+        device_id
+    );
 
     let (tx, rx) = mpsc::channel::<Result<Message, Status>>(32);
 
@@ -46,7 +50,9 @@ pub async fn receive_messages_e2ee(
         .await
         {
             tracing::error!("E2EE message streaming error for user {}: {}", user_id, e);
-            let _ = tx.send(Err(Status::internal("Message streaming error"))).await;
+            let _ = tx
+                .send(Err(Status::internal("Message streaming error")))
+                .await;
         }
     });
 
@@ -73,18 +79,28 @@ async fn stream_messages_e2ee(
 
         match db.get_pending_messages(&user_id).await {
             Ok(pending_messages) => {
-                tracing::info!("Found {} pending messages to decrypt", pending_messages.len());
+                tracing::info!(
+                    "Found {} pending messages to decrypt",
+                    pending_messages.len()
+                );
 
                 for delivery_state in pending_messages {
                     // Get corresponding stored message with encrypted content
                     let stored_msg = match db.get_message(&delivery_state.message_id).await {
                         Ok(Some(msg)) => msg,
                         Ok(None) => {
-                            tracing::warn!("Message {} not found in storage", delivery_state.message_id);
+                            tracing::warn!(
+                                "Message {} not found in storage",
+                                delivery_state.message_id
+                            );
                             continue;
                         }
                         Err(e) => {
-                            tracing::error!("Failed to fetch message {}: {}", delivery_state.message_id, e);
+                            tracing::error!(
+                                "Failed to fetch message {}: {}",
+                                delivery_state.message_id,
+                                e
+                            );
                             continue;
                         }
                     };
@@ -101,16 +117,22 @@ async fn stream_messages_e2ee(
                     );
 
                     // Get ratchet session
-                    let mut ratchet = match session_manager.get_or_create_session(
-                        &user_id,
-                        &device_id,
-                        &stored_msg.sender_user_id,
-                        &stored_msg.sender_device_id,
-                    ).await {
+                    let mut ratchet = match session_manager
+                        .get_or_create_session(
+                            &user_id,
+                            &device_id,
+                            &stored_msg.sender_user_id,
+                            &stored_msg.sender_device_id,
+                        )
+                        .await
+                    {
                         Ok(r) => r,
                         Err(e) => {
-                            tracing::error!("Failed to get ratchet session for message {}: {}",
-                                delivery_state.message_id, e);
+                            tracing::error!(
+                                "Failed to get ratchet session for message {}: {}",
+                                delivery_state.message_id,
+                                e
+                            );
                             continue;
                         }
                     };
@@ -124,16 +146,22 @@ async fn stream_messages_e2ee(
                     );
 
                     // Decrypt message
-                    let decrypted_content = match session_manager.decrypt_and_save(
-                        &session_id,
-                        ratchet,
-                        &stored_msg.encrypted_content,
-                        associated_data.as_bytes(),
-                    ).await {
+                    let decrypted_content = match session_manager
+                        .decrypt_and_save(
+                            &session_id,
+                            ratchet,
+                            &stored_msg.encrypted_content,
+                            associated_data.as_bytes(),
+                        )
+                        .await
+                    {
                         Ok(plaintext) => plaintext,
                         Err(e) => {
-                            tracing::error!("Failed to decrypt message {}: {}",
-                                delivery_state.message_id, e);
+                            tracing::error!(
+                                "Failed to decrypt message {}: {}",
+                                delivery_state.message_id,
+                                e
+                            );
                             // Send error indication or skip message
                             continue;
                         }
@@ -177,10 +205,13 @@ async fn stream_messages_e2ee(
                     }
 
                     // Update delivery status
-                    if let Err(e) = db.update_delivery_status(
-                        &delivery_state.message_id,
-                        crate::models::DeliveryStatus::Delivered,
-                    ).await {
+                    if let Err(e) = db
+                        .update_delivery_status(
+                            &delivery_state.message_id,
+                            crate::models::DeliveryStatus::Delivered,
+                        )
+                        .await
+                    {
                         tracing::error!("Failed to update delivery status: {}", e);
                     }
                 }
@@ -192,7 +223,10 @@ async fn stream_messages_e2ee(
     }
 
     // Step 2: Subscribe to NATS for real-time messages
-    tracing::info!("Subscribing to real-time E2EE messages for user {}", user_id);
+    tracing::info!(
+        "Subscribing to real-time E2EE messages for user {}",
+        user_id
+    );
 
     let subject = format!("messages.{}", user_id);
     let consumer_name = format!("consumer_{}_{}", user_id, device_id);
@@ -231,12 +265,15 @@ async fn stream_messages_e2ee(
                         &envelope.sender_device_id,
                     );
 
-                    let mut ratchet = match session_manager.get_or_create_session(
-                        &user_id,
-                        &device_id,
-                        &envelope.sender_user_id,
-                        &envelope.sender_device_id,
-                    ).await {
+                    let mut ratchet = match session_manager
+                        .get_or_create_session(
+                            &user_id,
+                            &device_id,
+                            &envelope.sender_user_id,
+                            &envelope.sender_device_id,
+                        )
+                        .await
+                    {
                         Ok(r) => r,
                         Err(e) => {
                             tracing::error!("Failed to get ratchet session: {}", e);
@@ -247,17 +284,18 @@ async fn stream_messages_e2ee(
 
                     let associated_data = format!(
                         "{}|{}|{}",
-                        envelope.sender_user_id,
-                        user_id,
-                        envelope.timestamp
+                        envelope.sender_user_id, user_id, envelope.timestamp
                     );
 
-                    let decrypted_content = match session_manager.decrypt_and_save(
-                        &session_id,
-                        ratchet,
-                        &envelope.encrypted_content,
-                        associated_data.as_bytes(),
-                    ).await {
+                    let decrypted_content = match session_manager
+                        .decrypt_and_save(
+                            &session_id,
+                            ratchet,
+                            &envelope.encrypted_content,
+                            associated_data.as_bytes(),
+                        )
+                        .await
+                    {
                         Ok(plaintext) => plaintext,
                         Err(e) => {
                             tracing::error!("Failed to decrypt real-time message: {}", e);

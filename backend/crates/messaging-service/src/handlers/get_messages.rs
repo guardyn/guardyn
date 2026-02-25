@@ -1,9 +1,9 @@
 /// Handler for retrieving message history
 use crate::db::DatabaseClient;
+use crate::proto::common::{ErrorResponse, PaginationResponse, Timestamp};
 use crate::proto::messaging::{
     get_messages_response, GetMessagesRequest, GetMessagesResponse, GetMessagesSuccess, Message,
 };
-use crate::proto::common::{ErrorResponse, PaginationResponse, Timestamp};
 use std::sync::Arc;
 use tonic::{Response, Status};
 
@@ -14,18 +14,19 @@ pub async fn get_messages(
     // Validate JWT token and extract user_id
     let jwt_secret = crate::config::get_jwt_secret();
 
-    let (_user_id, _device_id, _username) = match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
-        Ok(ids) => ids,
-        Err(_) => {
-            return Ok(Response::new(GetMessagesResponse {
-                result: Some(get_messages_response::Result::Error(ErrorResponse {
-                    code: 16, // UNAUTHENTICATED
-                    message: "Invalid or expired access token".to_string(),
-                    details: Default::default(),
-                })),
-            }));
-        }
-    };
+    let (_user_id, _device_id, _username) =
+        match crate::jwt::validate_and_extract(&request.access_token, &jwt_secret) {
+            Ok(ids) => ids,
+            Err(_) => {
+                return Ok(Response::new(GetMessagesResponse {
+                    result: Some(get_messages_response::Result::Error(ErrorResponse {
+                        code: 16, // UNAUTHENTICATED
+                        message: "Invalid or expired access token".to_string(),
+                        details: Default::default(),
+                    })),
+                }));
+            }
+        };
 
     // Validate conversation ID
     if request.conversation_id.is_empty() {
@@ -41,7 +42,7 @@ pub async fn get_messages(
     // Extract pagination parameters from request
     // Priority: PaginationRequest > limit field
     let (page, page_size) = if let Some(ref pagination_req) = request.pagination {
-        let page = pagination_req.page.max(0); // 0-indexed
+        let page = pagination_req.page; // 0-indexed
         let size = if pagination_req.page_size > 0 && pagination_req.page_size <= 100 {
             pagination_req.page_size
         } else {
@@ -145,7 +146,7 @@ pub async fn get_messages(
     let total_pages = if estimated_total == 0 {
         0
     } else {
-        (estimated_total + page_size - 1) / page_size
+        estimated_total.div_ceil(page_size)
     };
 
     let pagination = Some(PaginationResponse {
@@ -156,12 +157,10 @@ pub async fn get_messages(
     });
 
     Ok(Response::new(GetMessagesResponse {
-        result: Some(get_messages_response::Result::Success(
-            GetMessagesSuccess {
-                messages,
-                pagination,
-                has_more,
-            },
-        )),
+        result: Some(get_messages_response::Result::Success(GetMessagesSuccess {
+            messages,
+            pagination,
+            has_more,
+        })),
     }))
 }

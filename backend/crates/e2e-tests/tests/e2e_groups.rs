@@ -32,6 +32,7 @@ use tonic::{transport::Channel, Request};
 use uuid::Uuid;
 
 // Import generated proto code
+#[allow(dead_code, clippy::large_enum_variant)]
 mod proto {
     pub mod auth {
         tonic::include_proto!("guardyn.auth");
@@ -216,6 +217,8 @@ async fn test_01_create_group() -> Result<(), Box<dyn std::error::Error>> {
         group_name: "Test Group (Empty)".to_string(),
         member_user_ids: vec![],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -229,9 +232,12 @@ async fn test_01_create_group() -> Result<(), Box<dyn std::error::Error>> {
             assert!(!success.group_id.is_empty(), "Group ID should not be empty");
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     }
@@ -269,6 +275,8 @@ async fn test_02_create_group_with_members() -> Result<(), Box<dyn std::error::E
         group_name: "Test Group with Members".to_string(),
         member_user_ids: vec![member1.user_id()?, member2.user_id()?],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -282,9 +290,12 @@ async fn test_02_create_group_with_members() -> Result<(), Box<dyn std::error::E
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -315,9 +326,7 @@ async fn test_02_create_group_with_members() -> Result<(), Box<dyn std::error::E
             );
         }
         Some(proto::messaging::get_group_by_id_response::Result::Error(error)) => {
-            return Err(
-                format!("Get group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!("Get group failed: {:?} - {}", error.code(), error.message).into());
         }
         None => return Err("No response from get_group_by_id".into()),
     }
@@ -352,6 +361,8 @@ async fn test_03_group_messaging() -> Result<(), Box<dyn std::error::Error>> {
         group_name: "Messaging Test Group".to_string(),
         member_user_ids: vec![member.user_id()?],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -365,9 +376,12 @@ async fn test_03_group_messaging() -> Result<(), Box<dyn std::error::Error>> {
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -385,12 +399,12 @@ async fn test_03_group_messaging() -> Result<(), Box<dyn std::error::Error>> {
         message_type: MessageType::Text as i32,
         client_message_id: client_message_id.clone(),
         client_timestamp: Some(Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(UNIX_EPOCH)?
-                .as_secs() as i64,
+            seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64,
             nanos: 0,
         }),
         media_id: String::new(),
+        thread_reference: None,
+        voice_metadata: None,
     });
 
     let send_response = messaging_client
@@ -404,9 +418,12 @@ async fn test_03_group_messaging() -> Result<(), Box<dyn std::error::Error>> {
             success.message_id
         }
         Some(proto::messaging::send_group_message_response::Result::Error(error)) => {
-            return Err(
-                format!("Send message failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Send message failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from send_group_message".into()),
     };
@@ -457,9 +474,12 @@ async fn test_03_group_messaging() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Some(proto::messaging::get_group_messages_response::Result::Error(error)) => {
-            return Err(
-                format!("Get messages failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Get messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_group_messages".into()),
     }
@@ -492,6 +512,8 @@ async fn test_04_get_groups_list() -> Result<(), Box<dyn std::error::Error>> {
             group_name: format!("Test Group {}", i),
             member_user_ids: vec![],
             mls_group_state: vec![],
+            icon_media_id: String::new(),
+            description: String::new(),
         });
 
         let response = messaging_client
@@ -577,6 +599,8 @@ async fn test_05_add_group_member() -> Result<(), Box<dyn std::error::Error>> {
         group_name: "Add Member Test Group".to_string(),
         member_user_ids: vec![],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -590,9 +614,12 @@ async fn test_05_add_group_member() -> Result<(), Box<dyn std::error::Error>> {
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -681,6 +708,8 @@ async fn test_06_remove_group_member() -> Result<(), Box<dyn std::error::Error>>
         group_name: "Remove Member Test Group".to_string(),
         member_user_ids: vec![member.user_id()?],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -694,9 +723,12 @@ async fn test_06_remove_group_member() -> Result<(), Box<dyn std::error::Error>>
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -722,9 +754,12 @@ async fn test_06_remove_group_member() -> Result<(), Box<dyn std::error::Error>>
             assert!(success.removed, "Member should be removed");
         }
         Some(proto::messaging::remove_group_member_response::Result::Error(error)) => {
-            return Err(
-                format!("Remove member failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Remove member failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from remove_group_member".into()),
     }
@@ -743,10 +778,7 @@ async fn test_06_remove_group_member() -> Result<(), Box<dyn std::error::Error>>
     match get_response.result {
         Some(proto::messaging::get_groups_response::Result::Success(success)) => {
             let found = success.groups.iter().any(|g| g.group_id == group_id);
-            println!(
-                "  ✅ Removed member cannot see group: {}",
-                !found
-            );
+            println!("  ✅ Removed member cannot see group: {}", !found);
             assert!(
                 !found,
                 "Removed member should not see the group in their list"
@@ -795,6 +827,8 @@ async fn test_07_leave_group() -> Result<(), Box<dyn std::error::Error>> {
         group_name: "Leave Group Test".to_string(),
         member_user_ids: vec![member.user_id()?],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -808,9 +842,12 @@ async fn test_07_leave_group() -> Result<(), Box<dyn std::error::Error>> {
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -855,10 +892,7 @@ async fn test_07_leave_group() -> Result<(), Box<dyn std::error::Error>> {
     match get_response.result {
         Some(proto::messaging::get_groups_response::Result::Success(success)) => {
             let found = success.groups.iter().any(|g| g.group_id == group_id);
-            println!(
-                "  ✅ Member who left cannot see group: {}",
-                !found
-            );
+            println!("  ✅ Member who left cannot see group: {}", !found);
             assert!(!found, "Member who left should not see the group");
         }
         Some(proto::messaging::get_groups_response::Result::Error(_)) => {
@@ -897,6 +931,8 @@ async fn test_08_get_group_by_id() -> Result<(), Box<dyn std::error::Error>> {
         group_name: group_name.to_string(),
         member_user_ids: vec![],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -910,9 +946,12 @@ async fn test_08_get_group_by_id() -> Result<(), Box<dyn std::error::Error>> {
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -948,9 +987,7 @@ async fn test_08_get_group_by_id() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Some(proto::messaging::get_group_by_id_response::Result::Error(error)) => {
-            return Err(
-                format!("Get group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!("Get group failed: {:?} - {}", error.code(), error.message).into());
         }
         None => return Err("No response from get_group_by_id".into()),
     }
@@ -991,6 +1028,8 @@ async fn test_09_full_group_flow() -> Result<(), Box<dyn std::error::Error>> {
         group_name: "Project Team".to_string(),
         member_user_ids: vec![bob.user_id()?],
         mls_group_state: vec![],
+        icon_media_id: String::new(),
+        description: String::new(),
     });
 
     let create_response = messaging_client
@@ -1004,9 +1043,12 @@ async fn test_09_full_group_flow() -> Result<(), Box<dyn std::error::Error>> {
             success.group_id
         }
         Some(proto::messaging::create_group_response::Result::Error(error)) => {
-            return Err(
-                format!("Create group failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Create group failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from create_group".into()),
     };
@@ -1023,12 +1065,12 @@ async fn test_09_full_group_flow() -> Result<(), Box<dyn std::error::Error>> {
         message_type: MessageType::Text as i32,
         client_message_id: Uuid::new_v4().to_string(),
         client_timestamp: Some(Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(UNIX_EPOCH)?
-                .as_secs() as i64,
+            seconds: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64,
             nanos: 0,
         }),
         media_id: String::new(),
+        thread_reference: None,
+        voice_metadata: None,
     });
 
     let send_response = messaging_client
@@ -1041,9 +1083,12 @@ async fn test_09_full_group_flow() -> Result<(), Box<dyn std::error::Error>> {
             println!("  ✅ Welcome message sent: {}", success.message_id);
         }
         Some(proto::messaging::send_group_message_response::Result::Error(error)) => {
-            return Err(
-                format!("Send message failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Send message failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from send_group_message".into()),
     }
@@ -1071,17 +1116,16 @@ async fn test_09_full_group_flow() -> Result<(), Box<dyn std::error::Error>> {
             println!("  ✅ Bob sees {} message(s)", success.messages.len());
             for msg in &success.messages {
                 let content = String::from_utf8_lossy(&msg.encrypted_content);
-                println!(
-                    "    - From {}: {}",
-                    msg.sender_username.as_str(),
-                    content
-                );
+                println!("    - From {}: {}", msg.sender_username.as_str(), content);
             }
         }
         Some(proto::messaging::get_group_messages_response::Result::Error(error)) => {
-            return Err(
-                format!("Get messages failed: {:?} - {}", error.code(), error.message).into(),
-            );
+            return Err(format!(
+                "Get messages failed: {:?} - {}",
+                error.code(),
+                error.message
+            )
+            .into());
         }
         None => return Err("No response from get_group_messages".into()),
     }

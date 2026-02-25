@@ -2,20 +2,18 @@
 ///
 /// Handles adding, removing, and retrieving reactions on messages.
 /// Reactions are stored in ScyllaDB for efficient retrieval.
-
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
+use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
 use crate::proto::messaging::{
-    AddReactionRequest, AddReactionResponse, AddReactionSuccess,
-    RemoveReactionRequest, RemoveReactionResponse, RemoveReactionSuccess,
-    GetReactionsRequest, GetReactionsResponse, GetReactionsSuccess,
-    Reaction,
-    add_reaction_response, remove_reaction_response, get_reactions_response,
+    add_reaction_response, get_reactions_response, remove_reaction_response, AddReactionRequest,
+    AddReactionResponse, AddReactionSuccess, GetReactionsRequest, GetReactionsResponse,
+    GetReactionsSuccess, Reaction, RemoveReactionRequest, RemoveReactionResponse,
+    RemoveReactionSuccess,
 };
-use crate::proto::common::{ErrorResponse, Timestamp, error_response::ErrorCode};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
-use tracing::{info, warn, error, instrument};
+use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
 /// Add a reaction to a message
@@ -25,7 +23,7 @@ pub async fn add_reaction(
     request: Request<AddReactionRequest>,
 ) -> Result<Response<AddReactionResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -40,11 +38,11 @@ pub async fn add_reaction(
             }));
         }
     };
-    
+
     let user_id = claims.sub.clone();
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("message_id", &req.message_id);
-    
+
     // Validate emoji (must be a valid Unicode emoji, max 32 bytes)
     if req.emoji.is_empty() || req.emoji.len() > 32 {
         return Ok(Response::new(AddReactionResponse {
@@ -55,7 +53,7 @@ pub async fn add_reaction(
             })),
         }));
     }
-    
+
     // Generate reaction ID
     let reaction_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now();
@@ -63,16 +61,19 @@ pub async fn add_reaction(
         seconds: now.timestamp(),
         nanos: now.timestamp_subsec_nanos() as i32,
     };
-    
+
     // Store reaction in database
-    match db.add_reaction(
-        &req.message_id,
-        &req.conversation_id,
-        &user_id,
-        &req.emoji,
-        &reaction_id,
-        req.is_group,
-    ).await {
+    match db
+        .add_reaction(
+            &req.message_id,
+            &req.conversation_id,
+            &user_id,
+            &req.emoji,
+            &reaction_id,
+            req.is_group,
+        )
+        .await
+    {
         Ok(_) => {
             info!(
                 user_id = %user_id,
@@ -80,7 +81,7 @@ pub async fn add_reaction(
                 emoji = %req.emoji,
                 "Reaction added successfully"
             );
-            
+
             Ok(Response::new(AddReactionResponse {
                 result: Some(add_reaction_response::Result::Success(AddReactionSuccess {
                     reaction: Some(Reaction {
@@ -113,7 +114,7 @@ pub async fn remove_reaction(
     request: Request<RemoveReactionRequest>,
 ) -> Result<Response<RemoveReactionResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -128,19 +129,22 @@ pub async fn remove_reaction(
             }));
         }
     };
-    
+
     let user_id = claims.sub.clone();
     tracing::Span::current().record("user_id", &user_id);
     tracing::Span::current().record("message_id", &req.message_id);
-    
+
     // Remove reaction from database (user can only remove their own reactions)
-    match db.remove_reaction(
-        &req.message_id,
-        &req.conversation_id,
-        &user_id,
-        &req.emoji,
-        req.is_group,
-    ).await {
+    match db
+        .remove_reaction(
+            &req.message_id,
+            &req.conversation_id,
+            &user_id,
+            &req.emoji,
+            req.is_group,
+        )
+        .await
+    {
         Ok(removed) => {
             if removed {
                 info!(
@@ -157,11 +161,11 @@ pub async fn remove_reaction(
                     "Reaction not found (already removed or never existed)"
                 );
             }
-            
+
             Ok(Response::new(RemoveReactionResponse {
-                result: Some(remove_reaction_response::Result::Success(RemoveReactionSuccess {
-                    removed,
-                })),
+                result: Some(remove_reaction_response::Result::Success(
+                    RemoveReactionSuccess { removed },
+                )),
             }))
         }
         Err(e) => {
@@ -184,7 +188,7 @@ pub async fn get_reactions(
     request: Request<GetReactionsRequest>,
 ) -> Result<Response<GetReactionsResponse>, Status> {
     let req = request.into_inner();
-    
+
     // Validate token
     let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
@@ -199,26 +203,25 @@ pub async fn get_reactions(
             }));
         }
     };
-    
+
     tracing::Span::current().record("message_id", &req.message_id);
-    
+
     // Get reactions from database
-    match db.get_reactions(
-        &req.message_id,
-        &req.conversation_id,
-        req.is_group,
-    ).await {
+    match db
+        .get_reactions(&req.message_id, &req.conversation_id, req.is_group)
+        .await
+    {
         Ok(reactions) => {
             info!(
                 message_id = %req.message_id,
                 reaction_count = reactions.len(),
                 "Retrieved reactions successfully"
             );
-            
+
             Ok(Response::new(GetReactionsResponse {
-                result: Some(get_reactions_response::Result::Success(GetReactionsSuccess {
-                    reactions,
-                })),
+                result: Some(get_reactions_response::Result::Success(
+                    GetReactionsSuccess { reactions },
+                )),
             }))
         }
         Err(e) => {

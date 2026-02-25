@@ -120,11 +120,7 @@ pub async fn delete_group(
         }));
     }
 
-    tracing::info!(
-        "Group {} deleted by owner {}",
-        request.group_id,
-        user_id
-    );
+    tracing::info!("Group {} deleted by owner {}", request.group_id, user_id);
 
     Ok(Response::new(DeleteGroupResponse {
         result: Some(delete_group_response::Result::Success(DeleteGroupSuccess {

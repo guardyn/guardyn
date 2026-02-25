@@ -1,3 +1,5 @@
+use crate::db::{Device, KeyBundle as DbKeyBundle, Session, UserProfile};
+use crate::jwt;
 /// User registration handler
 ///
 /// Flow:
@@ -10,16 +12,13 @@
 /// 7. Create device entry
 /// 8. Generate JWT tokens
 /// 9. Return success with tokens
-
-use crate::{AuthServiceImpl, proto::auth::*, proto::common::*};
-use tonic::{Request, Response, Status};
-use uuid::Uuid;
+use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
-use crate::db::{UserProfile, Device, Session, KeyBundle as DbKeyBundle};
-use crate::jwt;
+use tonic::{Request, Response, Status};
+use uuid::Uuid;
 
 pub async fn handle(
     service: &AuthServiceImpl,
@@ -31,7 +30,8 @@ pub async fn handle(
     if !validate_username(&req.username) {
         let error = ErrorResponse {
             code: error_response::ErrorCode::InvalidRequest as i32,
-            message: "Username must be 3-32 characters, alphanumeric and underscore only".to_string(),
+            message: "Username must be 3-32 characters, alphanumeric and underscore only"
+                .to_string(),
             details: std::collections::HashMap::new(),
         };
         return Ok(Response::new(RegisterResponse {
@@ -63,7 +63,7 @@ pub async fn handle(
                 result: Some(register_response::Result::Error(error)),
             }));
         }
-        Ok(false) => {},
+        Ok(false) => {}
         Err(e) => {
             tracing::error!("Database error checking username: {}", e);
             let error = ErrorResponse {
@@ -104,7 +104,11 @@ pub async fn handle(
     let profile = UserProfile {
         user_id: user_id.clone(),
         username: req.username.clone(),
-        email: if req.email.is_empty() { None } else { Some(req.email.clone()) },
+        email: if req.email.is_empty() {
+            None
+        } else {
+            Some(req.email.clone())
+        },
         password_hash,
         created_at: now,
         last_seen: now,
@@ -128,7 +132,7 @@ pub async fn handle(
 
     // Generate device ID
     let device_id = uuid::Uuid::new_v4().to_string();
-    
+
     // Create device entry
     let device = Device {
         device_id: device_id.clone(),
@@ -153,13 +157,22 @@ pub async fn handle(
             created_at: now,
         };
 
-        if let Err(e) = service.db.store_key_bundle(&user_id, &device_id, &db_key_bundle).await {
+        if let Err(e) = service
+            .db
+            .store_key_bundle(&user_id, &device_id, &db_key_bundle)
+            .await
+        {
             tracing::error!("Failed to store key bundle: {}", e);
         }
     }
 
     // Generate JWT tokens
-    let access_token = match jwt::generate_access_token(&user_id, &device_id, &req.username, &service.jwt_secret) {
+    let access_token = match jwt::generate_access_token(
+        &user_id,
+        &device_id,
+        &req.username,
+        &service.jwt_secret,
+    ) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate access token: {}", e);
@@ -174,20 +187,22 @@ pub async fn handle(
         }
     };
 
-    let refresh_token = match jwt::generate_refresh_token(&user_id, &device_id, &req.username, &service.jwt_secret) {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!("Failed to generate refresh token: {}", e);
-            let error = ErrorResponse {
-                code: error_response::ErrorCode::InternalError as i32,
-                message: "Failed to generate tokens".to_string(),
-                details: std::collections::HashMap::new(),
-            };
-            return Ok(Response::new(RegisterResponse {
-                result: Some(register_response::Result::Error(error)),
-            }));
-        }
-    };
+    let refresh_token =
+        match jwt::generate_refresh_token(&user_id, &device_id, &req.username, &service.jwt_secret)
+        {
+            Ok(token) => token,
+            Err(e) => {
+                tracing::error!("Failed to generate refresh token: {}", e);
+                let error = ErrorResponse {
+                    code: error_response::ErrorCode::InternalError as i32,
+                    message: "Failed to generate tokens".to_string(),
+                    details: std::collections::HashMap::new(),
+                };
+                return Ok(Response::new(RegisterResponse {
+                    result: Some(register_response::Result::Error(error)),
+                }));
+            }
+        };
 
     // Create session
     let session = Session {

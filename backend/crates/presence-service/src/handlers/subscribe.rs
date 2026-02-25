@@ -1,7 +1,6 @@
 /// Subscribe Handler
 ///
 /// Streams presence updates for subscribed users
-
 use crate::db::DatabaseClient;
 use crate::jwt;
 use crate::proto::common::Timestamp;
@@ -87,10 +86,7 @@ pub async fn handle_subscribe(
             };
 
             // Check if user is typing to requester
-            let is_typing = match db.get_typing(user_id, &requester_id).await {
-                Ok(Some(_)) => true,
-                _ => false,
-            };
+            let is_typing = matches!(db.get_typing(user_id, &requester_id).await, Ok(Some(_)));
 
             let update = PresenceUpdate {
                 user_id: user_id.clone(),
@@ -143,10 +139,7 @@ pub async fn handle_subscribe(
                 };
 
                 // Check typing
-                let is_typing = match db.get_typing(user_id, &requester_id).await {
-                    Ok(Some(_)) => true,
-                    _ => false,
-                };
+                let is_typing = matches!(db.get_typing(user_id, &requester_id).await, Ok(Some(_)));
 
                 let update = PresenceUpdate {
                     user_id: user_id.clone(),

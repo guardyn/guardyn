@@ -1,8 +1,8 @@
 /// Get user profile by user ID handler
 use crate::{
-    db::DatabaseClient, 
-    proto::auth::*, 
-    proto::common::{error_response::ErrorCode, *}
+    db::DatabaseClient,
+    proto::auth::*,
+    proto::common::{error_response::ErrorCode, *},
 };
 use tracing::{error, info, warn};
 
@@ -86,17 +86,18 @@ pub async fn handle_get_user_profile(
 
 /// Validate user_id format
 /// Returns Ok(trimmed_user_id) if valid UUID, Err(error_message) otherwise
+#[allow(dead_code)]
 pub fn validate_user_id(user_id: &str) -> Result<&str, String> {
     let trimmed = user_id.trim();
-    
+
     if trimmed.is_empty() {
         return Err("User ID cannot be empty".to_string());
     }
-    
+
     if uuid::Uuid::parse_str(trimmed).is_err() {
         return Err("Invalid user ID format".to_string());
     }
-    
+
     Ok(trimmed)
 }
 
