@@ -12,6 +12,7 @@ on:
       - main
     paths:
       - 'backend/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 env:
