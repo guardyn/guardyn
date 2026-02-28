@@ -24,6 +24,25 @@ if (typeof window !== 'undefined') {
       dispatchEvent: vi.fn(),
     })),
   });
+
+  // Mock HTMLAudioElement - jsdom does not implement audio.play() properly
+  const MockAudio = vi.fn().mockImplementation(() => ({
+    play: vi.fn().mockResolvedValue(undefined),
+    pause: vi.fn(),
+    load: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    src: '',
+    loop: false,
+    volume: 1,
+    muted: false,
+    paused: true,
+    currentTime: 0,
+    duration: 0,
+    preload: 'auto',
+  }));
+  globalThis.Audio = MockAudio as unknown as typeof Audio;
 }
 
 // Note: @tauri-apps/api/core mock is defined in each test file that needs it

@@ -99,10 +99,27 @@ describe('Chat Page', () => {
     },
   ];
 
+  // Default WebSocket config mock response
+  const mockWsConfig = {
+    url: 'ws://localhost:8080/ws',
+    token: 'mock-token-for-testing',
+    device_id: 'test-device',
+    user_id: 'user-1',
+  };
+
   beforeEach(() => {
     mockInvoke.mockClear();
     resetMessageStore();
   });
+
+  // Helper: set up mockInvoke to return ws config first, then data
+  const setupMockInvoke = (...responses: unknown[]) => {
+    mockInvoke
+      .mockResolvedValueOnce(mockWsConfig); // get_ws_config (always first)
+    for (const response of responses) {
+      mockInvoke.mockResolvedValueOnce(response);
+    }
+  };
 
   it('renders the chat page with loading state', () => {
     mockInvoke.mockImplementation(() => new Promise(() => {}));
@@ -114,7 +131,7 @@ describe('Chat Page', () => {
   });
 
   it('loads and displays conversations', async () => {
-    mockInvoke.mockResolvedValueOnce(mockConversations);
+    setupMockInvoke(mockConversations);
 
     renderWithRouter(() => <Chat />);
 
@@ -125,7 +142,7 @@ describe('Chat Page', () => {
   });
 
   it('displays last message preview', async () => {
-    mockInvoke.mockResolvedValueOnce(mockConversations);
+    setupMockInvoke(mockConversations);
 
     renderWithRouter(() => <Chat />);
 
@@ -136,7 +153,7 @@ describe('Chat Page', () => {
   });
 
   it('displays unread count badge', async () => {
-    mockInvoke.mockResolvedValueOnce(mockConversations);
+    setupMockInvoke(mockConversations);
 
     renderWithRouter(() => <Chat />);
 
@@ -146,7 +163,7 @@ describe('Chat Page', () => {
   });
 
   it('shows empty state when no conversations', async () => {
-    mockInvoke.mockResolvedValueOnce([]);
+    setupMockInvoke([]);
 
     renderWithRouter(() => <Chat />);
 
@@ -157,7 +174,7 @@ describe('Chat Page', () => {
   });
 
   it('shows placeholder when no conversation selected', async () => {
-    mockInvoke.mockResolvedValueOnce(mockConversations);
+    setupMockInvoke(mockConversations);
 
     renderWithRouter(() => <Chat />);
 
@@ -167,9 +184,7 @@ describe('Chat Page', () => {
   });
 
   it('loads messages when conversation is selected', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockConversations) // get_conversations
-      .mockResolvedValueOnce(mockMessages); // get_messages
+    setupMockInvoke(mockConversations, mockMessages);
 
     renderWithRouter(() => <Chat />);
 
@@ -186,9 +201,7 @@ describe('Chat Page', () => {
   });
 
   it('displays messages in conversation', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockConversations)
-      .mockResolvedValueOnce(mockMessages);
+    setupMockInvoke(mockConversations, mockMessages);
 
     renderWithRouter(() => <Chat />);
 
@@ -208,11 +221,11 @@ describe('Chat Page', () => {
   });
 
   it('sends a new message', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockConversations)
-      .mockResolvedValueOnce(mockMessages)
-      .mockResolvedValueOnce(undefined) // send_message
-      .mockResolvedValueOnce([...mockMessages, {
+    setupMockInvoke(
+      mockConversations,  // get_conversations
+      mockMessages,       // get_messages
+      undefined,          // send_message
+      [...mockMessages, { // get_messages after send
         id: 'msg-3',
         conversation_id: 'conv-1',
         sender_id: 'user-1',
@@ -220,7 +233,8 @@ describe('Chat Page', () => {
         timestamp: Date.now(),
         status: 'Sending',
         reactions: [],
-      }]); // get_messages after send
+      }],
+    );
 
     renderWithRouter(() => <Chat />);
 
@@ -244,18 +258,16 @@ describe('Chat Page', () => {
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith('send_message', {
         conversationId: 'conv-1',
+        recipientId: 'user-1',
         content: 'New message',
+        mediaId: undefined,
       });
     });
   });
 
   // TODO: Fix these tests after WebSocket integration stabilizes
   it.skip('clears message input after sending', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockConversations)
-      .mockResolvedValueOnce(mockMessages)
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(mockMessages);
+    setupMockInvoke(mockConversations, mockMessages, undefined, mockMessages);
 
     renderWithRouter(() => <Chat />);
 
@@ -283,9 +295,7 @@ describe('Chat Page', () => {
 
   // TODO: Fix this test after WebSocket integration stabilizes
   it.skip('does not send empty messages', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockConversations)
-      .mockResolvedValueOnce(mockMessages);
+    setupMockInvoke(mockConversations, mockMessages);
 
     renderWithRouter(() => <Chat />);
 
@@ -309,9 +319,7 @@ describe('Chat Page', () => {
 
   // TODO: Fix this test after WebSocket integration stabilizes
   it.skip('highlights selected conversation', async () => {
-    mockInvoke
-      .mockResolvedValueOnce(mockConversations)
-      .mockResolvedValueOnce(mockMessages);
+    setupMockInvoke(mockConversations, mockMessages);
 
     renderWithRouter(() => <Chat />);
 
@@ -331,7 +339,8 @@ describe('Chat Page', () => {
   // TODO: Fix this test - need to ensure error path is hit with new WebSocket code
   it.skip('handles conversation loading error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockInvoke.mockRejectedValueOnce(new Error('Failed to load'));
+    mockInvoke
+      .mockRejectedValueOnce(new Error('Failed to load'));
 
     renderWithRouter(() => <Chat />);
 
