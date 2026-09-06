@@ -71,7 +71,6 @@ impl MlsGroupManager {
         signature_keypair: SignatureKeyPair,
     ) -> Result<Self> {
         let crypto_backend = OpenMlsRustCrypto::default();
-        let _group_id_bytes = group_id.as_bytes().to_vec();
 
         // Create credential (OpenMLS 0.7 API: credential_type first, then identity)
         let credential = Credential::new(CredentialType::Basic, creator_identity.to_vec());
@@ -88,11 +87,14 @@ impl MlsGroupManager {
             .use_ratchet_tree_extension(true)
             .build();
 
-        // Create MLS group (OpenMLS 0.7 API: provider, signer, group_config, group_id, credential)
-        let mls_group = MlsGroup::new(
+        // Create the MLS group under the caller's group_id.
+        // `MlsGroup::new` ignores any identifier and assigns a random one, so the caller's
+        // group_id has to be passed explicitly or it is silently discarded.
+        let mls_group = MlsGroup::new_with_group_id(
             &crypto_backend,
             &signature_keypair,
             &group_config,
+            GroupId::from_slice(group_id.as_bytes()),
             credential_with_key.clone(),
         )
         .map_err(|e| CryptoError::Protocol(format!("Failed to create MLS group: {:?}", e)))?;
@@ -546,6 +548,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "MLS forbids decrypting your own message: the sender's application ratchet is consumed on encrypt, so OpenMLS returns SecretTreeError(RatchetTypeError). A correct test needs a second member joined via Welcome, which needs the KeyPackage and provider plumbing fixed first - see #42 (PR-31)"]
     fn test_encrypt_decrypt_message() {
         // Create group with Alice
         let alice_keypair = create_test_keypair().unwrap();
