@@ -1,0 +1,25 @@
+# Code ownership for review routing.
+#
+# Every path has an owner, so no pull request can land without a named reviewer
+# being requested. The `main-protection` ruleset requires the pull request; this
+# file decides who is asked.
+
+# Default owner for anything not matched below.
+*                               @anrysys
+
+# The agent constitution and the plan that governs every micro-step.
+/AGENTS.md                      @anrysys
+/CLAUDE.md                      @anrysys
+/implementation_plan.md         @anrysys
+/.claude/                       @anrysys
+
+# Security-critical. Changes here can silently weaken an invariant.
+/backend/crates/crypto/         @anrysys
+/backend/crates/common/src/observability.rs  @anrysys
+/backend/proto/                 @anrysys
+/infra/secrets/                 @anrysys
+/SECURITY.md                    @anrysys
+
+# CI and supply chain.
+/.github/                       @anrysys
+/backend/deny.toml              @anrysys

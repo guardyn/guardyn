@@ -1,369 +1,98 @@
 # Contributing to Guardyn
 
-<p align="center">
-  <strong>🎉 Welcome to the Privacy Rebellion! 🎉</strong>
-</p>
+Guardyn is developed **agent-first**: most changes are made by AI coding agents working
+under a written constitution, reviewed by humans. Whether you are an agent or a person,
+the same rules apply.
 
-<p align="center">
-  Thank you for your interest in Guardyn! Every contribution matters — whether it's code, documentation, bug reports, or spreading the word. Together, we're building the future of private communication.
-</p>
-
-<p align="center">
-  <a href="#-5-minute-quick-start"><strong>⚡ Quick Start</strong></a> •
-  <a href="#-good-first-issues"><strong>🎯 Good First Issues</strong></a> •
-  <a href="#-justfile-commands"><strong>🛠️ Justfile</strong></a> •
-  <a href="#-ways-to-contribute"><strong>💡 Ways to Help</strong></a>
-</p>
+**Read [`AGENTS.md`](AGENTS.md) before you write anything.** It is the authoritative
+contract — invariants, git workflow, language policy, logging law, code standards. This
+file only tells you how to get set up and what a good pull request looks like; it does
+not restate the rules, because a second copy of a rule is a rule that will drift.
 
 ---
 
-## 🚀 Project Status (January 2026)
+## Set up
 
-**Guardyn v1.0.1 is production-readybackend/proto/auth.proto client-mobile/proto/auth.proto* We completed 57 technical debt items (228 hours of work).
-
-| Component | Status | Description |
-|-----------|--------|-------------|
-| Backend Services | ✅ Ready | Auth, Messaging, Presence, Media, Call, Notification |
-| Cryptography | ✅ Ready | PQXDH (ML-KEM hybrid), Double Ratchet, OpenMLS, SFrame |
-| Mobile Clients | ✅ Ready | Flutter (iOS, Android) |
-| Desktop Clients | ✅ Ready | Tauri (Windows, macOS, Linux) |
-| Infrastructure | ✅ Ready | Kubernetes, TiKV, ScyllaDB, Redpanda |
-| Security Audit | 🚧 Planned | Cure53 audit scheduled Q1 2026 |
-
-**We need your help with:**
-- 🔒 Security audits and penetration testing
-- 📖 Documentation improvements
-- 🌍 Translations and localization
-- 🧪 Testing on different devices/platforms
-- ✨ New features and enhancements
-
----
-
-## ⚡ 5-Minute Quick Start
-
-The fastest way to start contributing:
-
-### Prerequisites
-
-| Tool | Install |
-|------|---------|
-| **Docker** | [docker.com](https://docker.com) (required) |
-| **Nix** | `curl -L https://nixos.org/nix/install \| sh` (optional, provides all tools) |
-| **Just** | `cargo install just` or `brew install just` (task runner) |
-
-### Option 1: Docker Compose (Recommended for Beginners)
-
-```bash
-# Clone the repo
+```sh
 git clone https://github.com/guardyn/guardyn.git
 cd guardyn
-
-# Start everything (takes ~30 seconds)
-docker compose -f docker-compose.dev.yml up -d
-
-# Check status
-docker compose -f docker-compose.dev.yml ps
-
-# View logs
-docker compose -f docker-compose.dev.yml logs -f
-
-# Stop when done
-docker compose -f docker-compose.dev.yml down
+just install-hooks          # protected-branch guard; run once per clone
+just dc-up                  # full stack via Docker Compose
+just dc-status              # confirm the containers are healthy
 ```
 
-**That's it!** Backend is running on `localhost:8080`.
+`just --list` shows every recipe. `nix develop` gives a reproducible shell with the whole
+toolchain (Rust, kubectl, helm, just, sops, k3d) if you would rather not install it
+piecemeal.
 
-### Option 2: With Justfile (Even Easier!)
-
-```bash
-git clone https://github.com/guardyn/guardyn.git
-cd guardyn
-
-# Start all services
-just dc-up
-
-# Check status
-just dc-ps
-
-# View logs
-just dc-logs
-
-# Stop
-just dc-down
-```
-
-### Option 3: Full Nix Environment
-
-```bash
-git clone https://github.com/guardyn/guardyn.git
-cd guardyn
-
-# Enter reproducible shell (installs ALL tools: Rust, kubectl, helm, etc.)
-nix develop
-
-# Now you have access to everything
-just dc-up           # Start Docker Compose
-cargo build          # Build Rust
-flutter run          # Run Flutter
-kubectl get pods     # Kubernetes (if needed)
-```
+Prerequisites without Nix: Rust stable, Docker with Compose, `just`, and — only for the
+clients — Node 20 and the Flutter SDK.
 
 ---
 
-## 🛠️ Justfile Commands
+## The micro-step contract
 
-We use [Just](https://github.com/casey/just) as our task runner. It's like `make` but better!
+This is the part that most often surprises new contributors, so it is worth stating
+plainly:
 
-```bash
-just --list          # See all available commands
-```
+**One micro-step = one branch = one pull request = one issue.**
 
-### Essential Commands
+- Branch: `<type>/<issue>-<slug>`, where `<type>` is one of
+  `feat fix docs refactor chore security`. For example `security/43-enforce-always-on-e2ee`.
+- **Never commit to `main`.** It is protected by a ruleset, and `just install-hooks`
+  makes your machine say so before you get that far.
+- **Budget: ≤400 hand-written changed lines, or ≤8 files.** A step that would exceed it
+  is split *before* the branch is opened. This is not a style preference — it keeps a
+  whole step inside one agent context window, so no step needs its context reconstructed.
+- Each pull request is independently revertable and leaves `main` green.
 
-| Command | Description |
-|---------|-------------|
-| **Docker Compose (Recommended)** | |
-| `just dc-up` | Start all services (~30 sec) |
-| `just dc-down` | Stop all services |
-| `just dc-logs` | Follow logs |
-| `just dc-ps` | Show container status |
-| `just dc-rebuild <service>` | Rebuild and restart a service |
-| `just dc-reset` | Stop and delete all data |
-| **Development** | |
-| `just dev-desktop` | Run Tauri desktop client |
-| `just dev-android` | Run Flutter on Android |
-| `just dev-devices` | List available devices |
-| **Testing** | |
-| `just test-desktop-unit` | Desktop unit tests |
-| `just test-desktop-e2e` | Desktop E2E tests |
-| `just test-auth-android` | Android auth tests |
-| `just ffi-test` | Crypto FFI tests |
-| **Advanced (Kubernetes)** | |
-| `just kube-create` | Create k3d cluster |
-| `just kube-bootstrap` | Install core components |
-| `just verify-kube` | Verify cluster health |
-| `just teardown` | Destroy cluster |
-
-### Docker Compose Quick Reference
-
-```bash
-just dc-up                    # Start everything
-just dc-up-data               # Start only databases
-just dc-up-service auth-service  # Start specific service
-just dc-rebuild auth-service  # Rebuild after code changes
-just dc-log auth-service      # Follow logs for one service
-just dc-shell auth-service    # Open shell in container
-just dc-cqlsh                 # ScyllaDB CQL shell
-just dc-redpanda-health       # Check Redpanda status
-just dc-stats                 # Show resource usage
-```
+Work in progress on the current 44-step refactor is tracked in
+[`implementation_plan.md`](implementation_plan.md).
 
 ---
 
-## 🎯 Good First Issues
+## Before you open a pull request
 
-New to the project? Start here:
+1. `git branch --show-current` is not `main`.
+2. The change weakens no invariant in [`AGENTS.md`](AGENTS.md) §1. If it appears to
+   require that, **stop and ask** — do not proceed on an assumption.
+3. `cargo fmt --check` and `cargo clippy -- -D warnings` pass for Rust changes.
+4. Tests pass, and a bug fix ships with a regression test that fails before the fix.
+   Never weaken or delete a test to make CI green; if a test is wrong, say so and
+   explain why.
+5. The pull request body says what you deliberately left **out** of scope.
 
-### 📖 Documentation
-- Improve setup guides
-- Add code examples
-- Translate documentation
-- Fix typos and unclear instructions
-
-### 🧪 Testing
-- Add unit tests for uncovered code
-- Test on different devices/platforms
-- Report bugs with reproduction steps
-
-### 🎨 UI/UX
-- Improve error messages
-- Accessibility improvements
-- Dark/light theme tweaks
-
-**Look for issues labeled:**
-- [`good first issue`](https://github.com/guardyn/guardyn/labels/good%20first%20issue)
-- [`help wanted`](https://github.com/guardyn/guardyn/labels/help%20wanted)
-- [`documentation`](https://github.com/guardyn/guardyn/labels/documentation)
-
-**Don't see something interesting?** [Open a discussion](https://github.com/guardyn/guardyn/discussions) and tell us what you'd like to work on!
+Commit messages follow Conventional Commits, in English, imperative mood, referencing
+the issue with `Refs #N`. Explain *why*, not just what.
 
 ---
 
-## 💡 Ways to Contribute
+## What gets a change rejected
 
-### 🐛 Report Bugs
-1. [Search existing issues](https://github.com/guardyn/guardyn/issues) first
-2. If not found, [create a bug report](https://github.com/guardyn/guardyn/issues/new?template=bug_report.md)
-3. Include: steps to reproduce, expected vs actual behavior, logs
+- Anything that lets encryption be turned off, or that puts a payload, a key, or PII
+  into a log, a metric, a span, or `stdout`.
+- A new datastore, message bus, or major dependency without an accepted ADR.
+- A hardcoded domain. Everything derives from `${DOMAIN}`.
+- Non-English content outside the marked localization paths.
+- Hand-edited generated protobuf. Change the `.proto` and regenerate.
 
-### ✨ Suggest Features
-1. [Check the roadmap](docs/IMPLEMENTATION_PLAN.md) first
-2. [Open a feature request](https://github.com/guardyn/guardyn/issues/new?template=feature_request.md)
-3. Describe the problem you're solving, not just the solution
-
-### 🔧 Submit Code
-
-```bash
-# 1. Fork the repository on GitHub
-
-# 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/guardyn.git
-cd guardyn
-
-# 3. Create a feature branch
-git checkout -b feat/your-feature-name
-
-# 4. Start the dev environment
-just dc-up
-
-# 5. Make your changes
-
-# 6. Run tests
-cargo test                     # Backend
-just test-desktop-unit         # Desktop
-cd client-mobile && flutter test  # Mobile
-
-# 7. Commit (follow conventional commits)
-git commit -m "feat(auth): add OAuth2 support"
-
-# 8. Push and create a Pull Request
-git push origin feat/your-feature-name
-```
-
-### 📖 Improve Documentation
-- All docs are in the `docs/` directory
-- Follow [English-only policy](#-language-policy)
-- Use clear, simple language
-
-### 🌍 Spread the Word
-- Star the repo ⭐
-- Share on social media
-- Write blog posts/tutorials
-- Give talks about Guardyn
-- Tell your privacy-conscious friends
-
-### 💝 Sponsor Development
-- [GitHub Sponsors](https://github.com/sponsors/guardyn)
-- [Support page](https://guardyn.co/sponsor)
+Each of these has a testable predicate in [`.claude/rules/`](.claude/rules/); you can
+check yourself before a reviewer does.
 
 ---
 
-## 📋 Pull Request Guidelines
+## Reporting a vulnerability
 
-### Before Submitting
-
-- [ ] Tests pass: `cargo test && just test-desktop-unit`
-- [ ] Code formatted: `cargo fmt && npm run lint`
-- [ ] No warnings: `cargo clippy -- -D warnings`
-- [ ] Documentation updated (if behavior changed)
-- [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
-
-### Commit Message Format
-
-```
-<type>(<scope>): <description>
-
-[optional body]
-```
-
-**Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
-
-**Examples:**
-```
-feat(auth): add OAuth2 provider support
-fix(messaging): resolve message ordering issue
-docs: update deployment guide
-test(e2e): add group chat tests
-```
-
-### PR Review Process
-
-1. ✅ CI checks pass (build, tests, linting)
-2. 👀 Code review by maintainer
-3. 💬 Address feedback
-4. 🎉 Merge!
+**Do not open a public issue.** See [`SECURITY.md`](SECURITY.md) — report privately to
+security@guardyn.app.
 
 ---
 
-## 📁 Project Structure
+## Everything else
 
-```
-guardyn/
-├── backend/              # Rust backend services
-│   ├── crates/          # Service implementations
-│   │   ├── auth-service/
-│   │   ├── messaging-service/
-│   │   ├── crypto/      # guardyn-crypto library
-│   │   └── e2e-tests/   # Integration tests
-│   └── proto/           # Protocol Buffers
-├── client-mobile/       # Flutter (iOS/Android)
-├── client-desktop/      # Tauri (Windows/macOS/Linux)
-├── docs/                # Documentation
-├── infra/               # Infrastructure (k8s, scripts)
-├── landing/             # Website
-├── Justfile             # Task runner commands
-└── docker-compose.dev.yml  # Local development
-```
+Bug reports and feature requests go to
+[GitHub Issues](https://github.com/guardyn/guardyn/issues). Be specific about what you
+expected and what happened; for anything reproducible, include the steps.
 
----
-
-## 🌐 Language Policy
-
-**All code and documentation must be in English.**
-
-- ✅ Code comments in English
-- ✅ Commit messages in English
-- ✅ Documentation in English
-- ✅ Variable/function names in English
-- ❌ No other languages in code or docs
-
-**Exception:** Localization files in `client-mobile/lib/l10n/` and `landing/i18n/`
-
----
-
-## 🔒 Security
-
-**Found a vulnerability?** Please email [security@guardyn.app](mailto:security@guardyn.app) directly.
-
-**DO NOT open public issues for security vulnerabilities.**
-
-We follow responsible disclosure and will credit researchers in our security advisories.
-
----
-
-## 🤝 Code of Conduct
-
-We expect all contributors to be respectful and professional. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
----
-
-## 💬 Get Help
-
-- **Questions?** [Open a discussion](https://github.com/guardyn/guardyn/discussions)
-- **Bugs?** [File an issue](https://github.com/guardyn/guardyn/issues/new?template=bug_report.md)
-- **Chat?** [Join our community](https://github.com/guardyn/guardyn/discussions)
-
----
-
-## 🙏 Thank You!
-
-Every contribution makes Guardyn better. We appreciate your time and effort!
-
-<p align="center">
-  <strong>The Privacy Rebellion needs you! 🛡️</strong>
-</p>
-
----
-
-## 📚 Detailed Documentation
-
-For deeper dives:
-
-| Topic | Document |
-|-------|----------|
-| Developer Setup | [docs/DEVELOPER_QUICKSTART.md](docs/DEVELOPER_QUICKSTART.md) |
-| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Testing | [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) |
-| API Reference | [docs/GRPC_API.md](docs/GRPC_API.md) |
-| Deployment | [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md) |
-| AI Coding Guidelines | [.github/copilot-instructions.md](.github/copilot-instructions.md) |
+By contributing you agree your work is licensed under Apache-2.0, and that you will
+follow the [Code of Conduct](CODE_OF_CONDUCT.md).
