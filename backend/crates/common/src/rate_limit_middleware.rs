@@ -224,6 +224,12 @@ where
 
 /// Interceptor for tonic that applies rate limiting
 /// Use this for simpler integration with tonic services
+///
+/// `clippy::result_large_err` fires because `tonic::Status` is ~176 bytes. The lint's remedy -
+/// boxing the error - is not available here: tonic's `Interceptor` trait requires exactly
+/// `Result<Request<()>, Status>`, so `Box<Status>` would no longer satisfy it. The allow is
+/// scoped to this function rather than the crate.
+#[allow(clippy::result_large_err)]
 pub fn rate_limit_interceptor(
     limiter: Arc<RateLimiter>,
 ) -> impl Fn(tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> + Clone {
