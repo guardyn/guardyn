@@ -45,6 +45,7 @@ openmls = "0.6"  # MLS for group chat encryption (0.6 for stability)
 openmls_rust_crypto = "0.3"  # Cryptographic backend for OpenMLS (matching openmls 0.6)
 openmls_traits = "0.3"  # Traits for OpenMLS (matching openmls 0.6)
 openmls_basic_credential = "0.3"  # Basic credential support (matching openmls 0.6)
+tls_codec = "0.4"  # TLS wire codec used by the OpenMLS message types
 x25519-dalek = "2.0"
 ed25519-dalek = "2.1"
 
