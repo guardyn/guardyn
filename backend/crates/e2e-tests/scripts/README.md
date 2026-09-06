@@ -146,8 +146,8 @@ cargo test -p guardyn-e2e-tests --test e2e_phase2_features test_phase2_01 -- --n
 
 For detailed testing documentation, see:
 
-- [`docs/TESTING_GUIDE.md`](../../../docs/TESTING_GUIDE.md) - Complete testing guide
-- [`docs/QUICKSTART_TESTING.md`](../../../docs/QUICKSTART_TESTING.md) - Quick reference
+- [`CONTRIBUTING.md`](../../../../CONTRIBUTING.md) - Complete testing guide
+- [`docs/ops/RUNBOOK.md`](../../../../docs/ops/RUNBOOK.md) - Quick reference
 - [`tests/test_scenarios.md`](../tests/test_scenarios.md) - Test scenarios documentation
 - [`performance/README.md`](../performance/README.md) - Performance testing details
 

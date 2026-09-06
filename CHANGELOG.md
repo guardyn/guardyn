@@ -52,7 +52,7 @@ This patch release completes all outstanding technical debt from the production-
 
 ### 🎉 MAJOR RELEASE: Production-Ready Secure Messenger
 
-Guardyn v1.0 represents the completion of the evolution from PoC/MVP to a production-ready, secure communication platform. This release implements all core features from the [Evolution Plan](/_local/backlog/plan_guardyn_evolution_plan.md) Phases 1-3, delivering enterprise-grade security with modern cryptography and optimal user experience.
+Guardyn v1.0 represents the completion of the evolution from PoC/MVP to a production-ready, secure communication platform. This release implements all core features from the Evolution Plan Phases 1-3, delivering enterprise-grade security with modern cryptography and optimal user experience.
 
 ---
 

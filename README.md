@@ -112,9 +112,9 @@ just dc-reset   # Reset all data
 
 | Guide | Description |
 |-------|-------------|
-| [Developer Quick Start](docs/DEVELOPER_QUICKSTART.md) | Full development setup |
-| [Docker Dev Guide](docs/DOCKER_DEV_GUIDE.md) | Docker Compose details |
-| [Production Deployment](docs/PRODUCTION_DEPLOYMENT.md) | Kubernetes for production |
+| [Contributing](CONTRIBUTING.md) | Full development setup |
+| [Deployment](docs/ops/DEPLOYMENT.md) | Docker Compose details |
+| [Deployment](docs/ops/DEPLOYMENT.md) | Kubernetes for production |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 
 ---

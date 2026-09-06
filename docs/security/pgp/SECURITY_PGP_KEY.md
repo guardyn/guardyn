@@ -190,9 +190,9 @@ gpg --armor --export security@guardyn.io > landing/.well-known/pgp-key.txt
 
 ## 🔗 Related Documents
 
-- [CONTACT.md](../../docs/CONTACT.md) - All contact information
-- [security.txt](../landing/.well-known/security.txt) - RFC 9116 security contact
-- [pgp-key.txt](../landing/.well-known/pgp-key.txt) - Public PGP key
+- [SECURITY.md](../../../SECURITY.md) - All contact information
+- [security.txt](../../../landing/.well-known/security.txt) - RFC 9116 security contact
+- [pgp-key.txt](../../../landing/.well-known/pgp-key.txt) - Public PGP key
 
 ---
 

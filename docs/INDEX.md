@@ -41,7 +41,9 @@ hand-edit; change the frontmatter of the document itself.
 | [`spec/SAD.md`](spec/SAD.md) | Architecture: crates, topology, data flow, store-per-concern. | changing service boundaries, adding a dependency between crates |
 | [`spec/SRS.md`](spec/SRS.md) | The algorithmic source of truth: rules, edge cases, invariants. | implementing a handler, changing behaviour |
 | [`spec/PRD.md`](spec/PRD.md) | Product features as they exist, in user-story form. | adding a feature, questioning whether something is in scope |
-| [`api/INDEX.md`](api/INDEX.md) | Generated proto → service → RPC map. | calling an RPC, changing the wire contract |
+
+`docs/api/INDEX.md` — a generated proto → service → RPC map — is planned but has no
+step before G1. `spec/SAD.md` carries the per-service RPC counts until it exists.
 
 ## Decisions
 

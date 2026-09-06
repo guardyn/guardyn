@@ -143,4 +143,4 @@ Found a way to improve these templates? Please:
 
 ---
 
-**Questions about templates?** Open a [Contribution Question](.github/ISSUE_TEMPLATE/contribution.md) issue!
+**Questions about templates?** Open a [Contribution Question](contribution.md) issue!
