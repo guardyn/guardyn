@@ -87,10 +87,20 @@ pub struct KafkaConfig {
     pub compression: String,
 }
 
+/// The fallback broker address.
+///
+/// This is Redpanda's *external* listener, published to the host by
+/// `docker-compose.dev.yml`. It is correct only for a client running on the host - inside a
+/// container `localhost` is the container itself, and port 9092 is not published at all.
+/// Every deployment must therefore set `REDPANDA_BROKERS`; both Compose and the Kubernetes
+/// manifests now do. Reaching this constant in a containerised service means the address is
+/// missing, and the producer will degrade silently (see #39 / PR-28, which makes that loud).
+const DEFAULT_BROKERS: &str = "localhost:19092";
+
 impl Default for KafkaConfig {
     fn default() -> Self {
         Self {
-            brokers: "localhost:19092".to_string(),
+            brokers: DEFAULT_BROKERS.to_string(),
             group_id: "guardyn-default".to_string(),
             client_id: "guardyn-client".to_string(),
             sasl_enabled: false,
@@ -110,7 +120,7 @@ impl KafkaConfig {
         Self {
             brokers: std::env::var("REDPANDA_BROKERS")
                 .or_else(|_| std::env::var("KAFKA_BROKERS"))
-                .unwrap_or_else(|_| "localhost:19092".to_string()),
+                .unwrap_or_else(|_| DEFAULT_BROKERS.to_string()),
             group_id: std::env::var("KAFKA_GROUP_ID")
                 .unwrap_or_else(|_| "guardyn-default".to_string()),
             client_id: std::env::var("KAFKA_CLIENT_ID")
