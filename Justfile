@@ -481,3 +481,7 @@ test-desktop-all:
 install-hooks:
     @git config core.hooksPath .githooks
     @echo "[hooks] core.hooksPath -> .githooks"
+
+# Verify the documentation base: frontmatter, impact, glossary, links, language.
+docs-verify:
+    @bash infra/scripts/docs-verify.sh

@@ -1,0 +1,48 @@
+# Which documents own which source paths.
+#
+# docs-verify check 2 reads this file: when a PR changes a source path, at least one of
+# the documents mapped to it must change in the same PR, or the PR must carry the label
+# docs-impact:none with a stated reason.
+#
+# Every path in `requires` must exist. A mapping to a document that does not exist is an
+# unsatisfiable requirement, which trains people to reach for the label instead.
+---
+mappings:
+  - source: backend/proto/
+    requires: [docs/spec/SRS.md, docs/GLOSSARY.md, docs/spec/SAD.md]
+
+  - source: backend/crates/crypto/
+    requires: [docs/adr/ADR-0004-openmls-group-e2ee.md, docs/adr/ADR-0005-hybrid-pqxdh.md, docs/spec/SRS.md]
+
+  - source: backend/crates/common/src/observability.rs
+    requires: [docs/ops/OBSERVABILITY.md, docs/adr/ADR-0007-zero-knowledge-logging.md]
+
+  - source: backend/crates/common/src/rate_limit.rs
+    requires: [docs/spec/SRS.md]
+
+  - source: infra/k8s/
+    requires: [docs/ops/DEPLOYMENT.md, docs/spec/SAD.md]
+
+  - source: docker-compose.dev.yml
+    requires: [docs/ops/DEPLOYMENT.md]
+
+  - source: infra/scripts/
+    requires: [docs/ops/RUNBOOK.md]
+
+  - source: Justfile
+    requires: [docs/ops/DEPLOYMENT.md, docs/ops/RUNBOOK.md]
+
+  - source: implementation_plan.md
+    requires: [docs/roadmap/ROADMAP.md]
+
+# Files exempt from the frontmatter contract (check 1).
+#
+# docs/security/ predates this documentation base and is externally cited. It is retained
+# unchanged rather than retrofitted, so it is excluded here rather than made to fail.
+frontmatter_exempt:
+  - docs/security/
+
+# Files allowed to contain Cyrillic (check 5). The Cyrillic in this file IS the policy's
+# own counter-example - flagging it would flag the rule that forbids it.
+language_allowlist:
+  - .github/.copilot-commit-message-instructions.md
