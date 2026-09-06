@@ -11,7 +11,7 @@
 # - Clean shutdown on SIGINT/SIGTERM
 # - Colored status output
 # - Log files for debugging
-# - ChromeDriver support (optional)
+# - ChromeDriver support (optional, downloaded on demand - never committed)
 #
 # Usage:
 #   ./port-forward-watchdog.sh [options]
@@ -26,6 +26,10 @@
 #   --stop             Stop all port-forwards and exit
 #   --status           Show current status and exit
 #   --help             Show this help
+#
+# Environment:
+#   CHROMEDRIVER_VERSION    Chrome for Testing build to fetch (default: 142.0.7444.175)
+#   CHROMEDRIVER_CACHE_DIR  Where the fetched driver is cached (gitignored)
 #
 
 set -euo pipefail
@@ -73,6 +77,23 @@ declare -A LAST_RESTART
 # Script directory for finding chromedriver
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# ChromeDriver acquisition. The driver is a platform-specific, version-pinned tool, so
+# it is fetched on demand into a gitignored cache rather than committed to the repo.
+# The archive is checked against a known SHA-256 so a truncated or substituted download
+# is never executed.
+CHROMEDRIVER_VERSION="${CHROMEDRIVER_VERSION:-142.0.7444.175}"
+CHROMEDRIVER_CACHE_DIR="${CHROMEDRIVER_CACHE_DIR:-$ROOT_DIR/client-mobile/chromedriver}"
+CHROMEDRIVER_BASE_URL="${CHROMEDRIVER_BASE_URL:-https://storage.googleapis.com/chrome-for-testing-public}"
+
+# SHA-256 of chromedriver-<platform>.zip, valid only for CHROMEDRIVER_PINNED_VERSION.
+# Overriding CHROMEDRIVER_VERSION disables verification with an explicit warning.
+CHROMEDRIVER_PINNED_VERSION="142.0.7444.175"
+declare -A CHROMEDRIVER_SHA256=(
+  [linux64]="2a859045e176e8af4ab2daca73f6f2e41937f37fecaecef3c9e78cc8fa9ecad7"
+  [mac-arm64]="300de6ec605f161ab8a334dd239a5135d539347fc6745f802c881cb6e5091ebc"
+  [mac-x64]="40bf1e10a4722a6fe7c40aeed14f530fcd08a8ce0d7a04df393ac35f9bde1ae8"
+)
 
 # ============================================================
 # Argument Parsing
@@ -333,6 +354,95 @@ start_envoy_forward() {
   fi
 }
 
+# Map this host to a Chrome for Testing platform id, or fail for anything unsupported.
+chromedriver_platform() {
+  case "$(uname -s):$(uname -m)" in
+    Linux:x86_64)  echo "linux64" ;;
+    Darwin:arm64)  echo "mac-arm64" ;;
+    Darwin:x86_64) echo "mac-x64" ;;
+    *)             return 1 ;;
+  esac
+}
+
+# Fetch the pinned ChromeDriver into the cache and set CHROMEDRIVER_BIN to it.
+# Every failure path warns and returns non-zero: a missing driver must degrade the
+# watchdog to "no ChromeDriver", never abort port-forwarding for the whole stack.
+fetch_chromedriver() {
+  local platform target tmp_dir archive url expected actual
+
+  if ! platform="$(chromedriver_platform)"; then
+    log_warning "No ChromeDriver build for $(uname -s)/$(uname -m) - skipping download"
+    return 1
+  fi
+
+  target="$CHROMEDRIVER_CACHE_DIR/$CHROMEDRIVER_VERSION/chromedriver-$platform/chromedriver"
+  if [ -x "$target" ]; then
+    CHROMEDRIVER_BIN="$target"
+    return 0
+  fi
+
+  if ! command -v unzip &> /dev/null; then
+    log_warning "unzip not found - cannot install ChromeDriver (install with: apt install unzip)"
+    return 1
+  fi
+
+  # Stage inside the cache directory so the final move is atomic (same filesystem).
+  mkdir -p "$CHROMEDRIVER_CACHE_DIR"
+  if ! tmp_dir="$(mktemp -d "$CHROMEDRIVER_CACHE_DIR/.download-XXXXXX")"; then
+    log_warning "Could not create a staging directory for the ChromeDriver download"
+    return 1
+  fi
+  archive="$tmp_dir/chromedriver.zip"
+  url="$CHROMEDRIVER_BASE_URL/$CHROMEDRIVER_VERSION/$platform/chromedriver-$platform.zip"
+
+  log_info "Downloading ChromeDriver $CHROMEDRIVER_VERSION ($platform)..."
+  if command -v curl &> /dev/null; then
+    curl -fsSL --retry 3 --max-time 300 -o "$archive" "$url" || true
+  elif command -v wget &> /dev/null; then
+    wget -q --tries=3 --timeout=300 -O "$archive" "$url" || true
+  else
+    log_warning "Neither curl nor wget is available - cannot download ChromeDriver"
+    rm -rf "$tmp_dir"
+    return 1
+  fi
+
+  if [ ! -s "$archive" ]; then
+    log_warning "ChromeDriver download failed: $url"
+    rm -rf "$tmp_dir"
+    return 1
+  fi
+
+  expected="${CHROMEDRIVER_SHA256[$platform]:-}"
+  if [ "$CHROMEDRIVER_VERSION" != "$CHROMEDRIVER_PINNED_VERSION" ] || [ -z "$expected" ]; then
+    log_warning "No pinned checksum for ChromeDriver $CHROMEDRIVER_VERSION ($platform) - not verified"
+  else
+    actual="$(sha256sum "$archive" 2> /dev/null | cut -d' ' -f1)"
+    if [ -z "$actual" ]; then
+      actual="$(shasum -a 256 "$archive" 2> /dev/null | cut -d' ' -f1)"
+    fi
+    if [ "$actual" != "$expected" ]; then
+      log_error "ChromeDriver checksum mismatch (expected $expected, got ${actual:-none}) - refusing it"
+      rm -rf "$tmp_dir"
+      return 1
+    fi
+  fi
+
+  if ! unzip -q -o "$archive" -d "$tmp_dir" \
+    || [ ! -f "$tmp_dir/chromedriver-$platform/chromedriver" ]; then
+    log_warning "ChromeDriver archive could not be unpacked or is missing the binary"
+    rm -rf "$tmp_dir"
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$target")"
+  chmod +x "$tmp_dir/chromedriver-$platform/chromedriver"
+  mv -f "$tmp_dir/chromedriver-$platform/chromedriver" "$target"
+  rm -rf "$tmp_dir"
+
+  log_success "ChromeDriver $CHROMEDRIVER_VERSION installed at $target"
+  CHROMEDRIVER_BIN="$target"
+}
+
 start_chromedriver() {
   if [ "$ENABLE_CHROMEDRIVER" != true ]; then
     return 0
@@ -343,18 +453,18 @@ start_chromedriver() {
   lsof -ti ":$CHROMEDRIVER_PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
   sleep 0.5
 
-  # Find chromedriver
+  # Find chromedriver. An already-installed driver always wins; the pinned download
+  # is the last resort, for contributors who have none.
   CHROMEDRIVER_BIN=""
 
-  # Check common locations
   if command -v chromedriver &> /dev/null; then
     CHROMEDRIVER_BIN="chromedriver"
-  elif [ -x "$ROOT_DIR/client-mobile/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver" ]; then
-    CHROMEDRIVER_BIN="$ROOT_DIR/client-mobile/chromedriver/linux-142.0.7444.175/chromedriver-linux64/chromedriver"
   elif [ -x "/usr/bin/chromedriver" ]; then
     CHROMEDRIVER_BIN="/usr/bin/chromedriver"
   elif [ -x "/usr/local/bin/chromedriver" ]; then
     CHROMEDRIVER_BIN="/usr/local/bin/chromedriver"
+  else
+    fetch_chromedriver || true
   fi
 
   if [ -z "$CHROMEDRIVER_BIN" ]; then

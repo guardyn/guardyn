@@ -31,3 +31,7 @@ client-mobile/assets/audio/generate_audio_assets.py
 client-mobile/test-reports/
 client-mobile/flutter_*.png
 client-mobile/build/
+
+# ChromeDriver: version-pinned, platform-specific tool downloaded on demand by
+# infra/scripts/port-forward-watchdog.sh - never committed (PR-45)
+client-mobile/chromedriver/
