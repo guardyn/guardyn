@@ -476,3 +476,8 @@ test-desktop-all:
     @echo ""
     @echo "==> E2E tests"
     client-desktop/scripts/run-auth-tests.sh
+
+# Install the repository git hooks (protected-branch guard). Run once per clone.
+install-hooks:
+    @git config core.hooksPath .githooks
+    @echo "[hooks] core.hooksPath -> .githooks"
