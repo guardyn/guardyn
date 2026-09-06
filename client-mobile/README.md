@@ -226,7 +226,7 @@ Build scripts are provided to compile the app for all platforms with warnings su
 
 ## Testing
 
-**📖 For comprehensive testing guide, see [CLIENT_TESTING_GUIDE.md](../docs/CLIENT_TESTING_GUIDE.md)**
+**📖 For comprehensive testing guide, see [CONTRIBUTING.md](../CONTRIBUTING.md)**
 
 The testing guide includes:
 
@@ -302,7 +302,7 @@ just test-two-client-messaging
 just ffi-android-linux
 ```
 
-See [Two-Client Testing Guide](../docs/TWO_CLIENT_TESTING.md) for detailed instructions
+See [Two-Client Testing Guide](TESTING.md) for detailed instructions
 
 **Run on specific device:**
 
@@ -326,7 +326,7 @@ See `integration_test/README.md` for full documentation.
 
 For comprehensive UI testing with real devices/emulators, see detailed guide:
 
-**📖 [MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md)**
+**📖 [TESTING.md](TESTING.md)**
 
 **Quick start:**
 

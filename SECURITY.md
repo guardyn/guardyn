@@ -125,7 +125,7 @@ _No vulnerabilities reported yet - be the first!_
 
 ## Additional Resources
 
-- [Encryption Architecture](docs/ENCRYPTION_ARCHITECTURE.md)
+- [Encryption Architecture](docs/spec/SRS.md)
 - [Security Audit Preparation](docs/security/SECURITY_AUDIT.md)
 - [Penetration Testing Guide](docs/security/PENETRATION_TESTING.md)
 - [Rate Limiting Documentation](docs/security/RATE_LIMITING.md)

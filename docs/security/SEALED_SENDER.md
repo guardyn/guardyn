@@ -165,7 +165,7 @@ Ephemeral keys provide forward secrecy:
 
 ### Dart (Flutter Client)
 
-- [`client/lib/core/crypto/sealed_sender.dart`](../../client/lib/core/crypto/sealed_sender.dart)
+- [`client-mobile/lib/core/crypto/sealed_sender.dart`](../../client-mobile/lib/core/crypto/sealed_sender.dart)
   - Same API as Rust implementation
   - Uses `package:cryptography` for crypto operations
 

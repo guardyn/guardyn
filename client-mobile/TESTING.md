@@ -1,18 +1,10 @@
 # Flutter Client Testing
 
-For complete testing documentation, see:
+`docs/CLIENT_TESTING_GUIDE.md` was deleted in PR-01. Its replacements:
 
-**[docs/CLIENT_TESTING_GUIDE.md](../docs/CLIENT_TESTING_GUIDE.md)**
-
-## Quick Links
-
-- **Quick Start**: [docs/CLIENT_TESTING_GUIDE.md#quick-start](../docs/CLIENT_TESTING_GUIDE.md#quick-start)
-- **Phase 1: Authentication Testing**: [docs/CLIENT_TESTING_GUIDE.md#phase-1-authentication-testing](../docs/CLIENT_TESTING_GUIDE.md#phase-1-authentication-testing)
-- **Phase 2: Two-Device Messaging Testing**: [docs/CLIENT_TESTING_GUIDE.md#phase-2-two-device-messaging-testing](../docs/CLIENT_TESTING_GUIDE.md#phase-2-two-device-messaging-testing)
-- **Success Criteria Checklist**: [docs/CLIENT_TESTING_GUIDE.md#success-criteria-checklist](../docs/CLIENT_TESTING_GUIDE.md#success-criteria-checklist)
-- **Backend API Testing (grpcurl)**: [docs/CLIENT_TESTING_GUIDE.md#backend-api-testing-grpcurl](../docs/CLIENT_TESTING_GUIDE.md#backend-api-testing-grpcurl)
-- **Test Commands Reference**: [docs/CLIENT_TESTING_GUIDE.md#test-commands-reference](../docs/CLIENT_TESTING_GUIDE.md#test-commands-reference)
-- **Troubleshooting**: [docs/CLIENT_TESTING_GUIDE.md#troubleshooting](../docs/CLIENT_TESTING_GUIDE.md#troubleshooting)
+- Setup and the pull-request contract — [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+- Running and troubleshooting the stack — [`docs/ops/RUNBOOK.md`](../docs/ops/RUNBOOK.md)
+- Deploying it — [`docs/ops/DEPLOYMENT.md`](../docs/ops/DEPLOYMENT.md)
 
 ## Quick Commands
 
@@ -47,4 +39,4 @@ cd ../client-desktop && npm run tauri dev
 
 ---
 
-**See full guide**: [docs/CLIENT_TESTING_GUIDE.md](../docs/CLIENT_TESTING_GUIDE.md)
+For anything not covered here, start at [`docs/INDEX.md`](../docs/INDEX.md).
