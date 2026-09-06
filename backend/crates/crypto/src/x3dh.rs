@@ -155,6 +155,16 @@ impl SignedPreKey {
         let shared = self.secret.diffie_hellman(other_public);
         shared.as_bytes().to_vec()
     }
+
+    /// The X25519 secret backing this pre-key, for use as the initial Double Ratchet key.
+    ///
+    /// The responder's signed pre-key is his initial ratchet key: it is the public half the
+    /// initiator ran X3DH against, so both sides must derive the first root key from it.
+    /// This is the only reason to take the secret out of the struct - do not use it to
+    /// re-implement `dh`, and never log or serialize the returned value.
+    pub fn ratchet_secret(&self) -> StaticSecret {
+        self.secret.clone()
+    }
 }
 
 /// One-time pre-key (X25519)

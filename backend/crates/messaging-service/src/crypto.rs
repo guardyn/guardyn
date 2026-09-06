@@ -287,9 +287,14 @@ impl CryptoManager {
             shared_secret.len()
         );
 
-        // Initialize Double Ratchet as Bob (receiver of first message)
-        let ratchet = DoubleRatchet::init_bob(&shared_secret)
-            .context("Failed to initialize Double Ratchet as receiver")?;
+        // Initialize Double Ratchet as Bob (receiver of first message).
+        // The initiator ran X3DH against our published signed pre-key, so that same key must
+        // seed our ratchet - see guardyn_crypto::x3dh::SignedPreKey::ratchet_secret.
+        let ratchet = DoubleRatchet::init_bob(
+            &shared_secret,
+            local_key_material.signed_pre_key.ratchet_secret(),
+        )
+        .context("Failed to initialize Double Ratchet as receiver")?;
 
         tracing::info!(
             "E2EE session established: {} -> {} (receiver)",
