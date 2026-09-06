@@ -210,7 +210,8 @@ export async function performX3DH(
 export async function initSession(
   peerId: string,
   sharedSecret: string,
-  isInitiator: boolean
+  isInitiator: boolean,
+  peerPublicKey: string
 ): Promise<SessionInfo> {
   const result = await invoke<{
     peer_id: string;
@@ -218,7 +219,7 @@ export async function initSession(
     messages_sent: number;
     messages_received: number;
     is_active: boolean;
-  }>('init_session', { peerId, sharedSecret, isInitiator });
+  }>('init_session', { peerId, sharedSecret, isInitiator, peerPublicKey });
   return {
     peerId: result.peer_id,
     establishedAt: result.established_at,
@@ -378,8 +379,14 @@ export class EncryptionService {
     // Perform X3DH key agreement
     const x3dhResult = await performX3DH(peerBundle, peerId);
 
-    // Initialize Double Ratchet session
-    const session = await initSession(peerId, x3dhResult.sharedSecret, true);
+    // Initialize Double Ratchet session. The initiator ratchets against the peer's signed
+    // pre-key - the same key X3DH just ran against - so it has to be passed through.
+    const session = await initSession(
+      peerId,
+      x3dhResult.sharedSecret,
+      true,
+      peerBundle.signedPrekey
+    );
 
     return session;
   }

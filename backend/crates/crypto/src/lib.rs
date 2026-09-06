@@ -41,6 +41,10 @@ pub use x3dh::{
     X3DHPrekeyMessage, X3DHProtocol,
 };
 
+// `DoubleRatchet::init_alice` and `init_bob` take these in their signatures, so callers must
+// be able to name them without depending on x25519-dalek directly.
+pub use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
