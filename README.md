@@ -30,10 +30,13 @@
 
 **Guardyn is a private messaging app** with military-grade encryption. Unlike other messengers:
 
-- ✅ **Always encrypted** — your messages can't be read by anyone, not even us
 - ✅ **Open source** — you can verify everything we claim
 - ✅ **Self-hostable** — run your own server if you want complete control
-- ✅ **Post-quantum ready** — protected against future quantum computer attacks
+- 🔐 **End-to-end encrypted** — encryption happens on your device, not on the server.
+  Making it impossible to disable is [tracked work](implementation_plan.md), not yet done.
+- 🚧 **Post-quantum** — hybrid X25519 + ML-KEM-768 is implemented in `crates/crypto`, but
+  is not yet enabled end-to-end. Do not rely on it against a harvest-now-decrypt-later
+  adversary until it is.
 
 <p align="center">
   <img src="docs/images/flutter_apps.png" alt="Guardyn Apps" width="100%" style="max-width: 900px; border-radius: 12px;"/>
@@ -244,28 +247,9 @@ just dc-reset   # Reset all data
 
 ## 🗺️ Roadmap
 
-### ✅ Completed (v1.0.1 — January 2026)
-
-- All backend services (Auth, Messaging, Presence, Media, Call, Notifications)
-- Full cryptography stack (PQXDH, Double Ratchet, OpenMLS, SFrame)
-- Mobile apps (iOS, Android)
-- Desktop apps (Windows, macOS, Linux)
-- Voice/video calls (1-on-1)
-- Production infrastructure (Kubernetes, observability)
-- 57 technical debt items resolved (228 hours of work)
-
-### 🚧 Q1-Q2 2026
-
-- External security audit (Cure53)
-- App Store / Play Store submission
-- Public beta launch
-- Group calls (LiveKit SFU)
-
-### 📋 Q2-Q3 2026
-
-- Managed cloud hosting (SaaS)
-- Enterprise features (LDAP, SAML)
-- v1.0 general availability
+The roadmap lives in [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md), generated from
+`docs/roadmap/roadmap.yaml` — the machine source of truth that also drives the issue
+tracker. It is kept there rather than here so it cannot drift from the board.
 
 ---
 
@@ -277,7 +261,7 @@ We respect Signal — they pioneered secure messaging. Here's how we differ:
 |---------|--------|---------|
 | 1-on-1 E2EE | ✅ Double Ratchet | ✅ Double Ratchet (same) |
 | Group E2EE | ✅ Sender Keys | ✅ OpenMLS (newer standard) |
-| Post-Quantum | 🚧 In development | ✅ PQXDH implemented |
+| Post-Quantum | ✅ PQXDH shipped | 🚧 PQXDH implemented, not yet enabled |
 | Self-Hosting | ❌ | ✅ Full support |
 | 100% Open Source | ⚠️ Most parts | ✅ Everything |
 | Track Record | ✅ 10+ years | ⚠️ New (2026) |
@@ -299,12 +283,13 @@ Self-host anywhere. Modify freely. Contribute back if you want.
 
 ## 🤝 Contributing
 
-We need your help! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the pull-request contract, and
+[AGENTS.md](AGENTS.md) for the rules every change follows — invariants, git workflow,
+logging law and code standards.
 
-- ⚡ 5-minute quick start
-- 🎯 Good first issues
-- 🛠️ Development workflow
-- 💡 Ways to contribute (code, docs, testing, spreading the word)
+Guardyn is developed agent-first, so the contract is written to be machine-checkable:
+[`.claude/rules/`](.claude/rules/) turns each rule into a predicate you can run against
+your own branch before a reviewer sees it.
 
 ---
 
