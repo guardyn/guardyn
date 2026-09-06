@@ -4,7 +4,7 @@ type: ops
 status: accepted
 owns: [infra/scripts/, Justfile]
 read_when: [an incident, a failing service, a store that will not start]
-tokens: 932
+tokens: 1062
 supersedes: []
 ---
 
@@ -82,6 +82,20 @@ cheap for a local cluster.
 4. The fix is a regression test that fails before it (`AGENTS.md` §8), not just a patch.
 5. If key material was exposed, affected sessions must be re-established. There is no way
    to un-leak a ratchet state.
+
+## Documentation checks
+
+```sh
+just docs-verify
+```
+
+Five checks — frontmatter, impact, glossary, links, language — defined in
+[`../../.claude/rules/40-doc-sync.md`](../../.claude/rules/40-doc-sync.md) and run in CI on
+every pull request. Check 2 is the one that matters: changing a source path without
+updating the documents mapped to it in `docs/.manifest.yaml` fails the build, unless the PR
+carries `docs-impact:none` **with a stated reason**.
+
+Run it before pushing. It is faster than a round trip through CI.
 
 ## Escalation
 
