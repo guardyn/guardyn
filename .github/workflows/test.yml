@@ -7,7 +7,6 @@ on:
     paths:
       - 'backend/**'
       - 'infra/**'
-      - 'cicd/github/workflows/test.yml'
       - '.github/workflows/test.yml'
   pull_request:
     branches:
