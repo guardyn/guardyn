@@ -1,0 +1,77 @@
+# Machine source of truth for the roadmap.
+#
+# This file drives GitHub Issues and the project board (PR-18). ROADMAP.md is the
+# narrative view of it, and STATE.md is generated telemetry. When any of the three
+# disagree, this file wins.
+#
+# Generated from the live issue list, not hand-typed. `status` mirrors issue state:
+# done = closed, todo = open. Regenerate rather than edit by hand.
+---
+project_number: 3
+project_url: https://github.com/orgs/guardyn/projects/3
+charter: implementation_plan.md
+
+# P-1: no token available to CI can read or write the project board. The fine-grained
+# PAT is rejected by the organization; the fallback OAuth token lacks read:project.
+# Board sync stays inert until GUARDYN_PROJECT_TOKEN exists with repo + project scope.
+project_sync_enabled: false
+
+invariants:
+  - {id: I-1, name: Zero-Knowledge,   met: partial, note: "2 services log outside init_tracing; rate_limit.rs logs a raw IP"}
+  - {id: I-2, name: Always-On E2EE,   met: false,   closed_by: PR-32}
+  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
+  - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
+
+gates:
+  - {id: G1, after: PR-17, phase: 1, description: "Purge, agent contract, documentation core, CI truthfulness"}
+  - {id: G2, after: PR-23, phase: 2, description: "Board sync, SSOT rules, protobuf unification"}
+  - {id: G3, after: PR-35, phase: 3, description: "ZK logging, store hygiene, E2EE repair, fuzzing. Behaviour-change sign-off required"}
+  - {id: G4, after: PR-44, phase: 4, description: "Hybrid PQXDH end to end, launch optimization"}
+
+steps:
+  - {id: PR-00, issue: 56, phase: 1, type: docs, status: done, title: "Land implementation_plan.md as the execution charter"}
+  - {id: PR-01, issue: 12, phase: 1, type: docs, status: done, title: "Purge legacy tracked documentation"}
+  - {id: PR-02, issue: 13, phase: 1, type: chore, status: done, title: "Remove duplicated cicd/ workflow copies and orphaned stubs"}
+  - {id: PR-03, issue: 14, phase: 1, type: chore, status: done, title: "Remove committed build artifacts and extend .gitignore"}
+  - {id: PR-04, issue: 15, phase: 1, type: docs, status: done, title: "Add AGENTS.md and CLAUDE.md agent constitution"}
+  - {id: PR-05, issue: 16, phase: 1, type: docs, status: done, title: "Add .claude/rules ruleset"}
+  - {id: PR-06, issue: 17, phase: 1, type: chore, status: todo, title: "Add .claude/settings.json guard hooks and pre-commit hook"}
+  - {id: PR-07, issue: 18, phase: 1, type: docs, status: todo, title: "Add CODEOWNERS and dependabot; rewrite CONTRIBUTING.md and README.md"}
+  - {id: PR-08, issue: 19, phase: 1, type: docs, status: todo, title: "Add docs/INDEX.md and GLOSSARY.md"}
+  - {id: PR-09, issue: 20, phase: 1, type: docs, status: todo, title: "Write docs/spec/SAD.md"}
+  - {id: PR-10, issue: 21, phase: 1, type: docs, status: todo, title: "Write docs/spec/SRS.md"}
+  - {id: PR-11, issue: 22, phase: 1, type: docs, status: todo, title: "Write docs/spec/PRD.md"}
+  - {id: PR-12, issue: 23, phase: 1, type: docs, status: todo, title: "Write ADR-0001 through ADR-0009"}
+  - {id: PR-13, issue: 24, phase: 1, type: docs, status: todo, title: "Write docs/ops DEPLOYMENT, RUNBOOK, OBSERVABILITY"}
+  - {id: PR-14, issue: 25, phase: 1, type: docs, status: todo, title: "Write docs/roadmap ROADMAP.md, roadmap.yaml, STATE.md"}
+  - {id: PR-15, issue: 26, phase: 1, type: feat, status: todo, title: "Add docs/.manifest.yaml and just docs-verify"}
+  - {id: PR-16, issue: 27, phase: 1, type: feat, status: todo, title: "Add .github/workflows/docs.yml"}
+  - {id: PR-17, issue: 28, phase: 1, type: fix, status: todo, gate: G1, title: "Remove continue-on-error from build.yml"}
+  - {id: PR-18, issue: 29, phase: 2, type: feat, status: todo, title: "Add .github/workflows/roadmap-sync.yml"}
+  - {id: PR-19, issue: 30, phase: 2, type: feat, status: todo, title: "Add .github/workflows/pr-link.yml"}
+  - {id: PR-20, issue: 31, phase: 2, type: docs, status: todo, title: "Add .claude/skills/issue-sync skill"}
+  - {id: PR-21, issue: 32, phase: 2, type: chore, status: todo, title: "Create label taxonomy"}
+  - {id: PR-22, issue: 33, phase: 2, type: docs, status: todo, title: "Codify code-style predicates in .claude/rules/20-code-style.md"}
+  - {id: PR-23, issue: 34, phase: 2, type: refactor, status: todo, gate: G2, title: "Unify protobuf codegen strategy"}
+  - {id: PR-24, issue: 35, phase: 3, type: security, status: todo, title: "Add common/src/redact.rs"}
+  - {id: PR-25, issue: 36, phase: 3, type: security, status: todo, title: "Apply Redacted<T> across crypto, auth and messaging types"}
+  - {id: PR-26, issue: 37, phase: 3, type: security, status: todo, title: "Migrate call-service and notification-service to observability::init_tracing"}
+  - {id: PR-27, issue: 38, phase: 3, type: feat, status: todo, title: "Add health checks for all stores and a media-service Health RPC"}
+  - {id: PR-28, issue: 39, phase: 3, type: refactor, status: todo, title: "Wire or delete the unused Redpanda topic constants"}
+  - {id: PR-29, issue: 40, phase: 3, type: fix, status: todo, title: "Replace the presence-service Redis TODO with TTL-correct TiKV storage"}
+  - {id: PR-30, issue: 41, phase: 3, type: security, status: todo, title: "Implement a persistent KeyStorage backend"}
+  - {id: PR-31, issue: 42, phase: 3, type: fix, status: todo, title: "Fix MLS group state round-trip"}
+  - {id: PR-32, issue: 43, phase: 3, type: security, status: todo, title: "Enforce Always-On E2EE and remove the non-E2EE handler path"}
+  - {id: PR-33, issue: 44, phase: 3, type: security, status: todo, title: "Add cargo-fuzz targets for attacker-controlled parsers"}
+  - {id: PR-34, issue: 45, phase: 3, type: security, status: todo, title: "Add proptest suites for crypto invariants"}
+  - {id: PR-35, issue: 46, phase: 3, type: chore, status: todo, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
+  - {id: PR-36, issue: 47, phase: 4, type: feat, status: todo, title: "Extend protos with ML-KEM key material fields"}
+  - {id: PR-37, issue: 48, phase: 4, type: feat, status: todo, title: "Persist and serve ML-KEM public keys in auth-service"}
+  - {id: PR-38, issue: 49, phase: 4, type: feat, status: todo, title: "Enable the pq feature across backend services"}
+  - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "Wire PqxdhProtocol into messaging-service session establishment"}
+  - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
+  - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
+  - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
+  - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}
+  - {id: PR-44, issue: 55, phase: 4, type: chore, status: todo, gate: G4, title: "Deployment parity - call-service k8s, digest pins, mobile CI"}
+  - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
