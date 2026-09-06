@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# Refuse a commit on a protected branch (AGENTS.md §2.1).
+#
+# Install with `just install-hooks`, which sets core.hooksPath to this directory.
+# This is a local convenience, not the enforcement: `main` is protected by the
+# `main-protection` ruleset, and `git commit --no-verify` bypasses any git hook.
+
+set -euo pipefail
+
+branch="$(git branch --show-current 2>/dev/null || true)"
+
+case "$branch" in
+  main | master)
+    cat >&2 <<MSG
+Refusing to commit on '$branch' (AGENTS.md §2.1).
+
+One micro-step = one branch = one PR = one issue:
+
+    git checkout -b <type>/<issue>-<slug> origin/main
+
+<type> is one of: feat fix docs refactor chore security
+MSG
+    exit 1
+    ;;
+esac
+
+exit 0
