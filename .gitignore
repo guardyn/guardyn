@@ -26,3 +26,8 @@ landing/media/video/
 client-desktop/test-results/
 client-desktop/e2e-report/
 client-mobile/assets/audio/generate_audio_assets.py
+
+# Generated test reports and stray capture artifacts (PR-03)
+client-mobile/test-reports/
+client-mobile/flutter_*.png
+client-mobile/build/
