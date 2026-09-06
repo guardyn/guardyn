@@ -49,7 +49,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: client-desktop/coverage
@@ -227,7 +227,7 @@ jobs:
           args: --target x86_64-unknown-linux-gnu
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: guardyn-desktop-linux-x64
           path: |
