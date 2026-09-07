@@ -485,3 +485,8 @@ install-hooks:
 # Verify the documentation base: frontmatter, impact, glossary, links, language.
 docs-verify:
     @bash infra/scripts/docs-verify.sh
+
+# Reconcile docs/roadmap/roadmap.yaml into GitHub Issues and the Project board.
+# Dry by default; pass 0 to write. Requires GUARDYN_PROJECT_TOKEN for the board half.
+roadmap-sync dry="1":
+    @ROADMAP_SYNC_DRY_RUN={{dry}} bash infra/scripts/roadmap-sync.sh
