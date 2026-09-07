@@ -14,13 +14,16 @@
 //! guardyn-crypto = { version = "0.1", features = ["ffi"] }
 //! ```
 
+use std::fmt;
+
+use guardyn_common::redact::Redacted;
 use std::sync::RwLock;
 
 // Re-export types that will be available in Dart
 pub use crate::padding::{pad_message, unpad_message};
 
 /// Hybrid key bundle for PQXDH key exchange
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FfiHybridKeyBundle {
     /// X25519 public key (32 bytes)
     pub x25519_public: Vec<u8>,
@@ -32,8 +35,20 @@ pub struct FfiHybridKeyBundle {
     pub ml_kem_private: Vec<u8>,
 }
 
+/// Redacts both private halves. Encapsulation and public keys are published.
+impl fmt::Debug for FfiHybridKeyBundle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FfiHybridKeyBundle")
+            .field("x25519_public", &self.x25519_public)
+            .field("x25519_private", &Redacted::new(&self.x25519_private))
+            .field("ml_kem_public", &self.ml_kem_public)
+            .field("ml_kem_private", &Redacted::new(&self.ml_kem_private))
+            .finish()
+    }
+}
+
 /// Encrypted data with ciphertext, nonce, and tag
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FfiEncryptedData {
     /// Ciphertext
     pub ciphertext: Vec<u8>,
@@ -43,12 +58,34 @@ pub struct FfiEncryptedData {
     pub tag: Vec<u8>,
 }
 
+/// Redacts the ciphertext. The nonce and tag are public AEAD parameters.
+impl fmt::Debug for FfiEncryptedData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FfiEncryptedData")
+            .field("ciphertext", &Redacted::new(&self.ciphertext))
+            .field("nonce", &self.nonce)
+            .field("tag", &self.tag)
+            .finish()
+    }
+}
+
 /// Key pair with public and private components
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FfiKeyPair {
     pub public_key: Vec<u8>,
     pub private_key: Vec<u8>,
     pub key_type: String,
+}
+
+/// Redacts the private half.
+impl fmt::Debug for FfiKeyPair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FfiKeyPair")
+            .field("public_key", &self.public_key)
+            .field("private_key", &Redacted::new(&self.private_key))
+            .field("key_type", &self.key_type)
+            .finish()
+    }
 }
 
 /// Crypto library initialization state

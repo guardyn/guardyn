@@ -3,7 +3,10 @@
 /// Implementation using OpenMLS library with RustCrypto backend.
 /// Provides secure group communication with forward secrecy, post-compromise security,
 /// and membership changes (add/remove members).
+use std::fmt;
+
 use crate::{CryptoError, Result};
+use guardyn_common::redact::Redacted;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::{OpenMlsRustCrypto, RustCrypto};
@@ -28,19 +31,47 @@ const MLS_CIPHERSUITE: Ciphersuite =
     Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519;
 
 /// Key package with metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MlsKeyPackage {
     pub package_id: Vec<u8>,
     pub key_package_bytes: Vec<u8>,
     pub credential_identity: Vec<u8>,
 }
 
+/// Redacts the key package bytes and the credential identity; `package_id` is an
+/// opaque handle and stays printable so a package can still be correlated.
+impl fmt::Debug for MlsKeyPackage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MlsKeyPackage")
+            .field("package_id", &self.package_id)
+            .field("key_package_bytes", &Redacted::new(&self.key_package_bytes))
+            .field(
+                "credential_identity",
+                &Redacted::new(&self.credential_identity),
+            )
+            .finish()
+    }
+}
+
 /// Group state for serialization/deserialization
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MlsGroupState {
     pub group_id: Vec<u8>,
     pub epoch: u64,
     pub serialized_state: Vec<u8>,
+}
+
+/// Redacts `serialized_state`, which today holds a 32-byte secret exported from
+/// the epoch secret (see the PR-31 discussion). `group_id` and `epoch` are
+/// metadata and are what an operator actually needs.
+impl fmt::Debug for MlsGroupState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MlsGroupState")
+            .field("group_id", &self.group_id)
+            .field("epoch", &self.epoch)
+            .field("serialized_state", &Redacted::new(&self.serialized_state))
+            .finish()
+    }
 }
 
 /// MLS Group Manager
