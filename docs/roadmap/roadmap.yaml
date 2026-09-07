@@ -54,7 +54,8 @@ steps:
   - {id: PR-21, issue: 32, phase: 2, type: chore, status: done, title: "Create label taxonomy"}
   - {id: PR-22, issue: 33, phase: 2, type: docs, status: done, title: "Codify code-style predicates in .claude/rules/20-code-style.md"}
   - {id: PR-23, issue: 34, phase: 2, type: refactor, status: done, gate: G2, title: "Unify protobuf codegen strategy"}
-  - {id: PR-24, issue: 35, phase: 3, type: security, status: todo, title: "Add common/src/redact.rs"}
+  - {id: PR-24, issue: 35, phase: 3, type: security, status: review, title: "Add Redacted<T> and the log field denylist"}
+  - {id: PR-24b, issue: 133, phase: 3, type: security, status: review, title: "Redact denied fields in the tracing formatter"}
   - {id: PR-25, issue: 36, phase: 3, type: security, status: todo, title: "Apply Redacted<T> across crypto, auth and messaging types"}
   - {id: PR-26, issue: 37, phase: 3, type: security, status: todo, title: "Migrate call-service and notification-service to observability::init_tracing"}
   - {id: PR-27, issue: 38, phase: 3, type: feat, status: todo, title: "Add health checks for all stores and a media-service Health RPC"}
@@ -76,3 +77,5 @@ steps:
   - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}
   - {id: PR-44, issue: 55, phase: 4, type: chore, status: todo, gate: G4, title: "Deployment parity - call-service k8s, digest pins, mobile CI"}
   - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
+  - {id: PR-46, issue: 132, phase: 3, type: fix, status: review, title: "Adapt to the rdkafka 0.39 Delivery type and vendor libcurl"}
+  - {id: PR-47, issue: 137, phase: 3, type: chore, status: review, title: "Record the G2 hotfix steps in roadmap.yaml"}
