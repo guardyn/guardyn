@@ -446,7 +446,10 @@ mod tests {
     #[test]
     fn test_config_defaults() {
         let config = WebSocketServerConfig::default();
-        assert_eq!(config.port, 8080);
+        // 8081, not 8080: docker-compose.dev.yml publishes 8081:8081 and sets
+        // WEBSOCKET_PORT=8081, and docs/spec/SAD.md documents the WebSocket on :8081.
+        // 8080 is Envoy's gRPC-Web listener.
+        assert_eq!(config.port, 8081);
         assert_eq!(config.max_connections_per_user, 5);
         assert_eq!(config.heartbeat_interval, 30);
         assert_eq!(config.connection_timeout, 90);
