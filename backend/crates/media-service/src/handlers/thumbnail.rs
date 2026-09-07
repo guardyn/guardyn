@@ -192,7 +192,7 @@ pub async fn handle(
 
     // Generate thumbnail ID and storage path
     let thumbnail_id = DatabaseClient::generate_media_id();
-    let storage_path = format!("{}/thumb_{}.{}", &user_id, &thumbnail_id, format);
+    let storage_path = format!("{}/thumb_{}.{}", user_id, thumbnail_id, format);
 
     // Upload thumbnail
     let mime_type = ThumbnailGenerator::format_to_mime(format);

@@ -51,7 +51,7 @@ pub async fn get_upload_url(
     // Generate media ID and storage path
     let media_id = DatabaseClient::generate_media_id();
     let extension = req.filename.rsplit('.').next().unwrap_or("bin");
-    let storage_path = format!("{}/{}.{}", &user_id, &media_id, extension);
+    let storage_path = format!("{}/{}.{}", user_id, media_id, extension);
 
     // Determine content type
     let content_type = if req.mime_type.is_empty() {

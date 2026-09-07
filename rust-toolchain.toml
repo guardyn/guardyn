@@ -1,0 +1,12 @@
+# Pin the toolchain so local checks and CI agree.
+#
+# Every workflow uses `dtolnay/rust-toolchain@stable`, which honours this file. Without it,
+# CI floats to whatever stable is on the day while contributors run whatever they have
+# installed: `cargo clippy -- -D warnings` was clean on 1.96.0 and produced 162 errors on
+# 1.98.1, because clippy 1.98 extended `result_large_err` from closures to functions.
+#
+# A gate that can fail without a change to this repository is not a signal, so bumping this
+# version is a deliberate, reviewable commit - never an accident of timing.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
