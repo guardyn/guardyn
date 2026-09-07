@@ -26,10 +26,10 @@ use tonic::{transport::Server, Request, Response, Status};
 // Import generated protobuf code
 pub mod proto {
     pub mod common {
-        include!("generated/guardyn.common.rs");
+        tonic::include_proto!("guardyn.common");
     }
     pub mod presence {
-        include!("generated/guardyn.presence.rs");
+        tonic::include_proto!("guardyn.presence");
     }
 }
 

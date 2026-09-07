@@ -79,9 +79,10 @@ matched.
   The language policy governs prose, comments, identifiers and log strings, not fixtures.
 - **ADR filenames** are `ADR-NNNN-kebab-slug.md`, not `SCREAMING_SNAKE_CASE.md`. The
   sequence number is what makes them sortable and citable.
-- **Generated protobuf** lives in two places — `backend/crates/*/src/generated/` (13 files)
-  and `client-desktop/src-tauri/src/proto/` (8 files). Both are excluded from `NAME-RS`,
-  and both are in scope for PR-23's unification; the plan names only the first.
+- **Generated protobuf** lives in **one** place now: `client-desktop/src-tauri/src/proto/`
+  (8 files). PR-23 deleted `backend/crates/*/src/generated/` — all six backend services
+  compile into `OUT_DIR` per [ADR-0008](../../docs/adr/ADR-0008-protobuf-codegen.md). The
+  desktop copy is excluded from `NAME-RS` and still needs its own step.
 
 ## Rules a grep cannot check
 

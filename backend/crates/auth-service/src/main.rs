@@ -31,11 +31,11 @@ use tonic::{transport::Server, Request, Response, Status};
 // Import generated protobuf code - pub to make available to handlers
 pub mod proto {
     pub mod common {
-        include!("generated/guardyn.common.rs");
+        tonic::include_proto!("guardyn.common");
     }
     #[allow(clippy::large_enum_variant)]
     pub mod auth {
-        include!("generated/guardyn.auth.rs");
+        tonic::include_proto!("guardyn.auth");
     }
 }
 
