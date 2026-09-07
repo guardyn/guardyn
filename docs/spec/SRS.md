@@ -84,10 +84,17 @@ more than `MAX_SKIP` ahead is rejected, not accommodated.
 ## Groups (MLS)
 
 Group encryption is OpenMLS 0.6, not sender keys. Group state is persisted to TiKV and
-**must round-trip**: serialize, store, load, decrypt. That round-trip is currently broken —
-`ValidationError(UnableToDecrypt(SecretTreeError(RatchetTypeError)))` after
-deserialization — and is repaired by PR-31. Adding a member must not break decryption for
+**must round-trip**: serialize, store, load, decrypt. Groups are created under the
+caller-supplied `GroupId`, never a random one. Adding a member must not break decryption for
 members already in the group.
+
+A member **cannot** decrypt a message it sent itself: the sender's application ratchet is
+consumed on encrypt and OpenMLS answers `SecretTreeError(RatchetTypeError)`. That is correct
+MLS behaviour, not a defect.
+
+The round-trip above is not implemented — `serialize_state` exports a 32-byte exporter secret
+rather than the group, with no deserialization counterpart, and no two-party exchange is
+possible until the KeyPackage and provider lifetimes are fixed. PR-31 owns the repair.
 
 ## Errors
 
