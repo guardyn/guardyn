@@ -481,15 +481,17 @@ pub async fn respond_x3dh(
 
 /// Initialize a Double Ratchet session with a peer
 ///
-/// Both initiator and responder start with init_bob - the DH ratchet step
-/// is performed automatically when the first message is exchanged.
-/// The initiator should send their public key with the first message header.
+/// The initiator (Alice) ratchets against the peer's signed pre-key, so `peer_public_key`
+/// is required and must be that key. The responder (Bob) must seed his ratchet with his own
+/// signed pre-key secret - the one whose public half the initiator used - which this command
+/// cannot reach, so the responder path is refused rather than silently producing a session
+/// that can never decrypt.
 #[tauri::command]
 pub async fn init_session(
     peer_id: String,
     shared_secret: String,
     is_initiator: bool,
-    _peer_public_key: Option<String>,
+    peer_public_key: Option<String>,
 ) -> Result<SessionInfo, String> {
     tracing::info!("Initializing Double Ratchet session with peer: {} (initiator: {})", peer_id, is_initiator);
 
@@ -500,9 +502,29 @@ pub async fn init_session(
         return Err("Shared secret must be 32 bytes".to_string());
     }
 
-    // Initialize Double Ratchet
-    // Both roles start with init_bob - the DH ratchet is performed on first message
-    let ratchet = guardyn_crypto::DoubleRatchet::init_bob(&secret_bytes)
+    // Initialize Double Ratchet.
+    // Alice derives her first root key from DH(her fresh key, Bob's signed pre-key); Bob must
+    // use the matching secret. Using init_bob for both roles leaves the two sides with
+    // different DH outputs, so nothing decrypts.
+    if !is_initiator {
+        return Err(
+            "Responder sessions are not supported by this command: Bob's ratchet must be \
+             seeded with his signed pre-key secret from key storage"
+                .to_string(),
+        );
+    }
+
+    let peer_public_key = peer_public_key.ok_or_else(|| {
+        "peer_public_key is required to initialize an initiator session".to_string()
+    })?;
+    let peer_public_bytes =
+        hex::decode(&peer_public_key).map_err(|e| format!("Invalid peer public key: {}", e))?;
+    let peer_public_bytes: [u8; 32] = peer_public_bytes
+        .try_into()
+        .map_err(|_| "Peer public key must be 32 bytes".to_string())?;
+    let peer_public = guardyn_crypto::X25519PublicKey::from(peer_public_bytes);
+
+    let ratchet = guardyn_crypto::DoubleRatchet::init_alice(&secret_bytes, peer_public)
         .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?;
 
     // Serialize ratchet state for persistence
@@ -969,9 +991,10 @@ mod tests {
         // Test basic Double Ratchet encrypt/decrypt cycle
         let shared_secret = [42u8; 32];
 
-        // Bob initializes first
-        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret).unwrap();
-        let bob_public = bob.public_key();
+        // Bob's signed pre-key doubles as his initial ratchet key
+        let bob_dh = guardyn_crypto::StaticSecret::from([7u8; 32]);
+        let bob_public = guardyn_crypto::X25519PublicKey::from(&bob_dh);
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
 
         // Alice initializes with Bob's public key
         let mut alice = guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
@@ -993,9 +1016,10 @@ mod tests {
         // Test bidirectional message exchange
         let shared_secret = [99u8; 32];
 
-        // Bob initializes first
-        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret).unwrap();
-        let bob_public = bob.public_key();
+        // Bob's signed pre-key doubles as his initial ratchet key
+        let bob_dh = guardyn_crypto::StaticSecret::from([7u8; 32]);
+        let bob_public = guardyn_crypto::X25519PublicKey::from(&bob_dh);
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
 
         // Alice initializes with Bob's public key
         let mut alice = guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
@@ -1022,8 +1046,9 @@ mod tests {
         let shared_secret = [123u8; 32];
 
         // Create ratchet as Bob first, then as Alice
-        let bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret).unwrap();
-        let bob_public = bob.public_key();
+        let bob_dh = guardyn_crypto::StaticSecret::from([7u8; 32]);
+        let bob_public = guardyn_crypto::X25519PublicKey::from(&bob_dh);
+        let _bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
         let alice = guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
 
         // Serialize Alice's ratchet

@@ -67,6 +67,11 @@ A replayed prekey message fails because the one-time key is already consumed.
 
 ## Message encryption (Double Ratchet)
 
+0. **Both sides seed the ratchet from the responder's signed pre-key.** The initiator
+   ratchets against the signed pre-key it just ran X3DH against; the responder must supply
+   the matching secret rather than generating a fresh key. This is not an implementation
+   detail - if the responder invents its own key the two sides derive different root and
+   chain keys, and every AEAD tag check fails while both sides appear healthy.
 1. Plaintext is padded with PADMÉ before encryption, so ciphertext length leaks at most
    about 10% of the plaintext length.
 2. A message key is derived per message and discarded after use: compromise of one key must
@@ -80,6 +85,11 @@ A replayed prekey message fails because the one-time key is already consumed.
 **Edge cases.** A padded length below `MIN_PADDED_LENGTH` (32) is invalid. Plaintext above
 `MAX_MESSAGE_LENGTH` (16 MiB) is rejected before encryption. A header claiming a counter
 more than `MAX_SKIP` ahead is rejected, not accommodated.
+
+**Known gaps.** The ratchet header is not covered by the AEAD associated data, so an attacker
+may rewrite the sender's public key and counters without invalidating the tag (#105) - the
+specification requires it to be bound. Skipped-key derivation also advances the receiving
+chain before the tag is verified, so a forged header can poison a session (#106).
 
 ## Groups (MLS)
 

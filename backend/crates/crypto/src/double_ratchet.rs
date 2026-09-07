@@ -282,8 +282,13 @@ impl DoubleRatchet {
     }
 
     /// Initialize Double Ratchet as receiver (Bob)
-    pub fn init_bob(shared_secret: &[u8]) -> Result<Self> {
-        let dh_self = StaticSecret::random_from_rng(OsRng);
+    ///
+    /// `dh_key_pair` must be the X25519 secret whose public half the initiator ran X3DH
+    /// against - in practice Bob's signed pre-key. The Double Ratchet specification makes
+    /// Bob's signed pre-key his initial ratchet key; generating a fresh key here instead
+    /// would leave both sides with different DH outputs, so no message would ever decrypt.
+    pub fn init_bob(shared_secret: &[u8], dh_key_pair: StaticSecret) -> Result<Self> {
+        let dh_self = dh_key_pair;
 
         let mut root_key_bytes = [0u8; 32];
         if shared_secret.len() != 32 {
@@ -752,7 +757,7 @@ mod tests {
             DoubleRatchet::init_alice(&shared_secret, bob_public).expect("Alice init failed");
 
         // Bob initializes
-        let mut bob = DoubleRatchet::init_bob(&shared_secret).expect("Bob init failed");
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_dh).expect("Bob init failed");
 
         // Alice sends first message
         let plaintext1 = b"Hello from Alice!";
@@ -784,7 +789,7 @@ mod tests {
         let bob_public = X25519PublicKey::from(&bob_dh);
 
         let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
-        let mut bob = DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
 
         // Send multiple messages in sequence
         for i in 0..5 {
@@ -802,7 +807,7 @@ mod tests {
         let bob_public = X25519PublicKey::from(&bob_dh);
 
         let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
-        let mut bob = DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
 
         // Alice sends 3 messages
         let msg1 = alice.encrypt(b"First", b"1").unwrap();
@@ -830,7 +835,7 @@ mod tests {
         let bob_public = X25519PublicKey::from(&bob_dh);
 
         let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
-        let mut bob = DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
 
         // Send messages back and forth to trigger DH ratchet
         for i in 0..10 {
@@ -853,7 +858,7 @@ mod tests {
         let bob_public = X25519PublicKey::from(&bob_dh);
 
         let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
-        let mut bob = DoubleRatchet::init_bob(&shared_secret).unwrap();
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
 
         // Exchange some messages to build state
         let msg1 = alice.encrypt(b"Test message 1", b"ad1").unwrap();
