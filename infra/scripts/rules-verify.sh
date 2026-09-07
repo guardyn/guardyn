@@ -135,7 +135,7 @@ check_lang_md() {
 # ---------------------------------------------------------------- NAME-SH
 check_name_sh() {
   local hits
-  hits="$(git ls-files '*.sh' | xargs -n1 basename | grep -vE '^[a-z0-9-]+\.sh$' || true)"
+  hits="$(git ls-files '*.sh' | xargs -r -n1 basename | grep -vE '^[a-z0-9-]+\.sh$' || true)"
   ratchet NAME-SH "$NAME_SH_BUDGET" "$hits"
 }
 
@@ -143,7 +143,7 @@ check_name_sh() {
 check_name_rs() {
   local hits
   hits="$(git ls-files '*.rs' | grep -vE '/(generated|proto)/' \
-    | xargs -n1 basename | grep -vE '^[a-z0-9_]+\.rs$' || true)"
+    | xargs -r -n1 basename | grep -vE '^[a-z0-9_]+\.rs$' || true)"
   if [ -n "$hits" ]; then
     fail "NAME-RS: Rust files must be snake_case.rs"
     show "$hits"
