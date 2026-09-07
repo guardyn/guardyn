@@ -44,6 +44,11 @@ micro-steps across four phases, each ending at an approval gate.
 Phases 1 and 2 touch no source code. Phase 3 carries the security-critical work. Phase 4
 closes invariant I-3.
 
+Each phase is a **GitHub Milestone** titled `Phase N — …`, naming its gate. That is the only
+place phase is recorded: the `phase:1`…`phase:4` labels were retired in PR-21, and the custom
+`Phase` field on the Project v2 board goes with them. One fact, one encoding — and the
+milestone is the encoding that gives a progress bar and a board grouping without maintenance.
+
 ## The two unmet invariants
 
 Stated first, because they are the most important facts about the current state and the
@@ -74,5 +79,12 @@ they can be revised without a documentation change.
 <https://github.com/orgs/guardyn/projects/3> cannot be read or written by any token
 available to CI: the fine-grained PAT is rejected outright by the organization, and the
 fallback OAuth token lacks `read:project`. Until a token with `repo` + `project` scope
-exists as the repository secret `GUARDYN_PROJECT_TOKEN`, roadmap-to-board sync (PR-18)
-ships guarded and inert. This needs a human.
+exists as the repository secret `GUARDYN_PROJECT_TOKEN`, roadmap-to-**board** sync ships
+guarded and inert. This needs a human.
+
+The blast radius is smaller than it was. Issue state and milestones are plain REST and
+reconcile with the ambient token, so `roadmap-sync` and `pr-link` both do real work today;
+only the Project v2 half waits. Two board operations remain manual regardless of the token:
+deleting the `Phase` field, and grouping the board view by Milestone — GitHub's
+`updateProjectV2View` mutation accepts a name, layout, filter and visible fields, but has no
+input for grouping.

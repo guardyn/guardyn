@@ -376,17 +376,26 @@ phases:
 ```
 
 - **PR-18** — `.github/workflows/roadmap-sync.yml`. On push to `main` touching `roadmap.yaml`,
-  reconcile Issues (create / retitle / relabel / close with `state_reason`) and upsert
-  Project v2 `Status` / `Phase` fields via GraphQL. **Idempotent** — reconciles toward desired
-  state, never blindly appends. Writes `issue:` / `pr:` ids back to `roadmap.yaml` in a bot
-  commit. **Guarded:** if `GUARDYN_PROJECT_TOKEN` is unset (P-1), log a warning and `exit 0`.
+  reconcile Issues (close with `state_reason`, reopen) and their **milestones**, then the
+  Project v2 board. **Idempotent** — reconciles toward desired state, never blindly appends.
+  **Guarded:** `project_sync_enabled` gates the board half alone; issue state and milestones
+  are plain REST and reconcile with the ambient token.
 - **PR-19** — `.github/workflows/pr-link.yml`. On PR open, parse the issue id from the branch
-  name, link PR ↔ Issue, move the Project card to `In Review`; on merge → `Done`.
+  name, add `Closes #N` when absent, and set the issue's milestone on the PR. The board move
+  (`In Review` → `Done`) is a guarded stub while P-1 is open.
 - **PR-20** — `.claude/skills/issue-sync/SKILL.md`: the agent's local path. Edit
   `roadmap.yaml`, run `just roadmap-sync`. **Never touch the board by hand.**
-- **PR-21** — Label taxonomy. The repo currently has only the 9 GitHub defaults, 1 open issue,
-  and no milestones. Add: `phase:1`…`phase:4`, `type:{feat,fix,docs,refactor,chore,security}`,
-  `gate:G1`…`gate:G4`, `docs-impact:none`, `blocked`.
+- **PR-21** — Label taxonomy, **then its correction**. The taxonomy shipped early during board
+  bootstrap: `type:{feat,fix,docs,refactor,chore,security}`, `gate:G1`…`gate:G4`,
+  `docs-impact:none`, `blocked`. The `phase:1`…`phase:4` labels it also created are
+  **retired**: phase is now tracked by native GitHub **Milestones**, and a label encoding the
+  same fact is a second source of truth that nothing keeps in sync.
+
+**Phase tracking is a milestone, not a label or a board field.** Four milestones titled
+`Phase N — …`, one per phase, each naming its gate. A step's `phase: N` in `roadmap.yaml`
+selects one. This replaces both the `phase:*` labels and the custom `Phase` field the brief
+put on the Project v2 board — three encodings of one fact, of which only the milestone gives
+a progress bar and a native board grouping for free.
 
 **Result:** the human architect sees exact project state on the board at all times, with zero
 manual maintenance. Every phase maps 1:1 to tracked tickets.
