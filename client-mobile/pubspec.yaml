@@ -80,7 +80,7 @@ dependencies:
   photo_view: ^0.15.0
 
   # File Handling
-  mime: ^2.0.0
+  mime: ^2.1.0
   path_provider: ^2.1.5
   http: ^1.2.2
   open_filex: ^4.6.0
