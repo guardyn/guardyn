@@ -29,7 +29,20 @@ on the first debug statement written at 2 a.m.
 Tracing is initialised **only** through `guardyn_common::observability::init_tracing`, which
 installs the redaction layer. Constructing a `tracing_subscriber` directly is forbidden.
 Key- and payload-bearing types never `#[derive(Debug)]`; they implement `Debug` to emit
-`[REDACTED]`, or are wrapped in `Redacted<T>` (PR-24).
+`[REDACTED]`, or are wrapped in `Redacted<T>`.
+
+Two mechanisms, shipped in `common/src/redact.rs` (PR-24):
+
+- **`Redacted<T>`** — `Debug` and `Display` emit `[REDACTED]` with **no bound on `T`**, so a
+  containing struct may keep `#[derive(Debug)]`. `Serialize`/`Deserialize` are deliberately
+  **transparent**: several crypto and messaging types derive `Serialize` for *persistence*, and
+  a redacting serializer would write `[REDACTED]` into TiKV and destroy the stored key material.
+  This is sound because `tracing` never routes through `serde::Serialize` on our types —
+  `tracing_serde` serializes what a `Visit` recorded, which is `Debug` or `Display`.
+- **`DENIED_FIELDS`** — the companion denylist of log field names whose values must never be
+  emitted. Matching is exact and case-insensitive, never substring: a substring rule on `key`
+  would fire on `key_id`, and identifiers are metadata, not key material. The `tracing`
+  formatter that enforces this list consumes it; this module supplies the vocabulary.
 
 ## Consequences
 
@@ -41,7 +54,8 @@ sparingly rather than dumping a request. That difficulty is the feature.
 
 **Known violations.** `call-service` and `notification-service` build a `FmtSubscriber`
 directly (PR-26). `common/src/rate_limit.rs:241,256` log a raw client IP — PII under this
-ADR — and have **no owned step**.
+ADR — and have **no owned step**; note the denylist cannot reach them, because they
+interpolate the IP positionally into `message` rather than naming a field.
 
 ## Alternatives rejected
 
