@@ -1,0 +1,45 @@
+name: roadmap-sync
+
+# docs/roadmap/roadmap.yaml is the machine source of truth for the roadmap. This workflow
+# moves GitHub toward it: Issues first, then the Project v2 board.
+#
+# It is guarded rather than required. GUARDYN_PROJECT_TOKEN does not exist yet (preflight
+# P-1: the organization rejects fine-grained PATs over 366 days, and the fallback OAuth
+# token carries no project scope), so the board half cannot run. A missing secret is a
+# documented state, not a build failure - the script says so and exits 0.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/roadmap/roadmap.yaml
+      - infra/scripts/roadmap-sync.sh
+      - .github/workflows/roadmap-sync.yml
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the plan without writing anything
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    name: Reconcile roadmap into Issues and the board
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Reconcile
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUARDYN_PROJECT_TOKEN: ${{ secrets.GUARDYN_PROJECT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          # A manual run defaults to dry, so the first thing anyone does by hand cannot
+          # rewrite issue state by accident.
+          ROADMAP_SYNC_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: bash infra/scripts/roadmap-sync.sh

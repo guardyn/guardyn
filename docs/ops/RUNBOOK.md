@@ -97,6 +97,33 @@ carries `docs-impact:none` **with a stated reason**.
 
 Run it before pushing. It is faster than a round trip through CI.
 
+## Roadmap and board sync
+
+[`roadmap.yaml`](../roadmap/roadmap.yaml) is the machine source of truth. `roadmap-sync`
+moves GitHub toward it - Issues first, then the Project v2 board - and reconciles rather
+than appends, so running it twice changes nothing the second time.
+
+```sh
+just roadmap-sync        # dry: print the plan, write nothing
+just roadmap-sync 0      # write
+```
+
+It runs in CI on every push to `main` that touches `roadmap.yaml`, and a manual
+`workflow_dispatch` defaults to dry.
+
+**Never edit the board by hand.** Edit `roadmap.yaml` and let the sync move it, or the two
+diverge with no way to tell which is right.
+
+Two conditions make it a no-op today, both deliberate:
+
+- `project_sync_enabled: false` in `roadmap.yaml`. The board half needs
+  `GUARDYN_PROJECT_TOKEN` with `repo` + `project` scope, which no agent can create -
+  preflight **P-1**. A missing secret is a documented state, not a build failure, so the
+  script says so and exits 0.
+- `roadmap.yaml` is currently **stale**: several steps closed on GitHub are still marked
+  `todo`. Enabling the sync before regenerating it would reopen correctly-closed issues.
+  Regenerate first.
+
 ## Escalation
 
 Security issues go to security@guardyn.app and **never** into a public issue
