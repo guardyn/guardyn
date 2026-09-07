@@ -58,7 +58,12 @@ async-nats = "0.37"
 
 # Kafka/Redpanda messaging (new)
 # Note: SASL disabled for local dev, enable for production with actual auth
-rdkafka = { version = "0.39", features = ["cmake-build", "ssl-vendored"] }
+# curl-static vendors libcurl the way ssl-vendored vendors OpenSSL. librdkafka 2.12
+# (rdkafka-sys 4.10) needs curl headers for OAUTHBEARER OIDC, and no build
+# environment we ship installs them - not CI, not the Alpine image, not the
+# per-service Debian images. Vendoring keeps the backend buildable anywhere, which
+# is what I-4 asks for.
+rdkafka = { version = "0.39", features = ["cmake-build", "ssl-vendored", "curl-static"] }
 
 # Observability
 tracing = "0.1"
