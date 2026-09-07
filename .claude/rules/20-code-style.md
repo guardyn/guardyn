@@ -52,7 +52,8 @@ echo "RS-UNWRAP";  git ls-files 'backend/crates/*/src/*.rs' 'backend/crates/*/sr
                        done
 echo "RS-UNSAFE";  grep -rln 'unsafe ' --include='*.rs' backend/crates/*/src | grep -vE 'crypto-ffi|/ffi'
 echo "RS-FMT";     cargo fmt --all --manifest-path backend/Cargo.toml -- --check
-echo "PROTO-EDIT"; git diff --name-only origin/main...HEAD | grep -E '/(generated|proto)/.*\.rs$'
+echo "PROTO-EDIT"; git diff --name-only --diff-filter=d origin/main...HEAD \
+                     | grep -E '/(generated|proto)/.*\.rs$'
 echo "LANG-MD";    git grep -lIP '[\x{0400}-\x{04FF}]' -- '*.md' | grep -v 'copilot-commit-message'
 echo "NAME-SH";    git ls-files '*.sh' | xargs -n1 basename | grep -vE '^[a-z0-9-]+\.sh$'
 echo "NAME-RS";    git ls-files '*.rs' | grep -vE '/(generated|proto)/' \

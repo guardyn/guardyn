@@ -106,7 +106,11 @@ check_proto_edit() {
     warn "PROTO-EDIT: $BASE is not available - skipped"
     return
   fi
-  hits="$(git diff --name-only "$BASE"...HEAD | grep -E '/(generated|proto)/.*\.rs$' || true)"
+  # --diff-filter=d excludes deletions. The predicate forbids hand-EDITING generated code;
+  # deleting it is the opposite - PR-23 removes 13 such files, and flagging that as a
+  # violation would have made the predicate fire on the change that satisfies ADR-0008.
+  hits="$(git diff --name-only --diff-filter=d "$BASE"...HEAD \
+    | grep -E '/(generated|proto)/.*\.rs$' || true)"
   if [ -n "$hits" ]; then
     fail "PROTO-EDIT: generated protobuf edited by hand - change the .proto and regenerate"
     show "$hits"
