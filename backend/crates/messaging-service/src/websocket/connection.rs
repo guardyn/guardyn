@@ -106,26 +106,38 @@ impl ConnectionManager {
             return Err("Connection not found");
         }
 
-        // Add to user connections mapping
-        let mut user_conns = self
-            .user_connections
-            .entry(user_id.clone())
-            .or_insert_with(Vec::new);
+        // Decide whether the oldest connection has to go, then drop the guard before acting
+        // on it. `remove_connection` re-enters `user_connections` for this same key, and
+        // DashMap locks per shard: evicting while holding the entry guard deadlocks the
+        // caller permanently.
+        let oldest_to_evict = {
+            let user_conns = self
+                .user_connections
+                .entry(user_id.clone())
+                .or_insert_with(Vec::new);
 
-        // Check max connections per user
-        if user_conns.len() >= self.max_connections_per_user {
-            // Remove oldest connection
-            if let Some(oldest_conn_id) = user_conns.first().cloned() {
-                warn!(
-                    user_id = %user_id,
-                    oldest_connection = %oldest_conn_id,
-                    "Max connections reached, disconnecting oldest"
-                );
-                self.remove_connection(&oldest_conn_id);
+            if user_conns.len() >= self.max_connections_per_user {
+                user_conns.first().cloned()
+            } else {
+                None
             }
+        };
+
+        if let Some(oldest_conn_id) = oldest_to_evict {
+            warn!(
+                user_id = %user_id,
+                oldest_connection = %oldest_conn_id,
+                "Max connections reached, disconnecting oldest"
+            );
+            self.remove_connection(&oldest_conn_id);
         }
 
-        user_conns.push(connection_id.to_string());
+        // Re-acquire to append. The entry may have been removed entirely by the eviction
+        // above if it held the user's last connection, so `entry` rather than `get_mut`.
+        self.user_connections
+            .entry(user_id.clone())
+            .or_insert_with(Vec::new)
+            .push(connection_id.to_string());
 
         info!(
             connection_id = %connection_id,
