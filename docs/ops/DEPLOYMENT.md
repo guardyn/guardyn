@@ -30,6 +30,27 @@ Infrastructure: `nats`, `redpanda`, `redpanda-console`, `pd`, `tikv`, `scylladb`
 `just dc-cqlsh`, `just dc-tikv-status` and `just dc-redpanda-health` reach the stores
 directly.
 
+### Service addresses are container names, never `localhost`
+
+Every service reaches its dependencies by Compose DNS name — `pd:2379`, `scylladb:9042`,
+`nats://nats:4222`, `minio:9000`, **`redpanda:9092`**. Inside a container `localhost` is that
+container itself, so a `localhost` address is always wrong here.
+
+Redpanda advertises two listeners: `internal://redpanda:9092` for clients on the Compose
+network, and `external://localhost:19092` for clients on the host. Only 19092 is published, so
+in-container clients must use the internal one. `auth-service` (producer) and
+`messaging-service` (consumer) are the only services using Kafka; both are given
+`REDPANDA_BROKERS`. Host-side tooling such as `infra/scripts/init-redpanda-topics.sh`
+correctly uses `localhost:19092`.
+
+### Two services bypass the `GUARDYN_*` config loader
+
+`notification-service` and `call-service` read plain environment variables in `main.rs`
+rather than going through `guardyn_common::config`. `notification-service` reads `LISTEN_ADDR`
+and `SCYLLA_HOSTS`; setting only `GUARDYN_PORT` and `GUARDYN_DATABASE__SCYLLADB_NODES` leaves
+it binding the wrong port and dialling the Kubernetes ScyllaDB FQDN. Compose now sets both
+forms. Unifying this is tracked separately.
+
 ## Kubernetes
 
 ```sh
@@ -60,7 +81,8 @@ because Envoy is the ingress path.
 | messaging-service | 50052 (gRPC), 8081 (WebSocket) |
 | presence-service | 50053 |
 | media-service | 50054 |
-| notification-service | 8080, 9090 (metrics) |
+| call-service | 50056 (gRPC), 8085 |
+| notification-service | 50055 |
 
 ## Domains
 

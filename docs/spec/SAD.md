@@ -91,6 +91,12 @@ introduce a cache layer to "fix" a latency observation.
 They are not redundant and must not be consolidated. A presence beat that is lost is
 correct behaviour; a message event that is lost is data loss.
 
+Only `auth-service` (producer) and `messaging-service` (consumer) compile the Kafka client -
+the other services depend on `guardyn-common` without its `kafka` feature. Both read the
+broker address from `REDPANDA_BROKERS`, which resolves to `redpanda:9092` under Compose and
+`redpanda.messaging.svc.cluster.local:9092` in Kubernetes. Redpanda's `localhost:19092`
+listener is for host-side clients only.
+
 ## Edge
 
 Envoy terminates gRPC-Web and routes to `guardyn.auth.AuthService`,
@@ -125,7 +131,9 @@ enum variant.
 3. Recipient key material is fetched from `auth-service` (TiKV) if no session exists.
 4. Ciphertext is written to ScyllaDB and an `EventEnvelope` is produced to Redpanda.
 5. Live delivery goes out over NATS, or the WebSocket on `:8081` for a connected client.
-6. `notification-service` consumes the durable event and pushes to offline devices.
+6. Offline devices are the intended consumer of the durable event. **`notification-service`
+   does not consume it today** - it has no Kafka client at all, and depends on
+   `guardyn-common` without the `kafka` feature. Step 6 is the design, not shipped behaviour.
 
 At no point does a payload, a key, or decrypted metadata reach a log, a span, or a metric
 label.

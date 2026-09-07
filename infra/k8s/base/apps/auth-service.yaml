@@ -36,7 +36,9 @@ spec:
           value: "pd.data.svc.cluster.local:2379"
         - name: GUARDYN_DATABASE__SCYLLADB_NODES
           value: "scylla-0.data.svc.cluster.local:9042,scylla-1.data.svc.cluster.local:9042,scylla-2.data.svc.cluster.local:9042"
-        - name: GUARDYN_MESSAGING__REDPANDA_BROKERS
+        # KafkaConfig::from_env reads REDPANDA_BROKERS or KAFKA_BROKERS; the GUARDYN_ config
+        # loader has no redpanda_brokers field, so the prefixed name was never read.
+        - name: REDPANDA_BROKERS
           value: "redpanda.messaging.svc.cluster.local:9092"
         - name: GUARDYN_OBSERVABILITY__OTLP_ENDPOINT
           value: "http://tempo.observability.svc.cluster.local:4317"
