@@ -238,8 +238,14 @@ impl KafkaProducer {
         let timeout = Duration::from_millis(self.config.message_timeout_ms);
 
         match self.producer.send(record, timeout).await {
-            Ok((partition, offset)) => {
-                debug!(partition, offset, "Message sent successfully");
+            // rdkafka 0.39 replaced the (partition, offset) success tuple with the
+            // `Delivery` struct, which also carries a timestamp we do not need.
+            Ok(delivery) => {
+                debug!(
+                    partition = delivery.partition,
+                    offset = delivery.offset,
+                    "Message sent successfully"
+                );
                 Ok(())
             }
             Err((e, _)) => {
