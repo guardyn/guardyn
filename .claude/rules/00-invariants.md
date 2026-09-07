@@ -18,7 +18,7 @@ If a task appears to require it, stop and ask the user.
 
 | ID | Invariant | Predicate | Today | Owned by |
 |---|---|---|---|---|
-| `ZK-INIT` | I-1 | Tracing is initialised only via `guardyn_common::observability::init_tracing` | FAIL (2) | PR-26 |
+| `ZK-INIT` | I-1 | Tracing is initialised only via `guardyn_common::observability::init_tracing` | PASS | `rules-verify` |
 | `ZK-PII` | I-1 | No log macro is passed a raw IP, email or phone number | FAIL (2) | **none — open an issue** |
 | `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | FAIL (4) | PR-32 |
 | `E2EE-DUP` | I-2 | No handler has a non-E2EE twin | FAIL (2) | PR-32 |
@@ -50,7 +50,7 @@ original still sits beside it. After PR-32 there is one handler, unsuffixed. Not
 `PQ-WIRE` fails while `crypto/src/pqxdh.rs` is a complete hybrid X25519 + ML-KEM-768
 implementation. It is unreached, not absent — no proto field can carry the public key.
 
-**A known failure is not licence to patch it.** Six of these have an owned step; fixing one
+**A known failure is not licence to patch it.** Five of these have an owned step; fixing one
 outside that step breaks the micro-step contract. The two marked *none* were found while
 writing this file and need an issue opened before any fix.
 

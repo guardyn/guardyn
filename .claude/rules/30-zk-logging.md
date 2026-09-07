@@ -15,7 +15,7 @@ invariant most easily broken by a one-line "helpful" debug statement, so it gets
 
 | ID | Predicate | Today |
 |---|---|---|
-| `ZK-INIT` | Tracing is initialised only via `guardyn_common::observability::init_tracing` | FAIL — 2 services, PR-26 |
+| `ZK-INIT` | Tracing is initialised only via `guardyn_common::observability::init_tracing` | PASS — enforced by `rules-verify` |
 | `ZK-PII` | No log macro is passed a raw IP, email or phone number | FAIL — 2 sites, no owner |
 | `ZK-PAYLOAD` | No log macro names ciphertext, plaintext, payload or key material | PASS |
 | `ZK-STRUCT` | No whole request or response struct is interpolated | PASS |

@@ -21,20 +21,32 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
+use guardyn_common::observability;
 use tonic::transport::Server;
-use tracing::{info, Level};
-use tracing_subscriber::FmtSubscriber;
+use tracing::info;
 
 use crate::db::NotificationDb;
 use crate::service::NotificationServiceImpl;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize tracing
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    // Initialize observability (tracing, logging, metrics).
+    //
+    // This must go through `observability::init_tracing`: building a subscriber
+    // here would bypass the redaction layer and forfeit both JSON logs and OTel
+    // traces. See ADR-0007 and the ZK-INIT predicate in rules-verify.
+    //
+    // The guard is bound - dropping it immediately would lose every buffered
+    // span at shutdown.
+    let log_level = std::env::var("LOG_LEVEL")
+        .or_else(|_| std::env::var("GUARDYN_OBSERVABILITY__LOG_LEVEL"))
+        .unwrap_or_else(|_| "info".to_string());
+    let otlp_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .or_else(|_| std::env::var("GUARDYN_OBSERVABILITY__OTLP_ENDPOINT"))
+        .ok()
+        .filter(|s| !s.is_empty());
+    let _tracing_guard =
+        observability::init_tracing("notification-service", &log_level, otlp_endpoint.as_deref());
 
     info!("Starting Guardyn Notification Service");
 

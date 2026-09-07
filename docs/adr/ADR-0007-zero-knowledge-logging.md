@@ -58,8 +58,7 @@ must route through `common`, and a service that wants a bespoke subscriber canno
 Debugging is harder by design: correlating an incident means using `user_id`/`device_id`
 sparingly rather than dumping a request. That difficulty is the feature.
 
-**Known violations.** `call-service` and `notification-service` build a `FmtSubscriber`
-directly (PR-26). `common/src/rate_limit.rs:241,256` log a raw client IP — PII under this
+**Known violations.** `common/src/rate_limit.rs:241,256` log a raw client IP — PII under this
 ADR — and have **no owned step**; note the denylist cannot reach them, because they
 interpolate the IP positionally into `message` rather than naming a field.
 

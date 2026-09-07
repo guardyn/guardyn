@@ -103,8 +103,8 @@ Run it before pushing. It is faster than a round trip through CI.
 just rules-verify
 ```
 
-The predicates of [`.claude/rules/20-code-style.md`](../../.claude/rules/20-code-style.md),
-executed. They had been stated as testable predicates since PR-05 with nothing running them.
+The predicates of [`.claude/rules/20-code-style.md`](../../.claude/rules/20-code-style.md)
+plus `ZK-INIT` from [`30-zk-logging.md`](../../.claude/rules/30-zk-logging.md), executed. They had been stated as testable predicates since PR-05 with nothing running them.
 [`rules.yml`](../../.github/workflows/rules.yml) runs it on **every** pull request - not on a
 path filter, because `NAME-SH`, `ORG-ROOT`, `LANG-MD` and `ORG-LOCAL` are repository-wide
 properties and a `backend/**` filter would leave them unenforced for exactly the changes most
@@ -120,6 +120,14 @@ measured count: the build fails when the number **grows**, and every fix lowers 
 If `rules-verify` fails on a ratchet you did not mean to touch, you added a site. If it tells
 you the count is *down*, lower the budget in the same PR - the number is a claim about the
 repository, and a stale one is worse than none.
+
+**If `ZK-INIT` fails**, a service is building its own `tracing` subscriber. That service gets
+no JSON logs, no OTel traces, and - the reason this is a hard fail rather than a style nit -
+**no redaction layer**, so any payload or key field it logs reaches the writer in clear. The
+fix is never to relax the check: route the service through
+`guardyn_common::observability::init_tracing`, binding the returned guard to a named variable
+so it is not dropped immediately. `presence-service/src/main.rs` is the reference for a
+service with no `ServiceConfig`; `auth-service/src/main.rs` for one with.
 
 ## Roadmap and board sync
 

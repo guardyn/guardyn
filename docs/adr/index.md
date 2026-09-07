@@ -41,5 +41,5 @@ is quietly wrong.
 | ADR | Gap | Owned by |
 |---|---|---|
 | 0005 | `pq` feature off by default; **no ML-KEM field in any proto**, so no PQ key can be published | PR-36…PR-40 |
-| 0007 | `call-service` and `notification-service` build a `FmtSubscriber` directly; `rate_limit.rs:241,256` log a raw IP | PR-26; the IP leak is **unowned** |
+| 0007 | `rate_limit.rs:241,256` log a raw IP; span fields bypass the redacting formatter | both **unowned** |
 | 0008 | Committed generated protobuf in `backend/crates/*/src/generated/` **and** `client-desktop/src-tauri/src/proto/`, while `messaging-service` uses `include_proto!` | PR-23 |

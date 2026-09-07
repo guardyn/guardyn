@@ -102,7 +102,6 @@ alertmanager configuration.
 
 | Gap | Consequence | Owned by |
 |---|---|---|
-| `call-service` and `notification-service` build a `FmtSubscriber` directly | two services log outside the redaction layer | PR-26 |
 | `common/src/rate_limit.rs:241,256` log a raw client IP | PII in logs — a direct I-1 breach; positional, so the denylist cannot see it | **unowned** |
 | Span fields bypass `RedactingFormat` | secrets recorded via `Span::current().record` are not redacted | **unowned** |
 | The Compose observability stack is commented out, and references `./infra/observability/prometheus.yml` which does not exist | no local metrics; uncommenting it fails | PR-43 |
