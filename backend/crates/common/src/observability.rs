@@ -66,13 +66,24 @@ pub fn init_tracing(
     let env_filter =
         tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| log_level.into());
 
-    // JSON formatting layer for structured logs
+    // JSON formatting layer for structured logs.
+    //
+    // The event formatter is wrapped in `RedactingFormat` so that no field named
+    // on the `redact::DENIED_FIELDS` denylist can reach the writer (invariant
+    // I-1). `.fmt_fields(JsonFields)` is required because `.event_format()` sets
+    // only the event formatter, whereas the `.json()` shorthand it replaces set
+    // the field formatter too; without it, span fields regress to the `Full`
+    // formatter and emit non-JSON inside a JSON document.
     let fmt_layer = tracing_subscriber::fmt::layer()
-        .json()
-        .with_file(true)
-        .with_line_number(true)
-        .with_thread_ids(true)
-        .with_target(true);
+        .fmt_fields(tracing_subscriber::fmt::format::JsonFields::new())
+        .event_format(crate::redact::RedactingFormat::new(
+            tracing_subscriber::fmt::format()
+                .json()
+                .with_file(true)
+                .with_line_number(true)
+                .with_thread_ids(true)
+                .with_target(true),
+        ));
 
     // Try to initialize OpenTelemetry if endpoint is provided
     let provider = if let Some(endpoint) = otlp_endpoint {

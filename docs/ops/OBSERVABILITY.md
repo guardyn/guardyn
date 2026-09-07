@@ -42,6 +42,27 @@ genuinely needs them, and never at `info` on a hot path.
 
 When unsure whether a field is sensitive: **do not log it.**
 
+## The redaction mechanism
+
+Two things in `guardyn_common::redact` enforce the list above rather than merely stating it.
+
+`Redacted<T>` wraps a secret field. Its `Debug`/`Display` emit `[REDACTED]` with no bound on
+`T`, so the containing struct can keep `#[derive(Debug)]` safely. `expose()` is the only way
+back out, and is named to be conspicuous in review and greppable in CI. `Serialize` is
+**transparent** — it must be, or persisted key material would be overwritten with `[REDACTED]`.
+
+`RedactingFormat` is the event formatter `init_tracing` installs. Any event field whose *name*
+is in `DENIED_FIELDS` has its value replaced, and the event gains a `redacted: [names]` array
+so the hit is alertable. Events with no denied field are delegated untouched, so the common
+path is byte-identical.
+
+Matching is **exact**, never substring — `key` is denied, `key_id` is not. Identifiers are
+metadata and remain loggable, sparingly.
+
+**Limits worth knowing.** Only *event* fields are covered; span fields are not yet redacted.
+And a positional interpolation (`warn!("Blocked IP {}", ip)`) collapses into `message` and is
+invisible to a field-name denylist — name your fields.
+
 ## Checking yourself
 
 ```sh
@@ -82,7 +103,8 @@ alertmanager configuration.
 | Gap | Consequence | Owned by |
 |---|---|---|
 | `call-service` and `notification-service` build a `FmtSubscriber` directly | two services log outside the redaction layer | PR-26 |
-| `common/src/rate_limit.rs:241,256` log a raw client IP | PII in logs — a direct I-1 breach | **unowned** |
+| `common/src/rate_limit.rs:241,256` log a raw client IP | PII in logs — a direct I-1 breach; positional, so the denylist cannot see it | **unowned** |
+| Span fields bypass `RedactingFormat` | secrets recorded via `Span::current().record` are not redacted | **unowned** |
 | The Compose observability stack is commented out, and references `./infra/observability/prometheus.yml` which does not exist | no local metrics; uncommenting it fails | PR-43 |
 | `GUARDYN_OBSERVABILITY__OTLP_ENDPOINT` is `""` for every Compose service | no traces are exported locally | PR-43 |
 | `Sampler::AlwaysOn` (`observability.rs:132`) | 100% trace sampling — fine in development, a cost and volume decision in production | PR-43 |
