@@ -10,6 +10,7 @@
 //! Reference: https://signal.org/docs/specifications/pqxdh/
 #![allow(unused_assignments)]
 
+use crate::x3dh::{ed25519_public_to_x25519, ed25519_secret_to_x25519};
 use crate::{CryptoError, Result};
 use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
@@ -285,11 +286,13 @@ pub fn derive_sender_shared_secret(
     sender_ephemeral_secret: &[u8; 32],
     recipient_bundle: &HybridKeyBundle,
 ) -> Result<(HybridSharedSecret, Vec<u8>)> {
-    // Classical X25519 DH operations (X3DH)
-    let sender_identity_secret = X25519Secret::from(*sender_identity_key);
+    // Classical X25519 DH operations (X3DH).
+    // Identity keys are Ed25519 on both sides and must be mapped onto Curve25519 before any
+    // Diffie-Hellman; the signed and one-time prekeys are already X25519.
+    let sender_identity_secret = ed25519_secret_to_x25519(sender_identity_key);
     let sender_ephemeral = X25519Secret::from(*sender_ephemeral_secret);
 
-    let recipient_identity = X25519PublicKey::from(recipient_bundle.identity_key);
+    let recipient_identity = ed25519_public_to_x25519(&recipient_bundle.identity_key)?;
     let recipient_spk = X25519PublicKey::from(recipient_bundle.signed_prekey);
 
     // DH1 = DH(IK_A, SPK_B)
@@ -370,10 +373,12 @@ pub fn derive_recipient_shared_secret(
     sender_ephemeral_key: &[u8; 32],
     #[allow(unused_variables)] pq_ciphertext: Option<&[u8]>,
 ) -> Result<HybridSharedSecret> {
-    let recipient_identity = X25519Secret::from(recipient_private_keys.identity_key);
+    // Mirror of the sender: the Ed25519 identity keys on both sides are mapped onto
+    // Curve25519 before any Diffie-Hellman.
+    let recipient_identity = ed25519_secret_to_x25519(&recipient_private_keys.identity_key);
     let recipient_spk = X25519Secret::from(recipient_private_keys.signed_prekey);
 
-    let sender_identity = X25519PublicKey::from(*sender_identity_key);
+    let sender_identity = ed25519_public_to_x25519(sender_identity_key)?;
     let sender_ephemeral = X25519PublicKey::from(*sender_ephemeral_key);
 
     // DH1 = DH(SPK_B, IK_A)

@@ -104,11 +104,7 @@ impl IdentityKeyPair {
     /// Note: We use clamp_integer() which applies ONLY clamping without mod l reduction.
     /// This matches TweetNaCl exactly, unlike to_scalar() which also reduces mod l.
     pub fn to_x25519_secret(&self) -> StaticSecret {
-        // Get raw SHA512(seed)[0:32] bytes
-        let raw_scalar_bytes = self.secret.to_scalar_bytes();
-        // Apply clamping (matches TweetNaCl's crypto_sign_ed25519_sk_to_x25519_sk)
-        let clamped_bytes = clamp_integer(raw_scalar_bytes);
-        StaticSecret::from(clamped_bytes)
+        signing_key_to_x25519_secret(&self.secret)
     }
 }
 
@@ -470,11 +466,33 @@ impl X3DHProtocol {
     }
 }
 
-/// Helper: Convert Ed25519 public key bytes to X25519 public key
+/// Convert an Ed25519 signing key to the matching X25519 secret.
+///
+/// The conversion process (matching TweetNaCl's `crypto_sign_ed25519_sk_to_x25519_sk`):
+/// 1. Compute `SHA512(seed)[0:32]` via `to_scalar_bytes()`
+/// 2. Apply X25519 clamping via `clamp_integer`, which does not reduce mod l - unlike
+///    `to_scalar()`, which does, and would not match TweetNaCl
+pub(crate) fn signing_key_to_x25519_secret(signing_key: &SigningKey) -> StaticSecret {
+    let raw_scalar_bytes = signing_key.to_scalar_bytes();
+    let clamped_bytes = clamp_integer(raw_scalar_bytes);
+    StaticSecret::from(clamped_bytes)
+}
+
+/// Convert Ed25519 signing key bytes (the 32-byte seed) to the matching X25519 secret.
+///
+/// Shared with `pqxdh`, whose bundles store the identity key as an Ed25519 seed.
+pub(crate) fn ed25519_secret_to_x25519(seed: &[u8; 32]) -> StaticSecret {
+    signing_key_to_x25519_secret(&SigningKey::from_bytes(seed))
+}
+
+/// Convert Ed25519 public key bytes to an X25519 public key.
 ///
 /// Uses birational equivalence mapping between twisted Edwards curve (Ed25519)
 /// and Montgomery curve (X25519). This is the standard approach used by Signal Protocol.
-fn ed25519_public_to_x25519(ed25519_bytes: &[u8]) -> Result<X25519PublicKey> {
+///
+/// Shared with `pqxdh`, which performs the same four Diffie-Hellman operations over the same
+/// Ed25519 identity keys and must convert them identically.
+pub(crate) fn ed25519_public_to_x25519(ed25519_bytes: &[u8]) -> Result<X25519PublicKey> {
     if ed25519_bytes.len() != 32 {
         return Err(CryptoError::InvalidKey(
             "Ed25519 public key must be 32 bytes".into(),

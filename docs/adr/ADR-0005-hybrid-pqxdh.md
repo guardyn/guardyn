@@ -37,10 +37,22 @@ ciphertext, 32-byte shared secret.
 A break of either primitive alone leaves the session secure. Key bundles get materially
 larger, and every wire structure carrying key material must have room for an ML-KEM key.
 
-**The gap.** `crates/crypto/src/pqxdh.rs` is a complete implementation, but the `pq`
-feature is off by default, no backend service enables it, and — decisively —
-`backend/proto/` contains **zero** ML-KEM fields, so a server cannot publish a PQ public
-key at all. The implementation is unreached, not absent.
+**Identity keys are Ed25519 and must be converted before any Diffie-Hellman.** The bundle
+stores an Ed25519 identity key because it also signs the pre-keys; the classical half of the
+agreement needs the Curve25519 form. The public side maps through `to_montgomery()`, the
+secret side through SHA-512 then X25519 clamping. PQXDH shares one implementation of both
+with X3DH (`x3dh.rs`) rather than carrying its own — an Ed25519 verifying key is not the
+X25519 public point of the same seed, and treating it as one produces two sides that silently
+derive different secrets.
+
+**The gap.** The `pq` feature is off by default, no backend service enables it, and —
+decisively — `backend/proto/` contains **zero** ML-KEM fields, so a server cannot publish a
+PQ public key at all. The implementation is unreached, not absent.
+
+This ADR previously described `pqxdh.rs` as a complete implementation. That was measured
+against the code compiling, not against it agreeing: the identity-key conversion above was
+missing on both sides, so `test_classical_key_exchange` and `test_hybrid_key_exchange` had
+never passed. Being unreachable end to end is what kept that invisible.
 
 Repair is owned by PR-36 (proto fields) through PR-40 (fuzz, proptest, bench). Until then,
 **do not describe the product as post-quantum protected.**
