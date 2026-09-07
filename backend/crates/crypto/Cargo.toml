@@ -30,6 +30,9 @@ openmls.workspace = true
 openmls_rust_crypto.workspace = true
 openmls_traits.workspace = true
 openmls_basic_credential.workspace = true
+# Used directly by mls.rs for Welcome/message (de)serialization. Declared explicitly rather
+# than relied on via `openmls::prelude::*`, which happens to re-export it.
+tls_codec.workspace = true
 
 # Curve25519 for key exchange
 x25519-dalek.workspace = true

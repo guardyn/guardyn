@@ -110,6 +110,7 @@ mod mls_integration_tests {
     }
 
     #[test]
+    #[ignore = "MLS forbids decrypting your own message: the sender's application ratchet is consumed on encrypt, so OpenMLS returns SecretTreeError(RatchetTypeError). A correct test needs a second member joined via Welcome, which needs the KeyPackage and provider plumbing fixed first - see #42 (PR-31)"]
     fn test_encrypt_decrypt_message() {
         // Alice creates a group
         let alice_keypair = create_test_keypair().unwrap();
@@ -155,6 +156,7 @@ mod mls_integration_tests {
     }
 
     #[test]
+    #[ignore = "MLS forbids decrypting your own message: the sender's application ratchet is consumed on encrypt, so OpenMLS returns SecretTreeError(RatchetTypeError). A correct test needs a second member joined via Welcome, which needs the KeyPackage and provider plumbing fixed first - see #42 (PR-31)"]
     fn test_encrypt_after_adding_member() {
         // Alice creates a group
         let alice_keypair = create_test_keypair().unwrap();
@@ -226,6 +228,7 @@ mod mls_integration_tests {
     }
 
     #[test]
+    #[ignore = "MLS forbids decrypting your own message: the sender's application ratchet is consumed on encrypt, so OpenMLS returns SecretTreeError(RatchetTypeError). A correct test needs a second member joined via Welcome, which needs the KeyPackage and provider plumbing fixed first - see #42 (PR-31)"]
     fn test_multiple_messages() {
         // Alice creates a group
         let alice_keypair = create_test_keypair().unwrap();
@@ -264,6 +267,7 @@ mod mls_integration_tests {
     }
 
     #[test]
+    #[ignore = "MLS forbids decrypting your own message: the sender's application ratchet is consumed on encrypt, so OpenMLS returns SecretTreeError(RatchetTypeError). A correct test needs a second member joined via Welcome, which needs the KeyPackage and provider plumbing fixed first - see #42 (PR-31)"]
     fn test_empty_message() {
         // Alice creates a group
         let alice_keypair = create_test_keypair().unwrap();
@@ -284,6 +288,7 @@ mod mls_integration_tests {
     }
 
     #[test]
+    #[ignore = "MLS forbids decrypting your own message: the sender's application ratchet is consumed on encrypt, so OpenMLS returns SecretTreeError(RatchetTypeError). A correct test needs a second member joined via Welcome, which needs the KeyPackage and provider plumbing fixed first - see #42 (PR-31)"]
     fn test_large_message() {
         // Alice creates a group
         let alice_keypair = create_test_keypair().unwrap();

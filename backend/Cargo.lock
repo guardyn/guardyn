@@ -2683,6 +2683,7 @@ dependencies = [
  "sha2",
  "subtle",
  "thiserror 1.0.69",
+ "tls_codec",
  "tokio",
  "x25519-dalek",
  "zeroize",

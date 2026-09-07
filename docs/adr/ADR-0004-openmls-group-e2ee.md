@@ -38,8 +38,25 @@ property tests and fuzz targets on every attacker-reachable parser are mandatory
 (`AGENTS.md` §8), not optional.
 
 OpenMLS 0.6 constrains the ciphersuite to `MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519`
-— there is no AES-256-GCM option. Group state serialization currently fails to round-trip
-(`SecretTreeError(RatchetTypeError)`); PR-31 owns the repair.
+— there is no AES-256-GCM option.
+
+**Groups are created under a caller-supplied `GroupId`.** `MlsGroup::new` assigns a random
+identifier and silently ignores any the caller had in mind, so creation goes through
+`new_with_group_id`. A group whose identifier the caller cannot predict cannot be looked up.
+
+**A member cannot decrypt its own message.** The sender's application ratchet is consumed on
+encrypt, so OpenMLS answers `SecretTreeError(RatchetTypeError)`. This is MLS behaving
+correctly; any test or handler that expects a self round-trip is wrong.
+
+**Group state is not serialized at all.** `serialize_state` exports a 32-byte MLS exporter
+secret rather than the group, and there is no deserialization counterpart. A two-party
+exchange is also not yet possible: `generate_key_package` drops the provider and signature
+keypair it creates, and `join_group` builds a fresh empty provider with no init keys, so no
+Welcome can be processed. PR-31 (#42) owns all of it.
+
+This ADR previously recorded the defect as "group state serialization fails to round-trip
+(`SecretTreeError(RatchetTypeError)`)". That conflated two unrelated things: the error comes
+from self-decryption, and the round-trip does not fail so much as never happen.
 
 ## Alternatives rejected
 
