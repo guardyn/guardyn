@@ -1,48 +1,42 @@
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Compile Protocol Buffers for Media Service
+//! Compile the wire contract into `OUT_DIR`.
+//!
+//! ADR-0008: no generated protobuf is committed. `tonic_build` writes into `OUT_DIR` and
+//! `tonic::include_proto!` picks it up, so `backend/proto/*.proto` is the only editable
+//! artefact and drift between contract and code is structurally impossible.
 
-    // Get the manifest directory (workspace root)
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // The proto directory moves with the build context: a workspace build sees
+    // `backend/proto`, the Docker image sees `./proto` at its root.
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")?;
     let workspace_root = std::path::Path::new(&manifest_dir)
-        .parent()
-        .and_then(|p| p.parent())
-        .ok_or("Cannot find workspace root")?;
+        .parent() // crates/
+        .and_then(|p| p.parent()) // backend/
+        .ok_or("cannot locate the workspace root")?;
 
-    let proto_dir = workspace_root.join("proto");
-    let common_proto = proto_dir.join("common.proto");
-    let media_proto = proto_dir.join("media.proto");
+    let candidates = [
+        workspace_root.join("proto"),
+        std::path::PathBuf::from("./proto"),
+        std::path::PathBuf::from("../../proto"),
+    ];
+    let proto_dir = candidates
+        .iter()
+        .find(|p| p.join("common.proto").exists())
+        .ok_or("no proto directory found: tried backend/proto, ./proto, ../../proto")?;
 
-    // Create generated directory if it doesn't exist
-    let out_dir = std::path::Path::new(&manifest_dir).join("src/generated");
-    std::fs::create_dir_all(&out_dir)?;
+    let protos: Vec<std::path::PathBuf> = ["common.proto", "media.proto"]
+        .iter()
+        .map(|f| proto_dir.join(f))
+        .collect();
 
-    println!("cargo:warning=Out dir: {:?}", out_dir);
-    println!(
-        "cargo:warning=Proto files: {:?}, {:?}",
-        common_proto, media_proto
-    );
-
-    // Compile with explicit paths
-    let result = tonic_build::configure()
+    // Deliberately no .out_dir(): tonic_build then defaults to OUT_DIR. See ADR-0008.
+    tonic_build::configure()
         .build_server(true)
         .build_client(true)
-        .out_dir(&out_dir)
-        .compile_protos(
-            &[
-                common_proto.to_str().unwrap(),
-                media_proto.to_str().unwrap(),
-            ],
-            &[proto_dir.to_str().unwrap()],
-        );
+        .compile_protos(&protos, &[proto_dir])?;
 
-    if let Err(e) = result {
-        println!("cargo:warning=tonic_build error: {:?}", e);
-        return Err(e.into());
+    for proto in &protos {
+        println!("cargo:rerun-if-changed={}", proto.display());
     }
-
-    println!("cargo:warning=tonic_build succeeded!");
-    println!("cargo:rerun-if-changed={}", common_proto.display());
-    println!("cargo:rerun-if-changed={}", media_proto.display());
     println!("cargo:rerun-if-changed={}", proto_dir.display());
 
     Ok(())
