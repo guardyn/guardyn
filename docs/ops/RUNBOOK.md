@@ -97,6 +97,30 @@ carries `docs-impact:none` **with a stated reason**.
 
 Run it before pushing. It is faster than a round trip through CI.
 
+## Code-style verification
+
+```sh
+just rules-verify
+```
+
+The predicates of [`.claude/rules/20-code-style.md`](../../.claude/rules/20-code-style.md),
+executed. They had been stated as testable predicates since PR-05 with nothing running them.
+[`rules.yml`](../../.github/workflows/rules.yml) runs it on **every** pull request - not on a
+path filter, because `NAME-SH`, `ORG-ROOT`, `LANG-MD` and `ORG-LOCAL` are repository-wide
+properties and a `backend/**` filter would leave them unenforced for exactly the changes most
+likely to break them.
+
+Bash, git and awk only, so the job needs no toolchain and finishes in seconds. `cargo fmt` and
+`cargo clippy` stay in `build.yml`, where a Rust toolchain already exists.
+
+**Two predicates are ratcheted rather than enforced.** `RS-UNWRAP` (52 sites) and `NAME-SH`
+(5 files) fail today and are owned by later work, so each carries a budget equal to its
+measured count: the build fails when the number **grows**, and every fix lowers the ceiling.
+
+If `rules-verify` fails on a ratchet you did not mean to touch, you added a site. If it tells
+you the count is *down*, lower the budget in the same PR - the number is a claim about the
+repository, and a stale one is worse than none.
+
 ## Roadmap and board sync
 
 [`roadmap.yaml`](../roadmap/roadmap.yaml) is the machine source of truth. `roadmap-sync`

@@ -1,0 +1,47 @@
+name: rules
+
+# The predicates of .claude/rules/20-code-style.md, executed. They have been stated as
+# testable predicates since PR-05 with nothing behind them; this is the mechanism.
+#
+# Runs on every pull request, not on a path filter. NAME-SH, ORG-ROOT, LANG-MD and ORG-LOCAL
+# are repository-wide properties, so a filter on backend/** - the one build.yml carries -
+# would leave them unenforced for exactly the changes most likely to break them.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - '.claude/rules/**'
+      - 'infra/scripts/rules-verify.sh'
+      - '.github/workflows/rules.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rules-verify:
+    name: rules-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # PROTO-EDIT diffs the branch against its base, so the history must be present.
+          fetch-depth: 0
+
+      - name: Resolve base ref
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "ref=origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run rules-verify
+        env:
+          RULES_VERIFY_BASE: ${{ steps.base.outputs.ref }}
+        run: bash infra/scripts/rules-verify.sh

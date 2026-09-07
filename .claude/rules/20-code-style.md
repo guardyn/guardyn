@@ -12,20 +12,37 @@ Predicates for [`AGENTS.md`](../../AGENTS.md) §3 (language), §5 (code), §6 (d
 §7 (file organization). AGENTS.md carries the prose and the `ErrorCode` table; this file
 carries only what a machine can check.
 
-**Convention: every check prints its violations. Empty output means PASS.**
+**These predicates are executed, not merely stated.** `just rules-verify` runs them, and
+[`rules.yml`](../../.github/workflows/rules.yml) runs it on every pull request. The script
+[`infra/scripts/rules-verify.sh`](../../infra/scripts/rules-verify.sh) is the authority; the
+greps below are the same checks written out, kept because a predicate you cannot read is a
+predicate you cannot argue with.
 
-| ID | Predicate | Today |
-|---|---|---|
-| `RS-UNWRAP` | No `unwrap()` / `expect()` in non-test Rust | FAIL — 52 in 25 files, PR-22 |
-| `RS-UNSAFE` | No `unsafe` outside an FFI crate | PASS |
-| `RS-FMT` | `cargo fmt` is clean | see `build.yml` |
-| `RS-CLIPPY` | `cargo clippy -- -D warnings` is clean | masked until PR-17 |
-| `PROTO-EDIT` | Generated protobuf is never hand-edited | PASS |
-| `LANG-MD` | No Cyrillic in Markdown outside the one allowlisted file | PASS |
-| `NAME-SH` | Scripts are `kebab-case.sh` | FAIL — 5 files |
-| `NAME-RS` | Rust files are `snake_case.rs` | PASS |
-| `ORG-ROOT` | Only the 8 permitted root Markdown files exist | PASS |
-| `ORG-LOCAL` | No tracked file links into `_local/` | FAIL — `CHANGELOG.md:55` |
+| ID | Predicate | Today | Enforcement |
+|---|---|---|---|
+| `RS-UNWRAP` | No `unwrap()` / `expect()` in non-test Rust | FAIL — 52 in 25 files | ratchet at 52 |
+| `RS-UNSAFE` | No `unsafe` outside an FFI crate | PASS | hard fail |
+| `RS-FMT` | `cargo fmt` is clean | PASS | `build.yml` |
+| `RS-CLIPPY` | `cargo clippy -- -D warnings` is clean | PASS | `build.yml`, real since PR-17 |
+| `PROTO-EDIT` | Generated protobuf is never hand-edited | PASS | hard fail |
+| `LANG-MD` | No Cyrillic in Markdown outside the one allowlisted file | PASS | hard fail |
+| `NAME-SH` | Scripts are `kebab-case.sh` | FAIL — 5 files | ratchet at 5 |
+| `NAME-RS` | Rust files are `snake_case.rs` | PASS | hard fail |
+| `ORG-ROOT` | Only the 8 permitted root Markdown files exist | PASS | hard fail |
+| `ORG-LOCAL` | No tracked file links into `_local/` | PASS | hard fail |
+
+`RS-FMT` and `RS-CLIPPY` stay in `build.yml`: they need a Rust toolchain, and `rules-verify`
+deliberately needs nothing but bash, git and awk.
+
+## Ratchets, not warnings
+
+`RS-UNWRAP` and `NAME-SH` fail today, and fixing them is owned work rather than this file's.
+Each therefore carries a **budget equal to its measured count**: the build fails the moment
+the number *grows*. Existing debt is frozen, new debt is impossible, and every fix lowers the
+ceiling — the budget is edited down in the same PR that removes a site.
+
+A warning nobody has to act on is how `continue-on-error` made CI decorative before PR-17.
+A ratchet cannot be scrolled past.
 
 ```sh
 echo "RS-UNWRAP";  git ls-files 'backend/crates/*/src/*.rs' 'backend/crates/*/src/**/*.rs' \
@@ -35,15 +52,24 @@ echo "RS-UNWRAP";  git ls-files 'backend/crates/*/src/*.rs' 'backend/crates/*/sr
                        done
 echo "RS-UNSAFE";  grep -rln 'unsafe ' --include='*.rs' backend/crates/*/src | grep -vE 'crypto-ffi|/ffi'
 echo "RS-FMT";     cargo fmt --all --manifest-path backend/Cargo.toml -- --check
-echo "PROTO-EDIT"; git diff --name-only origin/main...HEAD | grep -E '/(generated|proto)/.*\.rs$'
+echo "PROTO-EDIT"; git diff --name-only --diff-filter=d origin/main...HEAD \
+                     | grep -E '/(generated|proto)/.*\.rs$'
 echo "LANG-MD";    git grep -lIP '[\x{0400}-\x{04FF}]' -- '*.md' | grep -v 'copilot-commit-message'
 echo "NAME-SH";    git ls-files '*.sh' | xargs -n1 basename | grep -vE '^[a-z0-9-]+\.sh$'
 echo "NAME-RS";    git ls-files '*.rs' | grep -vE '/(generated|proto)/' \
                      | xargs -n1 basename | grep -vE '^[a-z0-9_]+\.rs$'
 echo "ORG-ROOT";   git ls-files -- '*.md' | grep -v / \
                      | grep -vE '^(README|AGENTS|CLAUDE|CONTRIBUTING|CHANGELOG|SECURITY|CODE_OF_CONDUCT|implementation_plan)\.md$'
-echo "ORG-LOCAL";  git grep -lI '](.*_local/' -- '*.md'
+echo "ORG-LOCAL";  git grep -lI '](.*_local/' -- '*.md' | grep -v '^\.claude/rules/'
 ```
+
+`ORG-LOCAL` excludes `.claude/rules/` because the line above *contains the pattern it
+searches for* — this file matches itself. Same reason `LANG-MD` allowlists the policy file
+that lists the forbidden alphabets: a rule may state its own violation.
+
+The `CHANGELOG.md:55` instance this predicate was written for is **gone**. The one surviving
+mention of `_local/` in `CHANGELOG.md` is prose in backticks, not a Markdown link, so it never
+matched.
 
 ## Exceptions that are not violations
 
