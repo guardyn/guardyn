@@ -10,37 +10,46 @@ supersedes: []
 
 # State
 
-**Generated from [`roadmap.yaml`](roadmap.yaml). Do not hand-edit** — `docs-verify` fails
-if this file and the YAML disagree. Regenerate instead.
+**Derived from [`roadmap.yaml`](roadmap.yaml). Do not hand-edit** — when the two disagree, the
+YAML wins.
 
-Generated: 2026-09-06
+> This file *claims* to be generated and to be checked by `docs-verify`. Neither is true yet:
+> no generator exists and `docs-verify` has no staleness check. That is
+> [#101](https://github.com/guardyn/guardyn/issues/101), and until it lands this file is
+> maintained by hand and can rot between gates. It was last reconciled against the YAML and
+> against GitHub on the date below.
+
+Reconciled: 2026-09-07
 
 ## Progress
 
 | Phase | Done | Total | |
 |---|---|---|---|
-| 1 | 7 | 19 | `████░░░░░░` |
-| 2 | 0 | 6 | `░░░░░░░░░░` |
+| 1 | 19 | 19 | `██████████` |
+| 2 | 7 | 7 | `██████████` |
 | 3 | 0 | 12 | `░░░░░░░░░░` |
 | 4 | 0 | 9 | `░░░░░░░░░░` |
-| **all** | **7** | **46** | |
+| **all** | **26** | **47** | |
 
 ## Position
 
-- **Current phase:** 1
-- **Next gate:** G1, after PR-17
-- **Next step:** PR-06 — Add .claude/settings.json guard hooks and pre-commit hook (#17)
+- **Current phase:** 2 — complete
+- **Next gate:** **G2, reached** after PR-23. Awaiting explicit user approval.
+- **Next step:** PR-24 — Add `common/src/redact.rs` (#35), and it must not start before G2 is
+  approved.
 
 ## Gates
 
 | Gate | After | Status |
 |---|---|---|
-| G1 | PR-17 | not reached |
-| G2 | PR-23 | not reached |
+| G1 | PR-17 | **passed** |
+| G2 | PR-23 | **reached — awaiting approval** |
 | G3 | PR-35 | not reached |
 | G4 | PR-44 | not reached |
 
 ## Invariants
+
+Unchanged by Phase 2, which touched tracking and build strategy rather than behaviour.
 
 | # | Name | Met | Closed by |
 |---|---|---|---|
@@ -54,5 +63,17 @@ Generated: 2026-09-06
 ## Blocked
 
 **P-1** — `project_sync_enabled: false`. No token available to CI can read or write the
-project board, so roadmap-to-board sync cannot run. Needs a human to create
-`GUARDYN_PROJECT_TOKEN` with `repo` + `project` scope.
+Project v2 board: the organization rejects fine-grained PATs over a 366-day lifetime, and the
+fallback OAuth token has no `project` scope. Needs a human to create `GUARDYN_PROJECT_TOKEN`
+with `repo` + `project` scope.
+
+Its blast radius shrank in Phase 2. Phase is now tracked by **milestones**, which are plain
+REST, so `roadmap-sync` and `pr-link` both do real work with the ambient token; only the board
+half waits.
+
+## Carried into Phase 3
+
+| | |
+|---|---|
+| [#116](https://github.com/guardyn/guardyn/issues/116) | Phase 1 straggler — `desktop-build.yml` test job can never pass |
+| [#101](https://github.com/guardyn/guardyn/issues/101) | `docs-verify` has no staleness check, and this file is maintained by hand because of it |

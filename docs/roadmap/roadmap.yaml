@@ -48,11 +48,12 @@ steps:
   - {id: PR-16, issue: 27, phase: 1, type: feat, status: done, title: "Add .github/workflows/docs.yml"}
   - {id: PR-17, issue: 28, phase: 1, type: fix, status: done, gate: G1, title: "Remove continue-on-error from build.yml"}
   - {id: PR-18, issue: 29, phase: 2, type: feat, status: done, title: "Add .github/workflows/roadmap-sync.yml"}
-  - {id: PR-19, issue: 30, phase: 2, type: feat, status: todo, title: "Add .github/workflows/pr-link.yml"}
-  - {id: PR-20, issue: 31, phase: 2, type: docs, status: todo, title: "Add .claude/skills/issue-sync skill"}
-  - {id: PR-21, issue: 32, phase: 2, type: chore, status: todo, title: "Create label taxonomy"}
-  - {id: PR-22, issue: 33, phase: 2, type: docs, status: todo, title: "Codify code-style predicates in .claude/rules/20-code-style.md"}
-  - {id: PR-23, issue: 34, phase: 2, type: refactor, status: todo, gate: G2, title: "Unify protobuf codegen strategy"}
+  - {id: PR-18b, issue: 121, phase: 2, type: feat, status: done, title: "Reconcile milestones in roadmap-sync and correct the stale Phase 1 statuses"}
+  - {id: PR-19, issue: 30, phase: 2, type: feat, status: done, title: "Add .github/workflows/pr-link.yml"}
+  - {id: PR-20, issue: 31, phase: 2, type: docs, status: done, title: "Add .claude/skills/issue-sync skill"}
+  - {id: PR-21, issue: 32, phase: 2, type: chore, status: done, title: "Create label taxonomy"}
+  - {id: PR-22, issue: 33, phase: 2, type: docs, status: done, title: "Codify code-style predicates in .claude/rules/20-code-style.md"}
+  - {id: PR-23, issue: 34, phase: 2, type: refactor, status: done, gate: G2, title: "Unify protobuf codegen strategy"}
   - {id: PR-24, issue: 35, phase: 3, type: security, status: todo, title: "Add common/src/redact.rs"}
   - {id: PR-25, issue: 36, phase: 3, type: security, status: todo, title: "Apply Redacted<T> across crypto, auth and messaging types"}
   - {id: PR-26, issue: 37, phase: 3, type: security, status: todo, title: "Migrate call-service and notification-service to observability::init_tracing"}
