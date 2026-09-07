@@ -1,3 +1,10 @@
+// tonic's generated service traits fix the handler signature as
+// `Result<Response<T>, Status>`, and `Status` is 176 bytes. clippy 1.98 extended
+// `result_large_err` from closures to functions, so every handler now trips it - as does
+// tonic's own generated code. The lint's remedy, `Box<Status>`, would no longer implement
+// the trait, so it is not available. Scoped to crates that speak gRPC: `crypto` and
+// `common` still get the lint.
+#![allow(clippy::result_large_err)]
 // Allow common development-time warnings for code under active development
 #![allow(unused_variables, unused_mut, dead_code, unused_imports)]
 

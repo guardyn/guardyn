@@ -61,7 +61,7 @@ pub async fn handle(
     // Generate media ID and storage path
     let media_id = DatabaseClient::generate_media_id();
     let extension = header.filename.rsplit('.').next().unwrap_or("bin");
-    let storage_path = format!("{}/{}.{}", &user_id, &media_id, extension);
+    let storage_path = format!("{}/{}.{}", user_id, media_id, extension);
 
     tracing::info!(
         media_id = %media_id,
