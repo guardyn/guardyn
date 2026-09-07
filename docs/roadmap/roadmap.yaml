@@ -35,19 +35,19 @@ steps:
   - {id: PR-03, issue: 14, phase: 1, type: chore, status: done, title: "Remove committed build artifacts and extend .gitignore"}
   - {id: PR-04, issue: 15, phase: 1, type: docs, status: done, title: "Add AGENTS.md and CLAUDE.md agent constitution"}
   - {id: PR-05, issue: 16, phase: 1, type: docs, status: done, title: "Add .claude/rules ruleset"}
-  - {id: PR-06, issue: 17, phase: 1, type: chore, status: todo, title: "Add .claude/settings.json guard hooks and pre-commit hook"}
-  - {id: PR-07, issue: 18, phase: 1, type: docs, status: todo, title: "Add CODEOWNERS and dependabot; rewrite CONTRIBUTING.md and README.md"}
-  - {id: PR-08, issue: 19, phase: 1, type: docs, status: todo, title: "Add docs/INDEX.md and GLOSSARY.md"}
-  - {id: PR-09, issue: 20, phase: 1, type: docs, status: todo, title: "Write docs/spec/SAD.md"}
-  - {id: PR-10, issue: 21, phase: 1, type: docs, status: todo, title: "Write docs/spec/SRS.md"}
-  - {id: PR-11, issue: 22, phase: 1, type: docs, status: todo, title: "Write docs/spec/PRD.md"}
-  - {id: PR-12, issue: 23, phase: 1, type: docs, status: todo, title: "Write ADR-0001 through ADR-0009"}
-  - {id: PR-13, issue: 24, phase: 1, type: docs, status: todo, title: "Write docs/ops DEPLOYMENT, RUNBOOK, OBSERVABILITY"}
-  - {id: PR-14, issue: 25, phase: 1, type: docs, status: todo, title: "Write docs/roadmap ROADMAP.md, roadmap.yaml, STATE.md"}
-  - {id: PR-15, issue: 26, phase: 1, type: feat, status: todo, title: "Add docs/.manifest.yaml and just docs-verify"}
-  - {id: PR-16, issue: 27, phase: 1, type: feat, status: todo, title: "Add .github/workflows/docs.yml"}
-  - {id: PR-17, issue: 28, phase: 1, type: fix, status: todo, gate: G1, title: "Remove continue-on-error from build.yml"}
-  - {id: PR-18, issue: 29, phase: 2, type: feat, status: todo, title: "Add .github/workflows/roadmap-sync.yml"}
+  - {id: PR-06, issue: 17, phase: 1, type: chore, status: done, title: "Add .claude/settings.json guard hooks and pre-commit hook"}
+  - {id: PR-07, issue: 18, phase: 1, type: docs, status: done, title: "Add CODEOWNERS and dependabot; rewrite CONTRIBUTING.md and README.md"}
+  - {id: PR-08, issue: 19, phase: 1, type: docs, status: done, title: "Add docs/INDEX.md and GLOSSARY.md"}
+  - {id: PR-09, issue: 20, phase: 1, type: docs, status: done, title: "Write docs/spec/SAD.md"}
+  - {id: PR-10, issue: 21, phase: 1, type: docs, status: done, title: "Write docs/spec/SRS.md"}
+  - {id: PR-11, issue: 22, phase: 1, type: docs, status: done, title: "Write docs/spec/PRD.md"}
+  - {id: PR-12, issue: 23, phase: 1, type: docs, status: done, title: "Write ADR-0001 through ADR-0009"}
+  - {id: PR-13, issue: 24, phase: 1, type: docs, status: done, title: "Write docs/ops DEPLOYMENT, RUNBOOK, OBSERVABILITY"}
+  - {id: PR-14, issue: 25, phase: 1, type: docs, status: done, title: "Write docs/roadmap ROADMAP.md, roadmap.yaml, STATE.md"}
+  - {id: PR-15, issue: 26, phase: 1, type: feat, status: done, title: "Add docs/.manifest.yaml and just docs-verify"}
+  - {id: PR-16, issue: 27, phase: 1, type: feat, status: done, title: "Add .github/workflows/docs.yml"}
+  - {id: PR-17, issue: 28, phase: 1, type: fix, status: done, gate: G1, title: "Remove continue-on-error from build.yml"}
+  - {id: PR-18, issue: 29, phase: 2, type: feat, status: done, title: "Add .github/workflows/roadmap-sync.yml"}
   - {id: PR-19, issue: 30, phase: 2, type: feat, status: todo, title: "Add .github/workflows/pr-link.yml"}
   - {id: PR-20, issue: 31, phase: 2, type: docs, status: todo, title: "Add .claude/skills/issue-sync skill"}
   - {id: PR-21, issue: 32, phase: 2, type: chore, status: todo, title: "Create label taxonomy"}

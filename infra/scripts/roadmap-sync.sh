@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 #
-# Roadmap sync - reconciles docs/roadmap/roadmap.yaml into GitHub Issues and the Project v2
-# board. The YAML is the machine source of truth; this script moves the world toward it.
+# Roadmap sync - reconciles docs/roadmap/roadmap.yaml into GitHub Issues, their Milestones,
+# and the Project v2 board. The YAML is the machine source of truth; this script moves the
+# world toward it.
+#
+# Three passes, in descending order of how reliably they can run:
+#   issue state  - REST, ambient token. Always runs.
+#   milestone    - REST, ambient token. Always runs. `phase: N` maps to milestone "Phase N".
+#   board        - GraphQL, needs a project scope no available token has yet (P-1). Guarded.
 #
 # Reconciling, not appending: every action is derived from the difference between the file
 # and the platform, so running it twice changes nothing the second time. That property is
@@ -60,10 +66,15 @@ if ! command -v gh >/dev/null 2>&1; then
   DRY_RUN=1
 fi
 
+# project_sync_enabled governs the PROJECT BOARD, and nothing else. It used to force a global
+# dry run, which made the issue and milestone passes unreachable while P-1 is open - a
+# decorative automation of exactly the kind `continue-on-error` made of CI before PR-17.
+# Issues and milestones need only the ambient token, so they run regardless.
 sync_enabled="$(sed -n 's/^project_sync_enabled:[[:space:]]*//p' "$ROADMAP" | head -1)"
 if [ "$sync_enabled" != "true" ]; then
-  say "${YELLOW}note${RESET} project_sync_enabled is '${sync_enabled:-unset}' in $ROADMAP - dry run."
-  DRY_RUN=1
+  say "${YELLOW}note${RESET} project_sync_enabled is '${sync_enabled:-unset}' in $ROADMAP - board sync off."
+  say "     Issue state and milestones still reconcile."
+  BOARD_ENABLED=0
 fi
 
 [ "$DRY_RUN" = "1" ] && say "${YELLOW}note${RESET} dry run: nothing will be written."
@@ -79,6 +90,32 @@ steps_raw="$(sed -n '/^steps:/,/^[a-z_]*:/p' "$ROADMAP" | sed -n 's/^[[:space:]]
 
 total="$(printf '%s\n' "$steps_raw" | wc -l | tr -d ' ')"
 say "roadmap-sync: $total step(s) in $ROADMAP, repo $REPO"
+
+# ---------------------------------------------------------------------------------------
+# Resolve the phase -> milestone map
+# ---------------------------------------------------------------------------------------
+# Phase is tracked by native GitHub Milestones titled "Phase N - ...", not by a phase: label
+# and not by a Project v2 field. Milestones are plain REST and writable with the ambient
+# token, so this pass sits OUTSIDE the board guard below: gating it on GUARDYN_PROJECT_TOKEN
+# would make it dead code for a reason (P-1) that only applies to the Project v2 GraphQL API.
+#
+# A repository with no such milestones is a documented state, not an error - say so and let
+# the issue pass run alone.
+MILESTONE_MAP=""
+if command -v gh >/dev/null 2>&1; then
+  MILESTONE_MAP="$(gh api "repos/$REPO/milestones?state=all" --paginate \
+    --jq '.[] | select(.title | test("^Phase [0-9]+ ")) |
+          "\(.title | capture("^Phase (?<p>[0-9]+) ").p)\t\(.number)"' 2>/dev/null)"
+fi
+
+if [ -z "$MILESTONE_MAP" ]; then
+  say "${YELLOW}note${RESET} no \"Phase N\" milestone found in $REPO - milestone pass skipped."
+else
+  say "milestones: $(printf '%s\n' "$MILESTONE_MAP" | wc -l | tr -d ' ') phase milestone(s) resolved"
+fi
+
+# phase number -> milestone number. Empty output means "no milestone for this phase".
+milestone_for() { printf '%s\n' "$MILESTONE_MAP" | awk -F'\t' -v p="$1" '$1 == p { print $2; exit }'; }
 
 # ---------------------------------------------------------------------------------------
 # Reconcile issues
@@ -100,13 +137,18 @@ while IFS= read -r step; do
   want_state="open"
   [ "$status" = "done" ] && want_state="closed"
 
+  want_ms="$(milestone_for "$phase")"
+
   if [ "$DRY_RUN" = "1" ]; then
-    say "  $id -> #$issue want=$want_state phase=$phase"
+    say "  $id -> #$issue want=$want_state phase=$phase milestone=${want_ms:-none}"
     skipped=$((skipped + 1))
     continue
   fi
 
-  have="$(gh api "repos/$REPO/issues/$issue" --jq '.state' 2>/dev/null)"
+  # One read serves both passes. `0` stands for "no milestone", which no real milestone
+  # number can collide with, so it compares safely against an empty want_ms.
+  read -r have have_ms <<<"$(gh api "repos/$REPO/issues/$issue" \
+    --jq '"\(.state) \(.milestone.number // 0)"' 2>/dev/null)"
   if [ -z "$have" ]; then
     bad "$id references #$issue which does not exist"
     continue
@@ -127,6 +169,17 @@ while IFS= read -r step; do
     else
       bad "$id #$issue could not be reopened"
     fi
+  fi
+
+  # Milestone. Written only on mismatch, so the second run of any pair reports `same`.
+  if [ -z "$want_ms" ]; then
+    :
+  elif [ "$have_ms" = "$want_ms" ]; then
+    noop "$id #$issue already on milestone $want_ms"
+  elif gh api -X PATCH "repos/$REPO/issues/$issue" -F milestone="$want_ms" >/dev/null 2>&1; then
+    ok "$id #$issue moved to milestone $want_ms"
+  else
+    bad "$id #$issue could not be moved to milestone $want_ms"
   fi
 done <<<"$steps_raw"
 
