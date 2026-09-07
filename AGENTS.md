@@ -100,6 +100,17 @@ Explain **why**, not just what. State anything deliberately left out of scope.
 Phases end at gates **G1–G4**. At a gate: **STOP**, post the phase report to the board,
 and **wait for explicit user approval**. Never carry on into the next phase unprompted.
 
+### 2.6 Roadmap changes
+
+`docs/roadmap/roadmap.yaml` is the machine source of truth; GitHub Issues, milestones and the
+project board are a **projection** of it. Change the YAML and reconcile — never the other way
+round. Two states that disagree cannot be told apart, and the next sync reverts the hand-edit.
+
+Use the [`issue-sync`](.claude/skills/issue-sync/SKILL.md) skill. It carries the loop, the
+field reference, and the hazard to check before changing any `status:`.
+
+**Never close an issue, set a milestone, or move a board card by hand.**
+
 ---
 
 ## 3. Language policy — English only
