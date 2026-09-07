@@ -57,12 +57,13 @@ jobs:
       - name: Run Clippy
         working-directory: ./backend
         run: cargo clippy --all-targets --all-features -- -D warnings
-        continue-on-error: true
 
+      # The package is `guardyn-e2e-tests`; `--exclude e2e-tests` matched nothing, so the
+      # exclusion was inert. It only became load-bearing once this step could fail: the e2e
+      # suite needs a live k3d cluster and is covered by test.yml instead.
       - name: Run tests
         working-directory: ./backend
-        run: cargo test --workspace --exclude e2e-tests
-        continue-on-error: true
+        run: cargo test --workspace --exclude guardyn-e2e-tests
 
   security-audit:
     name: Security Audit
