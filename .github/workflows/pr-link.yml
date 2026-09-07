@@ -1,0 +1,105 @@
+name: pr-link
+
+# One micro-step is one branch, one PR, one issue (AGENTS.md section 2). The branch name
+# carries the issue id, so the link between the three is derivable and does not need to be
+# remembered: `feat/121-milestone-sync` belongs to issue #121.
+#
+# This workflow makes that link real on the platform - a closing reference in the body and
+# the issue's milestone on the PR - so the board and the milestone progress bars stay true
+# without anyone maintaining them by hand.
+#
+# The Project v2 half - move the card to In Review, then Done - is NOT implemented. Preflight
+# P-1 leaves no token with a project scope, so it could not be run, and shipping untested
+# GraphQL against a board nobody can read would be a guess. The guard is here, it says what
+# is missing, and it exits 0: a missing secret is a documented state, not a build failure.
+
+# `pull_request`, deliberately not `pull_request_target`. The latter would hand a writable
+# token to a workflow triggered by a fork - the standard privilege-escalation vector - and it
+# would buy nothing, because the only thing the merge half does is the board move that P-1
+# already blocks.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+# A second push while the first run is still going would race on the same PR body.
+concurrency:
+  group: pr-link-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  link:
+    name: Link PR to its issue
+    runs-on: ubuntu-latest
+    # A pull_request run from a fork gets a read-only token whatever `permissions:` says, so
+    # every write below would fail. Skip rather than fail: nothing here is a merge gate.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Reconcile the PR against its issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUARDYN_PROJECT_TOKEN: ${{ secrets.GUARDYN_PROJECT_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          set -uo pipefail
+
+          # <type>/<issue>-<slug>, per .claude/rules/10-git-workflow.md GIT-BRANCH.
+          issue="$(sed -nE 's#^(feat|fix|docs|refactor|chore|security)/([0-9]+)-.*#\2#p' <<<"$BRANCH")"
+          if [ -z "$issue" ]; then
+            echo "note: branch '$BRANCH' carries no issue id - nothing to link."
+            exit 0
+          fi
+
+          if ! gh api "repos/$REPO/issues/$issue" --jq '.number' >/dev/null 2>&1; then
+            echo "note: branch '$BRANCH' names #$issue, which does not exist."
+            exit 0
+          fi
+          echo "PR #$PR belongs to issue #$issue"
+
+          body="$(gh api "repos/$REPO/pulls/$PR" --jq '.body // ""')"
+
+          # A closing reference is what makes GitHub close the issue on merge. Add it only
+          # when absent - never rewrite a body that already says what it means.
+          if grep -qiE '(clos(e|es|ed)|fix(e[sd])?|resolv(e|es|ed))[[:space:]]+#[0-9]+' <<<"$body"; then
+            echo "same: body already carries a closing reference"
+          else
+            printf '%s\n\nCloses #%s\n' "$body" "$issue" > "$RUNNER_TEMP/body.md"
+            if gh api -X PATCH "repos/$REPO/pulls/$PR" -F body=@"$RUNNER_TEMP/body.md" >/dev/null 2>&1; then
+              echo "sync: added 'Closes #$issue' to the body"
+            else
+              echo "warn: could not update the body of #$PR"
+            fi
+          fi
+
+          # Milestone: the PR inherits the issue's, so a phase's progress counts the work
+          # and not just the ticket. Written only on mismatch.
+          want="$(gh api "repos/$REPO/issues/$issue" --jq '.milestone.number // empty')"
+          have="$(gh api "repos/$REPO/issues/$PR"   --jq '.milestone.number // empty')"
+          if [ -z "$want" ]; then
+            echo "note: #$issue has no milestone - none to inherit"
+          elif [ "$want" = "$have" ]; then
+            echo "same: #$PR already on milestone $want"
+          elif gh api -X PATCH "repos/$REPO/issues/$PR" -F milestone="$want" >/dev/null 2>&1; then
+            echo "sync: #$PR moved to milestone $want"
+          else
+            echo "warn: could not set milestone $want on #$PR"
+          fi
+
+          # Project v2. Blocked by P-1 - see docs/ops/RUNBOOK.md. A missing secret is a
+          # documented state, not a build failure.
+          if [ -z "${GUARDYN_PROJECT_TOKEN:-}" ]; then
+            echo "note: GUARDYN_PROJECT_TOKEN is unset - board move skipped (preflight P-1)."
+            exit 0
+          fi
+
+          target="In Review"
+          [ "$MERGED" = "true" ] && target="Done"
+          echo "note: board move to '$target' is not implemented yet - the token now exists,"
+          echo "      so wire it in the step that owns the board (roadmap-sync.sh)."

@@ -130,6 +130,28 @@ flag gates the board **only** - issue state and milestones reconcile either way.
 > the file, so a stale `todo` reopens a correctly-closed issue. This bit once: PR-06 through
 > PR-18 stayed `todo` after merging, which would have reopened thirteen issues.
 
+## PR to issue linking
+
+`roadmap-sync` reconciles the roadmap on a schedule; [`pr-link.yml`](../../.github/workflows/pr-link.yml)
+handles the single PR in front of it, at the moment it opens.
+
+One micro-step is one branch, one PR, one issue, and the branch name carries the issue id -
+`feat/121-milestone-sync` belongs to #121. From that the workflow derives two things:
+
+| It sets | So that |
+|---|---|
+| `Closes #N` in the PR body, when no closing reference is there already | merging the PR closes the issue, with no one having to remember |
+| the issue's milestone, on the PR | a phase's progress counts the work, not only the ticket |
+
+It never rewrites a body that already names a closing issue, and it writes the milestone only
+when it differs - the same reconcile-don't-append rule `roadmap-sync` follows.
+
+**A branch that does not match `<type>/<issue>-<slug>` is skipped, not failed.** Dependabot
+branches are the common case, and nothing here is a merge gate.
+
+The board move (*In Review* on open, *Done* on merge) is **not implemented** - P-1 again. The
+guard is in place and says so.
+
 ## Escalation
 
 Security issues go to security@guardyn.app and **never** into a public issue
