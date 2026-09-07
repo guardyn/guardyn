@@ -490,3 +490,7 @@ docs-verify:
 # Dry by default; pass 0 to write. Requires GUARDYN_PROJECT_TOKEN for the board half.
 roadmap-sync dry="1":
     @ROADMAP_SYNC_DRY_RUN={{dry}} bash infra/scripts/roadmap-sync.sh
+
+# Verify the code-style predicates of .claude/rules/20-code-style.md.
+rules-verify:
+    @bash infra/scripts/rules-verify.sh
