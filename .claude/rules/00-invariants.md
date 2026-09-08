@@ -19,12 +19,12 @@ If a task appears to require it, stop and ask the user.
 | ID | Invariant | Predicate | Today | Owned by |
 |---|---|---|---|---|
 | `ZK-INIT` | I-1 | Tracing is initialised only via `guardyn_common::observability::init_tracing` | PASS | `rules-verify` |
-| `ZK-PII` | I-1 | No log macro is passed a raw IP, email or phone number | FAIL (2) | **none — open an issue** |
+| `ZK-PII` | I-1 | No log macro is passed a raw IP, email or phone number | PASS | `rules-verify` |
 | `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | FAIL (4) | PR-32b, PR-32c |
 | `E2EE-DUP` | I-2 | No handler has a non-E2EE twin | PASS | `rules-verify` |
 | `PQ-DEFAULT` | I-3 | The `pq` feature is on by default in the crypto crate | FAIL | PR-38 |
 | `PQ-WIRE` | I-3 | The wire contract carries ML-KEM key material | FAIL | PR-36 |
-| `SOV-DOMAIN` | I-4 | Every hostname derives from `${DOMAIN}` | FAIL (1) | **none — open an issue** |
+| `SOV-DOMAIN` | I-4 | Every hostname derives from `${DOMAIN}` | FAIL (1) | **none — tracked by #82** |
 | `SOV-STORE` | I-4 | No datastore added, replaced or removed without an accepted ADR | PASS | reviewer |
 
 Run from the repository root:
@@ -56,9 +56,13 @@ an I-1 one. §1 also says four such pairs existed; the measured count was **two*
 `PQ-WIRE` fails while `crypto/src/pqxdh.rs` is a complete hybrid X25519 + ML-KEM-768
 implementation. It is unreached, not absent — no proto field can carry the public key.
 
-**A known failure is not licence to patch it.** Four of these have an owned step; fixing one
-outside that step breaks the micro-step contract. The two marked *none* were found while
-writing this file and need an issue opened before any fix.
+**A known failure is not licence to patch it.** Three of the remaining failures have an owned
+step - `E2EE-FLAG` (PR-32b, PR-32c), `PQ-DEFAULT` (PR-38) and `PQ-WIRE` (PR-36) - and fixing one
+outside that step breaks the micro-step contract.
+
+`ZK-PII` and `SOV-DOMAIN` were both found while writing this file, with no owning step. Each had
+an issue opened before any fix. `ZK-PII` is now closed by #81 and enforced by `rules-verify`;
+`SOV-DOMAIN` is tracked by #82 and still has **no roadmap step**.
 
 ## Detail
 

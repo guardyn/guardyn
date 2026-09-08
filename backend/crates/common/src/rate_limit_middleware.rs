@@ -271,8 +271,11 @@ pub fn rate_limit_interceptor(
                     retry_after.as_secs()
                 )))
             }
-            Err(RateLimitError::IpBlocked { ip }) => Err(tonic::Status::permission_denied(
-                format!("IP address {} is blocked", ip),
+            // The address is not echoed back: the caller already knows its own,
+            // and a gRPC status message travels through logging middleware where
+            // I-1 applies.
+            Err(RateLimitError::IpBlocked { .. }) => Err(tonic::Status::permission_denied(
+                "Your IP address is blocked",
             )),
             Err(RateLimitError::UserBlocked { user_id }) => Err(tonic::Status::permission_denied(
                 format!("User {} is blocked", user_id),

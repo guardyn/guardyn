@@ -16,7 +16,7 @@ invariant most easily broken by a one-line "helpful" debug statement, so it gets
 | ID | Predicate | Today |
 |---|---|---|
 | `ZK-INIT` | Tracing is initialised only via `guardyn_common::observability::init_tracing` | PASS — enforced by `rules-verify` |
-| `ZK-PII` | No log macro is passed a raw IP, email or phone number | FAIL — 2 sites, no owner |
+| `ZK-PII` | No log macro is passed a raw IP, email or phone number | PASS |
 | `ZK-PAYLOAD` | No log macro names ciphertext, plaintext, payload or key material | PASS |
 | `ZK-STRUCT` | No whole request or response struct is interpolated | PASS |
 | `ZK-DEBUG` | No `#[derive(Debug)]` on a crypto type that holds key material | review trigger |
@@ -57,8 +57,20 @@ them, and never at `info` on a hot path. `ZK-PAYLOAD` deliberately excludes `*_i
 the four `ratchet session: {session_id}` lines in `messaging-service` are identifiers, not
 key material, and are allowed under that rule.
 
-## The two failures with no owned step
+## How ZK-PII was closed
 
-`ZK-PII` fires on `common/src/rate_limit.rs:241` and `:256`, which log a raw client IP.
-`AGENTS.md` §4 lists IP address as PII. This was found while writing these predicates and
-has no step in `implementation_plan.md` — open an issue before fixing it.
+It fired on `common/src/rate_limit.rs:241` and `:256`, which logged a raw client IP, and on the
+`Display` of `RateLimitError::IpBlocked`, which a grep over log macros could not see.
+
+The fix is `ip_fingerprint` — a per-process-salted 64-bit hash. An operator can still tell that
+the *same* address was blocked repeatedly, which is the operational need, while the log carries
+no address. The salt lives only in process memory, so fingerprints do not correlate across
+restarts or between replicas and cannot be matched against a precomputed table.
+
+It is not a cryptographic commitment, and the doc comment says so: anyone who can read process
+memory recovers the salt. That is the right bar for log hygiene, not for defence against an
+attacker already inside the process.
+
+**The predicate is a field-name grep and cannot see everything.** A raw IP under a neutral name,
+or one reaching a log through a `Display` impl, passes it. `IpBlocked` was exactly that case and
+was found by reading, not by the check.
