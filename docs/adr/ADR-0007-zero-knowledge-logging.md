@@ -41,8 +41,14 @@ Two mechanisms, shipped in `common/src/redact.rs` (PR-24):
   `tracing_serde` serializes what a `Visit` recorded, which is `Debug` or `Display`.
 - **`DENIED_FIELDS`** — the companion denylist of log field names whose values must never be
   emitted. Matching is exact and case-insensitive, never substring: a substring rule on `key`
-  would fire on `key_id`, and identifiers are metadata, not key material. The `tracing`
-  formatter that enforces this list consumes it; this module supplies the vocabulary.
+  would fire on `key_id`, and identifiers are metadata, not key material.
+- **`RedactingFormat`** — a `FormatEvent` that replaces the value of any event field named on
+  that denylist, and emits a `redacted: [names]` array so a hit is alertable rather than
+  silently swallowed. Events carrying no denied field are delegated untouched, so the common
+  path is byte-identical.
+
+It is a `FormatEvent` rather than a `Layer` because a `Layer` receives `&Event` and cannot
+remove or rewrite a field — the `fmt` layer downstream re-reads the original event regardless.
 
 ## Consequences
 
@@ -56,6 +62,10 @@ sparingly rather than dumping a request. That difficulty is the feature.
 directly (PR-26). `common/src/rate_limit.rs:241,256` log a raw client IP — PII under this
 ADR — and have **no owned step**; note the denylist cannot reach them, because they
 interpolate the IP positionally into `message` rather than naming a field.
+
+**Span fields are not yet redacted.** `RedactingFormat` covers event fields only. `JsonFields`
+overrides `add_fields` to re-parse and re-serialize, so a naive `FormatFields` emits malformed
+JSON on the six live `Span::current().record` handlers in `messaging-service`. Unowned.
 
 ## Alternatives rejected
 
