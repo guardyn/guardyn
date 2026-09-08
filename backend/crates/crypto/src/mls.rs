@@ -448,10 +448,16 @@ impl MlsGroupManager {
         }
     }
 
-    /// Serialize group state for storage
+    /// Export a 32-byte secret derived from the current epoch secret.
     ///
-    /// # Returns
-    /// MlsGroupState with serialized group data
+    /// # This does not serialize the group
+    ///
+    /// The name is wrong and there is no deserializer: a group cannot be
+    /// restored from what this returns. Real persistence is the OpenMLS
+    /// `StorageProvider`'s job, paired with `MlsGroup::load`. Tracked in #158,
+    /// which replaces this and migrates `client-desktop` off it.
+    ///
+    /// The server no longer calls this at all — it holds no group state.
     pub fn serialize_state(&self) -> Result<MlsGroupState> {
         let serialized_state = self
             .mls_group
@@ -496,24 +502,6 @@ impl MlsGroupManager {
 /// ⚠️ WARNING: This is for testing only! In production, signature keypairs
 /// should be generated securely and stored with proper key management.
 pub fn create_test_keypair() -> Result<SignatureKeyPair> {
-    let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
-        .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
-    Ok(signature_keypair)
-}
-
-/// Helper function to create test credential for MLS operations
-///
-/// This is a convenience function for testing and development.
-/// In production, use proper credential management with secure storage.
-///
-/// # Arguments
-/// * `identity` - User identity bytes (typically "user_id:device_id")
-///
-/// # Returns
-/// SignatureKeyPair for MLS operations
-pub fn create_test_credential(_identity: &[u8]) -> Result<SignatureKeyPair> {
-    // Note: identity parameter is kept for API compatibility but not used
-    // OpenMLS 0.6 SignatureKeyPair::new() only takes signature scheme
     let signature_keypair = SignatureKeyPair::new(MLS_CIPHERSUITE.signature_algorithm())
         .map_err(|e| CryptoError::Protocol(format!("Failed to generate signature key: {:?}", e)))?;
     Ok(signature_keypair)

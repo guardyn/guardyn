@@ -59,11 +59,27 @@ correctly; any test or handler that expects a self round-trip is wrong.
 secret rather than the group, and there is no deserialization counterpart. A two-party
 exchange is also not yet possible: `generate_key_package` drops the provider and signature
 keypair it creates, and `join_group` builds a fresh empty provider with no init keys, so no
-Welcome can be processed. PR-31 (#42) owns all of it.
+Welcome can be processed.
 
 This ADR previously recorded the defect as "group state serialization fails to round-trip
 (`SecretTreeError(RatchetTypeError)`)". That conflated two unrelated things: the error comes
 from self-decryption, and the round-trip does not fail so much as never happen.
+
+**The server does not participate in MLS.** PR-31 (#42, #151, #152, #153) removes the
+server-side group operations entirely rather than repairing them. The server keeps a membership
+index and a monotonic epoch counter over opaque blobs; group state, epoch secrets and
+credentials exist only on the clients. `MlsGroup::load<Storage: StorageProvider>` does exist
+(`openmls-0.6.0/src/group/mls_group/mod.rs:417`) — the in-code comments claiming otherwise were
+wrong — and that is precisely why the server must not hold group state: `load` restores
+`group_epoch_secrets`, so a server able to reload a group is a server able to decrypt it.
+
+`create_test_credential` is gone. It ignored its `identity` argument and was a byte-for-byte
+duplicate of `create_test_keypair`, so the server calling it with a user's identity minted a
+credential unrelated to that user — while appearing to act as them. Its only caller was the
+server-side `create_group` path.
+
+The client-side half of `serialize_state` is [#158](https://github.com/guardyn/guardyn/issues/158):
+`client-desktop` persists the 32-byte export believing a group can be restored from it.
 
 ## Alternatives rejected
 
