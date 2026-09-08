@@ -33,6 +33,13 @@ Group encryption uses OpenMLS 0.6. One-to-one uses an in-repo X3DH and Double Ra
 One cryptographic implementation serves all platforms, and extending the handshake with
 ML-KEM-768 (ADR-0005) is possible at all — which it would not be with an opaque upstream.
 
+`MlsGroupState` and `MlsKeyPackage` implement `Debug` by hand rather than deriving it.
+`serialized_state` is the highest-value field in the crate - today it holds a secret exported
+from the epoch secret - and `key_package_bytes` and `credential_identity` are likewise not
+things to put in a log line. `group_id`, `epoch` and `package_id` stay visible, because an
+operator debugging a group needs exactly those (see
+[ADR-0007](ADR-0007-zero-knowledge-logging.md)).
+
 The cost is real: hand-rolled protocol code carries the burden of proof. This is why
 property tests and fuzz targets on every attacker-reachable parser are mandatory
 (`AGENTS.md` §8), not optional.

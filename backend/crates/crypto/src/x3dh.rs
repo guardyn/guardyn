@@ -5,9 +5,12 @@
 /// Key conversion: Ed25519 identity keys are converted to X25519 for DH operations
 /// using the birational equivalence between twisted Edwards curve (Ed25519) and
 /// Montgomery curve (Curve25519/X25519). This is the same approach used by Signal Protocol.
+use std::fmt;
+
 use crate::{CryptoError, Result};
 use curve25519_dalek::scalar::clamp_integer;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use guardyn_common::redact::Redacted;
 use hkdf::Hkdf;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
@@ -15,10 +18,20 @@ use sha2::Sha256;
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
 /// Identity key pair (Ed25519 for signing)
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct IdentityKeyPair {
     pub public: VerifyingKey,
     secret: SigningKey,
+}
+
+/// Redacts the Ed25519 private half. The public half is safe to print.
+impl fmt::Debug for IdentityKeyPair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IdentityKeyPair")
+            .field("public", &self.public)
+            .field("secret", &Redacted::new(&self.secret))
+            .finish()
+    }
 }
 
 impl IdentityKeyPair {

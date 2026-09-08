@@ -22,12 +22,15 @@
 //! Based on Signal's Sealed Sender:
 //! <https://signal.org/blog/sealed-sender/>
 
+use std::fmt;
+
 use crate::{CryptoError, Result};
 use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
+use guardyn_common::redact::Redacted;
 use hkdf::Hkdf;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -253,7 +256,7 @@ impl SenderCertificate {
 }
 
 /// Sealed Sender Envelope - encrypted message with hidden sender identity
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SealedSenderEnvelope {
     /// Protocol version (currently 1)
     pub version: u8,
@@ -263,6 +266,18 @@ pub struct SealedSenderEnvelope {
 
     /// Encrypted payload: certificate + inner message
     pub encrypted_payload: Vec<u8>,
+}
+
+/// Redacts the payload. The version and ephemeral public key travel in clear on
+/// the wire and are needed to correlate a failed decrypt.
+impl fmt::Debug for SealedSenderEnvelope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SealedSenderEnvelope")
+            .field("version", &self.version)
+            .field("ephemeral_public_key", &self.ephemeral_public_key)
+            .field("encrypted_payload", &Redacted::new(&self.encrypted_payload))
+            .finish()
+    }
 }
 
 impl SealedSenderEnvelope {

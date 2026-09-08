@@ -37,6 +37,12 @@ ciphertext, 32-byte shared secret.
 A break of either primitive alone leaves the session secure. Key bundles get materially
 larger, and every wire structure carrying key material must have room for an ML-KEM key.
 
+Both private halves are unprintable. `FfiHybridKeyBundle` implements `Debug` by hand,
+wrapping `x25519_private` and `ml_kem_private` in `Redacted<T>` while leaving the
+encapsulation and public keys visible; the decapsulation key is the one value whose
+disclosure retroactively breaks the post-quantum half, so it must not be reachable through
+a `{:?}` (see [ADR-0007](ADR-0007-zero-knowledge-logging.md)).
+
 **Identity keys are Ed25519 and must be converted before any Diffie-Hellman.** The bundle
 stores an Ed25519 identity key because it also signs the pre-keys; the classical half of the
 agreement needs the Curve25519 form. The public side maps through `to_montgomery()`, the
