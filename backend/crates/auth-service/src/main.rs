@@ -353,9 +353,19 @@ async fn main() -> Result<()> {
             AuthServiceImpl::with_events(db, jwt_secret, producer)
         }
         Err(e) => {
+            // Deliberately non-fatal. Auth is the most critical path in the system: if
+            // the broker is down, auth must keep serving requests rather than take the
+            // whole product offline for a degraded background channel.
+            //
+            // `degraded` is a stable field name so an alert can key on it rather than on
+            // log prose. It is not a metric - the backend has no metrics facade yet, and
+            // adding one is a dependency decision that needs an ADR.
             tracing::warn!(
+                degraded = "kafka_producer_unavailable",
                 error = %e,
-                "Failed to create Kafka producer - cross-service events disabled"
+                "Kafka producer unavailable - starting without cross-service events. \
+                 Account deletions will NOT propagate to messaging, media or presence \
+                 while this persists."
             );
             AuthServiceImpl::new(db, jwt_secret)
         }

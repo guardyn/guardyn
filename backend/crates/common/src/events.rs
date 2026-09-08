@@ -10,18 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub mod topics {
     /// User lifecycle events (account creation, deletion, updates)
     pub const USER_EVENTS: &str = "guardyn.user.events";
-
-    /// Message events (for audit, sync)
-    pub const MESSAGE_EVENTS: &str = "guardyn.message.events";
-
-    /// Group events (creation, member changes)
-    pub const GROUP_EVENTS: &str = "guardyn.group.events";
-
-    /// Presence events (online/offline, typing)
-    pub const PRESENCE_EVENTS: &str = "guardyn.presence.events";
-
-    /// Call events (started, ended, participant changes)
-    pub const CALL_EVENTS: &str = "guardyn.call.events";
 }
 
 /// Base event envelope with common metadata
@@ -75,13 +63,8 @@ impl<T> EventEnvelope<T> {
 pub mod user {
     use super::*;
 
-    /// Event types for user lifecycle
-    pub const TYPE_CREATED: &str = "user.created";
-    pub const TYPE_UPDATED: &str = "user.updated";
+    /// Event type for user lifecycle
     pub const TYPE_DELETED: &str = "user.deleted";
-    pub const TYPE_PASSWORD_CHANGED: &str = "user.password_changed";
-    pub const TYPE_DEACTIVATED: &str = "user.deactivated";
-    pub const TYPE_REACTIVATED: &str = "user.reactivated";
 
     /// Payload for user.deleted event
     ///
@@ -139,70 +122,6 @@ pub mod user {
             }
         }
     }
-
-    /// Payload for user.created event
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct UserCreatedPayload {
-        /// User ID
-        pub user_id: String,
-
-        /// Username
-        pub username: String,
-
-        /// Display name (optional)
-        pub display_name: Option<String>,
-    }
-}
-
-/// Group-related event types
-pub mod group {
-    use super::*;
-
-    pub const TYPE_CREATED: &str = "group.created";
-    pub const TYPE_DELETED: &str = "group.deleted";
-    pub const TYPE_MEMBER_ADDED: &str = "group.member_added";
-    pub const TYPE_MEMBER_REMOVED: &str = "group.member_removed";
-    pub const TYPE_UPDATED: &str = "group.updated";
-
-    /// Payload for member removal (used when user account is deleted)
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct MemberRemovedPayload {
-        /// Group ID
-        pub group_id: String,
-
-        /// User ID being removed
-        pub user_id: String,
-
-        /// Reason for removal
-        pub reason: String,
-
-        /// Was this a cascade from user deletion?
-        pub cascade: bool,
-    }
-}
-
-/// Message-related event types
-pub mod message {
-    use super::*;
-
-    pub const TYPE_SENT: &str = "message.sent";
-    pub const TYPE_DELIVERED: &str = "message.delivered";
-    pub const TYPE_READ: &str = "message.read";
-    pub const TYPE_DELETED: &str = "message.deleted";
-    pub const TYPE_USER_DATA_DELETED: &str = "message.user_data_deleted";
-
-    /// Payload for bulk message deletion (user account deletion)
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct UserDataDeletedPayload {
-        /// User ID whose messages were deleted
-        pub user_id: String,
-
-        /// Number of messages deleted
-        pub messages_deleted: u64,
-
-        /// Number of conversations affected
-        pub conversations_affected: u64,
-    }
 }
 
 #[cfg(test)]
@@ -230,13 +149,15 @@ mod tests {
 
     #[test]
     fn test_event_with_correlation_id() {
-        let payload = user::UserCreatedPayload {
+        let payload = user::UserDeletedPayload {
             user_id: "user456".to_string(),
             username: "newuser".to_string(),
-            display_name: Some("New User".to_string()),
+            reason: None,
+            cascade: false,
+            delete_data: user::DeleteDataScope::default(),
         };
 
-        let event = EventEnvelope::new(user::TYPE_CREATED, "auth-service", payload)
+        let event = EventEnvelope::new(user::TYPE_DELETED, "auth-service", payload)
             .with_correlation_id("request-123");
 
         assert_eq!(event.correlation_id, Some("request-123".to_string()));

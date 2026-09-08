@@ -138,9 +138,14 @@ pub async fn handle(
             }
         }
     } else {
-        tracing::warn!(
+        // Error rather than warn: the account is gone from auth, but the user's messages,
+        // media and presence records are not. That is orphaned personal data and someone
+        // has to reconcile it by hand, which is an incident, not a degradation.
+        tracing::error!(
             user_id = %user_id,
-            "No event producer configured - cross-service cleanup skipped"
+            degraded = "kafka_producer_unavailable",
+            "No event producer configured - user.deleted was not published. Personal data \
+             in messaging, media and presence will NOT be deleted without manual cleanup."
         );
     }
 
