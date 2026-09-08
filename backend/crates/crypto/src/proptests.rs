@@ -11,6 +11,13 @@
 //! - a padding scheme whose output length leaks the input length defeats its purpose
 //! - a parser reachable from the network that panics is a remote crash
 //! - a ratchet that accepts a tampered ciphertext is not authenticated
+//!
+//! The `#![cfg(test)]` below is redundant with `#[cfg(test)] mod proptests;` in
+//! `lib.rs`, and deliberate: `RS-UNWRAP` in `rules-verify.sh` strips a file from
+//! its first `#[cfg(test)]` onward, so a file that is *entirely* tests and says
+//! so only at the module declaration has every `expect()` counted as production
+//! debt. See #177.
+#![cfg(test)]
 
 use proptest::prelude::*;
 
