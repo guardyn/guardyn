@@ -17,6 +17,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
+use guardyn_common::Redacted;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
@@ -107,9 +108,9 @@ pub async fn handle(
         email: if req.email.is_empty() {
             None
         } else {
-            Some(req.email.clone())
+            Some(Redacted::new(req.email.clone()))
         },
-        password_hash,
+        password_hash: Redacted::new(password_hash),
         created_at: now,
         last_seen: now,
         avatar_media_id: None,
@@ -206,7 +207,7 @@ pub async fn handle(
 
     // Create session
     let session = Session {
-        session_token: refresh_token.clone(),
+        session_token: Redacted::new(refresh_token.clone()),
         user_id: user_id.clone(),
         device_id: device_id.clone(),
         created_at: now,

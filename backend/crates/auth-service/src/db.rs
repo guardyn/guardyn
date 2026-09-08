@@ -6,6 +6,7 @@
 /// - Session tracking
 /// - Key bundle storage
 use anyhow::{Context, Result};
+use guardyn_common::Redacted;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tikv_client::RawClient;
@@ -15,8 +16,8 @@ use tikv_client::RawClient;
 pub struct UserProfile {
     pub user_id: String,
     pub username: String,
-    pub email: Option<String>,
-    pub password_hash: String,
+    pub email: Option<Redacted<String>>,
+    pub password_hash: Redacted<String>,
     pub created_at: i64,
     pub last_seen: i64,
     pub avatar_media_id: Option<String>, // Reference to media in MediaService
@@ -38,7 +39,7 @@ pub struct Device {
 /// Session information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
-    pub session_token: String,
+    pub session_token: Redacted<String>,
     pub user_id: String,
     pub device_id: String,
     pub created_at: i64,
@@ -270,14 +271,15 @@ impl DatabaseClient {
     /// Create session
     pub async fn create_session(&self, session: &Session) -> Result<()> {
         // Store session by token
-        let token_key = format!("/sessions/{}", session.session_token).into_bytes();
+        let token_key = format!("/sessions/{}", session.session_token.expose()).into_bytes();
         let session_value = serde_json::to_vec(session)?;
         self.client.put(token_key, session_value.clone()).await?;
 
         // Store session in user index
         let user_key = format!(
             "/sessions/user/{}/{}",
-            session.user_id, session.session_token
+            session.user_id,
+            session.session_token.expose()
         )
         .into_bytes();
         self.client.put(user_key, session_value.clone()).await?;
@@ -285,7 +287,9 @@ impl DatabaseClient {
         // Store session in device index (for single-device logout)
         let device_key = format!(
             "/sessions/device/{}/{}/{}",
-            session.user_id, session.device_id, session.session_token
+            session.user_id,
+            session.device_id,
+            session.session_token.expose()
         )
         .into_bytes();
         self.client.put(device_key, session_value).await?;
@@ -590,13 +594,16 @@ impl DatabaseClient {
         for kv in session_keys {
             // Get the session to also delete from main sessions index and device index
             if let Ok(session) = serde_json::from_slice::<Session>(&kv.1) {
-                let token_key = format!("/sessions/{}", session.session_token).into_bytes();
+                let token_key =
+                    format!("/sessions/{}", session.session_token.expose()).into_bytes();
                 let _ = self.client.delete(token_key).await;
 
                 // Delete from device index
                 let device_key = format!(
                     "/sessions/device/{}/{}/{}",
-                    user_id, session.device_id, session.session_token
+                    user_id,
+                    session.device_id,
+                    session.session_token.expose()
                 )
                 .into_bytes();
                 let _ = self.client.delete(device_key).await;
@@ -808,5 +815,81 @@ impl DatabaseClient {
 
         tracing::info!("Deleted all contacts for user: {}", user_id);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A value that must never appear in a `{:?}` rendering.
+    const SECRET: &str = "CANARY-SECRET-VALUE";
+
+    fn sample_profile() -> UserProfile {
+        UserProfile {
+            user_id: "u1".to_string(),
+            username: "alice".to_string(),
+            email: Some(Redacted::new(SECRET.to_string())),
+            password_hash: Redacted::new(SECRET.to_string()),
+            created_at: 0,
+            last_seen: 0,
+            avatar_media_id: None,
+            display_name: None,
+            bio: None,
+        }
+    }
+
+    #[test]
+    fn test_user_profile_debug_hides_password_hash_and_email() {
+        let rendered = format!("{:?}", sample_profile());
+
+        assert!(!rendered.contains(SECRET), "secret leaked: {rendered}");
+        assert!(rendered.contains("[REDACTED]"));
+        // Identifiers are metadata and stay visible for correlation.
+        assert!(rendered.contains("u1") && rendered.contains("alice"));
+    }
+
+    #[test]
+    fn test_session_debug_hides_the_bearer_token() {
+        let session = Session {
+            session_token: Redacted::new(SECRET.to_string()),
+            user_id: "u1".to_string(),
+            device_id: "d1".to_string(),
+            created_at: 0,
+            expires_at: 0,
+        };
+        let rendered = format!("{:?}", session);
+
+        assert!(!rendered.contains(SECRET), "token leaked: {rendered}");
+        assert!(rendered.contains("[REDACTED]"));
+        assert!(
+            rendered.contains("d1"),
+            "device_id stays visible: {rendered}"
+        );
+    }
+
+    /// These types are persisted to TiKV as JSON. If `Redacted<T>` were to
+    /// serialize as `"[REDACTED]"`, every stored profile and session would be
+    /// destroyed on the next write - so the wire format must be byte-identical
+    /// to the unwrapped one.
+    #[test]
+    fn test_serialized_form_is_unchanged_by_wrapping() {
+        let json = serde_json::to_string(&sample_profile()).expect("serialize");
+
+        assert!(
+            json.contains(&format!("\"password_hash\":\"{SECRET}\"")),
+            "password_hash must persist in clear: {json}"
+        );
+        assert!(
+            json.contains(&format!("\"email\":\"{SECRET}\"")),
+            "email must persist in clear, not as Some(..): {json}"
+        );
+
+        let back: UserProfile = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.password_hash.expose(), SECRET);
+        assert_eq!(
+            back.email.map(Redacted::into_inner).as_deref(),
+            Some(SECRET)
+        );
     }
 }

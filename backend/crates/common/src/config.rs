@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::redact::Redacted;
+
 #[derive(Debug, Deserialize)]
 pub struct ServiceConfig {
     pub service_name: String,
@@ -37,7 +39,7 @@ pub struct AuthConfig {
     /// CRITICAL: Never use default in production!
     /// Set via GUARDYN_AUTH__JWT_SECRET environment variable
     #[serde(default = "default_jwt_secret")]
-    pub jwt_secret: String,
+    pub jwt_secret: Redacted<String>,
 
     /// JWT token expiration in seconds (default: 1 hour)
     #[serde(default = "default_jwt_expiration")]
@@ -48,11 +50,11 @@ pub struct AuthConfig {
     pub refresh_expiration_secs: u64,
 }
 
-fn default_jwt_secret() -> String {
+fn default_jwt_secret() -> Redacted<String> {
     // WARNING: This is only for development!
     // In production, GUARDYN_AUTH__JWT_SECRET must be set
     tracing::warn!("Using default JWT secret - NOT SAFE FOR PRODUCTION!");
-    "UNSAFE_DEV_SECRET_CHANGE_IN_PRODUCTION_32BYTES".to_string()
+    Redacted::new("UNSAFE_DEV_SECRET_CHANGE_IN_PRODUCTION_32BYTES".to_string())
 }
 
 fn default_jwt_expiration() -> u64 {

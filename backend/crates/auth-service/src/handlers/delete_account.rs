@@ -75,7 +75,7 @@ pub async fn handle(
     };
 
     // 3. Verify password for security
-    if !verify_password(&req.password, &user.password_hash) {
+    if !verify_password(&req.password, user.password_hash.expose()) {
         let error = ErrorResponse {
             code: error_response::ErrorCode::Unauthorized as i32,
             message: "Incorrect password".to_string(),
