@@ -35,3 +35,10 @@ client-mobile/build/
 # ChromeDriver: version-pinned, platform-specific tool downloaded on demand by
 # infra/scripts/port-forward-watchdog.sh - never committed (PR-45)
 client-mobile/chromedriver/
+
+# cargo-fuzz working state (PR-33). The corpus is machine-generated coverage
+# input and the artifacts are crash reproducers: a real crash gets committed as
+# a named regression test, not left here.
+backend/crates/crypto/fuzz/target/
+backend/crates/crypto/fuzz/corpus/
+backend/crates/crypto/fuzz/artifacts/

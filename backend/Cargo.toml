@@ -12,6 +12,10 @@ members = [
     "crates/crypto-ffi",
     "crates/e2e-tests",
 ]
+# The fuzz crate needs a nightly toolchain for -Z sanitizer=address, while
+# rust-toolchain.toml pins 1.98.1 for everything else. Excluding it is what lets
+# that pin stay exact rather than floating to nightly for the whole workspace.
+exclude = ["crates/crypto/fuzz"]
 
 [workspace.package]
 version = "0.1.0"

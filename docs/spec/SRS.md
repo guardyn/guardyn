@@ -175,5 +175,14 @@ it reads as coverage.
 Not yet covered: the ratchet round-trip is exercised over short chains rather than up to
 `MAX_SKIP`, and the sealed-sender envelope parser has no property test. Fuzz targets are PR-33.
 
+**Fuzzing.** `crypto/fuzz/` (PR-33a) holds the `cargo-fuzz` scaffold and the PADMÉ unpad
+target. The crate sits outside the backend workspace on purpose: `cargo-fuzz` needs
+`-Z sanitizer=address`, and `rust-toolchain.toml` pins 1.98.1 for everything else. Its nightly
+is pinned to a date rather than the `nightly` channel, for the reason that file gives — a gate
+that can fail without a change to this repository is not a signal.
+
+The three remaining parsers §4 names — ratchet message, sealed-sender envelope, X3DH prekey
+message — are PR-33b, along with the scheduled CI job.
+
 A bug fix lands with a regression test that fails before the fix. **Never weaken or delete
 a test to make CI pass.**
