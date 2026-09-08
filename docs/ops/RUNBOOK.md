@@ -129,6 +129,13 @@ fix is never to relax the check: route the service through
 so it is not dropped immediately. `presence-service/src/main.rs` is the reference for a
 service with no `ServiceConfig`; `auth-service/src/main.rs` for one with.
 
+**If `E2EE-DUP` fails**, a `*_e2ee.rs` handler has appeared beside an unsuffixed one. The check
+is inverted on purpose: two handlers for one RPC means one of them is the wrong path, and the
+suffix does not tell you which. In this repository it was the `_e2ee` one — those handlers
+encrypted the client's plaintext server-side and decrypted on the way back out, while the
+unsuffixed handler relayed ciphertext untouched. The fix is to delete the twin, never to rename
+it or to exempt the path.
+
 ## Roadmap and board sync
 
 [`roadmap.yaml`](../roadmap/roadmap.yaml) is the machine source of truth. `roadmap-sync`

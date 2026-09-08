@@ -136,41 +136,26 @@ pub struct MessagingServiceImpl {
 
 #[tonic::async_trait]
 impl MessagingService for MessagingServiceImpl {
+    /// Relay a message. `encrypted_content` is opaque here and stays opaque.
+    ///
+    /// There is deliberately no branch: invariant I-2 forbids a configuration
+    /// key that selects whether a message is encrypted, and the handler this
+    /// used to fall back to encrypted the payload server-side.
     async fn send_message(
         &self,
         request: Request<SendMessageRequest>,
     ) -> Result<Response<SendMessageResponse>, Status> {
-        // Use E2EE configuration from service config
-        if self.config.e2ee.enabled {
-            tracing::info!("E2EE enabled, using send_message_e2ee handler");
-            handlers::send_message_e2ee(request.into_inner(), self.db.clone(), self.nats.clone())
-                .await
-        } else {
-            tracing::debug!("E2EE disabled, using legacy send_message handler");
-            handlers::send_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
-        }
+        handlers::send_message(request.into_inner(), self.db.clone(), self.nats.clone()).await
     }
 
     type ReceiveMessagesStream = tokio_stream::wrappers::ReceiverStream<Result<Message, Status>>;
 
+    /// Stream stored ciphertext to the recipient. The server does not decrypt.
     async fn receive_messages(
         &self,
         request: Request<ReceiveMessagesRequest>,
     ) -> Result<Response<Self::ReceiveMessagesStream>, Status> {
-        // Use E2EE configuration from service config
-        if self.config.e2ee.enabled {
-            tracing::info!("E2EE enabled, using receive_messages_e2ee handler");
-            handlers::receive_messages_e2ee(
-                request.into_inner(),
-                self.db.clone(),
-                self.nats.clone(),
-            )
-            .await
-        } else {
-            tracing::debug!("E2EE disabled, using legacy receive_messages handler");
-            handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone())
-                .await
-        }
+        handlers::receive_messages(request.into_inner(), self.db.clone(), self.nats.clone()).await
     }
 
     async fn get_messages(

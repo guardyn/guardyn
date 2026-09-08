@@ -118,6 +118,21 @@ check_zk_init() {
   fi
 }
 
+# ------------------------------------------------------------------ E2EE-DUP
+# Inverted on purpose: a `*_e2ee.rs` file existing proves a non-E2EE original
+# still sits beside it, and one of the two paths must be the wrong one. After
+# PR-32a there is a single relay handler with no suffix.
+check_e2ee_dup() {
+  local hits
+  hits="$(ls backend/crates/messaging-service/src/handlers/*_e2ee.rs 2>/dev/null || true)"
+  if [ -n "$hits" ]; then
+    fail "E2EE-DUP: a handler has a non-E2EE twin"
+    show "$hits"
+  else
+    pass "E2EE-DUP: one message path, no non-E2EE twin"
+  fi
+}
+
 # ---------------------------------------------------------------- PROTO-EDIT
 check_proto_edit() {
   local hits
@@ -204,6 +219,7 @@ echo "rules-verify (base: $BASE)"
 check_rs_unwrap
 check_rs_unsafe
 check_zk_init
+check_e2ee_dup
 check_proto_edit
 check_lang_md
 check_name_sh
