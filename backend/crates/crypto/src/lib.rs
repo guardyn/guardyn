@@ -35,7 +35,7 @@ mod x3dh_conversion_tests;
 // Re-exports for convenience
 pub use double_ratchet::DoubleRatchet;
 pub use key_storage::{create_test_storage, KeyMetadata, KeyStorage, KeyType};
-pub use mls::{create_test_credential, MlsGroupManager};
+pub use mls::MlsGroupManager;
 pub use padding::{next_padme_length, pad_message, unpad_message};
 pub use pqxdh::{generate_hybrid_key_bundle, HybridKeyBundle, HybridSharedSecret};
 pub use sealed_sender::{SealedSender, SealedSenderEnvelope, SenderCertificate};

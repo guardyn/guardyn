@@ -1,23 +1,24 @@
-/// MLS Group Manager Integration for Messaging Service
-///
-/// Provides a high-level interface to manage MLS group state,
-/// including serialization, TiKV storage, and integration with
-/// the crypto crate's MlsGroupManager.
+//! MLS membership index for the messaging service.
+//!
+//! The server keeps a membership list and a monotonic epoch counter, and
+//! nothing else. Group state, epoch secrets and credentials live on the
+//! clients; the server routes opaque `Welcome`, `Commit` and ciphertext blobs
+//! and cannot read any of them.
+
 use crate::db::DatabaseClient;
 use anyhow::{Context, Result};
-use guardyn_crypto::mls::{MlsGroupManager, MlsGroupState};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{error, info};
 
-/// Group state storage paths in TiKV
-const MLS_GROUP_STATE_PREFIX: &str = "/mls/groups";
+/// Group metadata storage paths in TiKV
+const MLS_GROUP_METADATA_PREFIX: &str = "/mls/groups";
 const MLS_GROUP_MEMBERS_PREFIX: &str = "/mls/group_members";
 
-/// MLS Manager for Messaging Service
+/// MLS membership index.
 ///
-/// Manages MLS group state persistence and provides helper methods
-/// for group operations (create, add/remove members, encrypt/decrypt).
+/// Tracks who is in a group and which epoch the group is on. Deliberately has
+/// no group-state, encrypt or decrypt operations: holding those server-side is
+/// what invariant I-1 forbids.
 #[allow(dead_code)]
 pub struct MlsManager {
     db: Arc<DatabaseClient>,
@@ -38,126 +39,6 @@ impl MlsManager {
     /// Create a new MLS manager instance
     pub fn new(db: Arc<DatabaseClient>) -> Self {
         Self { db }
-    }
-
-    /// Create a new MLS group
-    ///
-    /// # Arguments
-    /// * `group_id` - Unique group identifier
-    /// * `creator_identity` - Creator's identity (user_id:device_id)
-    /// * `credential_bundle_bytes` - Serialized credential bundle
-    ///
-    /// # Returns
-    /// Serialized group state for initial storage
-    pub async fn create_group(
-        &self,
-        group_id: &str,
-        creator_user_id: &str,
-        creator_device_id: &str,
-        creator_identity: &[u8],
-    ) -> Result<MlsGroupState> {
-        info!("Creating MLS group: {}", group_id);
-
-        // Create MLS group using crypto crate
-        // Note: In a real implementation, we need to pass the actual credential bundle
-        // For now, we'll generate it on the fly (should be fetched from user's stored credentials)
-        let credential_bundle = guardyn_crypto::mls::create_test_credential(creator_identity)?;
-
-        let group_manager =
-            MlsGroupManager::create_group(group_id, creator_identity, credential_bundle)?;
-
-        // Serialize group state
-        let group_state = group_manager.serialize_state()?;
-
-        // Store group state in TiKV
-        let state_key = format!("{}/{}/state", MLS_GROUP_STATE_PREFIX, group_id);
-        let state_json =
-            serde_json::to_vec(&group_state).context("Failed to serialize group state")?;
-        self.db.put(state_key.as_bytes(), state_json).await?;
-
-        // Store group metadata
-        let metadata = GroupMetadata {
-            group_id: group_id.to_string(),
-            creator_user_id: creator_user_id.to_string(),
-            creator_device_id: creator_device_id.to_string(),
-            created_at: chrono::Utc::now().timestamp(),
-            current_epoch: 0,
-            member_count: 1,
-        };
-
-        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-        let metadata_json =
-            serde_json::to_vec(&metadata).context("Failed to serialize metadata")?;
-        self.db.put(metadata_key.as_bytes(), metadata_json).await?;
-
-        // Add creator to members list
-        self.add_member_to_list(group_id, creator_user_id, creator_device_id)
-            .await?;
-
-        info!("MLS group created: {}", group_id);
-        Ok(group_state)
-    }
-
-    /// Load MLS group state from TiKV
-    ///
-    /// # Arguments
-    /// * `group_id` - Unique group identifier
-    ///
-    /// # Returns
-    /// Deserialized MLS group state
-    pub async fn load_group_state(&self, group_id: &str) -> Result<MlsGroupState> {
-        let state_key = format!("{}/{}/state", MLS_GROUP_STATE_PREFIX, group_id);
-
-        let state_bytes = self
-            .db
-            .get(state_key.as_bytes())
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Group state not found: {}", group_id))?;
-
-        let group_state: MlsGroupState =
-            serde_json::from_slice(&state_bytes).context("Failed to deserialize group state")?;
-
-        Ok(group_state)
-    }
-
-    /// Save MLS group state to TiKV
-    ///
-    /// # Arguments
-    /// * `group_id` - Unique group identifier
-    /// * `group_state` - Serialized group state to save
-    pub async fn save_group_state(
-        &self,
-        group_id: &str,
-        group_state: &MlsGroupState,
-    ) -> Result<()> {
-        let state_key = format!("{}/{}/state", MLS_GROUP_STATE_PREFIX, group_id);
-        let state_json =
-            serde_json::to_vec(group_state).context("Failed to serialize group state")?;
-
-        self.db.put(state_key.as_bytes(), state_json).await?;
-
-        // Update epoch in metadata
-        self.update_epoch(group_id, group_state.epoch).await?;
-
-        Ok(())
-    }
-
-    /// Update group epoch in metadata
-    async fn update_epoch(&self, group_id: &str, epoch: u64) -> Result<()> {
-        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
-
-        if let Some(metadata_bytes) = self.db.get(metadata_key.as_bytes()).await? {
-            let mut metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
-                .context("Failed to deserialize metadata")?;
-
-            metadata.current_epoch = epoch;
-
-            let updated_json =
-                serde_json::to_vec(&metadata).context("Failed to serialize metadata")?;
-            self.db.put(metadata_key.as_bytes(), updated_json).await?;
-        }
-
-        Ok(())
     }
 
     /// Add member to group members list
@@ -218,7 +99,7 @@ impl MlsManager {
 
     /// Increment member count in metadata
     async fn increment_member_count(&self, group_id: &str) -> Result<()> {
-        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
+        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_METADATA_PREFIX, group_id);
 
         if let Some(metadata_bytes) = self.db.get(metadata_key.as_bytes()).await? {
             let mut metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
@@ -236,7 +117,7 @@ impl MlsManager {
 
     /// Decrement member count in metadata
     async fn decrement_member_count(&self, group_id: &str) -> Result<()> {
-        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
+        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_METADATA_PREFIX, group_id);
 
         if let Some(metadata_bytes) = self.db.get(metadata_key.as_bytes()).await? {
             let mut metadata: GroupMetadata = serde_json::from_slice(&metadata_bytes)
@@ -262,7 +143,7 @@ impl MlsManager {
     /// # Returns
     /// Group metadata if exists
     pub async fn get_metadata(&self, group_id: &str) -> Result<Option<GroupMetadata>> {
-        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_STATE_PREFIX, group_id);
+        let metadata_key = format!("{}/{}/metadata", MLS_GROUP_METADATA_PREFIX, group_id);
 
         match self.db.get(metadata_key.as_bytes()).await? {
             Some(metadata_bytes) => {
@@ -274,26 +155,16 @@ impl MlsManager {
         }
     }
 
-    /// Get current MLS epoch for a group
+    /// Get the current MLS epoch for a group.
     ///
-    /// Returns the current epoch number, or 0 if the group doesn't have MLS state
-    ///
-    /// # Arguments
-    /// * `group_id` - Group identifier
-    ///
-    /// # Returns
-    /// Current epoch number
+    /// Returns 0 for a group with no metadata: the epoch is a counter the
+    /// clients advance, and a group the server has not seen a commit for is at
+    /// its initial epoch.
     pub async fn get_current_epoch(&self, group_id: &str) -> Result<u64> {
-        match self.get_metadata(group_id).await? {
-            Some(metadata) => Ok(metadata.current_epoch),
-            None => {
-                // Try to load from group state if metadata doesn't exist
-                match self.load_group_state(group_id).await {
-                    Ok(state) => Ok(state.epoch),
-                    Err(_) => Ok(0), // Default to epoch 0
-                }
-            }
-        }
+        Ok(self
+            .get_metadata(group_id)
+            .await?
+            .map_or(0, |metadata| metadata.current_epoch))
     }
 
     /// Check if user is a member of the group
