@@ -1,5 +1,4 @@
 pub mod add_group_member;
-pub mod add_group_member_mls;
 pub mod clear_chat;
 pub mod create_group;
 pub mod delete_group;
@@ -15,7 +14,6 @@ pub mod receive_messages;
 pub mod receive_messages_e2ee;
 pub mod remove_group_member;
 pub mod send_group_message;
-pub mod send_group_message_mls;
 /// Message handlers for Messaging Service
 pub mod send_message;
 pub mod send_message_e2ee;
