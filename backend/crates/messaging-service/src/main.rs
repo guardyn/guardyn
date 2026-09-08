@@ -131,7 +131,6 @@ use proto::messaging::{
 pub struct MessagingServiceImpl {
     db: Arc<db::DatabaseClient>,
     nats: Arc<nats::NatsClient>,
-    config: config::MessagingConfig,
 }
 
 #[tonic::async_trait]
@@ -495,10 +494,6 @@ async fn main() -> Result<()> {
         config.port
     );
 
-    // Load messaging-specific configuration (feature flags, etc.)
-    let messaging_config = config::MessagingConfig::from_env();
-    messaging_config.print_summary();
-
     // Initialize database connections
     let tikv_endpoints = config.database.tikv_pd_endpoints.clone();
     let scylla_nodes = config.database.scylladb_nodes.clone();
@@ -544,15 +539,10 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Load service configuration
-    let messaging_config = config::MessagingConfig::from_env();
-    messaging_config.print_summary();
-
     // Create gRPC service
     let service = MessagingServiceImpl {
         db: db.clone(),
         nats: nats.clone(),
-        config: messaging_config.clone(),
     };
 
     // Start WebSocket server if enabled
