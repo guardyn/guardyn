@@ -53,9 +53,12 @@ from `guardyn-common` once PR-24 lands.
 ## Identifiers are metadata, not free
 
 `user_id` and `device_id` are correlatable. Log them only when an operation genuinely needs
-them, and never at `info` on a hot path. `ZK-PAYLOAD` deliberately excludes `*_id` matches —
-the four `ratchet session: {session_id}` lines in `messaging-service` are identifiers, not
-key material, and are allowed under that rule.
+them, and never at `info` on a hot path. `ZK-PAYLOAD` deliberately excludes `*_id` matches,
+because an identifier is metadata and the rule targets key material.
+
+The four `ratchet session: {session_id}` lines this carve-out was written for are gone: PR-30′
+deleted `messaging-service/src/crypto.rs` along with the server-side ratchet storage those lines
+logged about. The exclusion stays — it is the right rule — but it currently protects nothing.
 
 ## How ZK-PII was closed
 
