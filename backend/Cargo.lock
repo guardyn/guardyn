@@ -2622,7 +2622,6 @@ dependencies = [
  "tonic 0.12.3",
  "tonic-build",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -2804,7 +2803,6 @@ dependencies = [
  "tonic 0.12.3",
  "tonic-build",
  "tracing",
- "tracing-subscriber",
  "uuid",
  "web-push",
 ]

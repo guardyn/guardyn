@@ -17,7 +17,7 @@ charter: implementation_plan.md
 project_sync_enabled: false
 
 invariants:
-  - {id: I-1, name: Zero-Knowledge,   met: partial, note: "2 services log outside init_tracing; rate_limit.rs logs a raw IP"}
+  - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
   - {id: I-2, name: Always-On E2EE,   met: false,   closed_by: PR-32}
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
@@ -57,7 +57,7 @@ steps:
   - {id: PR-24, issue: 35, phase: 3, type: security, status: review, title: "Add Redacted<T> and the log field denylist"}
   - {id: PR-24b, issue: 133, phase: 3, type: security, status: review, title: "Redact denied fields in the tracing formatter"}
   - {id: PR-25, issue: 36, phase: 3, type: security, status: todo, title: "Apply Redacted<T> across crypto, auth and messaging types"}
-  - {id: PR-26, issue: 37, phase: 3, type: security, status: todo, title: "Migrate call-service and notification-service to observability::init_tracing"}
+  - {id: PR-26, issue: 37, phase: 3, type: security, status: review, title: "Migrate call-service and notification-service to observability::init_tracing"}
   - {id: PR-27, issue: 38, phase: 3, type: feat, status: todo, title: "Add health checks for all stores and a media-service Health RPC"}
   - {id: PR-28, issue: 39, phase: 3, type: refactor, status: todo, title: "Wire or delete the unused Redpanda topic constants"}
   - {id: PR-29, issue: 40, phase: 3, type: fix, status: todo, title: "Replace the presence-service Redis TODO with TTL-correct TiKV storage"}

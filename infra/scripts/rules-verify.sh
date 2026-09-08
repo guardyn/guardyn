@@ -8,6 +8,7 @@
 #
 #   RS-UNWRAP    no unwrap()/expect() in non-test Rust          ratcheted
 #   RS-UNSAFE    no `unsafe` outside an FFI crate
+#   ZK-INIT      tracing is initialised only via observability::init_tracing
 #   PROTO-EDIT   generated protobuf is never hand-edited
 #   LANG-MD      no Cyrillic in Markdown outside the allowlist
 #   NAME-SH      scripts are kebab-case.sh                      ratcheted
@@ -99,6 +100,24 @@ check_rs_unsafe() {
   fi
 }
 
+# ---------------------------------------------------------------- ZK-INIT
+#
+# Enforces I-1. A service that builds its own subscriber gets neither JSON logs
+# nor OTel traces nor the redaction layer, so a payload or key field reaches the
+# writer unfiltered. A plain fail, not a ratchet: PR-26 left zero sites, and a
+# ratchet's warn branch is for frozen debt rather than a predicate that holds.
+check_zk_init() {
+  local hits
+  hits="$(grep -rln --include='*.rs' -e FmtSubscriber -e 'tracing_subscriber::fmt()' \
+    backend/crates/*/src 2>/dev/null || true)"
+  if [ -n "$hits" ]; then
+    fail "ZK-INIT: tracing initialised outside observability::init_tracing"
+    show "$hits"
+  else
+    pass "ZK-INIT: every service initialises tracing via init_tracing"
+  fi
+}
+
 # ---------------------------------------------------------------- PROTO-EDIT
 check_proto_edit() {
   local hits
@@ -184,6 +203,7 @@ check_org_local() {
 echo "rules-verify (base: $BASE)"
 check_rs_unwrap
 check_rs_unsafe
+check_zk_init
 check_proto_edit
 check_lang_md
 check_name_sh
