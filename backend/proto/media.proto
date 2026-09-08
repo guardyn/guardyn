@@ -32,6 +32,9 @@ service MediaService {
 
   // List media files for a user or conversation
   rpc ListMedia(ListMediaRequest) returns (ListMediaResponse);
+
+  // Health check
+  rpc Health(HealthRequest) returns (guardyn.common.HealthStatus);
 }
 
 // Media type enumeration
@@ -231,3 +234,9 @@ message ListMediaResponse {
   int32 total_count = 3;        // Total items matching filter
   guardyn.common.ErrorResponse error = 4;
 }
+
+// ============================================================================
+// Health Check
+// ============================================================================
+
+message HealthRequest {}

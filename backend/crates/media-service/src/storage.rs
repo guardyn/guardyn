@@ -3,7 +3,7 @@
 //! Handles file storage operations using AWS SDK for S3-compatible storage
 
 use crate::config::MediaConfig;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use aws_config::Region;
 use aws_credential_types::Credentials;
 use aws_sdk_s3::{
@@ -75,6 +75,21 @@ impl StorageClient {
             bucket: config.bucket_name.clone(),
             presigned_expiry: Duration::from_secs(config.presigned_url_expiry_seconds),
         })
+    }
+
+    /// Verify object-store connectivity.
+    ///
+    /// `head_bucket` on the configured bucket is the cheapest call that proves
+    /// both that MinIO is reachable and that our credentials still work - a
+    /// plain TCP connect would report healthy against a broken configuration.
+    pub async fn health_check(&self) -> Result<()> {
+        self.client
+            .head_bucket()
+            .bucket(&self.bucket)
+            .send()
+            .await
+            .context("object store health check failed")?;
+        Ok(())
     }
 
     /// Ensure the bucket exists (create if not)

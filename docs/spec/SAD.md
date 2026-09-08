@@ -55,7 +55,7 @@ Ten members in the `backend/` workspace.
 | `auth-service` | binary | common, crypto | Identity, devices, contacts, key bundles. 13 handlers. |
 | `messaging-service` | binary | common, crypto | Messages, conversations, groups, reactions, receipts. 32 handlers. |
 | `presence-service` | binary | common | Reachability and status. 8 handlers. |
-| `media-service` | binary | common | Encrypted blob upload and retrieval. 8 handlers. |
+| `media-service` | binary | common | Encrypted blob upload and retrieval. 9 handlers. |
 | `call-service` | binary | common, crypto | Call signalling and SFrame key exchange. |
 | `notification-service` | binary | common | Push delivery and settings. |
 | `common` | library | — | Config, errors, observability, Kafka, rate limiting, event envelopes. |
@@ -152,6 +152,11 @@ alertmanager configuration.
 ## Known structural gaps
 
 Recorded here because a blueprint that hides its holes is not a blueprint.
+
+All six services expose `Health`, returning `guardyn.common.HealthStatus` with a
+per-component map. `media-service` was the last to gain one (PR-27); it reports `tikv` and
+`minio`. A `Health` call always succeeds at the transport level and reports an unreachable
+store in the body, so a probe can distinguish "service down" from "dependency down".
 
 | Gap | Consequence | Owned by |
 |---|---|---|

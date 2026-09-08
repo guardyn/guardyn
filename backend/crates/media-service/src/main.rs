@@ -39,12 +39,13 @@ pub mod proto {
     }
 }
 
+use proto::common::HealthStatus;
 use proto::media::{
     media_service_server::{MediaService, MediaServiceServer},
     DeleteMediaRequest, DeleteMediaResponse, DownloadMediaRequest, DownloadMediaResponse,
     GenerateThumbnailRequest, GenerateThumbnailResponse, GetDownloadUrlRequest,
     GetDownloadUrlResponse, GetMediaMetadataRequest, GetMediaMetadataResponse, GetUploadUrlRequest,
-    GetUploadUrlResponse, ListMediaRequest, ListMediaResponse, UploadMediaRequest,
+    GetUploadUrlResponse, HealthRequest, ListMediaRequest, ListMediaResponse, UploadMediaRequest,
     UploadMediaResponse,
 };
 
@@ -170,6 +171,13 @@ impl MediaService for MediaServiceImpl {
         request: Request<ListMediaRequest>,
     ) -> Result<Response<ListMediaResponse>, Status> {
         handlers::list::handle(request, self.db.clone(), &self.jwt_secret).await
+    }
+
+    async fn health(
+        &self,
+        request: Request<HealthRequest>,
+    ) -> Result<Response<HealthStatus>, Status> {
+        handlers::health::handle(request, self.db.clone(), self.storage.clone()).await
     }
 }
 
