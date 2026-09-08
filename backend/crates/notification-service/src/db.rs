@@ -158,6 +158,19 @@ impl NotificationDb {
         Ok(())
     }
 
+    /// Verify ScyllaDB connectivity.
+    ///
+    /// Issues the lightest query the cluster answers, so a `Health` probe costs a
+    /// round trip rather than a table scan. Mirrors
+    /// `messaging-service/src/db.rs::scylladb_health_check`.
+    pub async fn health_check(&self) -> Result<()> {
+        self.session
+            .query_unpaged("SELECT now() FROM system.local", &[])
+            .await
+            .context("ScyllaDB health check query failed")?;
+        Ok(())
+    }
+
     /// Register a device for push notifications
     pub async fn register_device(&self, registration: &DeviceRegistration) -> Result<String> {
         let registration_id = Uuid::new_v4().to_string();
