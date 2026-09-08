@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use tonic::{Request, Response, Status};
+use tracing::warn;
 
 use crate::db::NotificationDb;
 use crate::generated::guardyn::notifications::notification_service_server::NotificationService;
@@ -113,19 +114,39 @@ impl NotificationService for NotificationServiceImpl {
     ) -> Result<Response<crate::generated::guardyn::common::HealthStatus>, Status> {
         use crate::generated::guardyn::common::health_status::Status as HealthStatusEnum;
 
+        let mut components = std::collections::HashMap::new();
+        let mut healthy = true;
+
+        match self.db.health_check().await {
+            Ok(()) => {
+                components.insert("scylladb".to_string(), "healthy".to_string());
+            }
+            Err(e) => {
+                // Logged rather than returned: the error can carry endpoint detail,
+                // and a health probe is an unauthenticated surface.
+                warn!(error = %e, "ScyllaDB health check failed");
+                components.insert("scylladb".to_string(), "unhealthy".to_string());
+                healthy = false;
+            }
+        }
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default();
 
         Ok(Response::new(
             crate::generated::guardyn::common::HealthStatus {
-                status: HealthStatusEnum::Healthy.into(),
+                status: if healthy {
+                    HealthStatusEnum::Healthy as i32
+                } else {
+                    HealthStatusEnum::Unhealthy as i32
+                },
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 timestamp: Some(crate::generated::guardyn::common::Timestamp {
                     seconds: now.as_secs() as i64,
                     nanos: now.subsec_nanos() as i32,
                 }),
-                components: std::collections::HashMap::new(),
+                components,
             },
         ))
     }

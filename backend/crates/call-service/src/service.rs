@@ -867,20 +867,53 @@ impl CallService for CallServiceImpl {
             health_status::Status as HealthStatusEnum, Timestamp,
         };
 
+        let mut components = std::collections::HashMap::new();
+        let mut healthy = true;
+
+        match self.db.health_check().await {
+            Ok(()) => {
+                components.insert("scylladb".to_string(), "healthy".to_string());
+            }
+            Err(e) => {
+                // Logged rather than returned: the error can carry endpoint detail,
+                // and a health probe is an unauthenticated surface.
+                warn!(error = %e, "ScyllaDB health check failed");
+                components.insert("scylladb".to_string(), "unhealthy".to_string());
+                healthy = false;
+            }
+        }
+
+        match self.nats_client.connection_state() {
+            async_nats::connection::State::Connected => {
+                components.insert("nats".to_string(), "healthy".to_string());
+            }
+            state => {
+                warn!(?state, "NATS is not connected");
+                components.insert("nats".to_string(), "unhealthy".to_string());
+                healthy = false;
+            }
+        }
+
+        // `unwrap_or_default` rather than `unwrap`: a clock before the epoch is not a
+        // reason for the health endpoint itself to panic.
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs() as i64;
 
         Ok(Response::new(
             crate::generated::guardyn::common::HealthStatus {
-                status: HealthStatusEnum::Healthy as i32,
+                status: if healthy {
+                    HealthStatusEnum::Healthy as i32
+                } else {
+                    HealthStatusEnum::Unhealthy as i32
+                },
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 timestamp: Some(Timestamp {
                     seconds: now,
                     nanos: 0,
                 }),
-                components: std::collections::HashMap::new(),
+                components,
             },
         ))
     }

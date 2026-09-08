@@ -175,6 +175,19 @@ impl CallDb {
         Ok(())
     }
 
+    /// Verify ScyllaDB connectivity.
+    ///
+    /// Issues the lightest query the cluster answers, so a `Health` probe costs a
+    /// round trip rather than a table scan. Mirrors
+    /// `messaging-service/src/db.rs::scylladb_health_check`.
+    pub async fn health_check(&self) -> Result<()> {
+        self.session
+            .query_unpaged("SELECT now() FROM system.local", &[])
+            .await
+            .context("ScyllaDB health check query failed")?;
+        Ok(())
+    }
+
     /// Create a new call
     pub async fn create_call(&self, call: &CallRecord) -> Result<()> {
         self.session
