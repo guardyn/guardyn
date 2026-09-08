@@ -56,11 +56,22 @@ reason phases 3 and 4 exist.
 
 | Invariant | State | Closed by |
 |---|---|---|
-| **I-2** Always-On E2EE | `GUARDYN_E2EE_ENABLED` still exists and the non-E2EE handler is the registered one | PR-32 (Phase 3) |
+| **I-2** Always-On E2EE | server-side encryption removed and no flag remains; `client-desktop` still sends plaintext | PR-30′, PR-31a–d, PR-32a–c (Phase 3) + #163 |
 | **I-3** Post-Quantum | `pq` is off by default and no proto field carries an ML-KEM key, so no server can publish one | PR-36…PR-40 (Phase 4) |
 
 Until those land, **the product must not be described as always-encrypted or
 post-quantum protected.**
+
+**I-2's scope changed during Phase 3.** The row above used to read "`GUARDYN_E2EE_ENABLED` still
+exists and the non-E2EE handler is the registered one", which had the fix backwards: the `_e2ee`
+handlers encrypted *server-side*, so the registered unsuffixed handler was already the relay.
+PR-32 is therefore three deletion steps rather than a collapse, and PR-30 and PR-31 are
+re-scoped with it. [ADR-0010](../adr/ADR-0010-pure-relay-server.md) records the architecture;
+`implementation_plan.md` §6.3 records the two false premises the original scoping rested on.
+
+The remaining gap is on the client, not the server: `client-desktop` puts plaintext in
+`encrypted_content` (#163), which the server used to encrypt on its behalf. PR-32c is blocked on
+that.
 
 ## After the revision
 

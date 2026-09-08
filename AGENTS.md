@@ -51,10 +51,18 @@ ask the user.** Do not proceed under an assumption.
 
 Two invariants are **currently unmet**. Do not "fix" them ad hoc — they have owned steps:
 
-- **I-2 is violated.** `messaging-service/src/handlers/` carries duplicate handler pairs
-  (`send_message.rs` vs `send_message_e2ee.rs`, and three more). **The non-E2EE path is the
-  registered one.** `docker-compose.dev.yml` sets `GUARDYN_E2EE_ENABLED=false`.
-  → Repaired by **PR-32**. Breaking change, already approved.
+- **I-2 is violated.** `messaging-service/src/handlers/` carried duplicate handler pairs and a
+  `GUARDYN_E2EE_ENABLED` flag selecting between them.
+  → Repaired by **PR-32a/b/c** and **PR-30′**. Breaking change, already approved.
+
+  **This entry previously said the opposite of the truth, and the correction is load-bearing.**
+  It claimed four such pairs existed and that the fix was to collapse onto the `_e2ee`
+  variants. There were **two** (`send_message`, `receive_messages`), and the `_e2ee` variants
+  were the violation, not the fix: they encrypted server-side and held the ratchet state
+  (`send_message_e2ee.rs:129`, `receive_messages_e2ee.rs:177`). The unsuffixed handler was
+  already the zero-knowledge relay. Collapsing the way this file used to direct would have
+  traded an I-2 violation for an I-1 one. See
+  [ADR-0010](docs/adr/ADR-0010-pure-relay-server.md).
 - **I-3 is unmet.** `crypto/src/pqxdh.rs` is a real hybrid implementation, but the `pq`
   feature is off by default and no backend service enables it — and decisively,
   `backend/proto/` contains **zero** ML-KEM fields, so the server cannot publish a PQ
