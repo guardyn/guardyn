@@ -10,7 +10,6 @@
 
 mod auth_client;
 mod config;
-mod crypto;
 mod db;
 mod event_consumer;
 /// Messaging Service
