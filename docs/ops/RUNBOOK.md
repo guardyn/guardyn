@@ -129,6 +129,12 @@ fix is never to relax the check: route the service through
 so it is not dropped immediately. `presence-service/src/main.rs` is the reference for a
 service with no `ServiceConfig`; `auth-service/src/main.rs` for one with.
 
+**If `E2EE-FLAG` fails**, something set `GUARDYN_E2EE_ENABLED` or `GUARDYN_MLS_ENABLED` — in a
+manifest, in Compose, or back in the service. No code reads either name any more, so a hit is
+either a stale deployment file or an attempt to reinstate the switch. Delete the variable. The
+check uses `git ls-files` rather than `grep -r` because the latter walks `backend/target` and
+takes minutes.
+
 **If `E2EE-DUP` fails**, a `*_e2ee.rs` handler has appeared beside an unsuffixed one. The check
 is inverted on purpose: two handlers for one RPC means one of them is the wrong path, and the
 suffix does not tell you which. In this repository it was the `_e2ee` one — those handlers

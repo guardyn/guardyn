@@ -65,7 +65,6 @@ export TIKV_PD_ENDPOINTS="127.0.0.1:${TIKV_PD_PORT}"
 
 # ScyllaDB configuration
 export GUARDYN_DATABASE__SCYLLADB_NODES="127.0.0.1:${SCYLLADB_PORT}"
-export SCYLLADB_ENDPOINTS="127.0.0.1:${SCYLLADB_PORT}"
 # For local dev with single ScyllaDB node - use consistency level "one"
 export SCYLLA_CONSISTENCY="one"
 export SCYLLA_REPLICATION_FACTOR="1"
@@ -296,7 +295,6 @@ run_service() {
             bin_name="guardyn-messaging-service"
             # Messaging service needs auth-service endpoint
             export AUTH_SERVICE_URL="http://127.0.0.1:${AUTH_PORT}"
-            export AUTH_SERVICE_ENDPOINT="http://127.0.0.1:${AUTH_PORT}"
             ;;
         presence-service)
             bin_name="guardyn-presence-service"
