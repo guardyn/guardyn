@@ -166,24 +166,6 @@ impl MlsManager {
             .await?
             .map_or(0, |metadata| metadata.current_epoch))
     }
-
-    /// Check if user is a member of the group
-    ///
-    /// # Arguments
-    /// * `group_id` - Group identifier
-    /// * `user_id` - User to check
-    /// * `device_id` - Device to check
-    ///
-    /// # Returns
-    /// true if user/device is a member
-    pub async fn is_member(&self, group_id: &str, user_id: &str, device_id: &str) -> Result<bool> {
-        let member_key = format!(
-            "{}/{}/{}:{}",
-            MLS_GROUP_MEMBERS_PREFIX, group_id, user_id, device_id
-        );
-
-        Ok(self.db.get(member_key.as_bytes()).await?.is_some())
-    }
 }
 
 #[cfg(test)]
