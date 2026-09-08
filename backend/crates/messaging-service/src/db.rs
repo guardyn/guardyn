@@ -1070,14 +1070,14 @@ impl DatabaseClient {
         // Truncate preview to 100 chars
         let preview: String = last_message_preview.chars().take(100).collect();
 
-        // First, try to delete old entry for this conversation (if exists)
-        // We need to do this because last_message_time is part of clustering key
-        let delete_query = "DELETE FROM guardyn.conversations 
+        // Never executed. `last_message_time` is part of the clustering key, so
+        // every update inserts a new row rather than replacing one, and this
+        // delete cannot address the old one because `conversation_id` is not the
+        // partition key. `get_conversations` filters the duplicates on read, so
+        // the output stays correct while the partition grows without bound.
+        // Tracked as #173, which needs a schema change and an ADR.
+        let _delete_query = "DELETE FROM guardyn.conversations 
                            WHERE user_id = ? AND conversation_id = ?";
-
-        // Note: This won't work as-is because conversation_id is not the partition key
-        // We need a different approach - using a separate lookup or accepting duplicates
-        // For MVP, we'll just insert and accept that old entries remain (they'll be filtered)
 
         // Insert new conversation entry
         let insert_query = if increment_unread {
@@ -1732,7 +1732,11 @@ impl DatabaseClient {
         recipient_username: &str,
         content: &str,
         content_type: &str,
-        encrypted: bool,
+        // Ignored: the column stores whatever the client sent, and under
+        // ADR-0010 the server cannot tell ciphertext from plaintext anyway.
+        // The parameter stays for now because removing it changes the
+        // WebSocket handler's call site.
+        _encrypted: bool,
         timestamp: chrono::DateTime<chrono::Utc>,
     ) -> Result<()> {
         // Generate conversation ID (deterministic for 1-on-1)
@@ -1894,7 +1898,7 @@ impl DatabaseClient {
     pub async fn remove_reaction(
         &self,
         message_id: &str,
-        conversation_id: &str,
+        _conversation_id: &str,
         user_id: &str,
         emoji: &str,
         _is_group: bool,
@@ -2319,7 +2323,7 @@ impl DatabaseClient {
         recipient_user_id: &str,
         encrypted_content: &[u8],
         message_type: i32,
-        client_message_id: &str,
+        _client_message_id: &str,
         forward_info: &crate::proto::messaging::ForwardInfo,
     ) -> Result<()> {
         let message_uuid = uuid::Uuid::parse_str(message_id)?;
@@ -2364,7 +2368,7 @@ impl DatabaseClient {
     #[allow(clippy::too_many_arguments)]
     pub async fn store_forwarded_group_message(
         &self,
-        message_id: &str,
+        _message_id: &str,
         group_id: &str,
         sender_user_id: &str,
         sender_device_id: &str,

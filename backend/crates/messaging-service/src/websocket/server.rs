@@ -235,9 +235,9 @@ async fn handle_socket(socket: WebSocket, state: WsState) {
                 Ok(Message::Binary(_)) => {
                     debug!("Received binary message (not supported)");
                 }
-                Ok(Message::Ping(data)) => {
-                    debug!("Received ping, sending pong");
-                    // Axum handles pong automatically
+                Ok(Message::Ping(_)) => {
+                    // Axum answers the pong itself; the payload is its business.
+                    debug!("Received ping");
                 }
                 Ok(Message::Pong(_)) => {
                     debug!("Received pong");

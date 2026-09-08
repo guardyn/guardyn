@@ -53,7 +53,7 @@ pub async fn get_conversations(
             // No conversations in new table, fall back to old method for backward compatibility
             info!("No conversations in optimized table, falling back to messages scan");
             match db.get_recent_conversations(&user_id, limit as i32).await {
-                Ok(mut conversations) => {
+                Ok(conversations) => {
                     info!(
                         "Successfully fetched {} conversations via fallback",
                         conversations.len()

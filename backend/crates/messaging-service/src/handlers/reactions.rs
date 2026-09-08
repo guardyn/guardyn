@@ -189,8 +189,11 @@ pub async fn get_reactions(
 ) -> Result<Response<GetReactionsResponse>, Status> {
     let req = request.into_inner();
 
-    // Validate token
-    let claims = match validate_access_token(&req.access_token) {
+    // Authenticated but NOT authorized: `_claims` is never read, so nothing
+    // checks that the caller belongs to the conversation this returns data for.
+    // Tracked as #172 - renamed rather than fixed here, because the fix is a
+    // behaviour change needing its own tests.
+    let _claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
         Err(e) => {
             warn!("Invalid access token: {}", e);
