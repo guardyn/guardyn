@@ -49,7 +49,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 BASE="${RULES_VERIFY_BASE:-origin/main}"
 
 # Frozen debt. These may only ever be lowered. Lower them in the same PR that removes a site.
-RS_UNWRAP_BUDGET=52
+RS_UNWRAP_BUDGET=50
 NAME_SH_BUDGET=5
 
 failures=0
