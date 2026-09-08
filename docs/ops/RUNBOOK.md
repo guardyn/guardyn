@@ -147,6 +147,36 @@ raw IP under a neutral name, or one that reaches a log through a `Display` impl.
 `RateLimitError::IpBlocked` was exactly that second case and was found by reading the code,
 not by the check. Treat a `ZK-PII` pass as "no obvious breach", never as proof.
 
+## Fuzzing
+
+```sh
+just fuzz-build                    # compile every target - the cheap drift check
+just fuzz padme_unpad 300          # fuzz one parser for 300 seconds
+just fuzz ratchet_message          # 60 seconds by default
+```
+
+Four targets, one per parser reachable from attacker-controlled bytes:
+`padme_unpad`, `ratchet_message`, `sealed_sender_envelope`, `x3dh_prekey_message`.
+
+`fuzz.yml` runs the **build** on every crypto pull request and the **run** on a nightly
+schedule. The split is deliberate: compiling catches the way fuzz targets usually rot — a parser
+signature changes and the harness stops matching it — while a meaningful run takes longer than a
+PR should wait. `workflow_dispatch` takes a `seconds` input for an on-demand longer run.
+
+**The toolchain is pinned to a date**, `nightly-2026-01-31`, in two places that must agree:
+`FUZZ_TOOLCHAIN` in the Justfile and the `env` block of `fuzz.yml`. `cargo-fuzz` needs
+`-Z sanitizer=address`, which stable does not have; a bare `nightly` would reintroduce exactly
+the drift `rust-toolchain.toml` exists to prevent. The fuzz crate is outside the backend
+workspace for the same reason, which needs both an `exclude` in `backend/Cargo.toml` **and** an
+empty `[workspace]` table in `fuzz/Cargo.toml` — without the second, cargo resolves the parent
+workspace anyway and refuses to build.
+
+**When a target crashes**, libFuzzer writes the input to `fuzz/artifacts/<target>/crash-<hash>`
+and CI uploads it as an artifact. Reproduce with
+`cargo +nightly-2026-01-31 fuzz run <target> fuzz/artifacts/<target>/crash-<hash>`. Then commit a
+**named regression test** carrying those bytes — `corpus/` and `artifacts/` are gitignored, so a
+crash left there is lost on the next clean checkout.
+
 ## Roadmap and board sync
 
 [`roadmap.yaml`](../roadmap/roadmap.yaml) is the machine source of truth. `roadmap-sync`

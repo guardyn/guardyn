@@ -1,3 +1,8 @@
+# The nightly cargo-fuzz builds against. Pinned rather than `nightly`, for the
+# same reason rust-toolchain.toml pins 1.98.1: a gate that can fail without a
+# change to this repository is not a signal.
+FUZZ_TOOLCHAIN := "nightly-2026-01-31"
+
 default:
     @echo "Run 'just --list' to view available tasks."
 
@@ -494,3 +499,18 @@ roadmap-sync dry="1":
 # Verify the code-style predicates of .claude/rules/20-code-style.md.
 rules-verify:
     @bash infra/scripts/rules-verify.sh
+
+# Fuzz one parser. Targets: padme_unpad, ratchet_message, sealed_sender_envelope,
+# x3dh_prekey_message. Runs until interrupted unless `secs` is given.
+#
+# The nightly is pinned, not floating: cargo-fuzz needs -Z sanitizer=address,
+# which stable does not have, and a bare `nightly` reintroduces exactly the
+# drift rust-toolchain.toml exists to prevent.
+fuzz target secs="60":
+    cd backend/crates/crypto && \
+      cargo +{{FUZZ_TOOLCHAIN}} fuzz run {{target}} -- -max_total_time={{secs}}
+
+# Build every fuzz target without running one - the cheap check that a parser
+# signature has not drifted out from under its harness.
+fuzz-build:
+    cd backend/crates/crypto && cargo +{{FUZZ_TOOLCHAIN}} fuzz build

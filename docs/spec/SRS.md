@@ -181,8 +181,14 @@ target. The crate sits outside the backend workspace on purpose: `cargo-fuzz` ne
 is pinned to a date rather than the `nightly` channel, for the reason that file gives — a gate
 that can fail without a change to this repository is not a signal.
 
-The three remaining parsers §4 names — ratchet message, sealed-sender envelope, X3DH prekey
-message — are PR-33b, along with the scheduled CI job.
+All four parsers §4 names now have a target: `padme_unpad`, `ratchet_message`,
+`sealed_sender_envelope` and `x3dh_prekey_message` (PR-33b). `fuzz.yml` compiles them on every
+crypto pull request and runs them nightly. Operating instructions are in
+[RUNBOOK.md](../ops/RUNBOOK.md).
+
+`ratchet_message` targets `EncryptedMessage::from_bytes` rather than `MessageHeader::from_bytes`:
+the header parser is private, and the public entry point is both the path that reaches it and the
+one that reads a 32-bit length from attacker bytes and slices on it.
 
 A bug fix lands with a regression test that fails before the fix. **Never weaken or delete
 a test to make CI pass.**

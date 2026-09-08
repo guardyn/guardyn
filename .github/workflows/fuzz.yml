@@ -1,0 +1,109 @@
+name: fuzz
+
+# Fuzz targets for every parser reachable from attacker-controlled bytes, which
+# `docs/spec/SRS.md` requires and PR-33 supplies.
+#
+# Two jobs with different purposes. `fuzz-build` runs on every relevant pull
+# request and only compiles: it is the cheap check that a parser signature has
+# not drifted out from under its harness, which is the way fuzz targets usually
+# rot. `fuzz-run` executes them, and does so on a schedule rather than per-PR
+# because meaningful fuzzing takes longer than a PR should wait.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/crates/crypto/**'
+      - '.github/workflows/fuzz.yml'
+  schedule:
+    # 03:17 UTC daily. Off the hour deliberately - scheduled jobs on the hour
+    # queue behind everyone else's.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: 'Seconds per target'
+        required: false
+        default: '300'
+
+permissions:
+  contents: read
+
+env:
+  # Pinned, not `nightly`. cargo-fuzz needs -Z sanitizer=address, which stable
+  # does not have; a floating nightly reintroduces exactly the drift
+  # rust-toolchain.toml exists to prevent. Bumping this is a reviewable commit.
+  # Keep in step with FUZZ_TOOLCHAIN in the Justfile.
+  FUZZ_TOOLCHAIN: nightly-2026-01-31
+
+jobs:
+  fuzz-build:
+    name: fuzz-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.FUZZ_TOOLCHAIN }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/crates/crypto/fuzz/target
+          key: fuzz-${{ env.FUZZ_TOOLCHAIN }}-${{ hashFiles('backend/crates/crypto/fuzz/Cargo.toml') }}
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Build every target
+        working-directory: backend/crates/crypto
+        run: cargo +${{ env.FUZZ_TOOLCHAIN }} fuzz build
+
+  fuzz-run:
+    name: fuzz-run
+    # Only on the schedule and on demand. A pull request gets the build check
+    # above; running four targets for five minutes each would add twenty minutes
+    # to every crypto PR and still find less than one nightly run does.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - padme_unpad
+          - ratchet_message
+          - sealed_sender_envelope
+          - x3dh_prekey_message
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.FUZZ_TOOLCHAIN }}
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Fuzz ${{ matrix.target }}
+        working-directory: backend/crates/crypto
+        run: |
+          cargo +${{ env.FUZZ_TOOLCHAIN }} fuzz run ${{ matrix.target }} -- \
+            -max_total_time=${{ github.event.inputs.seconds || '300' }}
+
+      - name: Upload crash reproducers
+        # A crash is the entire point of the job, so the input that caused it
+        # must survive the runner. Without this the failure is unactionable.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: backend/crates/crypto/fuzz/artifacts/
+          if-no-files-found: ignore
