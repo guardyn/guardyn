@@ -1,0 +1,32 @@
+# Fuzz targets for every parser reachable from attacker-controlled bytes.
+#
+# Deliberately NOT a member of the backend workspace: `cargo-fuzz` requires a
+# nightly toolchain for `-Z sanitizer=address`, and `rust-toolchain.toml` pins
+# 1.98.1 for everything else. Keeping this crate out of the workspace is what
+# lets the pin stay exact - see `docs/ops/RUNBOOK.md`.
+# An empty workspace table, not an oversight: without it cargo resolves the
+# parent workspace at ../../.. and refuses to build, even though that workspace
+# excludes this directory.
+[workspace]
+
+[package]
+name = "guardyn-crypto-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.guardyn-crypto]
+path = ".."
+
+[[bin]]
+name = "padme_unpad"
+path = "fuzz_targets/padme_unpad.rs"
+test = false
+doc = false
+bench = false
