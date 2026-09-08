@@ -199,19 +199,35 @@ else
     bad "project $project_number not readable with GUARDYN_PROJECT_TOKEN - check its scopes"
   else
     say "board: project $project_number resolved"
+
+    # addProjectV2ItemById is idempotent on GitHub's side: adding content that is already
+    # on the board returns the existing item rather than an error. The mutation therefore
+    # cannot tell us whether it changed anything, and reporting every successful call as a
+    # change made the second write report the same count as the first - which is exactly
+    # the convergence check the issue-sync skill asks for. So read the board once and diff
+    # against it.
+    on_board="$(GH_TOKEN="$GUARDYN_PROJECT_TOKEN" gh api graphql --paginate \
+      -f query='query($o:String!,$n:Int!,$endCursor:String){organization(login:$o){projectV2(number:$n){items(first:100,after:$endCursor){pageInfo{hasNextPage,endCursor},nodes{content{... on Issue{number}}}}}}}' \
+      -f o="$owner" -F n="$project_number" \
+      --jq '.data.organization.projectV2.items.nodes[].content.number' 2>/dev/null)"
+
     while IFS= read -r step; do
       [ -n "$step" ] || continue
       issue="$(field "$step" issue)"
       id="$(field "$step" id)"
       [ -n "$issue" ] && [ "$issue" != "null" ] || continue
+      if printf '%s\n' "$on_board" | grep -qx "$issue"; then
+        noop "$id #$issue already on the board"
+        continue
+      fi
       node="$(gh api "repos/$REPO/issues/$issue" --jq '.node_id' 2>/dev/null)"
       [ -n "$node" ] || { bad "$id #$issue has no node id"; continue; }
       if GH_TOKEN="$GUARDYN_PROJECT_TOKEN" gh api graphql \
           -f query='mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}' \
           -f p="$project_id" -f c="$node" >/dev/null 2>&1; then
-        ok "$id #$issue on the board"
+        ok "$id #$issue added to the board"
       else
-        noop "$id #$issue already on the board"
+        bad "$id #$issue could not be added to the board"
       fi
     done <<<"$steps_raw"
   fi

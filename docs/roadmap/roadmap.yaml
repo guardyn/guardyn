@@ -11,10 +11,14 @@ project_number: 3
 project_url: https://github.com/orgs/guardyn/projects/3
 charter: implementation_plan.md
 
-# P-1: no token available to CI can read or write the project board. The fine-grained
-# PAT is rejected by the organization; the fallback OAuth token lacks read:project.
-# Board sync stays inert until GUARDYN_PROJECT_TOKEN exists with repo + project scope.
-project_sync_enabled: false
+# P-1 is resolved: the ambient gh credential now carries the project scope, obtained with
+# `gh auth refresh -h github.com -s project`. The fine-grained PAT the organization rejects
+# is out of the picture, and the OAuth token that replaced it reads and writes the board.
+#
+# Still outstanding: GUARDYN_PROJECT_TOKEN as a repository *secret*, which is what
+# roadmap-sync.yml needs to reconcile the board from CI rather than from a developer's
+# machine. Without it the workflow skips the board half and exits 0.
+project_sync_enabled: true
 
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "2 services log outside init_tracing; rate_limit.rs logs a raw IP"}
