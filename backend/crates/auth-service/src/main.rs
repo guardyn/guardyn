@@ -332,7 +332,7 @@ async fn main() -> Result<()> {
     // Falls back to legacy JWT_SECRET, then to dev default
     let jwt_secret = std::env::var("GUARDYN_AUTH__JWT_SECRET")
         .or_else(|_| std::env::var("JWT_SECRET"))
-        .unwrap_or_else(|_| config.auth.jwt_secret.clone());
+        .unwrap_or_else(|_| config.auth.jwt_secret.expose().clone());
 
     if jwt_secret.len() < 32 {
         tracing::error!("JWT secret is too short (< 32 bytes) - this is insecure!");

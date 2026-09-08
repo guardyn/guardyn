@@ -5,6 +5,7 @@ use crate::proto::auth::{
     update_profile_response, UpdateProfileRequest, UpdateProfileResponse, UserProfile,
 };
 use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
+use guardyn_common::Redacted;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -137,7 +138,7 @@ pub async fn update_profile(
         result: Some(update_profile_response::Result::Profile(UserProfile {
             user_id: user.user_id,
             username: user.username,
-            email: user.email.unwrap_or_default(),
+            email: user.email.map(Redacted::into_inner).unwrap_or_default(),
             created_at: Some(Timestamp {
                 seconds: user.created_at,
                 nanos: 0,

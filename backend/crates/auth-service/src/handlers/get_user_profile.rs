@@ -1,9 +1,10 @@
-/// Get user profile by user ID handler
 use crate::{
     db::DatabaseClient,
     proto::auth::*,
     proto::common::{error_response::ErrorCode, *},
 };
+/// Get user profile by user ID handler
+use guardyn_common::Redacted;
 use tracing::{error, info, warn};
 
 pub async fn handle_get_user_profile(
@@ -46,7 +47,7 @@ pub async fn handle_get_user_profile(
                 result: Some(get_user_profile_response::Result::Success(UserProfile {
                     user_id: user.user_id,
                     username: user.username,
-                    email: user.email.unwrap_or_default(),
+                    email: user.email.map(Redacted::into_inner).unwrap_or_default(),
                     created_at: Some(Timestamp {
                         seconds: user.created_at,
                         nanos: 0,

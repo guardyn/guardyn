@@ -14,6 +14,7 @@ use argon2::{
     password_hash::{PasswordHash, PasswordVerifier},
     Argon2,
 };
+use guardyn_common::Redacted;
 use tonic::{Request, Response, Status};
 
 pub async fn handle(
@@ -49,7 +50,7 @@ pub async fn handle(
     };
 
     // Verify password
-    if !verify_password(&req.password, &user.password_hash) {
+    if !verify_password(&req.password, user.password_hash.expose()) {
         let error = ErrorResponse {
             code: error_response::ErrorCode::Unauthorized as i32,
             message: "Invalid username or password".to_string(),
@@ -156,7 +157,7 @@ pub async fn handle(
 
     // Create session
     let session = Session {
-        session_token: refresh_token.clone(),
+        session_token: Redacted::new(refresh_token.clone()),
         user_id: user.user_id.clone(),
         device_id: device_id.clone(),
         created_at: now,
@@ -187,7 +188,11 @@ pub async fn handle(
     let profile = Some(UserProfile {
         user_id: user.user_id.clone(),
         username: user.username.clone(),
-        email: user.email.clone().unwrap_or_default(),
+        email: user
+            .email
+            .clone()
+            .map(Redacted::into_inner)
+            .unwrap_or_default(),
         created_at: Some(Timestamp {
             seconds: now,
             nanos: 0,
