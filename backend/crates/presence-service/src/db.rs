@@ -19,6 +19,25 @@ pub struct UserPresence {
     pub updated_at: i64, // Unix timestamp in milliseconds
 }
 
+/// How long a typing indicator stays valid, in milliseconds.
+///
+/// Ten seconds: long enough to survive a slow keystroke cadence, short enough that a
+/// client which disconnects mid-compose stops showing as typing almost immediately.
+pub const TYPING_TTL_MS: i64 = 10_000;
+
+// The value itself is a product decision, but two properties are not: a non-positive TTL
+// expires every indicator instantly, and a long one leaves users shown as typing after
+// they have gone. Asserted at compile time, so a bad edit cannot reach a test run.
+const _: () = assert!(TYPING_TTL_MS > 0 && TYPING_TTL_MS < 60_000);
+
+/// Whether a typing indicator stamped at `started_at` has expired by `now`.
+///
+/// Both arguments are Unix milliseconds. An indicator is still live at exactly
+/// [`TYPING_TTL_MS`] and expires past it.
+pub fn typing_expired(started_at: i64, now: i64) -> bool {
+    now - started_at > TYPING_TTL_MS
+}
+
 /// Typing indicator (ephemeral state)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypingIndicator {
@@ -102,8 +121,14 @@ impl DatabaseClient {
         Ok(presences)
     }
 
-    /// Set typing indicator (ephemeral - short TTL would be ideal, but TiKV doesn't have TTL)
-    /// In production, this would use Redis or similar with TTL support
+    /// Set a typing indicator.
+    ///
+    /// Expiry is enforced by this module rather than by the store: writers stamp
+    /// `started_at`, and readers treat anything older than [`TYPING_TTL_MS`] as
+    /// absent and delete it. TiKV has no native key TTL, and per
+    /// [ADR-0006](../../../../docs/adr/ADR-0006-no-cache-layer.md) the
+    /// Dragonfly/Redis layer that would provide one is deferred post-launch.
+    /// This is the TTL implementation, not a placeholder for one.
     pub async fn set_typing(
         &self,
         user_id: &str,
@@ -144,10 +169,18 @@ impl DatabaseClient {
 
         let indicator: TypingIndicator = serde_json::from_slice(&indicator_data)?;
 
-        // Check if typing indicator is stale (older than 10 seconds)
+        // Lazy expiry. Reporting the indicator as absent is not enough on its own:
+        // without the delete, every `/typing/` key a client ever wrote would stay in
+        // TiKV forever, because nothing else removes a key whose author disconnected
+        // before sending `is_typing = false`.
         let now = chrono::Utc::now().timestamp_millis();
-        if now - indicator.started_at > 10_000 {
-            // Typing indicator expired
+        if typing_expired(indicator.started_at, now) {
+            let key = format!("/typing/{}/{}", user_id, conversation_user_id).into_bytes();
+            if let Err(e) = self.client.delete(key).await {
+                // Not fatal: the caller asked whether someone is typing, and the answer
+                // is no either way. A failed sweep is retried on the next read.
+                tracing::warn!(error = %e, "Failed to delete expired typing indicator");
+            }
             return Ok(None);
         }
 
@@ -166,6 +199,29 @@ impl DatabaseClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_typing_expired_boundary() {
+        let started = 1_000_000i64;
+
+        assert!(!typing_expired(started, started), "not expired at zero age");
+        assert!(
+            !typing_expired(started, started + TYPING_TTL_MS),
+            "still live at exactly the TTL"
+        );
+        assert!(
+            typing_expired(started, started + TYPING_TTL_MS + 1),
+            "expired one millisecond past the TTL"
+        );
+    }
+
+    #[test]
+    fn test_typing_expired_tolerates_clock_skew_backwards() {
+        // A reader whose clock is behind the writer's must not treat the
+        // indicator as expired - it would flap the typing state.
+        let started = 1_000_000i64;
+        assert!(!typing_expired(started, started - 5_000));
+    }
 
     #[test]
     fn test_user_presence_default() {
@@ -279,7 +335,7 @@ mod tests {
             is_typing: true,
             started_at: now - 1000,
         };
-        assert!(now - fresh.started_at <= 10_000);
+        assert!(now - fresh.started_at <= TYPING_TTL_MS);
 
         // Stale indicator (15 seconds ago)
         let stale = TypingIndicator {
@@ -288,7 +344,7 @@ mod tests {
             is_typing: true,
             started_at: now - 15_000,
         };
-        assert!(now - stale.started_at > 10_000);
+        assert!(now - stale.started_at > TYPING_TTL_MS);
     }
 
     #[test]
