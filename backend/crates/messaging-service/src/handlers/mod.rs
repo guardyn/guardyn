@@ -12,13 +12,11 @@ pub mod get_messages;
 pub mod leave_group;
 pub mod mark_as_read;
 pub mod receive_messages;
-pub mod receive_messages_e2ee;
 pub mod remove_group_member;
 pub mod send_group_message;
 pub mod send_group_message_mls;
 /// Message handlers for Messaging Service
 pub mod send_message;
-pub mod send_message_e2ee;
 pub mod update_group;
 
 // Phase 2: New feature handlers
@@ -50,11 +48,9 @@ pub use get_messages::get_messages;
 pub use leave_group::leave_group;
 pub use mark_as_read::mark_as_read;
 pub use receive_messages::receive_messages;
-pub use receive_messages_e2ee::receive_messages_e2ee;
 pub use remove_group_member::remove_group_member;
 pub use send_group_message::send_group_message;
 pub use send_message::send_message;
-pub use send_message_e2ee::send_message_e2ee;
 pub use update_group::update_group;
 
 // Phase 2: Re-exports
