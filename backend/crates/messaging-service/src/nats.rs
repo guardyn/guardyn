@@ -3,7 +3,6 @@ use anyhow::{Context, Result};
 use async_nats::jetstream::{self, consumer::PullConsumer, stream::Stream};
 use futures::StreamExt; // For .next() on async streams
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 /// NATS message envelope
 #[derive(Debug, Clone, Serialize, Deserialize)]
