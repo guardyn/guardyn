@@ -118,6 +118,26 @@ check_zk_init() {
   fi
 }
 
+# ----------------------------------------------------------------- E2EE-FLAG
+# I-2 admits no kill switch. The service reads no cryptography feature flag, so
+# a deployment surface that sets one is either stale or an attempt to reinstate
+# the switch - both worth failing on.
+check_e2ee_flag() {
+  local hits
+  # git ls-files, not grep -r: the latter walks backend/target and takes minutes.
+  # This script is excluded because it contains the pattern it searches for -
+  # same self-match ORG-LOCAL has, and the same resolution.
+  hits="$(git ls-files -z -- backend infra docker-compose.dev.yml \
+    ':!infra/scripts/rules-verify.sh' \
+    | xargs -0 grep -lI 'GUARDYN_E2EE_ENABLED\|GUARDYN_MLS_ENABLED' 2>/dev/null || true)"
+  if [ -n "$hits" ]; then
+    fail "E2EE-FLAG: a configuration key can turn encryption off"
+    show "$hits"
+  else
+    pass "E2EE-FLAG: no cryptography kill switch in code or deployment"
+  fi
+}
+
 # ------------------------------------------------------------------ E2EE-DUP
 # Inverted on purpose: a `*_e2ee.rs` file existing proves a non-E2EE original
 # still sits beside it, and one of the two paths must be the wrong one. After
@@ -219,6 +239,7 @@ echo "rules-verify (base: $BASE)"
 check_rs_unwrap
 check_rs_unsafe
 check_zk_init
+check_e2ee_flag
 check_e2ee_dup
 check_proto_edit
 check_lang_md

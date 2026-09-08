@@ -51,6 +51,22 @@ and `SCYLLA_HOSTS`; setting only `GUARDYN_PORT` and `GUARDYN_DATABASE__SCYLLADB_
 it binding the wrong port and dialling the Kubernetes ScyllaDB FQDN. Compose now sets both
 forms. Unifying this is tracked separately.
 
+### There is no encryption feature flag
+
+`GUARDYN_E2EE_ENABLED`, `GUARDYN_MLS_ENABLED` and their four companions are gone from Compose,
+the Kubernetes base and the production overlay. Invariant I-2 admits no switch that turns
+encryption off, so there is nothing to set — `messaging-service` relays opaque ciphertext and
+holds no key material either way. `rules-verify` enforces this as `E2EE-FLAG`; a manifest that
+reintroduces one of these names fails the build.
+
+Before this, the production overlay set `GUARDYN_E2EE_ENABLED=true`, which selected a handler
+that encrypted server-side and held the ratchet state. "Enabled" meant the opposite of what it
+appears to mean, which is the reason the flag could not simply be defaulted differently.
+
+`SCYLLADB_ENDPOINTS` and `AUTH_SERVICE_ENDPOINT` were removed alongside them. Both were read
+only by a `MessagingConfig` whose fields nothing used; the live names are
+`GUARDYN_DATABASE__SCYLLADB_NODES` and `AUTH_SERVICE_URL`.
+
 ## Kubernetes
 
 ```sh

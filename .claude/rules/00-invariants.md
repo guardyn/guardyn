@@ -20,7 +20,7 @@ If a task appears to require it, stop and ask the user.
 |---|---|---|---|---|
 | `ZK-INIT` | I-1 | Tracing is initialised only via `guardyn_common::observability::init_tracing` | PASS | `rules-verify` |
 | `ZK-PII` | I-1 | No log macro is passed a raw IP, email or phone number | FAIL (2) | **none — open an issue** |
-| `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | FAIL (4) | PR-32b, PR-32c |
+| `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | PASS | `rules-verify` |
 | `E2EE-DUP` | I-2 | No handler has a non-E2EE twin | PASS | `rules-verify` |
 | `PQ-DEFAULT` | I-3 | The `pq` feature is on by default in the crypto crate | FAIL | PR-38 |
 | `PQ-WIRE` | I-3 | The wire contract carries ML-KEM key material | FAIL | PR-36 |
