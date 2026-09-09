@@ -84,10 +84,17 @@ A replayed prekey message fails because the one-time key is already consumed.
 5. **The header is bound into the AEAD associated data**: `AD = AD_caller || header`, as the
    Signal specification requires. `dh_public_key`, `previous_chain_length` and
    `message_number` are therefore covered by the tag and cannot be rewritten in flight.
+6. **Decryption is atomic.** No receive-side state is committed until the AEAD tag verifies.
+   The DH ratchet step, the skipped-key derivation and the chain advance are staged and
+   swapped in only on success, so a rejected message - forged, corrupted or merely
+   mis-delivered - leaves the session exactly as it was. A failed decrypt on the skipped-key
+   path likewise does not consume the stored key.
 
 **Edge cases.** A padded length below `MIN_PADDED_LENGTH` (32) is invalid. Plaintext above
 `MAX_MESSAGE_LENGTH` (16 MiB) is rejected before encryption. A header claiming a counter
-more than `MAX_SKIP` ahead is rejected, not accommodated.
+more than `MAX_SKIP` ahead is rejected, not accommodated - and the bound counts staged keys
+against those already stored, so a sequence of rejected messages cannot each stage up to the
+limit afresh.
 
 **Wire format.** A serialized message is
 `version(1) || header_len:u32 BE || header(40) || nonce(12) || ciphertext || tag(16)`. The
@@ -99,12 +106,6 @@ than an opaque authentication failure.
 Binding the header changed the ciphertext format non-additively. Deployed clients that predate
 it cannot decrypt, and this was accepted deliberately at gate G3 rather than carried into
 Phase 4, where #105 and #106 would have forced the clients to re-parse a second time.
-
-**Known gaps.** Skipped-key derivation advances the receiving chain before the tag is verified,
-so a forged header can poison a session (#106). Binding the header reduces that exposure - the
-counter driving the loop is now authenticated - but does not remove it: a replayed genuine
-header still drives `skip_message_keys`, and `dh_ratchet_receive` likewise mutates
-`dh_self`, `root_key` and both chain keys before any tag is checked.
 
 ## Groups (MLS)
 
