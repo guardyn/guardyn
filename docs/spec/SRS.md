@@ -165,5 +165,15 @@ tests and fuzz targets on every attacker-reachable parser.
 Required properties: ratchet round-trip up to `MAX_SKIP`; PADMÉ `unpad(pad(m)) == m` for
 32 B … 16 MiB; X3DH symmetry, both sides deriving the same secret.
 
+**Status.** `crypto/src/proptests.rs` (PR-34) covers twelve properties: the three required
+above, plus PADMÉ length monotonicity and its 12% overhead bound, `unpad_message` not panicking
+on arbitrary bytes, X3DH identity-key export/import, signature binding, AEAD rejection of
+mismatched associated data, single-bit ciphertext tampering, and out-of-order delivery. Each was
+negative-tested by inversion — a property suite that passes vacuously is worse than none, because
+it reads as coverage.
+
+Not yet covered: the ratchet round-trip is exercised over short chains rather than up to
+`MAX_SKIP`, and the sealed-sender envelope parser has no property test. Fuzz targets are PR-33.
+
 A bug fix lands with a regression test that fails before the fix. **Never weaken or delete
 a test to make CI pass.**

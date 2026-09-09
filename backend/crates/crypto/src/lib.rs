@@ -27,6 +27,9 @@ pub mod ffi;
 mod mls_tests;
 
 #[cfg(test)]
+mod proptests;
+
+#[cfg(test)]
 mod redaction_tests;
 
 #[cfg(test)]
