@@ -5,11 +5,6 @@
 // the trait, so it is not available. Scoped to crates that speak gRPC: `crypto` and
 // `common` still get the lint.
 #![allow(clippy::result_large_err)]
-// `dead_code` only, and on its way out in #174. The crate-wide allow this
-// replaces also covered `unused_variables`, `unused_mut` and `unused_imports`,
-// which is how three authenticated-but-unauthorized handlers (#172) and a
-// delete that never ran (#173) sat here without a single warning.
-#![allow(dead_code)]
 
 mod auth_client;
 mod config;

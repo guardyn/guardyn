@@ -57,6 +57,15 @@ impl Default for ConnectionManager {
     }
 }
 
+// Six of these have tests but no production caller yet: `get_connection`,
+// `send_to_users`, `get_online_users`, `connection_count`,
+// `get_conversation_subscribers` and `get_presence_subscribers`. They are the
+// query and fan-out half of a connection registry, exercised by the tests below
+// and waiting on the broadcast path that will use them. Deleting them would
+// delete passing tests, which is why this is a scoped allow rather than a
+// deletion - unlike the E2EE-only helpers removed elsewhere in this commit,
+// which had neither a caller nor a test.
+#[allow(dead_code)]
 impl ConnectionManager {
     /// Create a new connection manager
     pub fn new(max_connections_per_user: usize) -> Self {

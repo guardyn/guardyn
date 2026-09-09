@@ -174,30 +174,6 @@ impl NatsClient {
         Ok(())
     }
 
-    /// Create a consumer for specific subject (used by E2EE handlers)
-    pub async fn create_consumer(
-        &self,
-        consumer_name: &str,
-        subject: &str,
-    ) -> Result<PullConsumer> {
-        let consumer = self
-            .messages_stream
-            .get_or_create_consumer(
-                consumer_name,
-                jetstream::consumer::pull::Config {
-                    filter_subject: subject.to_string(),
-                    durable_name: Some(consumer_name.to_string()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .context("Failed to create consumer")?;
-
-        tracing::info!("Created consumer {} for subject {}", consumer_name, subject);
-
-        Ok(consumer)
-    }
-
     /// Get NATS connection state
     pub fn connection_state(&self) -> async_nats::connection::State {
         self.client.connection_state()
