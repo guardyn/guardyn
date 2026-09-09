@@ -46,7 +46,6 @@ jobs:
       - name: Run tests with coverage
         working-directory: client-desktop
         run: npx vitest run --coverage --reporter=verbose
-        continue-on-error: true
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v7
@@ -107,6 +106,10 @@ jobs:
       - name: Run tests with coverage threshold
         working-directory: client-desktop
         run: npx vitest run --coverage --coverage.thresholds.lines=70 --coverage.thresholds.functions=70 --coverage.thresholds.branches=60
+        # Measured 43.33% lines / 52.51% functions against a declared 70% bar. The
+        # thresholds are aspirational, not met - #192 either lowers them to the real
+        # figure and ratchets up, or adds the missing tests. Until then this step
+        # cannot be allowed to fail the build.
         continue-on-error: true
 
   # Rust tests
@@ -168,11 +171,12 @@ jobs:
       - name: Run Rust tests
         working-directory: client-desktop/src-tauri
         run: cargo test --all-features
-        continue-on-error: true
 
       - name: Run Clippy
         working-directory: client-desktop/src-tauri
         run: cargo clippy -- -D warnings
+        # 132 errors today, 95 of them result_large_err. Tracked as #191; the step
+        # stays non-blocking until that lands, and must become blocking when it does.
         continue-on-error: true
 
   # Task 18: Linux Build
