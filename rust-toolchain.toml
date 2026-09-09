@@ -10,3 +10,14 @@
 [toolchain]
 channel = "1.98.1"
 components = ["rustfmt", "clippy"]
+# The desktop matrix cross-builds four targets. `dtolnay/rust-toolchain@stable` honours the
+# pin above, so its `targets:` input lands on a toolchain this file then overrides - the
+# pinned toolchain carried only the host target, and the macOS Intel build had never once
+# compiled. Declaring them here is what actually installs them, for CI and for a local
+# cross-build alike.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
