@@ -19,6 +19,15 @@ const MESSAGE_KEY_INFO: &[u8] = b"guardyn-message-key";
 const ROOT_KEY_INFO: &[u8] = b"guardyn-root-key";
 const MAX_SKIP: usize = 1000; // Maximum number of skipped messages to store
 
+/// Wire format version for [`EncryptedMessage`].
+///
+/// Version 1 binds the header into the AEAD associated data. The previous, unversioned
+/// format did not, and began with the high byte of a big-endian `u32` header length -
+/// always `0x00` for the 40-byte header. A leading `0x01` is therefore unambiguous
+/// against every message the old format could produce, so a peer that has not upgraded
+/// fails with a clear version error instead of an opaque authentication failure.
+const WIRE_VERSION: u8 = 1;
+
 /// Chain key for symmetric ratchet
 #[derive(Clone)]
 struct ChainKey {
@@ -187,6 +196,21 @@ impl MessageHeader {
     }
 }
 
+/// Associated data for the AEAD: the caller's context, then the wire header.
+///
+/// The Signal Double Ratchet binds the header into the associated data
+/// (`AD = AD_initial || header`) precisely so that an attacker who can modify a message in
+/// flight cannot rewrite `dh_public_key`, `previous_chain_length` or `message_number`
+/// without invalidating the tag. Those 40 bytes were previously unauthenticated, and
+/// `message_number` in particular drives `skip_message_keys`.
+fn aad_with_header(associated_data: &[u8], header: &MessageHeader) -> Vec<u8> {
+    let header_bytes = header.to_bytes();
+    let mut aad = Vec::with_capacity(associated_data.len() + header_bytes.len());
+    aad.extend_from_slice(associated_data);
+    aad.extend_from_slice(&header_bytes);
+    aad
+}
+
 /// Encrypted message with header
 pub struct EncryptedMessage {
     pub header: MessageHeader,
@@ -196,7 +220,8 @@ pub struct EncryptedMessage {
 impl EncryptedMessage {
     pub fn to_bytes(&self) -> Vec<u8> {
         let header_bytes = self.header.to_bytes();
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(5 + header_bytes.len() + self.ciphertext.len());
+        result.push(WIRE_VERSION);
         // Use Big-Endian (Network Byte Order) per RFC 1700
         result.extend_from_slice(&(header_bytes.len() as u32).to_be_bytes());
         result.extend_from_slice(&header_bytes);
@@ -205,21 +230,31 @@ impl EncryptedMessage {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < 4 {
+        if bytes.len() < 5 {
             return Err(CryptoError::Protocol("Message too short".to_string()));
         }
 
+        if bytes[0] != WIRE_VERSION {
+            return Err(CryptoError::Protocol(format!(
+                "Unsupported ratchet message version {} (expected {})",
+                bytes[0], WIRE_VERSION
+            )));
+        }
+
         let mut header_len_bytes = [0u8; 4];
-        header_len_bytes.copy_from_slice(&bytes[..4]);
+        header_len_bytes.copy_from_slice(&bytes[1..5]);
         // Use Big-Endian (Network Byte Order) per RFC 1700
         let header_len = u32::from_be_bytes(header_len_bytes) as usize;
 
-        if bytes.len() < 4 + header_len {
+        let body_start = 5usize
+            .checked_add(header_len)
+            .ok_or_else(|| CryptoError::Protocol("Invalid message format".to_string()))?;
+        if bytes.len() < body_start {
             return Err(CryptoError::Protocol("Invalid message format".to_string()));
         }
 
-        let header = MessageHeader::from_bytes(&bytes[4..4 + header_len])?;
-        let ciphertext = bytes[4 + header_len..].to_vec();
+        let header = MessageHeader::from_bytes(&bytes[5..body_start])?;
+        let ciphertext = bytes[body_start..].to_vec();
 
         Ok(Self { header, ciphertext })
     }
@@ -326,16 +361,20 @@ impl DoubleRatchet {
         let chain_key = self
             .sending_chain_key
             .as_ref()
-            .ok_or_else(|| CryptoError::Protocol("No sending chain key".to_string()))?;
+            .ok_or_else(|| CryptoError::Protocol("No sending chain key".to_string()))?
+            .clone();
 
-        let message_key = chain_key.message_key()?;
-        let ciphertext = message_key.encrypt(plaintext, associated_data)?;
-
+        // The header is built before encryption now, because it is part of the associated
+        // data the tag covers.
         let header = MessageHeader {
             dh_public_key: self.public_key(),
             previous_chain_length: self.previous_chain_length,
             message_number: self.sending_message_number,
         };
+
+        let message_key = chain_key.message_key()?;
+        let ciphertext =
+            message_key.encrypt(plaintext, &aad_with_header(associated_data, &header))?;
 
         // Advance sending chain
         self.sending_chain_key = Some(chain_key.next()?);
@@ -350,10 +389,12 @@ impl DoubleRatchet {
         message: &EncryptedMessage,
         associated_data: &[u8],
     ) -> Result<Vec<u8>> {
+        let aad = aad_with_header(associated_data, &message.header);
+
         // Check if we have a skipped message key
         let key = (message.header.dh_public_key, message.header.message_number);
         if let Some(message_key) = self.skipped_message_keys.remove(&key) {
-            return message_key.decrypt(&message.ciphertext, associated_data);
+            return message_key.decrypt(&message.ciphertext, &aad);
         }
 
         // Check if we need to perform DH ratchet
@@ -376,7 +417,7 @@ impl DoubleRatchet {
             .ok_or_else(|| CryptoError::Protocol("No receiving chain key".to_string()))?;
 
         let message_key = chain_key.message_key()?;
-        let plaintext = message_key.decrypt(&message.ciphertext, associated_data)?;
+        let plaintext = message_key.decrypt(&message.ciphertext, &aad)?;
 
         // Advance receiving chain
         self.receiving_chain_key = Some(chain_key.next()?);
@@ -742,6 +783,88 @@ mod tests {
 
         assert_eq!(message.header.message_number, decoded.header.message_number);
         assert_eq!(message.ciphertext, decoded.ciphertext);
+    }
+
+    /// A message carrying the old, unversioned framing must be rejected by version, not by
+    /// a tag failure. The point of the version byte is that an un-upgraded peer gets a
+    /// diagnosable error instead of "decryption failed".
+    #[test]
+    fn old_wire_format_is_rejected_by_version() {
+        let dh_key = StaticSecret::random_from_rng(OsRng);
+        let header = MessageHeader {
+            dh_public_key: X25519PublicKey::from(&dh_key),
+            previous_chain_length: 0,
+            message_number: 0,
+        };
+
+        // Exactly what the previous format produced: u32 BE header length, then the body.
+        let header_bytes = header.to_bytes();
+        let mut legacy = Vec::new();
+        legacy.extend_from_slice(&(header_bytes.len() as u32).to_be_bytes());
+        legacy.extend_from_slice(&header_bytes);
+        legacy.extend_from_slice(&[9u8; 28]);
+
+        // `expect_err` would require `Debug` on EncryptedMessage, and ZK-DEBUG forbids
+        // deriving it on a type that holds ciphertext.
+        match EncryptedMessage::from_bytes(&legacy) {
+            Ok(_) => panic!("the unversioned format must not parse"),
+            Err(e) => assert!(
+                format!("{e}").contains("Unsupported ratchet message version"),
+                "expected a version error, got: {e}"
+            ),
+        }
+    }
+
+    /// `previous_chain_length` is the one header field that does **not** feed key
+    /// derivation - `dh_ratchet_receive` only stores it, and `skip_message_keys` keys off
+    /// `message_number`. So the receiver derives the *same* message key whether or not it
+    /// was tampered with, and the only thing that can reject it is the AEAD tag.
+    ///
+    /// That makes this the isolating test for #105. Tampering `dh_public_key` or
+    /// `message_number` also fails without the fix, because both change which key is
+    /// derived - asserting on those would pass vacuously and prove nothing.
+    #[test]
+    fn tampered_previous_chain_length_fails_to_decrypt() {
+        let shared_secret = [7u8; 32];
+        let bob_prekey = StaticSecret::random_from_rng(OsRng);
+        let bob_public = X25519PublicKey::from(&bob_prekey);
+
+        let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).expect("init alice");
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_prekey).expect("init bob");
+
+        let ad = b"alice|bob";
+        let msg = alice.encrypt(b"hello", ad).expect("encrypt");
+
+        let tampered = EncryptedMessage {
+            header: MessageHeader {
+                previous_chain_length: msg.header.previous_chain_length.wrapping_add(3),
+                ..msg.header.clone()
+            },
+            ciphertext: msg.ciphertext.clone(),
+        };
+
+        assert!(
+            bob.decrypt(&tampered, ad).is_err(),
+            "a rewritten previous_chain_length must not authenticate"
+        );
+    }
+
+    /// The honest path still round-trips with the header bound in.
+    #[test]
+    fn header_binding_preserves_round_trip() {
+        let shared_secret = [11u8; 32];
+        let bob_prekey = StaticSecret::random_from_rng(OsRng);
+        let bob_public = X25519PublicKey::from(&bob_prekey);
+
+        let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).expect("init alice");
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_prekey).expect("init bob");
+
+        let ad = b"alice|bob";
+        let msg = alice
+            .encrypt(b"the header is authenticated now", ad)
+            .expect("encrypt");
+        let out = bob.decrypt(&msg, ad).expect("decrypt");
+        assert_eq!(out, b"the header is authenticated now");
     }
 
     #[test]

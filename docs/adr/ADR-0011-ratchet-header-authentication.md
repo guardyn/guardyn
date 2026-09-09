@@ -1,0 +1,86 @@
+---
+id: adr-0011
+type: adr
+status: accepted
+owns: [backend/crates/crypto/src/double_ratchet.rs]
+read_when: [changing the ratchet wire format, implementing a client Double Ratchet, debugging a decryption failure across versions]
+tokens: 0
+supersedes: []
+---
+
+# ADR-0011 · Bind the ratchet header into the AEAD, and version the wire format
+
+## Status
+
+`accepted`
+
+## Context
+
+`MessageHeader::to_bytes()` was never fed into the AEAD associated data. Both
+`DoubleRatchet::encrypt` and `decrypt` passed only the caller-supplied `associated_data`, so
+the 40 bytes of header — `dh_public_key` (32), `previous_chain_length` (4), `message_number`
+(4) — travelled unauthenticated.
+
+The code was symmetric, so round-trips succeeded and no test failed. It was an authentication
+gap, not a bug that announced itself, and it was filed as
+[#105](https://github.com/guardyn/guardyn/issues/105) rather than fixed on the spot because the
+repair is a non-additive wire change and `AGENTS.md` §10 requires sign-off for those.
+
+The Signal Double Ratchet binds the header for exactly this reason: `AD = AD_initial || header`.
+
+`message_number` is the field that makes this more than theoretical. It drives
+`skip_message_keys`, which walks the receiving chain forward and inserts one key per skipped
+index, up to `MAX_SKIP` (1000). An attacker who can rewrite that counter drives that loop
+(see [#106](https://github.com/guardyn/guardyn/issues/106)).
+
+## Decision
+
+**1. Bind the header into the associated data.** `AD = AD_caller || header.to_bytes()`, applied
+on encrypt, on decrypt, and on the skipped-message-key path — which is easy to miss, because it
+returns before reaching the main decrypt.
+
+**2. Version the wire format.** A serialized message becomes:
+
+```
+version(1) || header_len:u32 BE || header(40) || nonce(12) || ciphertext || tag(16)
+```
+
+The version byte is `1`. The previous format had none and began with the high byte of
+`header_len` — always `0x00` for a 40-byte header — so `0x01` cannot collide with anything the
+old format could emit.
+
+**3. Accept the break at G3, not in Phase 4.** The change is deliberately non-additive.
+
+## Consequences
+
+**Deployed v1.0.1 clients stop decrypting.** This is the cost, and it was taken knowingly.
+`implementation_plan.md:597` anticipated a break of exactly this shape and required behaviour-
+change sign-off at gate G3; that sign-off covers this.
+
+**The failure is diagnosable.** Without the version byte an old message would fail as a bad
+AEAD tag — indistinguishable from tampering, key desynchronisation, or a corrupted store. With
+it, the sender is told the version is unsupported.
+
+**The clients must change in step.** There are two independent Double Ratchet implementations
+besides this one: `client-mobile/lib/core/crypto/double_ratchet.dart`, and the desktop, which
+consumes this crate through `client-desktop/src-tauri/src/commands/crypto.rs`. Both must bind
+the header and emit the version byte, or messages will not cross platforms.
+
+**It does not close #106.** Binding the header authenticates the counter that drives
+`skip_message_keys`, which narrows the exposure but does not remove it: a replayed genuine
+header still drives the loop, and `dh_ratchet_receive` mutates `dh_self`, `root_key` and both
+chain keys before any tag is verified. That is a separate step.
+
+## Alternatives rejected
+
+**Bind the header without a version byte.** Smaller diff, and the AEAD would reject old
+messages anyway. Rejected because it converts a version mismatch into an authentication
+failure, and an operator cannot tell those apart — the wrong error is worse than no error.
+
+**Negotiate the version per session.** Correct in general, and unnecessary here: there is one
+old format and one new one, and the deployment is being broken deliberately at a gate. A
+negotiation mechanism with a single legacy peer to negotiate with is speculative machinery.
+
+**Defer to Phase 4 with the PQ wire work (PR-36).** That was the original plan. It was rejected
+because the E2EE repair already breaks the ciphertext format, so deferring would force every
+client to re-parse twice.

@@ -81,15 +81,30 @@ A replayed prekey message fails because the one-time key is already consumed.
    attacker-chosen counter drive unbounded memory growth.
 4. Every parser reachable from attacker-controlled bytes — prekey message, ratchet header,
    sealed-sender envelope, PADMÉ unpad — requires a fuzz target (PR-33).
+5. **The header is bound into the AEAD associated data**: `AD = AD_caller || header`, as the
+   Signal specification requires. `dh_public_key`, `previous_chain_length` and
+   `message_number` are therefore covered by the tag and cannot be rewritten in flight.
 
 **Edge cases.** A padded length below `MIN_PADDED_LENGTH` (32) is invalid. Plaintext above
 `MAX_MESSAGE_LENGTH` (16 MiB) is rejected before encryption. A header claiming a counter
 more than `MAX_SKIP` ahead is rejected, not accommodated.
 
-**Known gaps.** The ratchet header is not covered by the AEAD associated data, so an attacker
-may rewrite the sender's public key and counters without invalidating the tag (#105) - the
-specification requires it to be bound. Skipped-key derivation also advances the receiving
-chain before the tag is verified, so a forged header can poison a session (#106).
+**Wire format.** A serialized message is
+`version(1) || header_len:u32 BE || header(40) || nonce(12) || ciphertext || tag(16)`. The
+version byte is 1. The previous format had no version byte and began with the high byte of
+`header_len`, always `0x00` for a 40-byte header, so a leading `0x01` is unambiguous against
+anything the old format could emit: an un-upgraded peer gets an explicit version error rather
+than an opaque authentication failure.
+
+Binding the header changed the ciphertext format non-additively. Deployed clients that predate
+it cannot decrypt, and this was accepted deliberately at gate G3 rather than carried into
+Phase 4, where #105 and #106 would have forced the clients to re-parse a second time.
+
+**Known gaps.** Skipped-key derivation advances the receiving chain before the tag is verified,
+so a forged header can poison a session (#106). Binding the header reduces that exposure - the
+counter driving the loop is now authenticated - but does not remove it: a replayed genuine
+header still drives `skip_message_keys`, and `dh_ratchet_receive` likewise mutates
+`dh_self`, `root_key` and both chain keys before any tag is checked.
 
 ## Groups (MLS)
 
