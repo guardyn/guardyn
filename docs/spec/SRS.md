@@ -132,7 +132,19 @@ effective limit is the preset multiplied by the replica count. Until PR-41 resol
 either the state is shared or the single-replica constraint is documented and enforced — a
 limit that silently scales with replicas is not a limit.
 
-Blocking an address must not log the address (**I-1**).
+Blocking an address must not log the address (**I-1**). The block and unblock paths
+therefore log `ip_fingerprint(&ip)` — a 16-hex-digit hash under a salt generated once per
+process — instead of the address itself. An operator can still tell that the *same* address
+was blocked repeatedly, which is the operational need; the log carries no address.
+
+Because the salt lives only in process memory, fingerprints do not correlate across restarts
+or between replicas, and cannot be matched against a precomputed table. They are **not** a
+cryptographic commitment: anyone able to read process memory recovers the salt and can confirm
+a guessed address. That is the right bar for log hygiene, not for defence against an attacker
+already inside the process.
+
+`RateLimitError::IpBlocked` still carries the address as a field for the caller to act on, but
+its `Display` must not render it — `Display` is what reaches a log.
 
 ## Logging
 
