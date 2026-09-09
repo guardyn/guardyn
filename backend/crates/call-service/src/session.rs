@@ -414,3 +414,225 @@ fn generate_sframe_key() -> Vec<u8> {
 
     key
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Start a one-to-one audio call and return its id.
+    fn audio_call(mgr: &CallSessionManager, initiator: &str) -> String {
+        let (call_id, _, _) = mgr.create_session(1, false, None, initiator, "Initiator");
+        call_id
+    }
+
+    #[test]
+    fn create_session_registers_the_initiator_everywhere() {
+        let mgr = CallSessionManager::new();
+        let (call_id, key_id, key) = mgr.create_session(1, false, None, "alice", "Alice");
+
+        assert!(mgr.get_session(&call_id).is_some());
+        assert_eq!(
+            mgr.get_user_call("alice").as_deref(),
+            Some(call_id.as_str())
+        );
+        assert!(mgr.is_user_in_call("alice"));
+        assert_eq!(key_id, 1);
+        assert_eq!(key.len(), 32, "SFrame key must be 32 bytes");
+
+        let participants = mgr.get_participants(&call_id);
+        assert_eq!(participants.len(), 1);
+        assert_eq!(participants[0].user_id, "alice");
+    }
+
+    #[test]
+    fn a_video_call_gives_the_initiator_video() {
+        let mgr = CallSessionManager::new();
+        let (audio, _, _) = mgr.create_session(1, false, None, "alice", "Alice");
+        let (video, _, _) = mgr.create_session(2, false, None, "bob", "Bob");
+
+        assert!(!mgr.get_participants(&audio)[0].has_video);
+        assert!(mgr.get_participants(&video)[0].has_video);
+    }
+
+    #[test]
+    fn every_call_gets_a_distinct_sframe_key() {
+        let mgr = CallSessionManager::new();
+        let (_, _, first) = mgr.create_session(1, false, None, "alice", "Alice");
+        let (_, _, second) = mgr.create_session(1, false, None, "bob", "Bob");
+
+        assert_ne!(first, second, "two calls must not share key material");
+    }
+
+    #[test]
+    fn adding_a_participant_gives_them_their_own_key() {
+        let mgr = CallSessionManager::new();
+        let (call_id, _, initiator_key) = mgr.create_session(1, false, None, "alice", "Alice");
+
+        let (key_id, bob_key) = mgr
+            .add_participant(&call_id, "bob", "Bob", true)
+            .expect("add participant");
+
+        assert_ne!(bob_key, initiator_key, "participants must not share a key");
+        assert_eq!(key_id, 1);
+        assert_eq!(mgr.get_participants(&call_id).len(), 2);
+        assert_eq!(mgr.get_sframe_keys(&call_id).len(), 2);
+    }
+
+    #[test]
+    fn adding_a_participant_to_a_missing_call_returns_none() {
+        let mgr = CallSessionManager::new();
+        assert!(mgr
+            .add_participant("no-such-call", "bob", "Bob", false)
+            .is_none());
+    }
+
+    #[test]
+    fn rotating_a_key_changes_both_the_id_and_the_material() {
+        let mgr = CallSessionManager::new();
+        let (call_id, original_id, original_key) =
+            mgr.create_session(1, false, None, "alice", "Alice");
+
+        let (new_id, new_key) = mgr.rotate_sframe_key(&call_id, "alice").expect("rotate");
+
+        assert!(new_id > original_id, "key id must advance monotonically");
+        assert_ne!(new_key, original_key, "rotation must produce new material");
+
+        // The stored key is the new one, not the old.
+        let stored = mgr.get_sframe_keys(&call_id);
+        let alice = stored
+            .iter()
+            .find(|k| k.user_id == "alice")
+            .expect("alice key");
+        assert_eq!(alice.key_id, new_id);
+        assert_eq!(alice.key_material, new_key);
+    }
+
+    #[test]
+    fn ending_a_session_releases_every_participant() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+        mgr.add_participant(&call_id, "bob", "Bob", false);
+
+        let ended = mgr.end_session(&call_id).expect("end");
+        assert_eq!(ended.state, 6, "ENDED");
+
+        // Both participants must be free to start another call, and the key
+        // material must not outlive the call it protected.
+        assert!(!mgr.is_user_in_call("alice"));
+        assert!(!mgr.is_user_in_call("bob"));
+        assert!(mgr.get_session(&call_id).is_none());
+        assert!(mgr.get_sframe_keys(&call_id).is_empty());
+    }
+
+    #[test]
+    fn ending_an_unknown_session_returns_none() {
+        let mgr = CallSessionManager::new();
+        assert!(mgr.end_session("no-such-call").is_none());
+    }
+
+    #[test]
+    fn removing_a_participant_frees_only_that_user() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+        mgr.add_participant(&call_id, "bob", "Bob", false);
+
+        assert!(mgr.remove_participant(&call_id, "bob"));
+        assert!(!mgr.is_user_in_call("bob"));
+        assert!(mgr.is_user_in_call("alice"));
+        assert_eq!(mgr.get_participants(&call_id).len(), 1);
+    }
+
+    #[test]
+    fn an_orphaned_user_call_entry_is_cleaned_up() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+
+        // Drop the session without going through end_session, the state left
+        // behind by a crash mid-teardown.
+        mgr.sessions.remove(&call_id);
+
+        assert!(
+            !mgr.is_user_in_call("alice"),
+            "stale entry must not block a new call"
+        );
+        assert!(
+            mgr.get_user_call("alice").is_none(),
+            "and must be removed, not just ignored"
+        );
+    }
+
+    #[test]
+    fn a_call_stuck_ringing_is_reaped() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+
+        // Backdate creation past the 60-second staleness threshold while leaving
+        // the state at INITIATING.
+        {
+            let session = mgr.get_session(&call_id).expect("session");
+            let mut guard = session.write();
+            guard.created_at = Utc::now() - chrono::Duration::seconds(61);
+        }
+
+        assert!(!mgr.is_user_in_call("alice"));
+        assert!(
+            mgr.get_session(&call_id).is_none(),
+            "the stale call is ended, not merely reported"
+        );
+    }
+
+    #[test]
+    fn a_connected_call_is_never_reaped_however_long_it_runs() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+
+        {
+            let session = mgr.get_session(&call_id).expect("session");
+            let mut guard = session.write();
+            guard.created_at = Utc::now() - chrono::Duration::seconds(86_400);
+            guard.state = 4; // CONNECTED
+        }
+
+        assert!(mgr.is_user_in_call("alice"), "a day-long call is not stale");
+        assert!(mgr.get_session(&call_id).is_some());
+    }
+
+    #[test]
+    fn participant_flags_round_trip() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+
+        assert!(mgr.update_mute(&call_id, "alice", true));
+        assert!(mgr.update_video(&call_id, "alice", true));
+        assert!(mgr.update_screen_share(&call_id, "alice", true));
+        assert!(mgr.update_speaking(&call_id, "alice", true));
+
+        let p = &mgr.get_participants(&call_id)[0];
+        assert!(p.is_muted && p.has_video && p.is_screen_sharing && p.is_speaking);
+    }
+
+    #[test]
+    fn updating_an_unknown_participant_reports_failure() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+
+        assert!(!mgr.update_mute(&call_id, "nobody", true));
+        assert!(!mgr.update_mute("no-such-call", "alice", true));
+    }
+
+    #[test]
+    fn duration_is_zero_until_the_call_connects() {
+        let mgr = CallSessionManager::new();
+        let call_id = audio_call(&mgr, "alice");
+
+        assert_eq!(mgr.get_duration(&call_id), 0, "not started yet");
+        assert_eq!(mgr.get_duration("no-such-call"), 0);
+
+        {
+            let session = mgr.get_session(&call_id).expect("session");
+            let mut guard = session.write();
+            guard.started_at = Some(Utc::now() - chrono::Duration::seconds(90));
+        }
+        assert_eq!(mgr.get_duration(&call_id), 90);
+    }
+}

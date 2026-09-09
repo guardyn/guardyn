@@ -568,3 +568,134 @@ impl TryFrom<i32> for PushPlatform {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use serde::Serialize;
+
+    const SECRET: &str = "test-secret";
+
+    #[derive(Serialize)]
+    struct TestClaims {
+        sub: String,
+        exp: i64,
+    }
+
+    fn token_with(sub: &str, exp: i64, secret: &str, alg: Algorithm) -> String {
+        encode(
+            &Header::new(alg),
+            &TestClaims {
+                sub: sub.to_string(),
+                exp,
+            },
+            &EncodingKey::from_secret(secret.as_bytes()),
+        )
+        .expect("encode test token")
+    }
+
+    fn valid_token(sub: &str) -> String {
+        token_with(
+            sub,
+            (Utc::now() + Duration::hours(1)).timestamp(),
+            SECRET,
+            Algorithm::HS256,
+        )
+    }
+
+    #[test]
+    fn a_valid_token_yields_its_subject() {
+        let user = validate_token(&valid_token("user-42"), SECRET).expect("valid token");
+        assert_eq!(user, "user-42");
+    }
+
+    #[test]
+    fn an_expired_token_is_rejected() {
+        let expired = token_with(
+            "user-42",
+            (Utc::now() - Duration::hours(1)).timestamp(),
+            SECRET,
+            Algorithm::HS256,
+        );
+        assert!(matches!(
+            validate_token(&expired, SECRET),
+            Err(ErrorCode::Unauthorized)
+        ));
+    }
+
+    #[test]
+    fn a_token_signed_with_another_secret_is_rejected() {
+        let foreign = token_with(
+            "user-42",
+            (Utc::now() + Duration::hours(1)).timestamp(),
+            "a-different-secret",
+            Algorithm::HS256,
+        );
+        assert!(matches!(
+            validate_token(&foreign, SECRET),
+            Err(ErrorCode::Unauthorized)
+        ));
+    }
+
+    #[test]
+    fn a_token_signed_with_a_different_algorithm_is_rejected() {
+        // Algorithm confusion: the validator pins HS256, so a token minted under
+        // HS512 must not be accepted even though the secret matches.
+        let other_alg = token_with(
+            "user-42",
+            (Utc::now() + Duration::hours(1)).timestamp(),
+            SECRET,
+            Algorithm::HS512,
+        );
+        assert!(matches!(
+            validate_token(&other_alg, SECRET),
+            Err(ErrorCode::Unauthorized)
+        ));
+    }
+
+    #[test]
+    fn malformed_input_is_rejected_rather_than_panicking() {
+        // These reach the service from the network, so a panic here is a remote
+        // crash rather than a rejected request.
+        for garbage in [
+            "",
+            "not-a-token",
+            "a.b.c",
+            "....",
+            "eyJhbGciOiJIUzI1NiJ9",
+            "\0\0\0",
+        ] {
+            assert!(
+                matches!(
+                    validate_token(garbage, SECRET),
+                    Err(ErrorCode::Unauthorized)
+                ),
+                "accepted or panicked on {garbage:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_unsigned_token_is_rejected() {
+        // `alg: none` is the classic JWT bypass. Validation pins HS256, so the
+        // header claiming no algorithm must not short-circuit the signature check.
+        let unsigned = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.\
+                        eyJzdWIiOiJ1c2VyLTQyIiwiZXhwIjo5OTk5OTk5OTk5fQ.";
+        assert!(matches!(
+            validate_token(unsigned, SECRET),
+            Err(ErrorCode::Unauthorized)
+        ));
+    }
+
+    #[test]
+    fn an_empty_secret_does_not_accept_arbitrary_tokens() {
+        // A misconfigured service with no secret must still reject a token signed
+        // with a real one, rather than degrading into "any token will do".
+        let real = valid_token("user-42");
+        assert!(matches!(
+            validate_token(&real, ""),
+            Err(ErrorCode::Unauthorized)
+        ));
+    }
+}
