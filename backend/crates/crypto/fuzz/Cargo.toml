@@ -30,3 +30,24 @@ path = "fuzz_targets/padme_unpad.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "ratchet_message"
+path = "fuzz_targets/ratchet_message.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sealed_sender_envelope"
+path = "fuzz_targets/sealed_sender_envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "x3dh_prekey_message"
+path = "fuzz_targets/x3dh_prekey_message.rs"
+test = false
+doc = false
+bench = false
