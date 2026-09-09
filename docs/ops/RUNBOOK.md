@@ -136,6 +136,17 @@ encrypted the client's plaintext server-side and decrypted on the way back out, 
 unsuffixed handler relayed ciphertext untouched. The fix is to delete the twin, never to rename
 it or to exempt the path.
 
+**If `ZK-PII` fails**, a log macro is being handed a raw IP address, email or phone number.
+All three are PII under `AGENTS.md` §4, and **I-1** forbids PII in any log, span or metric.
+Do not silence it by renaming the field — the address is the problem, not the label. For a
+client IP, log `guardyn_common::rate_limit::ip_fingerprint(&ip)` instead: an operator still
+sees that the same address recurred, without the address reaching the log.
+
+The predicate greps for the field *name*, so it is a floor, not a ceiling. **It cannot see a
+raw IP under a neutral name, or one that reaches a log through a `Display` impl.**
+`RateLimitError::IpBlocked` was exactly that second case and was found by reading the code,
+not by the check. Treat a `ZK-PII` pass as "no obvious breach", never as proof.
+
 ## Roadmap and board sync
 
 [`roadmap.yaml`](../roadmap/roadmap.yaml) is the machine source of truth. `roadmap-sync`

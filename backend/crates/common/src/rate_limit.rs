@@ -3,13 +3,39 @@
 //! Provides rate limiting functionality for protecting Guardyn services from abuse.
 //! Uses a sliding window algorithm with configurable limits per endpoint.
 
+use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
+use std::hash::BuildHasher;
 use std::net::IpAddr;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use parking_lot::RwLock;
 use thiserror::Error;
+
+/// Per-process salt for [`ip_fingerprint`].
+static IP_SALT: OnceLock<RandomState> = OnceLock::new();
+
+/// A stable, per-process fingerprint for an IP address.
+///
+/// Invariant I-1 forbids a raw IP in any log, span or metric (`AGENTS.md` §4
+/// lists IP address as PII), but an operator still needs to see that the *same*
+/// address was blocked repeatedly rather than five different ones. This gives
+/// them that and nothing else.
+///
+/// The salt is generated once per process, so fingerprints correlate within one
+/// service's lifetime and nowhere else — not across restarts, not between
+/// replicas, and not against a precomputed table.
+///
+/// **Not a cryptographic commitment.** Anyone who can read the process's memory
+/// recovers the salt and can then confirm a guessed address. This is log
+/// hygiene, not a defence against an attacker already inside the process.
+pub fn ip_fingerprint(ip: &IpAddr) -> String {
+    format!(
+        "{:016x}",
+        IP_SALT.get_or_init(RandomState::new).hash_one(ip)
+    )
+}
 
 /// Rate limiting errors
 #[derive(Debug, Clone, Error)]
@@ -21,7 +47,10 @@ pub enum RateLimitError {
         retry_after: Duration,
     },
 
-    #[error("Blocked IP address: {ip}")]
+    // The address is carried for the caller to act on, but deliberately kept out
+    // of the message: `Display` is what reaches a log, and I-1 forbids a raw IP
+    // there.
+    #[error("Blocked IP address")]
     IpBlocked { ip: IpAddr },
 
     #[error("Blocked user: {user_id}")]
@@ -238,7 +267,7 @@ impl RateLimiter {
     pub fn block_ip(&self, ip: IpAddr, duration: Duration) {
         let until = Instant::now() + duration;
         self.blocked_ips.write().insert(ip, until);
-        tracing::warn!("Blocked IP {} for {:?}", ip, duration);
+        tracing::warn!(ip = %ip_fingerprint(&ip), ?duration, "Blocked IP");
     }
 
     /// Block a user for a duration
@@ -253,7 +282,7 @@ impl RateLimiter {
     /// Unblock an IP address
     pub fn unblock_ip(&self, ip: IpAddr) {
         self.blocked_ips.write().remove(&ip);
-        tracing::info!("Unblocked IP {}", ip);
+        tracing::info!(ip = %ip_fingerprint(&ip), "Unblocked IP");
     }
 
     /// Unblock a user
@@ -485,6 +514,39 @@ impl Default for RateLimiters {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ip_fingerprint_is_stable_within_a_process() {
+        let ip: IpAddr = "203.0.113.7".parse().expect("parse");
+        assert_eq!(ip_fingerprint(&ip), ip_fingerprint(&ip));
+    }
+
+    #[test]
+    fn ip_fingerprint_separates_distinct_addresses() {
+        let a: IpAddr = "203.0.113.7".parse().expect("parse");
+        let b: IpAddr = "203.0.113.8".parse().expect("parse");
+        assert_ne!(ip_fingerprint(&a), ip_fingerprint(&b));
+    }
+
+    #[test]
+    fn ip_fingerprint_contains_no_part_of_the_address() {
+        // The point of the fingerprint: what reaches the log must not let a
+        // reader reconstruct the address, including by octet.
+        let ip: IpAddr = "203.0.113.7".parse().expect("parse");
+        let printed = ip_fingerprint(&ip);
+        assert!(!printed.contains("203"), "octet leaked: {printed}");
+        assert!(!printed.contains("113"), "octet leaked: {printed}");
+        assert_eq!(printed.len(), 16, "fixed width, so length leaks nothing");
+        assert!(printed.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn blocked_ip_error_does_not_render_the_address() {
+        // `Display` is what reaches a log. AGENTS.md §4 lists IP address as PII.
+        let ip: IpAddr = "203.0.113.7".parse().expect("parse");
+        let rendered = RateLimitError::IpBlocked { ip }.to_string();
+        assert!(!rendered.contains("203.0.113.7"), "leaked: {rendered}");
+    }
 
     #[test]
     fn test_rate_limiter_allows_requests_under_limit() {

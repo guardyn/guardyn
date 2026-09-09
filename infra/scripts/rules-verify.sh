@@ -133,6 +133,25 @@ check_e2ee_dup() {
   fi
 }
 
+# -------------------------------------------------------------------- ZK-PII
+# A log macro handed a raw IP, email or phone number. AGENTS.md §4 lists all
+# three as PII, and I-1 forbids PII in any log, span or metric.
+#
+# Matches the field NAME, positionally interpolated or structured. It cannot see
+# a value that is PII under a neutral name - that is what review is for.
+check_zk_pii() {
+  local hits
+  hits="$(git ls-files -z -- 'backend/crates/*/src/*.rs' 'backend/crates/*/src/**/*.rs' \
+    | xargs -0 grep -nE '(trace|debug|info|warn|error)!\(' 2>/dev/null \
+    | grep -iE '"[^"]*\b(ip|email|phone)\b[^"]*"[^)]*,' || true)"
+  if [ -n "$hits" ]; then
+    fail "ZK-PII: a log macro is passed a raw IP, email or phone number"
+    show "$hits"
+  else
+    pass "ZK-PII: no raw IP, email or phone number in a log macro"
+  fi
+}
+
 # ---------------------------------------------------------------- PROTO-EDIT
 check_proto_edit() {
   local hits
@@ -220,6 +239,7 @@ check_rs_unwrap
 check_rs_unsafe
 check_zk_init
 check_e2ee_dup
+check_zk_pii
 check_proto_edit
 check_lang_md
 check_name_sh
