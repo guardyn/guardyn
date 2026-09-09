@@ -150,6 +150,21 @@ jobs:
             client-desktop/src-tauri/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client-desktop/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: client-desktop
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client-desktop
+        run: npm run build
+
       - name: Run Rust tests
         working-directory: client-desktop/src-tauri
         run: cargo test --all-features
