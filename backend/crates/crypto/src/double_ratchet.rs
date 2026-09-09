@@ -393,94 +393,54 @@ impl DoubleRatchet {
 
         // Check if we have a skipped message key
         let key = (message.header.dh_public_key, message.header.message_number);
-        if let Some(message_key) = self.skipped_message_keys.remove(&key) {
-            return message_key.decrypt(&message.ciphertext, &aad);
+        if let Some(message_key) = self.skipped_message_keys.get(&key) {
+            // Decrypt first: a failure must not consume the stored key, or one forged
+            // message would destroy the ability to read the genuine one it names.
+            let plaintext = message_key.decrypt(&message.ciphertext, &aad)?;
+            self.skipped_message_keys.remove(&key);
+            return Ok(plaintext);
         }
 
+        // Everything below is staged. `self` is not touched until the tag verifies, so an
+        // authentication failure - or a forged header that trips MAX_SKIP - leaves the
+        // session exactly as it was.
+        let mut staged = ReceiveStaging::from_ratchet(self);
+        let mut newly_skipped = Vec::new();
+
         // Check if we need to perform DH ratchet
-        if let Some(remote_key) = self.dh_remote {
-            if message.header.dh_public_key.as_bytes() != remote_key.as_bytes() {
-                self.dh_ratchet_receive(&message.header)?;
-            }
-        } else {
-            // First message from remote
-            self.dh_ratchet_receive(&message.header)?;
+        match staged.dh_remote {
+            Some(remote_key)
+                if message.header.dh_public_key.as_bytes() == remote_key.as_bytes() => {}
+            // Either the remote rotated its key, or this is the first message from it.
+            _ => staged.dh_ratchet_receive(&message.header)?,
         }
 
         // Skip messages if needed
-        self.skip_message_keys(message.header.message_number)?;
+        staged.skip_message_keys(
+            message.header.message_number,
+            self.skipped_message_keys.len(),
+            &mut newly_skipped,
+        )?;
 
         // Decrypt the message
-        let chain_key = self
+        let chain_key = staged
             .receiving_chain_key
             .as_ref()
-            .ok_or_else(|| CryptoError::Protocol("No receiving chain key".to_string()))?;
+            .ok_or_else(|| CryptoError::Protocol("No receiving chain key".to_string()))?
+            .clone();
 
         let message_key = chain_key.message_key()?;
+
+        // The gate. Nothing above this line has been committed.
         let plaintext = message_key.decrypt(&message.ciphertext, &aad)?;
 
-        // Advance receiving chain
-        self.receiving_chain_key = Some(chain_key.next()?);
-        self.receiving_message_number += 1;
+        // Advance receiving chain, then commit.
+        staged.receiving_chain_key = Some(chain_key.next()?);
+        staged.receiving_message_number += 1;
+        staged.commit_into(self);
+        self.skipped_message_keys.extend(newly_skipped);
 
         Ok(plaintext)
-    }
-
-    /// Perform DH ratchet when receiving new public key
-    fn dh_ratchet_receive(&mut self, header: &MessageHeader) -> Result<()> {
-        // Store previous chain length
-        self.previous_chain_length = self.sending_message_number;
-        self.sending_message_number = 0;
-        self.receiving_message_number = 0;
-
-        // Update remote DH key
-        self.dh_remote = Some(header.dh_public_key);
-
-        // Perform DH and derive new receiving chain
-        let dh_output = self.dh_self.diffie_hellman(&header.dh_public_key);
-        let (new_root_key, receiving_chain_key) = self.root_key.dh_ratchet(dh_output.as_bytes())?;
-        self.root_key = new_root_key;
-        self.receiving_chain_key = Some(receiving_chain_key);
-
-        // Generate new DH key pair and derive new sending chain
-        self.dh_self = StaticSecret::random_from_rng(OsRng);
-        let dh_output = self.dh_self.diffie_hellman(&header.dh_public_key);
-        let (new_root_key, sending_chain_key) = self.root_key.dh_ratchet(dh_output.as_bytes())?;
-        self.root_key = new_root_key;
-        self.sending_chain_key = Some(sending_chain_key);
-
-        Ok(())
-    }
-
-    /// Skip message keys for out-of-order handling
-    fn skip_message_keys(&mut self, until: u32) -> Result<()> {
-        if let Some(chain_key) = &self.receiving_chain_key {
-            let mut current_chain_key = chain_key.clone();
-
-            while self.receiving_message_number < until {
-                if self.skipped_message_keys.len() >= MAX_SKIP {
-                    return Err(CryptoError::Protocol(format!(
-                        "Too many skipped messages (max: {})",
-                        MAX_SKIP
-                    )));
-                }
-
-                let message_key = current_chain_key.message_key()?;
-                let remote_key = self
-                    .dh_remote
-                    .ok_or_else(|| CryptoError::Protocol("No remote key".to_string()))?;
-
-                self.skipped_message_keys
-                    .insert((remote_key, self.receiving_message_number), message_key);
-
-                current_chain_key = current_chain_key.next()?;
-                self.receiving_message_number += 1;
-            }
-
-            self.receiving_chain_key = Some(current_chain_key);
-        }
-
-        Ok(())
     }
 
     /// Get number of skipped messages in cache
@@ -681,6 +641,122 @@ impl DoubleRatchet {
     }
 }
 
+/// The receive-side state a single `decrypt` may advance.
+///
+/// `decrypt` used to mutate `DoubleRatchet` in place **before** the AEAD tag was verified:
+/// `dh_ratchet_receive` rotated `dh_self`, `root_key` and both chain keys, and
+/// `skip_message_keys` walked the receiving chain forward, inserting a key per skipped index.
+/// None of it was rolled back when decryption then failed, so one forged message could advance
+/// the chain past every genuine one and leave the session unrecoverable without a new handshake.
+///
+/// Staging the transition here and swapping it in only on success makes the operation atomic.
+/// Cloning `DoubleRatchet` wholesale would have been simpler, but it carries
+/// `skipped_message_keys` - up to `MAX_SKIP` (1000) entries - and allocating that on every
+/// message to guard against a rare failure is the wrong trade. Every field below is fixed-size.
+#[derive(Clone)]
+struct ReceiveStaging {
+    dh_self: StaticSecret,
+    dh_remote: Option<X25519PublicKey>,
+    root_key: RootKey,
+    sending_chain_key: Option<ChainKey>,
+    sending_message_number: u32,
+    receiving_chain_key: Option<ChainKey>,
+    receiving_message_number: u32,
+    previous_chain_length: u32,
+}
+
+impl ReceiveStaging {
+    fn from_ratchet(r: &DoubleRatchet) -> Self {
+        Self {
+            dh_self: r.dh_self.clone(),
+            dh_remote: r.dh_remote,
+            root_key: r.root_key.clone(),
+            sending_chain_key: r.sending_chain_key.clone(),
+            sending_message_number: r.sending_message_number,
+            receiving_chain_key: r.receiving_chain_key.clone(),
+            receiving_message_number: r.receiving_message_number,
+            previous_chain_length: r.previous_chain_length,
+        }
+    }
+
+    fn commit_into(self, r: &mut DoubleRatchet) {
+        r.dh_self = self.dh_self;
+        r.dh_remote = self.dh_remote;
+        r.root_key = self.root_key;
+        r.sending_chain_key = self.sending_chain_key;
+        r.sending_message_number = self.sending_message_number;
+        r.receiving_chain_key = self.receiving_chain_key;
+        r.receiving_message_number = self.receiving_message_number;
+        r.previous_chain_length = self.previous_chain_length;
+    }
+
+    /// Perform DH ratchet when receiving a new public key.
+    fn dh_ratchet_receive(&mut self, header: &MessageHeader) -> Result<()> {
+        // Store previous chain length
+        self.previous_chain_length = self.sending_message_number;
+        self.sending_message_number = 0;
+        self.receiving_message_number = 0;
+
+        // Update remote DH key
+        self.dh_remote = Some(header.dh_public_key);
+
+        // Perform DH and derive new receiving chain
+        let dh_output = self.dh_self.diffie_hellman(&header.dh_public_key);
+        let (new_root_key, receiving_chain_key) = self.root_key.dh_ratchet(dh_output.as_bytes())?;
+        self.root_key = new_root_key;
+        self.receiving_chain_key = Some(receiving_chain_key);
+
+        // Generate new DH key pair and derive new sending chain
+        self.dh_self = StaticSecret::random_from_rng(OsRng);
+        let dh_output = self.dh_self.diffie_hellman(&header.dh_public_key);
+        let (new_root_key, sending_chain_key) = self.root_key.dh_ratchet(dh_output.as_bytes())?;
+        self.root_key = new_root_key;
+        self.sending_chain_key = Some(sending_chain_key);
+
+        Ok(())
+    }
+
+    /// Derive the message keys for indices skipped by an out-of-order message.
+    ///
+    /// Keys are collected into `out` rather than inserted, so the caller can discard them if
+    /// the tag then fails. `already_stored` is the committed map's length, which the
+    /// `MAX_SKIP` bound counts against - otherwise each forged message could stage up to the
+    /// limit afresh and the bound would mean nothing.
+    fn skip_message_keys(
+        &mut self,
+        until: u32,
+        already_stored: usize,
+        out: &mut Vec<((X25519PublicKey, u32), MessageKey)>,
+    ) -> Result<()> {
+        if let Some(chain_key) = &self.receiving_chain_key {
+            let mut current_chain_key = chain_key.clone();
+
+            while self.receiving_message_number < until {
+                if already_stored + out.len() >= MAX_SKIP {
+                    return Err(CryptoError::Protocol(format!(
+                        "Too many skipped messages (max: {})",
+                        MAX_SKIP
+                    )));
+                }
+
+                let message_key = current_chain_key.message_key()?;
+                let remote_key = self
+                    .dh_remote
+                    .ok_or_else(|| CryptoError::Protocol("No remote key".to_string()))?;
+
+                out.push(((remote_key, self.receiving_message_number), message_key));
+
+                current_chain_key = current_chain_key.next()?;
+                self.receiving_message_number += 1;
+            }
+
+            self.receiving_chain_key = Some(current_chain_key);
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -847,6 +923,99 @@ mod tests {
             bob.decrypt(&tampered, ad).is_err(),
             "a rewritten previous_chain_length must not authenticate"
         );
+    }
+
+    /// A forged message must leave the session able to read the next genuine one.
+    ///
+    /// This is the property #106 was filed for. `skip_message_keys` walked the receiving
+    /// chain forward from an unauthenticated `message_number` *before* the tag was checked,
+    /// and nothing rolled it back, so one forged header permanently desynchronised the
+    /// session - the attacker did not need any key material to do it.
+    #[test]
+    fn forged_message_does_not_poison_the_session() {
+        let shared_secret = [23u8; 32];
+        let bob_prekey = StaticSecret::random_from_rng(OsRng);
+        let bob_public = X25519PublicKey::from(&bob_prekey);
+
+        let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).expect("init alice");
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_prekey).expect("init bob");
+
+        let ad = b"alice|bob";
+
+        // A genuine message, rewritten to claim a counter far ahead.
+        let genuine = alice.encrypt(b"first", ad).expect("encrypt");
+        let forged = EncryptedMessage {
+            header: MessageHeader {
+                message_number: 500,
+                ..genuine.header.clone()
+            },
+            ciphertext: genuine.ciphertext.clone(),
+        };
+
+        assert!(
+            bob.decrypt(&forged, ad).is_err(),
+            "the forged message must not decrypt"
+        );
+        assert_eq!(
+            bob.skipped_messages_count(),
+            0,
+            "a rejected message must not leave skipped keys behind"
+        );
+
+        // The genuine message it was derived from must still arrive.
+        let out = bob
+            .decrypt(&genuine, ad)
+            .expect("the session must still work");
+        assert_eq!(out, b"first");
+
+        // And the conversation continues.
+        let second = alice.encrypt(b"second", ad).expect("encrypt");
+        assert_eq!(bob.decrypt(&second, ad).expect("decrypt"), b"second");
+    }
+
+    /// A failed decrypt on the skipped-key path must not consume the stored key: otherwise
+    /// one forged message destroys the ability to read the genuine message it names.
+    #[test]
+    fn failed_skipped_key_decrypt_keeps_the_key() {
+        let shared_secret = [31u8; 32];
+        let bob_prekey = StaticSecret::random_from_rng(OsRng);
+        let bob_public = X25519PublicKey::from(&bob_prekey);
+
+        let mut alice = DoubleRatchet::init_alice(&shared_secret, bob_public).expect("init alice");
+        let mut bob = DoubleRatchet::init_bob(&shared_secret, bob_prekey).expect("init bob");
+
+        let ad = b"alice|bob";
+
+        // Alice sends three; Bob receives the third first, so keys 0 and 1 are stored.
+        let m0 = alice.encrypt(b"zero", ad).expect("encrypt");
+        let _m1 = alice.encrypt(b"one", ad).expect("encrypt");
+        let m2 = alice.encrypt(b"two", ad).expect("encrypt");
+
+        bob.decrypt(&m2, ad).expect("out-of-order delivery");
+        assert_eq!(bob.skipped_messages_count(), 2);
+
+        // A corrupted copy of m0 targets a stored key and must fail without spending it.
+        let mut broken_ct = m0.ciphertext.clone();
+        let last = broken_ct.len() - 1;
+        broken_ct[last] ^= 0xff;
+        let corrupted = EncryptedMessage {
+            header: m0.header.clone(),
+            ciphertext: broken_ct,
+        };
+
+        assert!(
+            bob.decrypt(&corrupted, ad).is_err(),
+            "corrupted must not decrypt"
+        );
+        assert_eq!(
+            bob.skipped_messages_count(),
+            2,
+            "a failed decrypt must not consume the skipped key"
+        );
+
+        // The genuine message still arrives.
+        assert_eq!(bob.decrypt(&m0, ad).expect("decrypt"), b"zero");
+        assert_eq!(bob.skipped_messages_count(), 1);
     }
 
     /// The honest path still round-trips with the header bound in.
