@@ -68,17 +68,17 @@ steps:
   - {id: PR-29, issue: 40, phase: 3, type: fix, status: done, title: "Replace the presence-service Redis TODO with TTL-correct TiKV storage"}
   # PR-30/31/32 re-scoped under ADR-0010: the server becomes a pure relay. See
   # implementation_plan.md 6.3 for the two false premises the original scoping rested on.
-  - {id: PR-30, issue: 41, phase: 3, type: security, status: todo, title: "Delete the server-side Double Ratchet key storage"}
+  - {id: PR-30, issue: 41, phase: 3, type: security, status: done, title: "Delete the server-side Double Ratchet key storage"}
   - {id: PR-31a, issue: 42, phase: 3, type: fix, status: done, title: "Delete the dead server-side MLS handlers"}
   - {id: PR-31b, issue: 151, phase: 3, type: security, status: todo, title: "Stop the server holding MLS group secrets"}
-  - {id: PR-31c, issue: 152, phase: 3, type: chore, status: todo, title: "Remove the blanket dead_code allow in messaging-service"}
+  - {id: PR-31c, issue: 152, phase: 3, type: chore, status: done, title: "Remove the blanket dead_code allow in messaging-service"}
   - {id: PR-31d, issue: 153, phase: 3, type: docs, status: todo, title: "ADR-0010 - the server is a pure relay"}
   - {id: PR-32a, issue: 43, phase: 3, type: security, status: done, title: "Delete the server-side E2EE handlers"}
   - {id: PR-32b, issue: 154, phase: 3, type: security, status: todo, title: "Delete the E2EE and MLS configuration flags"}
   - {id: PR-32c, issue: 155, phase: 3, type: security, status: todo, blocked_by: 163, title: "Remove the E2EE kill-switch environment variables"}
-  - {id: PR-33, issue: 44, phase: 3, type: security, status: todo, title: "Add cargo-fuzz targets for attacker-controlled parsers"}
+  - {id: PR-33, issue: 44, phase: 3, type: security, status: done, title: "Add cargo-fuzz targets for attacker-controlled parsers"}
   - {id: PR-34, issue: 45, phase: 3, type: security, status: todo, title: "Add proptest suites for crypto invariants"}
-  - {id: PR-35, issue: 46, phase: 3, type: chore, status: todo, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
+  - {id: PR-35, issue: 46, phase: 3, type: chore, status: done, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
   - {id: PR-36, issue: 47, phase: 4, type: feat, status: todo, title: "Extend protos with ML-KEM key material fields"}
   - {id: PR-37, issue: 48, phase: 4, type: feat, status: todo, title: "Persist and serve ML-KEM public keys in auth-service"}
   - {id: PR-38, issue: 49, phase: 4, type: feat, status: todo, title: "Enable the pq feature across backend services"}
@@ -91,3 +91,16 @@ steps:
   - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
   - {id: PR-46, issue: 132, phase: 3, type: fix, status: done, title: "Adapt to the rdkafka 0.39 Delivery type and vendor libcurl"}
   - {id: PR-47, issue: 137, phase: 3, type: chore, status: done, title: "Record the G2 hotfix steps in roadmap.yaml"}
+  # G3 close-out hotfixes. CI was green only because five steps carried continue-on-error;
+  # making it meaningful surfaced three independent causes, each fixed as its own step.
+  - {id: PR-48, issue: 108, phase: 3, type: fix, status: done, title: "Remove the orphaned messaging-service crypto_tests.rs"}
+  - {id: PR-49, issue: 116, phase: 3, type: fix, status: done, title: "Build the frontend before running the desktop Rust tests"}
+  - {id: PR-50, issue: 169, phase: 3, type: security, status: done, title: "Fuzz the remaining three parsers and wire the CI job"}
+  - {id: PR-51, issue: 174, phase: 3, type: chore, status: done, title: "Remove the last of the crate-wide dead_code allow"}
+  - {id: PR-52, issue: 179, phase: 3, type: chore, status: done, title: "Mark eight completed roadmap steps as done"}
+  - {id: PR-53, issue: 181, phase: 3, type: fix, status: done, title: "Run the desktop workflows on ubuntu-latest"}
+  - {id: PR-54, issue: 186, phase: 3, type: fix, status: done, title: "Add the missing icon.icns bundle asset"}
+  - {id: PR-55, issue: 182, phase: 3, type: chore, status: todo, title: "Remove continue-on-error from the desktop workflows"}
+  - {id: PR-56, issue: 188, phase: 3, type: fix, status: todo, title: "Regenerate or drop the stale client-desktop protobuf"}
+  - {id: PR-57, issue: 180, phase: 3, type: fix, status: todo, title: "Make roadmap-sync detect drift and create issues"}
+  - {id: PR-58, issue: 189, phase: 3, type: chore, status: todo, title: "Reconcile roadmap.yaml after the G3 merge wave"}
