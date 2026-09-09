@@ -100,7 +100,18 @@ steps:
   - {id: PR-52, issue: 179, phase: 3, type: chore, status: done, title: "Mark eight completed roadmap steps as done"}
   - {id: PR-53, issue: 181, phase: 3, type: fix, status: done, title: "Run the desktop workflows on ubuntu-latest"}
   - {id: PR-54, issue: 186, phase: 3, type: fix, status: done, title: "Add the missing icon.icns bundle asset"}
-  - {id: PR-55, issue: 182, phase: 3, type: chore, status: todo, title: "Remove continue-on-error from the desktop workflows"}
+  - {id: PR-55, issue: 182, phase: 3, type: chore, status: done, title: "Remove continue-on-error from the desktop workflows"}
   - {id: PR-56, issue: 188, phase: 3, type: fix, status: todo, title: "Regenerate or drop the stale client-desktop protobuf"}
   - {id: PR-57, issue: 180, phase: 3, type: fix, status: todo, title: "Make roadmap-sync detect drift and create issues"}
   - {id: PR-58, issue: 189, phase: 3, type: chore, status: todo, title: "Reconcile roadmap.yaml after the G3 merge wave"}
+  # The ciphertext format break. #105 and #106 were Phase-3 security issues with no step,
+  # so G3 would have passed over them; folding them in was a G3 sign-off decision.
+  - {id: PR-59, issue: 105, phase: 3, type: security, status: done, title: "Bind the ratchet header into the AEAD and version the wire"}
+  - {id: PR-60, issue: 106, phase: 3, type: security, status: done, title: "Make ratchet decryption atomic"}
+  - {id: PR-61, issue: 194, phase: 3, type: fix, status: done, title: "Install the cross targets on the pinned toolchain"}
+  # Debt measured while removing continue-on-error, each too large for that step.
+  - {id: PR-62, issue: 191, phase: 3, type: chore, status: todo, title: "Clear the 132 client-desktop clippy errors"}
+  - {id: PR-63, issue: 192, phase: 3, type: chore, status: todo, title: "Reconcile the desktop coverage thresholds with reality"}
+  - {id: PR-64, issue: 198, phase: 3, type: fix, status: todo, title: "Fix the Dart skip-message-keys counter and bound"}
+  - {id: PR-65, issue: 199, phase: 3, type: fix, status: todo, title: "Stop Build Linux flaking in linuxdeploy"}
+  - {id: PR-66, issue: 200, phase: 3, type: chore, status: todo, title: "Reconcile roadmap.yaml after the ciphertext format break"}
