@@ -28,6 +28,7 @@ accepted ADR **and** explicit user approval (`AGENTS.md` §5.3).
 | [0007](ADR-0007-zero-knowledge-logging.md) | Zero-knowledge logging and mandatory redaction | accepted — **2 known violations** |
 | [0008](ADR-0008-protobuf-codegen.md) | Generated protobuf in `OUT_DIR`, not committed | accepted — **3 strategies coexist** |
 | [0009](ADR-0009-micro-step-budget.md) | Micro-step PR budget and branch isolation | accepted |
+| [0010](ADR-0010-pure-relay-server.md) | The server is a pure relay; MLS and the ratchet run on the clients | accepted |
 
 [`ADR-0000-template.md`](ADR-0000-template.md) is the shape. Copy it and take the next free
 number.

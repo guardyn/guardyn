@@ -455,24 +455,33 @@ Per the approved ADRs — **no store is added or removed in this phase**.
 
 ### 6.3 E2EE correctness — PR-30 … PR-32
 
-- **PR-30** — `crypto/src/key_storage.rs` ships **only** `MemoryKeyStorage`, self-documented
-  `WARNING: This backend does NOT persist keys across restarts`, while its own doc comment
-  advertises Keychain / KeyStore / TPM backends that do not exist. `messaging-service/src/crypto.rs`
-  constructs `CryptoManager` with `key_storage: None` ("development mode"). Implement a
-  persistent backend; remove the dev-mode path.
-- **PR-31** — MLS group state cannot round-trip:
-  `handlers/send_group_message_mls.rs:179` cannot deserialize OpenMLS 0.6 group state;
-  `:213` passes client ciphertext through unchanged;
-  `handlers/add_group_member_mls.rs:258,285` **rebuilds the group from scratch** on membership
-  change. Fix, or explicitly gate the MLS path off behind a flag with a tracked upstream issue.
-- **PR-32** — **Invariant I-2 repair.** Collapse the duplicated handler pairs in
-  `messaging-service/src/handlers/`: `send_message.rs` vs `send_message_e2ee.rs`,
-  `receive_messages.rs` vs `receive_messages_e2ee.rs`, `add_group_member.rs` vs `_mls`,
-  `send_group_message.rs` vs `_mls`. The `_e2ee` variants carry
-  `TODO: Replace existing ... after testing`, and **the non-E2EE path is the one registered**.
-  Additionally, `docker-compose.dev.yml` sets `GUARDYN_E2EE_ENABLED=false` and
-  `GUARDYN_MLS_ENABLED=false` for dev; per I-2 these flags should not exist.
-  **Removing them is a behaviour change → requires explicit user sign-off at G3.**
+**Re-scoped.** All three steps below were written on two premises that turned out to be false,
+and the corrected architecture is recorded in
+[ADR-0010](docs/adr/ADR-0010-pure-relay-server.md). The server becomes a **pure relay**: it
+routes opaque bytes and holds no key material. MLS and the Double Ratchet run on the clients.
+
+The false premises, both verified against the code before re-scoping:
+
+1. The `_e2ee` handlers were assumed to be the encrypted path. They encrypted **server-side**
+   and held the ratchet state; the unsuffixed handler was already the zero-knowledge relay.
+2. OpenMLS 0.6 was assumed unable to deserialize a group. `MlsGroup::load` exists
+   (`openmls-0.6.0/src/group/mls_group/mod.rs:417`) — and using it would have been the breach,
+   since it restores `group_epoch_secrets`.
+
+- **PR-30′** (#41) — **deletion, not implementation.** The dependency edge inverts: once PR-32a
+  removes the `_e2ee` handlers, `messaging-service/src/crypto.rs` has no caller.
+  `CryptoManager::with_storage` had zero call sites, `SessionManager::new` hard-coded
+  `key_storage: None`, and `get_or_create_session` errored on every new peer pair — there was no
+  working path to preserve. Persistent key storage belongs to the clients via `crypto/src/ffi.rs`
+  (Phase 4).
+- **PR-31a…d** (#42, #151, #152, #153) — remove server-side MLS: the dead `*_mls.rs` handlers,
+  the server-held group secrets and `create_test_credential`, the crate-wide `dead_code` allow
+  that hid them, and the ADR.
+- **PR-32a…c** (#43, #154, #155) — **invariant I-2 repair.** Delete the server-side E2EE
+  handlers, then the `E2eeConfig`/`MlsConfig` flags, then the deployment variables.
+  **PR-32c is a behaviour change → requires explicit user sign-off at G3**, and is additionally
+  blocked on #163: `client-desktop` sends plaintext in `encrypted_content`, which the server
+  currently encrypts on its behalf.
 
 ### 6.4 Security testing — PR-33 … PR-35
 

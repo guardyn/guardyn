@@ -81,6 +81,9 @@ server-side `create_group` path.
 The client-side half of `serialize_state` is [#158](https://github.com/guardyn/guardyn/issues/158):
 `client-desktop` persists the 32-byte export believing a group can be restored from it.
 
+The architecture that replaced the server-side MLS implementation is
+[ADR-0010](ADR-0010-pure-relay-server.md).
+
 ## Alternatives rejected
 
 **libsignal** — proven, but a hard build across five targets and effectively closed to a
