@@ -6,6 +6,7 @@ import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../core/crypto/crypto_exceptions.dart';
 import '../../../../core/crypto/message_aad.dart';
 import '../../../../core/crypto/crypto_service.dart';
 import '../../../../core/crypto/x3dh.dart';
@@ -123,6 +124,10 @@ class MessageRepositoryImpl implements MessageRepository {
       );
 
       return Right(completeMessage);
+    } on EncryptionUnavailableException catch (e) {
+      // Nothing was sent. The caller must surface this: a message that cannot be encrypted is
+      // not sent at all.
+      return Left(CryptoFailure(e.message));
     } on GrpcError catch (e) {
       return Left(_handleGrpcError(e));
     } catch (e) {
@@ -453,12 +458,14 @@ class MessageRepositoryImpl implements MessageRepository {
         _logger.i(
           'E2EE session created successfully, prekey: ${x3dhPrekey != null}',
         );
-      } catch (e) {
-        // ignore: avoid_print
-        print('🔐 Failed to create E2EE session: $e');
-        _logger.w('Failed to create E2EE session: $e. Sending plaintext.');
-        // Fall back to plaintext if session creation fails
-        return (plaintext, null);
+      } on Object catch (e) {
+        // Fail closed. This used to return the plaintext, which handed the server the
+        // message in the clear precisely when encryption was least healthy - and returned
+        // Right(), so the UI showed an ordinary sent bubble and nobody could tell.
+        _logger.e('Failed to create E2EE session for $recipientUserId');
+        throw EncryptionUnavailableException(
+          'Could not establish an encrypted session with the recipient: $e',
+        );
       }
     } else {
       // ignore: avoid_print
@@ -485,10 +492,10 @@ class MessageRepositoryImpl implements MessageRepository {
       // Return as base64 for safe transmission
       final encryptedBase64 = base64.encode(encrypted);
       return (encryptedBase64, x3dhPrekey);
-    } catch (e) {
-      _logger.e('Encryption failed: $e. Sending plaintext.');
-      // Encryption failed, fall back to plaintext
-      return (plaintext, null);
+    } on Object catch (e) {
+      // Fail closed - see the session-creation branch above.
+      _logger.e('Encryption failed for $recipientUserId');
+      throw EncryptionUnavailableException('Could not encrypt the message: $e');
     }
   }
 

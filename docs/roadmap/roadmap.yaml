@@ -128,7 +128,7 @@ steps:
   - {id: PR-73a, issue: 220, phase: 3, type: security, status: todo, title: "Implement PADME correctly in Dart"}
   - {id: PR-73b, issue: 222, phase: 3, type: security, status: todo, title: "Apply PADME padding on the mobile message path"}
   - {id: PR-74, issue: 224, phase: 3, type: fix, status: todo, title: "client-desktop - make the ratchet AAD symmetric"}
-  - {id: PR-75, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - fail closed instead of sending plaintext"}
+  - {id: PR-75, issue: 226, phase: 3, type: security, status: todo, title: "client-mobile - fail closed instead of sending plaintext"}
   - {id: PR-76, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - fail closed on group messaging"}
   - {id: PR-77, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - refuse the native to Dart crypto downgrade"}
   - {id: PR-78, issue: 163, phase: 3, type: security, status: todo, title: "client-desktop - encrypt on the send path"}
