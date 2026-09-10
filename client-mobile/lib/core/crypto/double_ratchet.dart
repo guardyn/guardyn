@@ -312,6 +312,127 @@ Uint8List _aadWithHeader(Uint8List associatedData, MessageHeader header) {
   return aad;
 }
 
+String _makeSkipKey(Uint8List dhKey, int messageNumber) =>
+    '${base64Encode(dhKey)}:$messageNumber';
+
+bool _bytesEqual(Uint8List a, Uint8List b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// A pending receive-side ratchet transition, applied only once the tag verifies.
+///
+/// Mirrors `ReceiveStaging` in `backend/crates/crypto/src/double_ratchet.rs`.
+///
+/// Receiving a message can advance the DH ratchet and derive skipped message keys, and both
+/// used to happen before the AEAD tag was checked. A forged header naming an unknown DH
+/// public key therefore rotated the root key and both chain keys, which walks the chain past
+/// every genuine message and leaves the session unrecoverable without a new handshake.
+///
+/// Staging the transition and swapping it in only on success makes decryption atomic.
+/// Copying the ratchet wholesale would have been simpler, but it carries
+/// [DoubleRatchet._skippedMessageKeys] - up to `_maxSkip` entries - and allocating that on
+/// every message to guard against a rare failure is the wrong trade. Every field here is
+/// fixed-size, and the key types are immutable value objects, so copying references is a
+/// genuine snapshot rather than shared state.
+class _ReceiveStaging {
+  X25519KeyPair dhSelf;
+  Uint8List? dhRemote;
+  _RootKey rootKey;
+  _ChainKey? sendingChainKey;
+  int sendingMessageNumber;
+  _ChainKey? receivingChainKey;
+  int receivingMessageNumber;
+  int previousChainLength;
+
+  _ReceiveStaging({
+    required this.dhSelf,
+    required this.dhRemote,
+    required this.rootKey,
+    required this.sendingChainKey,
+    required this.sendingMessageNumber,
+    required this.receivingChainKey,
+    required this.receivingMessageNumber,
+    required this.previousChainLength,
+  });
+
+  factory _ReceiveStaging.fromRatchet(DoubleRatchet r) => _ReceiveStaging(
+        dhSelf: r._dhSelf,
+        dhRemote: r._dhRemote,
+        rootKey: r._rootKey,
+        sendingChainKey: r._sendingChainKey,
+        sendingMessageNumber: r._sendingMessageNumber,
+        receivingChainKey: r._receivingChainKey,
+        receivingMessageNumber: r._receivingMessageNumber,
+        previousChainLength: r._previousChainLength,
+      );
+
+  void commitInto(DoubleRatchet r) {
+    r._dhSelf = dhSelf;
+    r._dhRemote = dhRemote;
+    r._rootKey = rootKey;
+    r._sendingChainKey = sendingChainKey;
+    r._sendingMessageNumber = sendingMessageNumber;
+    r._receivingChainKey = receivingChainKey;
+    r._receivingMessageNumber = receivingMessageNumber;
+    r._previousChainLength = previousChainLength;
+  }
+
+  /// Perform the DH ratchet step for a newly seen remote public key.
+  Future<void> dhRatchetReceive(MessageHeader header) async {
+    previousChainLength = sendingMessageNumber;
+    sendingMessageNumber = 0;
+    receivingMessageNumber = 0;
+
+    dhRemote = header.dhPublicKey;
+
+    final dhOutput = await dhSelf.diffieHellman(header.dhPublicKey);
+    final (newRootKey, newReceivingChainKey) = await rootKey.dhRatchet(dhOutput);
+    rootKey = newRootKey;
+    receivingChainKey = newReceivingChainKey;
+
+    dhSelf = await X25519KeyPair.generate();
+    final dhOutput2 = await dhSelf.diffieHellman(header.dhPublicKey);
+    final (finalRootKey, newSendingChainKey) = await rootKey.dhRatchet(dhOutput2);
+    rootKey = finalRootKey;
+    sendingChainKey = newSendingChainKey;
+  }
+
+  /// Derive message keys for messages that arrived out of order.
+  ///
+  /// Keys are collected into [out] rather than inserted, so the caller can discard them if
+  /// the tag then fails. [alreadyStored] is the committed map's length, which the `_maxSkip`
+  /// bound counts against - otherwise each forged message could stage up to the limit afresh
+  /// and the bound would mean nothing.
+  ///
+  /// On return [receivingMessageNumber] is `until`, so the caller's own increment leaves it
+  /// at `until + 1`.
+  Future<void> skipMessageKeys(
+    int until,
+    int alreadyStored,
+    Map<String, _MessageKey> out,
+  ) async {
+    final chainKey = receivingChainKey;
+    if (chainKey == null) return;
+
+    var currentKey = chainKey;
+    while (receivingMessageNumber < until) {
+      if (alreadyStored + out.length >= _maxSkip) {
+        throw ProtocolException('Too many skipped messages (max: $_maxSkip)');
+      }
+
+      final messageKey = await currentKey.messageKey();
+      out[_makeSkipKey(dhRemote!, receivingMessageNumber)] = messageKey;
+      currentKey = await currentKey.next();
+      receivingMessageNumber++;
+    }
+    receivingChainKey = currentKey;
+  }
+}
+
 /// Double Ratchet state for E2EE messaging
 class DoubleRatchet {
   // DH ratchet state
@@ -425,106 +546,64 @@ class DoubleRatchet {
     final aad = _aadWithHeader(associatedData, message.header);
 
     // Check if we have a skipped message key
-    final skipKey = _makeSkipKey(message.header.dhPublicKey, message.header.messageNumber);
-    if (_skippedMessageKeys.containsKey(skipKey)) {
-      final messageKey = _skippedMessageKeys.remove(skipKey)!;
-      return messageKey.decrypt(message.ciphertext, aad);
+    final skipKey = _makeSkipKey(
+      message.header.dhPublicKey,
+      message.header.messageNumber,
+    );
+    final skipped = _skippedMessageKeys[skipKey];
+    if (skipped != null) {
+      // Decrypt first: a failure must not consume the stored key, or one forged message
+      // would destroy the ability to read the genuine one it names.
+      final plaintext = await skipped.decrypt(message.ciphertext, aad);
+      _skippedMessageKeys.remove(skipKey);
+      return plaintext;
     }
 
+    // Everything below is staged. `this` is not touched until the tag verifies, so an
+    // authentication failure - or a forged header that trips _maxSkip - leaves the session
+    // exactly as it was.
+    final staged = _ReceiveStaging.fromRatchet(this);
+    final newlySkipped = <String, _MessageKey>{};
+
     // Check if we need to perform DH ratchet
-    if (_dhRemote != null) {
-      if (!_bytesEqual(message.header.dhPublicKey, _dhRemote!)) {
-        await _dhRatchetReceive(message.header);
-      }
-    } else {
-      // First message from remote
-      await _dhRatchetReceive(message.header);
+    final remote = staged.dhRemote;
+    if (remote == null || !_bytesEqual(message.header.dhPublicKey, remote)) {
+      // Either the remote rotated its key, or this is the first message from it.
+      await staged.dhRatchetReceive(message.header);
     }
 
     // Skip messages if needed
-    await _skipMessageKeys(message.header.messageNumber);
+    await staged.skipMessageKeys(
+      message.header.messageNumber,
+      _skippedMessageKeys.length,
+      newlySkipped,
+    );
 
     // Decrypt the message
-    final chainKey = _receivingChainKey;
+    final chainKey = staged.receivingChainKey;
     if (chainKey == null) {
       throw ProtocolException('No receiving chain key');
     }
 
     final messageKey = await chainKey.messageKey();
+
+    // The gate. Nothing above this line has been committed.
     final plaintext = await messageKey.decrypt(message.ciphertext, aad);
 
-    // Advance receiving chain
-    _receivingChainKey = await chainKey.next();
-    _receivingMessageNumber++;
+    // Advance receiving chain, then commit.
+    staged.receivingChainKey = await chainKey.next();
+    staged.receivingMessageNumber++;
+    staged.commitInto(this);
+    _skippedMessageKeys.addAll(newlySkipped);
 
     return plaintext;
   }
 
-  /// Perform DH ratchet when receiving new public key
-  Future<void> _dhRatchetReceive(MessageHeader header) async {
-    // Store previous chain length
-    _previousChainLength = _sendingMessageNumber;
-    _sendingMessageNumber = 0;
-    _receivingMessageNumber = 0;
-
-    // Update remote DH key
-    _dhRemote = header.dhPublicKey;
-
-    // Perform DH and derive new receiving chain
-    final dhOutput = await _dhSelf.diffieHellman(header.dhPublicKey);
-    final (newRootKey, receivingChainKey) = await _rootKey.dhRatchet(dhOutput);
-    _rootKey = newRootKey;
-    _receivingChainKey = receivingChainKey;
-
-    // Generate new DH key pair and derive new sending chain
-    _dhSelf = await X25519KeyPair.generate();
-    final dhOutput2 = await _dhSelf.diffieHellman(header.dhPublicKey);
-    final (finalRootKey, sendingChainKey) = await _rootKey.dhRatchet(dhOutput2);
-    _rootKey = finalRootKey;
-    _sendingChainKey = sendingChainKey;
-  }
-
-  /// Derive and store message keys for messages that arrived out of order.
+  /// Number of skipped message keys currently held.
   ///
-  /// Mirrors `skip_message_keys` in `backend/crates/crypto/src/double_ratchet.rs`.
-  ///
-  /// The bound counts the **size of the stored map**, not the size of the gap, and is checked
-  /// inside the loop. Bounding the gap lets many small-gap messages grow
-  /// [_skippedMessageKeys] without limit, which is the memory exhaustion the bound exists to
-  /// prevent.
-  ///
-  /// On return `_receivingMessageNumber` is `until`, so the caller's own increment leaves it
-  /// at `until + 1`.
-  Future<void> _skipMessageKeys(int until) async {
-    final chainKey = _receivingChainKey;
-    if (chainKey == null) return;
-
-    var currentKey = chainKey;
-    while (_receivingMessageNumber < until) {
-      if (_skippedMessageKeys.length >= _maxSkip) {
-        throw ProtocolException('Too many skipped messages (max: $_maxSkip)');
-      }
-
-      final messageKey = await currentKey.messageKey();
-      final skipKey = _makeSkipKey(_dhRemote!, _receivingMessageNumber);
-      _skippedMessageKeys[skipKey] = messageKey;
-      currentKey = await currentKey.next();
-      _receivingMessageNumber++;
-    }
-    _receivingChainKey = currentKey;
-  }
-
-  String _makeSkipKey(Uint8List dhKey, int messageNumber) {
-    return '${base64Encode(dhKey)}:$messageNumber';
-  }
-
-  bool _bytesEqual(Uint8List a, Uint8List b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
+  /// Mirrors `skipped_messages_count` in the Rust implementation. Useful for asserting that
+  /// a rejected message left no partial state behind.
+  int get skippedMessagesCount => _skippedMessageKeys.length;
 
   /// Serialize ratchet state for storage
   Map<String, dynamic> serialize() {
