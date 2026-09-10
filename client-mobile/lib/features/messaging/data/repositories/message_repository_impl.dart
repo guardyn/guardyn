@@ -6,6 +6,7 @@ import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../core/crypto/message_aad.dart';
 import '../../../../core/crypto/crypto_service.dart';
 import '../../../../core/crypto/x3dh.dart';
 import '../../../../core/error/failures.dart';
@@ -467,9 +468,10 @@ class MessageRepositoryImpl implements MessageRepository {
     }
 
     // Encrypt with Double Ratchet
-    final plaintextBytes = Uint8List.fromList(plaintext.codeUnits);
-    final associatedData = Uint8List.fromList(
-      '$currentUserId|$recipientUserId'.codeUnits,
+    final plaintextBytes = Uint8List.fromList(utf8.encode(plaintext));
+    final associatedData = messageAssociatedData(
+      senderUserId: currentUserId,
+      recipientUserId: recipientUserId,
     );
 
     try {
@@ -600,8 +602,9 @@ class MessageRepositoryImpl implements MessageRepository {
       _logger.d('Base64 decode failed, using codeUnits: $e');
     }
 
-    final associatedData = Uint8List.fromList(
-      '$senderUserId|$currentUserId'.codeUnits,
+    final associatedData = messageAssociatedData(
+      senderUserId: senderUserId,
+      recipientUserId: currentUserId,
     );
 
     try {
@@ -611,7 +614,7 @@ class MessageRepositoryImpl implements MessageRepository {
         ciphertext: ciphertextBytes,
         associatedData: associatedData,
       );
-      final result = String.fromCharCodes(decrypted);
+      final result = utf8.decode(decrypted);
       _logger.d('Decryption successful: ${result.length} chars');
       return result;
     } catch (e) {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fixnum/fixnum.dart';
 
 import '../../../../generated/common.pb.dart' as common_proto;
@@ -49,7 +51,7 @@ class MessageModel extends Message {
       accessToken: accessToken,
       recipientUserId: recipientUserId,
       recipientDeviceId: recipientDeviceId,
-      encryptedContent: textContent.codeUnits,
+      encryptedContent: utf8.encode(textContent),
       messageType: _messageTypeToProto(messageType),
       clientMessageId: clientMessageId,
       clientTimestamp: _timestampToProto(timestamp),

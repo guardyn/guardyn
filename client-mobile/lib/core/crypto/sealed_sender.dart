@@ -9,6 +9,7 @@
 // NOTE: This implementation uses CryptoPrimitives which can use either
 // pure Dart or native Rust FFI depending on platform availability.
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'crypto_primitives.dart';
@@ -102,9 +103,9 @@ class SenderCertificate {
     int expiresAt,
   ) {
     final buffer = BytesBuilder();
-    buffer.add(userId.codeUnits);
+    buffer.add(utf8.encode(userId));
     buffer.addByte(0); // Null separator
-    buffer.add(deviceId.codeUnits);
+    buffer.add(utf8.encode(deviceId));
     buffer.addByte(0);
     buffer.add(identityKey);
 
@@ -120,7 +121,7 @@ class SenderCertificate {
     final buffer = BytesBuilder();
 
     // sender_user_id (length-prefixed)
-    final userIdBytes = Uint8List.fromList(senderUserId.codeUnits);
+    final userIdBytes = Uint8List.fromList(utf8.encode(senderUserId));
     buffer.add(
       (ByteData(
         2,
@@ -129,7 +130,7 @@ class SenderCertificate {
     buffer.add(userIdBytes);
 
     // sender_device_id (length-prefixed)
-    final deviceIdBytes = Uint8List.fromList(senderDeviceId.codeUnits);
+    final deviceIdBytes = Uint8List.fromList(utf8.encode(senderDeviceId));
     buffer.add(
       (ByteData(
         2,
@@ -169,7 +170,7 @@ class SenderCertificate {
     if (bytes.length < offset + userIdLen) {
       throw FormatException('Invalid user_id length');
     }
-    final senderUserId = String.fromCharCodes(
+    final senderUserId = utf8.decode(
       bytes.sublist(offset, offset + userIdLen),
     );
     offset += userIdLen;
@@ -187,7 +188,7 @@ class SenderCertificate {
     if (bytes.length < offset + deviceIdLen) {
       throw FormatException('Invalid device_id length');
     }
-    final senderDeviceId = String.fromCharCodes(
+    final senderDeviceId = utf8.decode(
       bytes.sublist(offset, offset + deviceIdLen),
     );
     offset += deviceIdLen;
@@ -322,7 +323,7 @@ class SealedSender {
     // 3. Derive encryption key using HKDF
     final derivedKey = await CryptoPrimitives.hkdf(
       inputKeyMaterial: sharedSecret,
-      info: Uint8List.fromList(_hkdfLabel.codeUnits),
+      info: Uint8List.fromList(utf8.encode(_hkdfLabel)),
       outputLength: 32,
     );
 
@@ -376,7 +377,7 @@ class SealedSender {
     // 2. Derive decryption key
     final derivedKey = await CryptoPrimitives.hkdf(
       inputKeyMaterial: sharedSecret,
-      info: Uint8List.fromList(_hkdfLabel.codeUnits),
+      info: Uint8List.fromList(utf8.encode(_hkdfLabel)),
       outputLength: 32,
     );
 

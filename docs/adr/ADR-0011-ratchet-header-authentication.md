@@ -66,6 +66,20 @@ besides this one: `client-mobile/lib/core/crypto/double_ratchet.dart`, and the d
 consumes this crate through `client-desktop/src-tauri/src/commands/crypto.rs`. Both must bind
 the header and emit the version byte, or messages will not cross platforms.
 
+**The caller-supplied half of the AAD is `utf8("{senderUserId}|{recipientUserId}")`.** This
+document defines `AD = AD_caller || header`, and left `AD_caller` to the caller — which produced
+two conventions and one outright bug. `client-desktop` passed `recipient_id` when encrypting and
+`sender_id` when decrypting (`commands/crypto.rs:630`, `:685`), so the two ends of a conversation
+never computed the same bytes; `client-mobile` built `"{sender}|{recipient}"` but with
+`String.codeUnits`, which yields UTF-16 units that `Uint8List.fromList` then truncates above
+0xFF.
+
+The convention is now pinned: **originator first, destination second**, UTF-8, `|`-separated.
+Naming the parties by role rather than by "me" and "them" is what makes both ends agree, and
+binding both is what stops a ciphertext being replayed into another conversation that shares a
+session. Mobile builds it in `client-mobile/lib/core/crypto/message_aad.dart`; the desktop must
+build the same bytes.
+
 **Client conformance.** The desktop inherited both changes for free, because it links this crate
 rather than reimplementing it. The Dart client did not, and was left on the pre-v1 format with an
 unauthenticated header until #213 — the header binding is the #105 vulnerability itself, so it was
