@@ -147,6 +147,31 @@ raw IP under a neutral name, or one that reaches a log through a `Display` impl.
 `RateLimitError::IpBlocked` was exactly that second case and was found by reading the code,
 not by the check. Treat a `ZK-PII` pass as "no obvious breach", never as proof.
 
+## Mobile verification
+
+```sh
+just test-mobile
+```
+
+Runs exactly what [`mobile.yml`](../../.github/workflows/mobile.yml) runs — `flutter analyze
+--no-fatal-infos` then `flutter test` — so a green local run means a green job.
+
+**The Flutter version is pinned in the workflow, not in `pubspec.yaml`.** Pub can express a
+floor (`flutter: ">=3.47.3"`) but not an exact version, and there is no `.fvmrc` or
+`.tool-versions`, so `FLUTTER_VERSION` in `mobile.yml` is the authority. If a local run
+disagrees with CI, check your Flutter version first — and note that **below 3.47.3 the
+dependency graph does not resolve at all**, so a stale toolchain fails at `pub get` rather
+than at a test (#208).
+
+**`--no-fatal-infos` is temporary.** 314 info-level diagnostics predate the workflow, most of
+them `withOpacity` deprecations. Errors and warnings do fail the build. Clearing the infos is
+owned work, not something to fix opportunistically while chasing an unrelated failure.
+
+**40 tests skip, and that is a known defect, not a pass.** They are the entire crypto suite:
+`test/core/crypto/crypto_test_helper.dart` skips whenever the Rust FFI is unavailable, which
+it always is under `flutter test`. Do not read a green mobile job as evidence that the Dart
+ratchet, X3DH or sealed sender work.
+
 ## Fuzzing
 
 ```sh

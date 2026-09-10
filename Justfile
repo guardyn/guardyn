@@ -442,6 +442,16 @@ test-auth-android-validation:
     client-mobile/scripts/run-auth-test-android.sh --validation
 
 # =============================================================================
+# Mobile Client Tests
+# =============================================================================
+
+# Run the mobile checks exactly as .github/workflows/mobile.yml runs them
+test-mobile:
+    @echo "[test] Running mobile analyze and tests..."
+    cd client-mobile && flutter analyze --no-fatal-infos
+    cd client-mobile && flutter test
+
+# =============================================================================
 # Desktop Client Tests
 # =============================================================================
 

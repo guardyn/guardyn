@@ -6,6 +6,12 @@ version: 0.1.0+1
 
 environment:
   sdk: ^3.9.2
+  # Floor only - pub cannot pin Flutter exactly, so FLUTTER_VERSION in
+  # .github/workflows/mobile.yml is the authority. This floor is the version the graph was
+  # verified against: on 3.38.4 it is unsatisfiable, because that SDK pins test_api 0.7.7,
+  # which forces web_socket_channel ^2.x while grpc ^5.0.0 forces ^3.x (#208). Declaring the
+  # floor turns that into a clear constraint error instead of an opaque solver failure.
+  flutter: ">=3.47.3"
 
 dependencies:
   flutter:
