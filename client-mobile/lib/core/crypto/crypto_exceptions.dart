@@ -44,3 +44,12 @@ class InvalidKeyException extends CryptoException {
 class PaddingException extends CryptoException {
   const PaddingException(super.message);
 }
+
+/// Thrown when a message cannot be encrypted or decrypted and there is no safe alternative.
+///
+/// This exists so the message path has something to *fail with*. It previously fell back to
+/// sending the plaintext, which is the I-2 breach this type replaces: encryption that can be
+/// skipped when it is inconvenient is not always-on encryption.
+class EncryptionUnavailableException extends CryptoException {
+  const EncryptionUnavailableException(super.message);
+}

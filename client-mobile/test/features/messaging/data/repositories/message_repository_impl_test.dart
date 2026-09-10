@@ -1,7 +1,11 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
+import 'package:guardyn_client/core/crypto/double_ratchet.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
@@ -22,12 +26,19 @@ class MockSecureStorage extends Mock implements SecureStorage {}
 
 class MockCryptoService extends Mock implements CryptoService {}
 
+class MockDoubleRatchet extends Mock implements DoubleRatchet {}
+
 void main() {
   late MessageRepositoryImpl repository;
   late MockMessageRemoteDatasource mockDatasource;
   late MockKeyExchangeDatasource mockKeyExchangeDatasource;
   late MockSecureStorage mockSecureStorage;
   late MockCryptoService mockCryptoService;
+
+  setUpAll(() {
+    // `any(named: 'plaintext')` / `any(named: 'associatedData')` are Uint8List parameters.
+    registerFallbackValue(Uint8List(0));
+  });
 
   setUp(() {
     mockDatasource = MockMessageRemoteDatasource();
@@ -49,6 +60,7 @@ void main() {
   const tRecipientDeviceId = 'device-456';
   const tRecipientUsername = 'bob';
   const tTextContent = 'Hello, World!';
+  final tCiphertext = Uint8List.fromList(List.generate(64, (i) => i));
 
   final tMessageModel = MessageModel(
     messageId: 'msg-789',
@@ -101,13 +113,22 @@ void main() {
           .thenAnswer((_) async => tCurrentUserId);
       when(() => mockSecureStorage.getDeviceId())
           .thenAnswer((_) async => tCurrentDeviceId);
-      // E2EE: Return null session to trigger plaintext fallback (test simplicity)
+      // An established E2EE session. This used to stub `getSession` to null and let the
+      // plaintext fallback carry the test - which meant the suite asserted that an
+      // unencryptable message is sent in the clear.
+      final session = MockDoubleRatchet();
+      when(() => session.hasSendingChainKey).thenReturn(true);
       when(() => mockCryptoService.getSession(
             remoteUserId: any(named: 'remoteUserId'),
             remoteDeviceId: any(named: 'remoteDeviceId'),
-          )).thenAnswer((_) async => null);
-      // E2EE: Skip session creation for tests (would need KeyBundle mock)
-      when(() => mockCryptoService.isInitialized).thenReturn(false);
+          )).thenAnswer((_) async => session);
+      when(() => mockCryptoService.encrypt(
+            recipientUserId: any(named: 'recipientUserId'),
+            recipientDeviceId: any(named: 'recipientDeviceId'),
+            plaintext: any(named: 'plaintext'),
+            associatedData: any(named: 'associatedData'),
+          )).thenAnswer((_) async => tCiphertext);
+      when(() => mockCryptoService.isInitialized).thenReturn(true);
     }
 
     test('should return message when send is successful', () async {
@@ -133,17 +154,122 @@ void main() {
 
       // assert
       expect(result.isRight(), true);
-      // Called twice: once for sendMessage, once for E2EE session creation attempt
-      verify(() => mockSecureStorage.getAccessToken()).called(2);
+      verify(() => mockSecureStorage.getAccessToken()).called(1);
+      // What goes on the wire is the base64 ciphertext, never the plaintext. The previous
+      // version of this test asserted `textContent: tTextContent` - the plaintext - which is
+      // the behaviour the fallback produced.
       verify(() => mockDatasource.sendMessage(
             accessToken: tAccessToken,
             recipientUserId: tRecipientUserId,
             recipientDeviceId: tRecipientDeviceId,
             recipientUsername: tRecipientUsername,
-            textContent: tTextContent,
+            textContent: base64.encode(tCiphertext),
             metadata: any(named: 'metadata'),
             x3dhPrekey: any(named: 'x3dhPrekey'),
           )).called(1);
+    });
+
+    group('fails closed', () {
+      // I-2: encryption that can be skipped when inconvenient is not always-on encryption.
+      // These used to be the "plaintext fallback": the repository returned the unencrypted
+      // message, the datasource sent it, and sendMessage still returned Right() - so the UI
+      // showed an ordinary sent bubble and nothing anywhere said the message had left the
+      // device in the clear.
+
+      void expectNothingSent() {
+        verifyNever(() => mockDatasource.sendMessage(
+              accessToken: any(named: 'accessToken'),
+              recipientUserId: any(named: 'recipientUserId'),
+              recipientDeviceId: any(named: 'recipientDeviceId'),
+              recipientUsername: any(named: 'recipientUsername'),
+              textContent: any(named: 'textContent'),
+              metadata: any(named: 'metadata'),
+              x3dhPrekey: any(named: 'x3dhPrekey'),
+            ));
+      }
+
+      test('does not send when the ratchet fails to encrypt', () async {
+        setUpSuccessfulAuth();
+        when(() => mockCryptoService.encrypt(
+              recipientUserId: any(named: 'recipientUserId'),
+              recipientDeviceId: any(named: 'recipientDeviceId'),
+              plaintext: any(named: 'plaintext'),
+              associatedData: any(named: 'associatedData'),
+            )).thenThrow(Exception('ratchet unavailable'));
+
+        final result = await repository.sendMessage(
+          recipientUserId: tRecipientUserId,
+          recipientDeviceId: tRecipientDeviceId,
+          recipientUsername: tRecipientUsername,
+          textContent: tTextContent,
+        );
+
+        expect(result.isLeft(), isTrue);
+        result.fold(
+          (failure) => expect(failure, isA<CryptoFailure>()),
+          (_) => fail('a message that cannot be encrypted must not be sent'),
+        );
+        expectNothingSent();
+      });
+
+      test('does not send when no session can be established', () async {
+        setUpSuccessfulAuth();
+        // No existing session, and X3DH cannot complete.
+        when(() => mockCryptoService.getSession(
+              remoteUserId: any(named: 'remoteUserId'),
+              remoteDeviceId: any(named: 'remoteDeviceId'),
+            )).thenAnswer((_) async => null);
+        when(() => mockSecureStorage.getAccessToken())
+            .thenAnswer((_) async => tAccessToken);
+        when(() => mockKeyExchangeDatasource.getKeyBundle(
+              accessToken: any(named: 'accessToken'),
+              userId: any(named: 'userId'),
+              deviceId: any(named: 'deviceId'),
+            )).thenThrow(Exception('peer has no key bundle'));
+
+        final result = await repository.sendMessage(
+          recipientUserId: tRecipientUserId,
+          recipientDeviceId: tRecipientDeviceId,
+          recipientUsername: tRecipientUsername,
+          textContent: tTextContent,
+        );
+
+        expect(result.isLeft(), isTrue);
+        result.fold(
+          (failure) => expect(failure, isA<CryptoFailure>()),
+          (_) => fail('a message with no session must not be sent'),
+        );
+        expectNothingSent();
+      });
+
+      test('the plaintext never reaches the datasource', () async {
+        setUpSuccessfulAuth();
+        when(() => mockCryptoService.encrypt(
+              recipientUserId: any(named: 'recipientUserId'),
+              recipientDeviceId: any(named: 'recipientDeviceId'),
+              plaintext: any(named: 'plaintext'),
+              associatedData: any(named: 'associatedData'),
+            )).thenThrow(Exception('boom'));
+
+        await repository.sendMessage(
+          recipientUserId: tRecipientUserId,
+          recipientDeviceId: tRecipientDeviceId,
+          recipientUsername: tRecipientUsername,
+          textContent: tTextContent,
+        );
+
+        // Stated separately from expectNothingSent(): the property that matters is not merely
+        // "no call happened", it is "this string did not leave the device".
+        verifyNever(() => mockDatasource.sendMessage(
+              accessToken: any(named: 'accessToken'),
+              recipientUserId: any(named: 'recipientUserId'),
+              recipientDeviceId: any(named: 'recipientDeviceId'),
+              recipientUsername: any(named: 'recipientUsername'),
+              textContent: tTextContent,
+              metadata: any(named: 'metadata'),
+              x3dhPrekey: any(named: 'x3dhPrekey'),
+            ));
+      });
     });
 
     test('should return AuthFailure when no access token', () async {
