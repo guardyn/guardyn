@@ -22,7 +22,7 @@ project_sync_enabled: true
 
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
-  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c], note: "E2EE-DUP and E2EE-FLAG pass; PR-32c blocked on #163 - client-desktop sends plaintext"}
+  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-78], note: "server side is done; both clients still transmit plaintext, so PR-32c stays blocked on #163 (now owned by PR-78)"}
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
@@ -87,7 +87,7 @@ steps:
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
   - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
   - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}
-  - {id: PR-44, issue: 55, phase: 4, type: chore, status: todo, gate: G4, title: "Deployment parity - call-service k8s, digest pins, mobile CI"}
+  - {id: PR-44, issue: 55, phase: 4, type: chore, status: todo, gate: G4, title: "Deployment parity - call-service k8s Deployment and image digest pins"}
   - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
   - {id: PR-46, issue: 132, phase: 3, type: fix, status: done, title: "Adapt to the rdkafka 0.39 Delivery type and vendor libcurl"}
   - {id: PR-47, issue: 137, phase: 3, type: chore, status: done, title: "Record the G2 hotfix steps in roadmap.yaml"}
@@ -115,3 +115,26 @@ steps:
   - {id: PR-64, issue: 198, phase: 3, type: fix, status: todo, title: "Fix the Dart skip-message-keys counter and bound"}
   - {id: PR-65, issue: 199, phase: 3, type: fix, status: todo, title: "Stop Build Linux flaking in linuxdeploy"}
   - {id: PR-66, issue: 200, phase: 3, type: chore, status: todo, title: "Reconcile roadmap.yaml after the ciphertext format break"}
+  # Client-side E2EE repair. ADR-0010 made the server a pure relay and ADR-0011 broke the
+  # ciphertext format; neither client followed. Both transmit plaintext today, so these are
+  # I-2 repairs rather than catch-up work. PR-67..PR-69 pull mobile CI forward out of PR-44,
+  # because rewriting the Dart crypto layer with no CI is flying blind.
+  - {id: PR-67, issue: 202, phase: 3, type: fix, status: todo, title: "Repair the nine failing Dart tests and the analyzer error"}
+  - {id: PR-68, issue: 203, phase: 3, type: chore, status: todo, title: "Add the mobile CI workflow (split out of PR-44)"}
+  - {id: PR-69, issue: 204, phase: 3, type: chore, status: todo, title: "Un-gate the Dart crypto suite so it runs under flutter test"}
+  - {id: PR-70, issue: null, phase: 3, type: security, status: todo, title: "Dart - adopt ratchet wire format v1 and bind the header into the AEAD"}
+  - {id: PR-71, issue: null, phase: 3, type: security, status: todo, title: "Dart - make ratchet decryption atomic"}
+  - {id: PR-72, issue: null, phase: 3, type: security, status: todo, title: "Unify the client AAD convention and fix UTF-8 handling"}
+  - {id: PR-73, issue: null, phase: 3, type: security, status: todo, title: "Apply PADME padding on the mobile message path"}
+  - {id: PR-74, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - make the ratchet AAD symmetric"}
+  - {id: PR-75, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - fail closed instead of sending plaintext"}
+  - {id: PR-76, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - fail closed on group messaging"}
+  - {id: PR-77, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - refuse the native to Dart crypto downgrade"}
+  - {id: PR-78, issue: 163, phase: 3, type: security, status: todo, title: "client-desktop - encrypt on the send path"}
+  - {id: PR-79, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - retain private prekey material"}
+  - {id: PR-80, issue: null, phase: 3, type: feat, status: todo, title: "client-desktop - implement the X3DH responder path"}
+  - {id: PR-81, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - restore the ratchet store from persisted state"}
+  # Deferred deliberately, each with a stated reason in its step above.
+  - {id: PR-82, issue: null, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
+  - {id: PR-83, issue: null, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}
+  - {id: PR-84, issue: 205, phase: 3, type: chore, status: todo, title: "Record the client-side E2EE repair steps in roadmap.yaml"}
