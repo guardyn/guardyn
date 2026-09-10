@@ -135,7 +135,7 @@ steps:
   - {id: PR-80, issue: null, phase: 3, type: feat, status: todo, title: "client-desktop - implement the X3DH responder path"}
   - {id: PR-81, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - restore the ratchet store from persisted state"}
   # Deferred deliberately, each with a stated reason in its step above.
-  - {id: PR-82, issue: null, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
+  - {id: PR-82, issue: 211, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
   - {id: PR-83, issue: null, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}
   - {id: PR-84, issue: 205, phase: 3, type: chore, status: todo, title: "Record the client-side E2EE repair steps in roadmap.yaml"}
   - {id: PR-85, issue: 208, phase: 3, type: fix, status: todo, title: "Pin the Flutter toolchain to 3.47.3 so flutter pub get resolves"}

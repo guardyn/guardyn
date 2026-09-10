@@ -20,14 +20,14 @@ void main() {
 
 
   group('IdentityKeyPair', () {
-    nativeCryptoTest('generate creates valid Ed25519 key pair', () async {
+    cryptoTest('generate creates valid Ed25519 key pair', () async {
       final keyPair = await IdentityKeyPair.generate();
 
       expect(keyPair.privateKey.length, equals(32));
       expect(keyPair.publicKey.length, equals(32));
     });
 
-    nativeCryptoTest('sign produces valid signature', () async {
+    cryptoTest('sign produces valid signature', () async {
       final keyPair = await IdentityKeyPair.generate();
       final data = Uint8List.fromList('test data'.codeUnits);
 
@@ -36,7 +36,7 @@ void main() {
       expect(signature.length, equals(64)); // Ed25519 signature is 64 bytes
     });
 
-    nativeCryptoTest('verify returns true for valid signature', () async {
+    cryptoTest('verify returns true for valid signature', () async {
       final keyPair = await IdentityKeyPair.generate();
       final data = Uint8List.fromList('test data'.codeUnits);
 
@@ -50,7 +50,7 @@ void main() {
       expect(isValid, isTrue);
     });
 
-    nativeCryptoTest('verify returns false for tampered data', () async {
+    cryptoTest('verify returns false for tampered data', () async {
       final keyPair = await IdentityKeyPair.generate();
       final data = Uint8List.fromList('original data'.codeUnits);
       final tamperedData = Uint8List.fromList('tampered data'.codeUnits);
@@ -67,7 +67,7 @@ void main() {
   });
 
   group('SignedPreKey', () {
-    nativeCryptoTest('generate creates valid signed pre-key', () async {
+    cryptoTest('generate creates valid signed pre-key', () async {
       final identity = await IdentityKeyPair.generate();
       final signedPreKey = await SignedPreKey.generate(
         identityKey: identity,
@@ -80,7 +80,7 @@ void main() {
       expect(signedPreKey.keyId, equals(1));
     });
 
-    nativeCryptoTest('verify returns true for valid signature', () async {
+    cryptoTest('verify returns true for valid signature', () async {
       final identity = await IdentityKeyPair.generate();
       final signedPreKey = await SignedPreKey.generate(
         identityKey: identity,
@@ -94,7 +94,7 @@ void main() {
   });
 
   group('OneTimePreKey', () {
-    nativeCryptoTest('generate creates valid one-time pre-key', () async {
+    cryptoTest('generate creates valid one-time pre-key', () async {
       final otpk = await OneTimePreKey.generate(42);
 
       expect(otpk.privateKey.length, equals(32));
@@ -104,7 +104,7 @@ void main() {
   });
 
   group('X3DHKeyBundle', () {
-    nativeCryptoTest('toJson/fromJson roundtrip', () async {
+    cryptoTest('toJson/fromJson roundtrip', () async {
       final identity = await IdentityKeyPair.generate();
       final signedPreKey = await SignedPreKey.generate(
         identityKey: identity,
@@ -132,7 +132,7 @@ void main() {
       expect(restored.oneTimePreKeyId, equals(bundle.oneTimePreKeyId));
     });
 
-    nativeCryptoTest('verify returns true for valid bundle', () async {
+    cryptoTest('verify returns true for valid bundle', () async {
       final identity = await IdentityKeyPair.generate();
       final signedPreKey = await SignedPreKey.generate(
         identityKey: identity,
@@ -153,7 +153,7 @@ void main() {
   });
 
   group('X3DHProtocol', () {
-    nativeCryptoTest('initialize creates valid protocol state', () async {
+    cryptoTest('initialize creates valid protocol state', () async {
       final protocol = await X3DHProtocol.initialize(oneTimePreKeyCount: 10);
 
       expect(protocol.identityKey.publicKey.length, equals(32));
@@ -161,7 +161,7 @@ void main() {
       expect(protocol.oneTimePreKeys.length, equals(10));
     });
 
-    nativeCryptoTest('exportKeyBundle returns valid bundle', () async {
+    cryptoTest('exportKeyBundle returns valid bundle', () async {
       final protocol = await X3DHProtocol.initialize(oneTimePreKeyCount: 10);
       final bundle = protocol.exportKeyBundle(oneTimePreKeyIndex: 0);
 
@@ -170,7 +170,7 @@ void main() {
       expect(bundle.oneTimePreKey, equals(protocol.oneTimePreKeys[0].publicKey));
     });
 
-    nativeCryptoTest('serialize/deserialize roundtrip', () async {
+    cryptoTest('serialize/deserialize roundtrip', () async {
       final protocol = await X3DHProtocol.initialize(oneTimePreKeyCount: 5);
       final serialized = protocol.serialize();
       final restored = X3DHProtocol.deserialize(serialized);
@@ -189,7 +189,7 @@ void main() {
       );
     });
 
-    nativeCryptoTest('initiateKeyAgreement produces shared secret', () async {
+    cryptoTest('initiateKeyAgreement produces shared secret', () async {
       final alice = await X3DHProtocol.initialize(oneTimePreKeyCount: 10);
       final bob = await X3DHProtocol.initialize(oneTimePreKeyCount: 10);
 
@@ -204,7 +204,7 @@ void main() {
       expect(ephemeralKey.length, equals(32));
     });
 
-    nativeCryptoTest('completeKeyAgreement produces shared secret', () async {
+    cryptoTest('completeKeyAgreement produces shared secret', () async {
       final alice = await X3DHProtocol.initialize(oneTimePreKeyCount: 10);
       final bob = await X3DHProtocol.initialize(oneTimePreKeyCount: 10);
 
@@ -231,8 +231,14 @@ void main() {
   ///
   /// The vectors verify that Ed25519 → X25519 key conversion produces identical
   /// results in both Rust (ed25519-dalek + curve25519-dalek) and Dart (via Rust FFI).
-  group('Cross-platform Ed25519→X25519 Compatibility', () {
-    nativeCryptoTest('all_zeros seed produces correct X25519 keys', () async {
+  // FFI-only, and this is the one place where that is a statement about correctness rather
+  // than convenience. These cases assert byte-equality against vectors produced by the Rust
+  // implementation, and DartCryptoBridge does not perform the Ed25519 to X25519 birational
+  // map at all - it derives an X25519 key from the Ed25519 bytes as a seed and documents
+  // itself as "NOT cryptographically equivalent" (dart_crypto_bridge.dart). Running these on
+  // the Dart bridge would not be a weaker test, it would be a test of a different function.
+  ffiOnlyCryptoGroup('Cross-platform Ed25519→X25519 Compatibility', () {
+    cryptoTest('all_zeros seed produces correct X25519 keys', () async {
       final seed = Uint8List.fromList(List.filled(32, 0x00));
 
       final expectedX25519Public = Uint8List.fromList([
@@ -321,7 +327,7 @@ void main() {
       );
     });
 
-    nativeCryptoTest('sequential seed produces correct X25519 keys', () async {
+    cryptoTest('sequential seed produces correct X25519 keys', () async {
       final seed = Uint8List.fromList(List.generate(32, (i) => i));
 
       final expectedX25519Public = Uint8List.fromList([
@@ -410,7 +416,7 @@ void main() {
       );
     });
 
-    nativeCryptoTest('random_pattern seed produces correct X25519 keys', () async {
+    cryptoTest('random_pattern seed produces correct X25519 keys', () async {
       final seed = Uint8List.fromList([
         0x9d,
         0x61,
@@ -532,10 +538,9 @@ void main() {
       );
     });
 
-    nativeCryptoTest(
+    cryptoTest(
       'X25519 DH produces identical shared secrets cross-platform',
       () async {
-        if (!nativeCryptoAvailable) return; // Double guard
         // Alice's seed (sequential)
         final aliceSeed = Uint8List.fromList(List.generate(32, (i) => i));
         // Bob's seed (random_pattern)
