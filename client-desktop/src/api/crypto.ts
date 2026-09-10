@@ -282,29 +282,42 @@ export async function deleteSession(peerId: string): Promise<boolean> {
 // =============================================================================
 
 /**
- * Encrypt a message for a peer using Double Ratchet
+ * Encrypt a message for a peer using Double Ratchet.
+ *
+ * `selfUserId` is required because the AEAD associated data is
+ * `utf8("{senderUserId}|{recipientUserId}")` - ordered by role, not by point of view - and
+ * both ends must compute identical bytes or the tag never verifies.
  */
 export async function encryptMessage(
   plaintext: string,
-  recipientId: string
+  recipientId: string,
+  selfUserId: string
 ): Promise<EncryptedMessage> {
   const result = await invoke<{
     ciphertext: string;
     nonce: string;
     header: string;
-  }>('encrypt_message', { plaintext, recipientId });
+  }>('encrypt_message', { plaintext, recipientId, selfUserId });
   return result;
 }
 
 /**
- * Decrypt a message from a peer using Double Ratchet
+ * Decrypt a message from a peer using Double Ratchet.
+ *
+ * `selfUserId` is the recipient half of the associated data; see {@link encryptMessage}.
  */
 export async function decryptMessage(
   ciphertext: string,
   nonce: string,
-  senderId: string
+  senderId: string,
+  selfUserId: string
 ): Promise<string> {
-  return invoke<string>('decrypt_message', { ciphertext, nonce, senderId });
+  return invoke<string>('decrypt_message', {
+    ciphertext,
+    nonce,
+    senderId,
+    selfUserId,
+  });
 }
 
 // =============================================================================
@@ -394,13 +407,17 @@ export class EncryptionService {
   /**
    * Send an encrypted message
    */
-  async sendMessage(peerId: string, plaintext: string): Promise<EncryptedMessage> {
+  async sendMessage(
+    peerId: string,
+    plaintext: string,
+    selfUserId: string
+  ): Promise<EncryptedMessage> {
     const session = await getSession(peerId);
     if (!session) {
       throw new Error(`No session with peer: ${peerId}`);
     }
 
-    return encryptMessage(plaintext, peerId);
+    return encryptMessage(plaintext, peerId, selfUserId);
   }
 
   /**
@@ -408,14 +425,20 @@ export class EncryptionService {
    */
   async receiveMessage(
     senderId: string,
-    encrypted: EncryptedMessage
+    encrypted: EncryptedMessage,
+    selfUserId: string
   ): Promise<string> {
     const session = await getSession(senderId);
     if (!session) {
       throw new Error(`No session with peer: ${senderId}`);
     }
 
-    return decryptMessage(encrypted.ciphertext, encrypted.nonce, senderId);
+    return decryptMessage(
+      encrypted.ciphertext,
+      encrypted.nonce,
+      senderId,
+      selfUserId
+    );
   }
 
   /**

@@ -215,13 +215,21 @@ class EncryptionManager {
   /**
    * Encrypt a message for a peer
    */
-  async encryptMessage(peerId: string, plaintext: string): Promise<EncryptedMessage> {
+  async encryptMessage(
+    peerId: string,
+    plaintext: string,
+    selfUserId: string
+  ): Promise<EncryptedMessage> {
     const state = this.peerStates.get(peerId);
     if (state?.status !== 'established') {
       throw new Error(`No established session with peer: ${peerId}`);
     }
 
-    const encrypted = await encryptionService.sendMessage(peerId, plaintext);
+    const encrypted = await encryptionService.sendMessage(
+      peerId,
+      plaintext,
+      selfUserId
+    );
 
     this.emit({
       type: 'message_encrypted',
@@ -236,13 +244,21 @@ class EncryptionManager {
   /**
    * Decrypt a message from a peer
    */
-  async decryptMessage(senderId: string, encrypted: EncryptedMessage): Promise<string> {
+  async decryptMessage(
+    senderId: string,
+    encrypted: EncryptedMessage,
+    selfUserId: string
+  ): Promise<string> {
     const state = this.peerStates.get(senderId);
     if (state?.status !== 'established') {
       throw new Error(`No established session with peer: ${senderId}`);
     }
 
-    const plaintext = await encryptionService.receiveMessage(senderId, encrypted);
+    const plaintext = await encryptionService.receiveMessage(
+      senderId,
+      encrypted,
+      selfUserId
+    );
 
     this.emit({
       type: 'message_decrypted',
