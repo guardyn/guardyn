@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
@@ -34,7 +36,7 @@ class MessageRemoteDatasource {
       recipientUserId: recipientUserId,
       recipientDeviceId: recipientDeviceId,
       recipientUsername: recipientUsername,
-      encryptedContent: textContent.codeUnits,
+      encryptedContent: utf8.encode(textContent),
       messageType: proto.MessageType.TEXT,
       clientMessageId: _generateMessageId(),
       clientTimestamp: _createTimestamp(DateTime.now()),
