@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/core/auth/token_manager.dart';
 import 'package:guardyn_client/core/network/grpc_clients.dart';
 import 'package:guardyn_client/features/media/data/datasources/media_remote_datasource.dart';
 import 'package:guardyn_client/features/media/domain/repositories/media_repository.dart';
@@ -15,6 +16,8 @@ class MockMediaServiceClient extends Mock implements MediaServiceClient {}
 
 class MockHttpClient extends Mock implements http.Client {}
 
+class MockTokenManager extends Mock implements TokenManager {}
+
 // Fake classes for mocktail
 class FakeHttpRequest extends Fake implements http.Request {}
 
@@ -24,6 +27,7 @@ void main() {
   late MockGrpcClients mockGrpcClients;
   late MockMediaServiceClient mockMediaClient;
   late MockHttpClient mockHttpClient;
+  late MockTokenManager mockTokenManager;
   late MediaRemoteDatasource datasource;
 
   setUpAll(() {
@@ -35,10 +39,15 @@ void main() {
     mockGrpcClients = MockGrpcClients();
     mockMediaClient = MockMediaServiceClient();
     mockHttpClient = MockHttpClient();
+    mockTokenManager = MockTokenManager();
 
     when(() => mockGrpcClients.mediaClient).thenReturn(mockMediaClient);
 
-    datasource = MediaRemoteDatasource(mockGrpcClients, mockHttpClient);
+    datasource = MediaRemoteDatasource(
+      mockGrpcClients,
+      mockHttpClient,
+      mockTokenManager,
+    );
   });
 
   group('MediaRemoteDatasource', () {

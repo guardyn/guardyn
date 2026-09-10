@@ -1,8 +1,59 @@
+import 'package:bloc_test/bloc_test.dart';
+import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
+import 'package:guardyn_client/core/error/failures.dart';
+import 'package:guardyn_client/features/contacts/presentation/bloc/contacts_bloc.dart';
 import 'package:guardyn_client/features/groups/presentation/pages/user_profile_page.dart';
+import 'package:guardyn_client/features/messaging/domain/usecases/block_user.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockContactsBloc extends MockBloc<ContactsEvent, ContactsState>
+    implements ContactsBloc {}
+
+class MockBlockUser extends Mock implements BlockUser {}
+
+class MockUnblockUser extends Mock implements UnblockUser {}
+
+class MockGetBlockedUsers extends Mock implements GetBlockedUsers {}
 
 void main() {
+  late MockContactsBloc mockContactsBloc;
+  late MockBlockUser mockBlockUser;
+  late MockUnblockUser mockUnblockUser;
+  late MockGetBlockedUsers mockGetBlockedUsers;
+
+  // UserProfilePage resolves all four of these from GetIt in initState, so the
+  // page cannot build at all without them. Before this registration every test
+  // in the file failed with "GetIt: Object/factory with type ContactsBloc is
+  // not registered", and every finder reported 0 widgets as a consequence.
+  setUp(() {
+    mockContactsBloc = MockContactsBloc();
+    mockBlockUser = MockBlockUser();
+    mockUnblockUser = MockUnblockUser();
+    mockGetBlockedUsers = MockGetBlockedUsers();
+
+    whenListen(
+      mockContactsBloc,
+      const Stream<ContactsState>.empty(),
+      initialState: ContactsInitial(),
+    );
+
+    // _checkIsBlocked() awaits this during initState.
+    when(() => mockGetBlockedUsers()).thenAnswer(
+      (_) async => const Right<Failure, List<BlockedUser>>(<BlockedUser>[]),
+    );
+
+    final getIt = GetIt.instance;
+    getIt.registerFactory<ContactsBloc>(() => mockContactsBloc);
+    getIt.registerFactory<BlockUser>(() => mockBlockUser);
+    getIt.registerFactory<UnblockUser>(() => mockUnblockUser);
+    getIt.registerFactory<GetBlockedUsers>(() => mockGetBlockedUsers);
+  });
+
+  tearDown(() => GetIt.instance.reset());
+
   group('UserProfilePage', () {
     testWidgets('displays user information correctly', (tester) async {
       await tester.pumpWidget(

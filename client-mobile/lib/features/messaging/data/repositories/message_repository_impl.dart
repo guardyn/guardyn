@@ -490,22 +490,6 @@ class MessageRepositoryImpl implements MessageRepository {
     }
   }
 
-  /// Legacy encryption method for backward compatibility
-  Future<String> _encryptMessage({
-    required String plaintext,
-    required String recipientUserId,
-    required String recipientDeviceId,
-    required String currentUserId,
-  }) async {
-    final (encryptedContent, _) = await _encryptMessageWithPrekey(
-      plaintext: plaintext,
-      recipientUserId: recipientUserId,
-      recipientDeviceId: recipientDeviceId,
-      currentUserId: currentUserId,
-    );
-    return encryptedContent;
-  }
-
   /// Create E2EE session via X3DH key exchange
   /// Returns X3DH prekey message to include in first message
   Future<X3DHPrekeyMessage?> _createE2ESessionWithPrekey({
@@ -533,17 +517,6 @@ class MessageRepositoryImpl implements MessageRepository {
     );
 
     return prekeyMessage;
-  }
-
-  /// Legacy session creation for backward compatibility
-  Future<void> _createE2ESession({
-    required String recipientUserId,
-    required String recipientDeviceId,
-  }) async {
-    await _createE2ESessionWithPrekey(
-      recipientUserId: recipientUserId,
-      recipientDeviceId: recipientDeviceId,
-    );
   }
 
   /// Decrypt message content with Double Ratchet
