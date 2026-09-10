@@ -21,13 +21,12 @@ void main() {
     late Uint8List signingPublicKey;
 
     setUpAll(() async {
-      if (!nativeCryptoAvailable) return;
       final (pubKey, privKey) = await CryptoPrimitives.generateEd25519KeyPair();
       signingPublicKey = pubKey;
       signingPrivateKey = privKey;
     });
 
-    nativeCryptoTest('creates certificate with valid signature', () async {
+    cryptoTest('creates certificate with valid signature', () async {
       final expiresAt =
           (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400; // 24h
 
@@ -45,7 +44,7 @@ void main() {
       expect(cert.signature.length, 64);
     });
 
-    nativeCryptoTest('verifies valid certificate', () async {
+    cryptoTest('verifies valid certificate', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
 
       final cert = await SenderCertificate.create(
@@ -60,7 +59,7 @@ void main() {
       expect(isValid, isTrue);
     });
 
-    nativeCryptoTest('detects expired certificate', () async {
+    cryptoTest('detects expired certificate', () async {
       final expiresAt =
           (DateTime.now().millisecondsSinceEpoch ~/ 1000) -
           3600; // Expired 1h ago
@@ -76,7 +75,7 @@ void main() {
       expect(cert.isExpired, isTrue);
     });
 
-    nativeCryptoTest('serializes and deserializes correctly', () async {
+    cryptoTest('serializes and deserializes correctly', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
 
       final cert = await SenderCertificate.create(
@@ -144,7 +143,6 @@ void main() {
     late Uint8List recipientPrivateKey;
 
     setUpAll(() async {
-      if (!nativeCryptoAvailable) return;
       // Generate sender Ed25519 keys for signing
       final (senderPub, senderPriv) =
           await CryptoPrimitives.generateEd25519KeyPair();
@@ -158,7 +156,7 @@ void main() {
       recipientPrivateKey = recipientPriv;
     });
 
-    nativeCryptoTest('seals and unseals message successfully', () async {
+    cryptoTest('seals and unseals message successfully', () async {
       // Create sender certificate
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
@@ -192,7 +190,7 @@ void main() {
       expect(result.innerMessage, innerMessage);
     });
 
-    nativeCryptoTest('envelope serialization round trip works', () async {
+    cryptoTest('envelope serialization round trip works', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',
@@ -223,7 +221,7 @@ void main() {
       expect(result.innerMessage, innerMessage);
     });
 
-    nativeCryptoTest('rejects expired certificate during unseal', () async {
+    cryptoTest('rejects expired certificate during unseal', () async {
       final expiresAt =
           (DateTime.now().millisecondsSinceEpoch ~/ 1000) - 3600; // Expired
 
@@ -252,7 +250,7 @@ void main() {
       );
     });
 
-    nativeCryptoTest('wrong recipient cannot decrypt', () async {
+    cryptoTest('wrong recipient cannot decrypt', () async {
       // Generate a different recipient keypair
       final (_, wrongPrivateKey) =
           await CryptoPrimitives.generateX25519KeyPair();
@@ -284,7 +282,7 @@ void main() {
       );
     });
 
-    nativeCryptoTest('tampered envelope fails decryption', () async {
+    cryptoTest('tampered envelope fails decryption', () async {
       final expiresAt = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 86400;
       final senderCert = await SenderCertificate.create(
         senderUserId: 'sender-user',

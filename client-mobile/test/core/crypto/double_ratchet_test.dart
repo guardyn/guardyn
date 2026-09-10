@@ -20,7 +20,7 @@ void main() {
   });
 
   // This group requires native crypto for X25519KeyPair.generate()
-  nativeCryptoGroup('X25519KeyPair', () {
+  cryptoGroup('X25519KeyPair', () {
     test('generate creates valid key pair', () async {
       final keyPair = await X25519KeyPair.generate();
 
@@ -52,7 +52,7 @@ void main() {
   });
 
   // This group requires native crypto for X25519KeyPair.generate()
-  nativeCryptoGroup('MessageHeader', () {
+  cryptoGroup('MessageHeader', () {
     test('serialization roundtrip', () async {
       final keyPair = await X25519KeyPair.generate();
       final header = MessageHeader(
@@ -78,7 +78,7 @@ void main() {
   });
 
   // This group requires native crypto for X25519KeyPair.generate()
-  nativeCryptoGroup('EncryptedMessage', () {
+  cryptoGroup('EncryptedMessage', () {
     test('serialization roundtrip', () async {
       final keyPair = await X25519KeyPair.generate();
       final header = MessageHeader(
@@ -132,7 +132,7 @@ void main() {
   });
 
   // This group requires native crypto for key generation and encryption
-  nativeCryptoGroup('DoubleRatchet', () {
+  cryptoGroup('DoubleRatchet', () {
     late Uint8List sharedSecret;
     late Uint8List bobPublicKey;
 
