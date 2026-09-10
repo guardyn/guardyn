@@ -484,17 +484,27 @@ class DoubleRatchet {
     _sendingChainKey = sendingChainKey;
   }
 
-  /// Skip message keys for out-of-order handling
+  /// Derive and store message keys for messages that arrived out of order.
+  ///
+  /// Mirrors `skip_message_keys` in `backend/crates/crypto/src/double_ratchet.rs`.
+  ///
+  /// The bound counts the **size of the stored map**, not the size of the gap, and is checked
+  /// inside the loop. Bounding the gap lets many small-gap messages grow
+  /// [_skippedMessageKeys] without limit, which is the memory exhaustion the bound exists to
+  /// prevent.
+  ///
+  /// On return `_receivingMessageNumber` is `until`, so the caller's own increment leaves it
+  /// at `until + 1`.
   Future<void> _skipMessageKeys(int until) async {
-    if (_receivingMessageNumber + _maxSkip < until) {
-      throw ProtocolException('Too many skipped messages');
-    }
-
     final chainKey = _receivingChainKey;
     if (chainKey == null) return;
 
     var currentKey = chainKey;
     while (_receivingMessageNumber < until) {
+      if (_skippedMessageKeys.length >= _maxSkip) {
+        throw ProtocolException('Too many skipped messages (max: $_maxSkip)');
+      }
+
       final messageKey = await currentKey.messageKey();
       final skipKey = _makeSkipKey(_dhRemote!, _receivingMessageNumber);
       _skippedMessageKeys[skipKey] = messageKey;
@@ -502,7 +512,6 @@ class DoubleRatchet {
       _receivingMessageNumber++;
     }
     _receivingChainKey = currentKey;
-    _receivingMessageNumber = 0;
   }
 
   String _makeSkipKey(Uint8List dhKey, int messageNumber) {
