@@ -609,11 +609,29 @@ pub async fn delete_session(peer_id: String) -> Result<bool, String> {
 // MESSAGE ENCRYPTION/DECRYPTION
 // =============================================================================
 
+/// The caller-supplied half of the AEAD associated data for a one-to-one message.
+///
+/// The full AAD is this value followed by the 40-byte ratchet header, which
+/// `guardyn_crypto` appends itself (see `aad_with_header`). The convention is
+/// `utf8("{sender_user_id}|{recipient_user_id}")` and it is canonical across both clients -
+/// `client-mobile/lib/core/crypto/message_aad.dart` builds the same bytes. It is recorded in
+/// `docs/adr/ADR-0011-ratchet-header-authentication.md`.
+///
+/// Ordering is by **role**, not by point of view: originator first, destination second. That
+/// is what makes the two ends agree. This function exists because they previously did not -
+/// `encrypt_message` passed `recipient_id` while `decrypt_message` passed `sender_id`, so for
+/// a session A-B, A encrypted under `bytes(B)` and B decrypted under `bytes(A)`, and the tag
+/// could never verify.
+fn message_associated_data(sender_user_id: &str, recipient_user_id: &str) -> Vec<u8> {
+    format!("{}|{}", sender_user_id, recipient_user_id).into_bytes()
+}
+
 /// Encrypt a message for a peer using Double Ratchet
 #[tauri::command]
 pub async fn encrypt_message(
     plaintext: String,
     recipient_id: String,
+    self_user_id: String,
 ) -> Result<EncryptedMessage, String> {
     tracing::debug!("Encrypting message for {} ({} bytes)", recipient_id, plaintext.len());
 
@@ -626,9 +644,9 @@ pub async fn encrypt_message(
     let ratchet = ratchet_store.get_mut(&recipient_id)
         .ok_or_else(|| format!("No Double Ratchet session with peer: {}", recipient_id))?;
 
-    // Encrypt with Double Ratchet
-    let associated_data = recipient_id.as_bytes();
-    let encrypted = ratchet.encrypt(&padded, associated_data)
+    // Encrypt with Double Ratchet. The local user is the sender.
+    let associated_data = message_associated_data(&self_user_id, &recipient_id);
+    let encrypted = ratchet.encrypt(&padded, &associated_data)
         .map_err(|e| format!("Double Ratchet encryption failed: {}", e))?;
 
     // Serialize encrypted message
@@ -665,6 +683,7 @@ pub async fn decrypt_message(
     ciphertext: String,
     _nonce: String, // Nonce is now embedded in ciphertext
     sender_id: String,
+    self_user_id: String,
 ) -> Result<String, String> {
     tracing::debug!("Decrypting message from {}", sender_id);
 
@@ -681,9 +700,9 @@ pub async fn decrypt_message(
     let ratchet = ratchet_store.get_mut(&sender_id)
         .ok_or_else(|| format!("No Double Ratchet session with peer: {}", sender_id))?;
 
-    // Decrypt with Double Ratchet
-    let associated_data = sender_id.as_bytes();
-    let padded = ratchet.decrypt(&encrypted_msg, associated_data)
+    // Decrypt with Double Ratchet. The local user is the recipient.
+    let associated_data = message_associated_data(&sender_id, &self_user_id);
+    let padded = ratchet.decrypt(&encrypted_msg, &associated_data)
         .map_err(|e| format!("Double Ratchet decryption failed: {}", e))?;
 
     drop(ratchet_store);
@@ -1009,6 +1028,65 @@ mod tests {
         // Bob decrypts the message
         let decrypted = bob.decrypt(&encrypted, b"alice->bob").unwrap();
         assert_eq!(&decrypted[..], plaintext);
+    }
+
+    #[test]
+    fn associated_data_is_role_ordered_not_point_of_view() {
+        // The bug this replaced: encrypt_message passed recipient_id and decrypt_message
+        // passed sender_id, so each end built the string from its own point of view.
+        let sender = "alice";
+        let recipient = "bob";
+
+        // Both ends name originator first, destination second, so both get the same bytes.
+        let sending = message_associated_data(sender, recipient);
+        let receiving = message_associated_data(sender, recipient);
+        assert_eq!(sending, receiving);
+
+        assert_eq!(sending, b"alice|bob".to_vec());
+
+        // And it is directional: the reply is a different context.
+        assert_ne!(sending, message_associated_data(recipient, sender));
+    }
+
+    #[test]
+    fn cross_party_exchange_verifies_with_the_canonical_aad() {
+        // The existing ratchet tests pass a symmetric literal (b"ad", b"alice->bob") to both
+        // ends, so they cannot catch an asymmetric AAD by construction. This one builds each
+        // side's associated data the way the commands do.
+        let shared_secret = [11u8; 32];
+        let bob_dh = guardyn_crypto::StaticSecret::from([3u8; 32]);
+        let bob_public = guardyn_crypto::X25519PublicKey::from(&bob_dh);
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
+        let mut alice =
+            guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
+
+        // Alice is the local user when sending; Bob is the local user when receiving.
+        let alice_sends = message_associated_data("alice", "bob");
+        let bob_receives = message_associated_data("alice", "bob");
+
+        let padded = guardyn_crypto::pad_message(b"hello bob").unwrap();
+        let encrypted = alice.encrypt(&padded, &alice_sends).unwrap();
+        let out = bob.decrypt(&encrypted, &bob_receives).unwrap();
+        assert_eq!(guardyn_crypto::unpad_message(&out).unwrap(), b"hello bob");
+    }
+
+    #[test]
+    fn the_old_asymmetric_associated_data_would_have_failed() {
+        // Pins the defect so it cannot come back: encrypting under the recipient id and
+        // decrypting under the sender id must not verify.
+        let shared_secret = [12u8; 32];
+        let bob_dh = guardyn_crypto::StaticSecret::from([5u8; 32]);
+        let bob_public = guardyn_crypto::X25519PublicKey::from(&bob_dh);
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, bob_dh).unwrap();
+        let mut alice =
+            guardyn_crypto::DoubleRatchet::init_alice(&shared_secret, bob_public).unwrap();
+
+        let encrypted = alice.encrypt(b"hello bob", b"bob").unwrap();
+        assert!(
+            bob.decrypt(&encrypted, b"alice").is_err(),
+            "encrypting under the recipient id and decrypting under the sender id must not \
+             verify - if this ever passes, the AAD has stopped binding the participants"
+        );
     }
 
     #[test]
