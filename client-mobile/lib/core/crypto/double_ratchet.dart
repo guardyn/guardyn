@@ -19,6 +19,14 @@ const _messageKeyInfo = 'guardyn-message-key';
 const _rootKeyInfo = 'guardyn-root-key';
 const _maxSkip = 1000;
 
+/// Ratchet wire format version, emitted as byte 0 of every serialized message.
+///
+/// Must match `WIRE_VERSION` in `backend/crates/crypto/src/double_ratchet.rs`. The pre-v1
+/// format had no version byte and began with the high byte of a big-endian u32 header
+/// length - always 0x00 for a 40-byte header - so 0x01 cannot be mistaken for it.
+/// See docs/adr/ADR-0011-ratchet-header-authentication.md.
+const _wireVersion = 1;
+
 /// X25519 key pair for Diffie-Hellman operations
 class X25519KeyPair {
   final Uint8List privateKey;
@@ -238,19 +246,26 @@ class EncryptedMessage {
   /// Uses Big-Endian (Network Byte Order) per RFC 1700
   Uint8List toBytes() {
     final headerBytes = header.toBytes();
-    final result = Uint8List(4 + headerBytes.length + ciphertext.length);
+    final result = Uint8List(5 + headerBytes.length + ciphertext.length);
+    result[0] = _wireVersion;
     final byteData = ByteData.view(result.buffer);
-    byteData.setUint32(0, headerBytes.length, Endian.big);
-    result.setRange(4, 4 + headerBytes.length, headerBytes);
-    result.setRange(4 + headerBytes.length, result.length, ciphertext);
+    byteData.setUint32(1, headerBytes.length, Endian.big);
+    result.setRange(5, 5 + headerBytes.length, headerBytes);
+    result.setRange(5 + headerBytes.length, result.length, ciphertext);
     return result;
   }
 
   /// Deserialize message from bytes
   /// Uses Big-Endian (Network Byte Order) per RFC 1700
   factory EncryptedMessage.fromBytes(Uint8List bytes) {
-    if (bytes.length < 4) {
+    if (bytes.length < 5) {
       throw ProtocolException('Message too short: ${bytes.length} bytes');
+    }
+
+    if (bytes[0] != _wireVersion) {
+      throw ProtocolException(
+        'Unsupported ratchet message version ${bytes[0]} (expected $_wireVersion)',
+      );
     }
 
     // IMPORTANT: Use offsetInBytes to handle bytes created from base64.decode
@@ -260,19 +275,41 @@ class EncryptedMessage {
       bytes.offsetInBytes,
       bytes.lengthInBytes,
     );
-    final headerLen = byteData.getUint32(0, Endian.big);
+    final headerLen = byteData.getUint32(1, Endian.big);
 
-    if (bytes.length < 4 + headerLen) {
-      throw ProtocolException('Invalid message format: need ${4 + headerLen} bytes, got ${bytes.length}');
+    final bodyStart = 5 + headerLen;
+    if (bytes.length < bodyStart) {
+      throw ProtocolException(
+        'Invalid message format: need $bodyStart bytes, got ${bytes.length}',
+      );
     }
 
     final header = MessageHeader.fromBytes(
-      Uint8List.fromList(bytes.sublist(4, 4 + headerLen)),
+      Uint8List.fromList(bytes.sublist(5, bodyStart)),
     );
-    final ciphertext = Uint8List.fromList(bytes.sublist(4 + headerLen));
+    final ciphertext = Uint8List.fromList(bytes.sublist(bodyStart));
 
     return EncryptedMessage(header: header, ciphertext: ciphertext);
   }
+}
+
+/// Associated data for the AEAD: the caller's context, then the wire header.
+///
+/// Mirrors `aad_with_header` in `backend/crates/crypto/src/double_ratchet.rs`. The Signal
+/// Double Ratchet binds the header into the associated data (`AD = AD_initial || header`)
+/// so that an attacker who can modify a message in flight cannot rewrite `dhPublicKey`,
+/// `previousChainLength` or `messageNumber` without invalidating the tag. Those 40 bytes
+/// were previously unauthenticated on this client, and `messageNumber` in particular drives
+/// [DoubleRatchet._skipMessageKeys].
+///
+/// Note the version byte and the length prefix are deliberately NOT included - only the 40
+/// header bytes - because that is what the Rust side binds.
+Uint8List _aadWithHeader(Uint8List associatedData, MessageHeader header) {
+  final headerBytes = header.toBytes();
+  final aad = Uint8List(associatedData.length + headerBytes.length);
+  aad.setRange(0, associatedData.length, associatedData);
+  aad.setRange(associatedData.length, aad.length, headerBytes);
+  return aad;
 }
 
 /// Double Ratchet state for E2EE messaging
@@ -360,13 +397,17 @@ class DoubleRatchet {
       throw ProtocolException('No sending chain key');
     }
 
-    final messageKey = await chainKey.messageKey();
-    final ciphertext = await messageKey.encrypt(plaintext, associatedData);
-
+    // The header must exist before encryption now, because it is part of the AAD.
     final header = MessageHeader(
       dhPublicKey: publicKey,
       previousChainLength: _previousChainLength,
       messageNumber: _sendingMessageNumber,
+    );
+
+    final messageKey = await chainKey.messageKey();
+    final ciphertext = await messageKey.encrypt(
+      plaintext,
+      _aadWithHeader(associatedData, header),
     );
 
     // Advance sending chain
@@ -381,11 +422,13 @@ class DoubleRatchet {
     EncryptedMessage message,
     Uint8List associatedData,
   ) async {
+    final aad = _aadWithHeader(associatedData, message.header);
+
     // Check if we have a skipped message key
     final skipKey = _makeSkipKey(message.header.dhPublicKey, message.header.messageNumber);
     if (_skippedMessageKeys.containsKey(skipKey)) {
       final messageKey = _skippedMessageKeys.remove(skipKey)!;
-      return messageKey.decrypt(message.ciphertext, associatedData);
+      return messageKey.decrypt(message.ciphertext, aad);
     }
 
     // Check if we need to perform DH ratchet
@@ -408,7 +451,7 @@ class DoubleRatchet {
     }
 
     final messageKey = await chainKey.messageKey();
-    final plaintext = await messageKey.decrypt(message.ciphertext, associatedData);
+    final plaintext = await messageKey.decrypt(message.ciphertext, aad);
 
     // Advance receiving chain
     _receivingChainKey = await chainKey.next();
