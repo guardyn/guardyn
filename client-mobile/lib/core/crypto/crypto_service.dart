@@ -13,6 +13,7 @@ import 'crypto_exceptions.dart';
 import 'crypto_isolate.dart';
 import 'crypto_primitives.dart';
 import 'double_ratchet.dart';
+import 'padme.dart' as padme;
 import 'x3dh.dart';
 
 /// Configuration for one-time pre-key management
@@ -538,7 +539,12 @@ class CryptoService {
       );
     }
 
-    final encrypted = await session.encrypt(plaintext, associatedData);
+    // PADME first, then the ratchet: the padding must be inside the AEAD, or an observer
+    // reads the true plaintext length straight off the ciphertext. This mirrors the desktop
+    // pipeline (client-desktop/src-tauri/src/commands/crypto.rs), which pads before
+    // encrypting and unpads after decrypting.
+    final padded = padme.padMessage(plaintext);
+    final encrypted = await session.encrypt(padded, associatedData);
     final sessionId = _makeSessionId(recipientUserId, recipientDeviceId);
     await _saveSession(sessionId, session);
 
@@ -564,11 +570,11 @@ class CryptoService {
     }
 
     final encrypted = EncryptedMessage.fromBytes(ciphertext);
-    final decrypted = await session.decrypt(encrypted, associatedData);
+    final padded = await session.decrypt(encrypted, associatedData);
     final sessionId = _makeSessionId(senderUserId, senderDeviceId);
     await _saveSession(sessionId, session);
 
-    return decrypted;
+    return padme.unpadMessage(padded);
   }
 
   /// Delete a session
