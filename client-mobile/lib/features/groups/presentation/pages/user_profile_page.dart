@@ -274,11 +274,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
             ),
             const SizedBox(height: 16),
 
-            // Actions section
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? GrayColors.gray800 : Colors.white,
-              ),
+            // Actions section.
+            //
+            // Material, not a decorated Container: ListTile paints its background and ink
+            // splashes on the nearest Material ancestor, so a coloured box in between hides
+            // them. Flutter 3.47 asserts on exactly that shape.
+            Material(
+              color: isDark ? GrayColors.gray800 : Colors.white,
               child: Column(
                 children: [
                   ListTile(

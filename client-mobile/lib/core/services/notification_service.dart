@@ -68,7 +68,7 @@ class NotificationService {
       );
 
       final initialized = await _notifications!.initialize(
-        initSettings,
+        settings: initSettings,
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
 
@@ -180,10 +180,10 @@ class NotificationService {
 
     try {
       await _notifications!.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        title,
-        body,
-        notificationDetails,
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
         payload: payload,
       );
     } catch (e) {
