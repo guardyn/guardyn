@@ -39,3 +39,8 @@ class ProtocolException extends CryptoException {
 class InvalidKeyException extends CryptoException {
   const InvalidKeyException(super.message);
 }
+
+/// Thrown when padding is malformed or a message is too large to pad
+class PaddingException extends CryptoException {
+  const PaddingException(super.message);
+}
