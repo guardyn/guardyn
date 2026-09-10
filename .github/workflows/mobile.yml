@@ -1,0 +1,63 @@
+name: mobile
+
+# What CI does for client-mobile, which until now had none at all: `grep -rn "flutter"
+# .github/workflows/` returned nothing, and that is why nine failing tests and an analyzer
+# error sat on main undetected.
+#
+# Pulled forward out of PR-44 (#55). That step gates on G4, and the client-side E2EE repair
+# rewrites the Dart crypto layer well before then - refactoring cryptography with no test
+# signal is the thing this workflow exists to prevent.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'client-mobile/**'
+      - 'backend/crates/crypto-ffi/**'
+      - '.github/workflows/mobile.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'client-mobile/**'
+      - 'backend/crates/crypto-ffi/**'
+      - '.github/workflows/mobile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # pubspec.yaml can only express a Flutter floor, and there is no .fvmrc or .tool-versions,
+  # so without an explicit pin here CI would drift to whatever is newest. Below 3.47.3 the
+  # dependency graph does not resolve at all - see #208.
+  FLUTTER_VERSION: '3.47.3'
+
+jobs:
+  mobile-verify:
+    name: mobile-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: client-mobile
+        run: flutter pub get
+
+      # --no-fatal-infos is deliberate and temporary. 314 info-level diagnostics predate this
+      # workflow, most of them `withOpacity` deprecations. Errors and warnings DO fail the
+      # build, which is the gate that matters; clearing the infos is tracked separately.
+      - name: Analyze
+        working-directory: client-mobile
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        working-directory: client-mobile
+        run: flutter test
