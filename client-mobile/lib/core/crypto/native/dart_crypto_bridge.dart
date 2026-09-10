@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pinenacl/ed25519.dart' as nacl_ed;
 import 'package:pinenacl/x25519.dart' as nacl_x;
 
+import '../padme.dart' as padme;
 import '../native_crypto_bridge.dart';
 
 /// Pure Dart implementation of CryptoBridge for development/testing
@@ -236,21 +237,20 @@ class DartCryptoBridge implements CryptoBridge {
 
   // ===== PADMÉ Padding =====
 
+  // Delegates to the real PADMÉ implementation in `padme.dart`, which mirrors
+  // `backend/crates/crypto/src/padding.rs`.
+  //
+  // This used to be PKCS#7 to a multiple of 256 - not PADMÉ at all, and incompatible with the
+  // Rust side in both directions. It was also broken on its own terms: when the message
+  // length was an exact multiple of 256 the pad length was 256, which truncates to 0 in a
+  // Uint8List, and unpadding then threw "Invalid padding".
+
   @override
   Future<Uint8List> padMessage(Uint8List message) async {
     if (!_config.enablePadme) {
       return message;
     }
-
-    // Simple PKCS7-style padding to next multiple of 256
-    final paddedLength = ((message.length ~/ 256) + 1) * 256;
-    final padLength = paddedLength - message.length;
-    final padded = Uint8List(paddedLength);
-    padded.setRange(0, message.length, message);
-    for (var i = message.length; i < paddedLength; i++) {
-      padded[i] = padLength;
-    }
-    return padded;
+    return padme.padMessage(message);
   }
 
   @override
@@ -258,19 +258,7 @@ class DartCryptoBridge implements CryptoBridge {
     if (!_config.enablePadme) {
       return paddedMessage;
     }
-
-    if (paddedMessage.isEmpty) {
-      return paddedMessage;
-    }
-
-    final padLength = paddedMessage.last;
-    if (padLength == 0 || padLength > paddedMessage.length) {
-      throw ArgumentError('Invalid padding');
-    }
-
-    return Uint8List.fromList(
-      paddedMessage.sublist(0, paddedMessage.length - padLength),
-    );
+    return padme.unpadMessage(paddedMessage);
   }
 
   // ===== Key Derivation =====
