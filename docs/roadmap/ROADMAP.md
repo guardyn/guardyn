@@ -56,7 +56,7 @@ reason phases 3 and 4 exist.
 
 | Invariant | State | Closed by |
 |---|---|---|
-| **I-2** Always-On E2EE | server-side encryption removed and no flag remains; **both clients still transmit plaintext** | PR-30′, PR-31a–d, PR-32a–c, PR-75–PR-81 (Phase 3) |
+| **I-2** Always-On E2EE | server-side encryption removed, no flag remains, no client transmits plaintext, and desktop one-to-one messaging runs over the encrypted path; **mobile groups still refuse for want of MLS** | PR-30′, PR-31a–d, PR-32a–c, PR-75–PR-81c (Phase 3) |
 | **I-3** Post-Quantum | `pq` is off by default and no proto field carries an ML-KEM key, so no server can publish one | PR-36…PR-40 (Phase 4) |
 
 Until those land, **the product must not be described as always-encrypted or

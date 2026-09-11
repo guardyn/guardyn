@@ -226,6 +226,16 @@ export async function performX3DH(
 }
 
 /**
+ * Establish the responder side of a session from a peer's prekey message.
+ *
+ * Does the X3DH response and the ratchet seeding in one step, and is a no-op when a session
+ * already exists.
+ */
+export async function acceptSessionCommand(peerId: string, x3dhPrekey: string): Promise<void> {
+  await invoke('accept_session', { peerId, x3dhPrekey });
+}
+
+/**
  * Complete X3DH key agreement as responder (Bob), from the prekey message the initiator
  * attached to its first message.
  *
@@ -465,28 +475,17 @@ export class EncryptionService {
    * Answer a peer that opened a session with us, from the prekey message it attached to its
    * first message.
    *
-   * The mirror of `startSession`. Nothing is passed for `peerPublicKey`: the responder's
-   * initial ratchet key is its own signed pre-key - the key the initiator ran X3DH against -
-   * which the Rust side restores from secure storage.
+   * The mirror of `startSession`. The whole exchange happens in Rust: `get_messages` takes the
+   * same path for history, and two implementations of it would drift. Calling this again for a
+   * peer that already has a session is a no-op, which matters because the initiator keeps
+   * attaching the prekey message until a send is accepted.
    */
-  async acceptSession(
-    peerId: string,
-    peerIdentityKey: string,
-    peerEphemeralKey: string,
-    usedOneTimeKeyId?: number
-  ): Promise<SessionInfo> {
+  async acceptSession(peerId: string, x3dhPrekey: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('EncryptionService not initialized');
     }
 
-    const x3dhResult = await respondX3DH(
-      peerIdentityKey,
-      peerEphemeralKey,
-      usedOneTimeKeyId,
-      peerId
-    );
-
-    return initSession(peerId, x3dhResult.sharedSecret, false);
+    await acceptSessionCommand(peerId, x3dhPrekey);
   }
 
   /**

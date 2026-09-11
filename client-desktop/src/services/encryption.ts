@@ -179,6 +179,40 @@ class EncryptionManager {
   }
 
   /**
+   * Answer a peer that opened a session with us, from the prekey message its first message
+   * carried.
+   *
+   * The mirror of `establishSession`. A repeat is a no-op - the initiator keeps attaching the
+   * prekey message until a send is accepted, so the same one arrives again on a retry or a
+   * duplicate delivery, and acting on it twice would replace a ratchet that has already
+   * advanced.
+   */
+  async acceptSession(peerId: string, x3dhPrekey: string): Promise<void> {
+    if (!this.initialized) {
+      throw new Error('EncryptionManager not initialized');
+    }
+
+    try {
+      await encryptionService.acceptSession(peerId, x3dhPrekey);
+      this.updatePeerState(peerId, {
+        peerId,
+        status: 'established',
+        lastUpdated: Date.now(),
+      });
+      this.emit({ type: 'session_established', peerId, timestamp: Date.now() });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.updatePeerState(peerId, {
+        peerId,
+        status: 'error',
+        errorMessage,
+        lastUpdated: Date.now(),
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get encryption status for a peer
    */
   getPeerStatus(peerId: string): EncryptionStatus {

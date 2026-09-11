@@ -204,6 +204,10 @@ pub async fn get_messages(
         limit
     );
 
+    let self_user_id = state
+        .user_id()
+        .ok_or_else(|| "Not authenticated: no local user id".to_string())?;
+
     match state.messaging().get_messages(
         conversation_id.clone(),
         limit.unwrap_or(50) as i32,
@@ -212,22 +216,44 @@ pub async fn get_messages(
             let result: Vec<Message> = messages
                 .into_iter()
                 .map(|m| {
+                    // A message that arrives with a prekey message is a peer opening a session
+                    // with us. Establish the responder side before trying to read it; a failure
+                    // here is not fatal to the fetch, it just leaves this message unreadable.
+                    if let Some(prekey) = m.x3dh_prekey.as_deref().filter(|p| !p.is_empty()) {
+                        if let Err(e) = crate::commands::crypto::ensure_responder_session(
+                            &m.sender_user_id,
+                            prekey,
+                        ) {
+                            tracing::warn!("Could not establish a responder session: {}", e);
+                        }
+                    }
+
                     // Show that we could not decrypt, rather than showing what we could not
                     // decrypt. This was `String::from_utf8_lossy(&m.encrypted_content)`, which
                     // cannot fail - so ciphertext rendered as replacement characters instead of
                     // as an error, and anything that happened to be valid UTF-8 rendered as the
                     // message (#232).
                     //
-                    // Every message is undecryptable today, because nothing on this client
-                    // establishes a session yet (PR-79..PR-81). Saying so is the honest result.
-                    let content = crate::commands::crypto::UNDECRYPTABLE_PLACEHOLDER.to_string();
+                    // The placeholder is no longer unconditional: it is what a genuine failure
+                    // looks like. Messages predating this client's session, or sent while a
+                    // session was being re-established, legitimately cannot be read - and must
+                    // still say so rather than render bytes.
+                    let decrypted = crate::commands::crypto::decrypt_from_peer(
+                        &m.encrypted_content,
+                        &m.sender_user_id,
+                        &self_user_id,
+                    );
+                    let undecryptable = decrypted.is_none();
+                    let content = decrypted.unwrap_or_else(|| {
+                        crate::commands::crypto::UNDECRYPTABLE_PLACEHOLDER.to_string()
+                    });
 
                     Message {
                         id: m.message_id,
                         conversation_id: conversation_id.clone(),
                         sender_id: m.sender_user_id,
                         content,
-                        undecryptable: true,
+                        undecryptable,
                         timestamp: m.server_timestamp,
                         status: match m.delivery_status {
                             0 => MessageStatus::Sending,

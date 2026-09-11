@@ -29,7 +29,7 @@ project_sync_enabled: true
 
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
-  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify now enforces it - and no client path transmits plaintext. Remaining: client-desktop cannot establish a session so it refuses every send (PR-79..PR-81), and mobile groups refuse for want of MLS"}
+  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS"}
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
@@ -155,7 +155,7 @@ steps:
   - {id: PR-81, issue: 252, phase: 3, type: fix, status: done, title: "client-desktop - restore the ratchet store from persisted state"}
   # The flip. Everything needed to hold a session now exists; two wires remain unconnected.
   - {id: PR-81b, issue: 256, phase: 3, type: feat, status: done, title: "client-desktop - encrypt on send"}
-  - {id: PR-81c, issue: 258, phase: 3, type: feat, status: todo, title: "client-desktop - decrypt on receive"}
+  - {id: PR-81c, issue: 258, phase: 3, type: feat, status: done, title: "client-desktop - decrypt on receive"}
   # Masked while every one-time key id on the wire is 0, which is byte-order invariant. Must
   # land before PR-93 makes other ids reachable.
   - {id: PR-95, issue: 255, phase: 3, type: security, status: todo, title: "X3DHPrekeyMessage one-time key id endianness differs between Rust and Dart"}
