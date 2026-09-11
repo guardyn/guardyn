@@ -7,6 +7,7 @@ import { stopMockGenerator } from '../api/websocket.mock';
 import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, ReactionMenu } from '../components/chat';
 import { TypingIndicator } from '../components/shared';
 import { CallAudioService } from '../services/callAudioService';
+import { encryptionManager } from '../services/encryption';
 import {
   addMessage,
   addTypingUser,
@@ -21,6 +22,7 @@ import {
   setActiveConversation,
   setReplyingTo,
   toggleReaction,
+  updateMessageStatus,
   type Message as StoreMessage
 } from '../stores/messageStore';
 import type { Conversation } from '../types';
@@ -33,6 +35,8 @@ const Chat: Component<ChatPageProps> = () => {
   const [selectedConversation, setSelectedConversation] = createSignal<string | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [isConnected, setIsConnected] = createSignal(false);
+  // The local user id, needed to build the message AAD: utf8("{sender}|{recipient}").
+  const [selfUserId, setSelfUserId] = createSignal<string | null>(null);
 
   // Reaction menu state
   const [reactionMenu, setReactionMenu] = createSignal<{
@@ -79,6 +83,8 @@ const Chat: Component<ChatPageProps> = () => {
         device_id: string | null;
         user_id: string | null;
       }>('get_ws_config');
+
+      setSelfUserId(wsConfig.user_id);
 
       console.log('[Chat] WebSocket config:', {
         url: wsConfig.url,
@@ -262,26 +268,49 @@ const Chat: Component<ChatPageProps> = () => {
       clearReplyingTo();
     }
 
+    // Encrypt, or do not send. The server is a pure relay (ADR-0010): it stores whatever it
+    // receives byte-for-byte, so sending unencrypted here writes plaintext to ScyllaDB. This
+    // path used to pass `content` straight to the socket with `encrypted: false` (#163).
+    //
+    // No session can be established on the desktop yet, so today this always refuses. That is
+    // the intended behaviour: invariant I-2 says encryption cannot be turned off, so an
+    // unavailable session must stop the send rather than downgrade it.
+    let ciphertext: string;
     try {
-      // Send via WebSocket - use recipientId, not convId
-      const ws = getWebSocket();
-      if (ws && isConnected()) {
-        ws.sendMessage(recipientId, content, {
-          clientMessageId: messageId,
-          mediaId,
-          recipientUsername,
-        });
+      const self = selfUserId();
+      if (!self) {
+        throw new Error('no local user id; cannot build the message associated data');
       }
+      const encrypted = await encryptionManager.encryptMessage(recipientId, content, self);
+      ciphertext = encrypted.ciphertext;
+    } catch (err) {
+      console.error('[Chat] Refusing to send: encryption unavailable:', err);
+      updateMessageStatus(convId, messageId, 'failed');
+      return;
+    }
 
-      // Also send via Tauri backend
-      await invoke('send_message', {
-        conversationId: convId,
-        recipientId: recipientId,
-        content,
+    try {
+      // Send via WebSocket - use recipientId, not convId.
+      //
+      // This is the only send transport. There was a second one directly below - an
+      // `invoke('send_message')` on the gRPC command - which would have stored the same
+      // message twice: the WebSocket handler persists to ScyllaDB itself
+      // (`messaging-service/src/websocket/handlers.rs`, store_message_in_db) before fanning
+      // out over NATS. It never actually double-stored only because the invoke passed
+      // arguments the Rust signature could not deserialize, so it threw every time.
+      const ws = getWebSocket();
+      if (!ws || !isConnected()) {
+        throw new Error('WebSocket is not connected');
+      }
+      ws.sendMessage(recipientId, ciphertext, {
+        encrypted: true,
+        clientMessageId: messageId,
         mediaId,
+        recipientUsername,
       });
     } catch (err) {
       console.error('Failed to send message:', err);
+      updateMessageStatus(convId, messageId, 'failed');
     }
   };
 
