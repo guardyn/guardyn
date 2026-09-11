@@ -250,6 +250,31 @@ class EncryptedData {
 class CryptoBridgeFactory {
   static CryptoBridge? _instance;
 
+  /// Permits [DartCryptoBridge] to stand in for the native library. **Tests only.**
+  ///
+  /// The production path must never set this. `DartCryptoBridge` documents itself as
+  /// development-only, and silently substituting it for the audited Rust implementation is a
+  /// downgrade a release build cannot report: the fallback announced itself with a
+  /// `debugPrint`, which is compiled out of release, so the app would ship on it with nothing
+  /// to show for it.
+  ///
+  /// It exists because the crypto suite deliberately runs on the Dart bridge - CI has no FFI,
+  /// and pinning protocol behaviour there is worth far more than skipping the suite entirely
+  /// (see `test/core/crypto/crypto_test_helper.dart`). An FFI-backed job is #211. Making the
+  /// fallback an explicit, named opt-in keeps that arrangement while removing the implicit one.
+  static bool _allowInsecureDartFallback = false;
+
+  /// Whether the fallback is currently permitted. Read by the bridge factory.
+  static bool get insecureDartFallbackAllowed => _allowInsecureDartFallback;
+
+  /// Setting this is marked test-only deliberately: the getter above is public so the factory
+  /// can consult it, but anything in `lib/` that tries to *enable* the fallback trips
+  /// `invalid_use_of_visible_for_testing_member` in the analyzer, which the mobile CI job
+  /// fails on. The permission is readable everywhere and grantable only from a test.
+  @visibleForTesting
+  static set allowInsecureDartFallback(bool value) =>
+      _allowInsecureDartFallback = value;
+
   /// Get the singleton crypto bridge instance
   static CryptoBridge get instance {
     _instance ??= _createBridge();
@@ -257,17 +282,8 @@ class CryptoBridgeFactory {
   }
 
   static CryptoBridge _createBridge() {
-    // Create crypto bridge (native Rust or Dart fallback)
-    final bridge = native_bridge.createNativeCryptoBridge();
-    if (bridge != null) {
-      return bridge;
-    }
-
-    // This should not happen - createNativeCryptoBridge now always returns a bridge
-    throw UnsupportedError(
-      'Failed to create crypto bridge. '
-      'This is an internal error - please report it.',
-    );
+    // Throws rather than downgrading when the native library is missing.
+    return native_bridge.createNativeCryptoBridge();
   }
 
   /// Force native implementation (for testing)

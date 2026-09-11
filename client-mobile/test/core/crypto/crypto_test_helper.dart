@@ -17,6 +17,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
+import 'package:guardyn_client/core/crypto/native_crypto_bridge.dart';
 import 'package:meta/meta.dart';
 
 /// Whether native crypto is available in the current test environment.
@@ -34,6 +35,12 @@ const String skipNativeCryptoMessage =
 /// Call this in setUpAll() of crypto test files.
 /// After calling, check [nativeCryptoAvailable] to skip tests if needed.
 Future<void> initializeCryptoForTests() async {
+  // Grant the fallback explicitly. The application refuses to substitute DartCryptoBridge for
+  // the native library (#230) - a silent downgrade is invisible in a release build - so the
+  // suite has to ask for it by name. This line is the whole reason the permission exists, and
+  // it is the only place in the repository that sets it.
+  CryptoBridgeFactory.allowInsecureDartFallback = true;
+
   await CryptoPrimitives.initialize();
   nativeCryptoAvailable = CryptoPrimitives.isNativeAvailable;
 

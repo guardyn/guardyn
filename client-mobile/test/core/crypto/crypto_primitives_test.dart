@@ -11,15 +11,17 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
-import 'package:guardyn_client/core/crypto/native_crypto_bridge.dart';
+
+import 'crypto_test_helper.dart';
 
 void main() {
   late bool nativeAvailable;
 
   setUpAll(() async {
-    await CryptoPrimitives.initialize(
-      const NativeCryptoConfig(preferNative: true, enablePadme: true),
-    );
+    // Goes through the shared helper rather than calling CryptoPrimitives.initialize directly,
+    // because the application now refuses to substitute DartCryptoBridge for the native library
+    // (#230) and the helper is the single place that grants the test-only exception.
+    await initializeCryptoForTests();
     nativeAvailable = CryptoPrimitives.isNativeAvailable;
 
     if (!nativeAvailable) {
