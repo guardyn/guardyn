@@ -87,6 +87,14 @@ A replayed prekey message fails because the one-time key is already consumed.
    the matching secret rather than generating a fresh key. This is not an implementation
    detail - if the responder invents its own key the two sides derive different root and
    chain keys, and every AEAD tag check fails while both sides appear healthy.
+0a. **A responder has no sending chain key until its first successful decrypt.** `init_bob`
+   deliberately leaves it unset; the DH ratchet that creates it runs on the first inbound
+   message. Two consequences bind any client that persists sessions: do not write a responder
+   session before that first decrypt, and **discard a restored session that cannot send** so a
+   fresh key agreement runs. Restoring one produces a session the UI reports as established
+   that refuses every send - strictly worse than no session at all, which would re-run X3DH.
+0b. **Ratchet state and session metadata are persisted and restored together.** Restoring one
+   without the other is the same half-state seen from the other side.
 1. Plaintext is padded with PADMÉ before encryption, so ciphertext length leaks at most
    about 10% of the plaintext length.
 2. A message key is derived per message and discarded after use: compromise of one key must
