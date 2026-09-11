@@ -4,22 +4,14 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 397
+tokens: 949
 supersedes: []
 ---
 
 # State
 
-**Derived from [`roadmap.yaml`](roadmap.yaml). Do not hand-edit** — when the two disagree, the
-YAML wins.
-
-> This file *claims* to be generated and to be checked by `docs-verify`. Neither is true yet:
-> no generator exists and `docs-verify` has no staleness check. That is
-> [#101](https://github.com/guardyn/guardyn/issues/101), and until it lands this file is
-> maintained by hand and can rot between gates. It was last reconciled against the YAML and
-> against GitHub on the date below.
-
-Reconciled: 2026-09-07
+**Generated from [`roadmap.yaml`](roadmap.yaml) by `just docs-state`. Do not hand-edit** -
+`docs-verify` check 6 regenerates this file and fails on any difference.
 
 ## Progress
 
@@ -27,53 +19,59 @@ Reconciled: 2026-09-07
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 0 | 12 | `░░░░░░░░░░` |
-| 4 | 0 | 9 | `░░░░░░░░░░` |
-| **all** | **26** | **47** | |
+| 3 | 54 | 65 | `████████░░` |
+| 4 | 0 | 10 | `░░░░░░░░░░` |
+| **all** | **80** | **101** | |
 
 ## Position
 
-- **Current phase:** 2 — complete
-- **Next gate:** **G2, reached** after PR-23. Awaiting explicit user approval.
-- **Next step:** PR-24 — Add `common/src/redact.rs` (#35), and it must not start before G2 is
-  approved.
+- **Current phase:** 3
+- **Next gate:** G4
+- **Open steps:** 21 of 101
 
 ## Gates
 
-| Gate | After | Status |
-|---|---|---|
-| G1 | PR-17 | **passed** |
-| G2 | PR-23 | **reached — awaiting approval** |
-| G3 | PR-35 | not reached |
-| G4 | PR-44 | not reached |
+| Gate | After | Phase | Status |
+|---|---|---|---|
+| G1 | PR-17 | 1 | passed |
+| G2 | PR-23 | 2 | passed |
+| G3 | PR-35 | 3 | passed |
+| G4 | PR-44 | 4 | not-reached |
 
 ## Invariants
-
-Unchanged by Phase 2, which touched tracking and build strategy rather than behaviour.
 
 | # | Name | Met | Closed by |
 |---|---|---|---|
 | I-1 | Zero-Knowledge | partial | — |
-| | | | *2 services log outside init_tracing; rate_limit.rs logs a raw IP* |
-| I-2 | Always-On E2EE | False | PR-32 |
-| I-3 | Post-Quantum | False | PR-36, PR-37, PR-38, PR-39, PR-40 |
+| | | | *rate_limit.rs logs a raw IP; span fields are not redacted* |
+| I-2 | Always-On E2EE | partial | PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78 |
+| | | | *no switch can disable encryption - E2EE-FLAG passes and rules-verify now enforces it - and no client path transmits plaintext. Remaining: client-desktop cannot establish a session so it refuses every send (PR-79..PR-81), and mobile groups refuse for want of MLS* |
+| I-3 | Post-Quantum | false | PR-36, PR-37, PR-38, PR-39, PR-40 |
 | I-4 | Data Sovereignty | partial | — |
 | | | | *envoy/ingress.yaml hardcodes a domain* |
 
-## Blocked
+## Open steps
 
-**P-1** — `project_sync_enabled: false`. No token available to CI can read or write the
-Project v2 board: the organization rejects fine-grained PATs over a 366-day lifetime, and the
-fallback OAuth token has no `project` scope. Needs a human to create `GUARDYN_PROJECT_TOKEN`
-with `repo` + `project` scope.
-
-Its blast radius shrank in Phase 2. Phase is now tracked by **milestones**, which are plain
-REST, so `roadmap-sync` and `pr-link` both do real work with the ambient token; only the board
-half waits.
-
-## Carried into Phase 3
-
-| | |
-|---|---|
-| [#116](https://github.com/guardyn/guardyn/issues/116) | Phase 1 straggler — `desktop-build.yml` test job can never pass |
-| [#101](https://github.com/guardyn/guardyn/issues/101) | `docs-verify` has no staleness check, and this file is maintained by hand because of it |
+| Step | Phase | Issue | Title |
+|---|---|---|---|
+| PR-56 | 3 | [#188](https://github.com/guardyn/guardyn/issues/188) | Regenerate or drop the stale client-desktop protobuf |
+| PR-57 | 3 | [#180](https://github.com/guardyn/guardyn/issues/180) | Make roadmap-sync detect drift and create issues |
+| PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
+| PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
+| PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
+| PR-79 | 3 | — | client-desktop - retain private prekey material |
+| PR-80 | 3 | — | client-desktop - implement the X3DH responder path |
+| PR-81 | 3 | — | client-desktop - restore the ratchet store from persisted state |
+| PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
+| PR-83 | 3 | — | Clear the 314 flutter analyze info diagnostics |
+| PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
+| PR-36 | 4 | [#47](https://github.com/guardyn/guardyn/issues/47) | Extend protos with ML-KEM key material fields |
+| PR-37 | 4 | [#48](https://github.com/guardyn/guardyn/issues/48) | Persist and serve ML-KEM public keys in auth-service |
+| PR-38 | 4 | [#49](https://github.com/guardyn/guardyn/issues/49) | Enable the pq feature across backend services |
+| PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | Wire PqxdhProtocol into messaging-service session establishment |
+| PR-40 | 4 | [#51](https://github.com/guardyn/guardyn/issues/51) | Add fuzz, proptest and bench coverage for the hybrid PQ path |
+| PR-41 | 4 | [#52](https://github.com/guardyn/guardyn/issues/52) | Make rate limiting distributed or document the single-replica constraint |
+| PR-42 | 4 | [#53](https://github.com/guardyn/guardyn/issues/53) | Fix the inverted secrets gitignore |
+| PR-43 | 4 | [#54](https://github.com/guardyn/guardyn/issues/54) | Wire the compose observability stack |
+| PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
+| PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |

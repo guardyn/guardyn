@@ -497,9 +497,14 @@ install-hooks:
     @git config core.hooksPath .githooks
     @echo "[hooks] core.hooksPath -> .githooks"
 
-# Verify the documentation base: frontmatter, impact, glossary, links, language.
+# Verify the documentation base: frontmatter, impact, glossary, links, language, staleness.
 docs-verify:
     @bash infra/scripts/docs-verify.sh
+
+# docs-verify check 6 fails when the committed file differs from this output.
+# Regenerate docs/roadmap/STATE.md from docs/roadmap/roadmap.yaml.
+docs-state:
+    @bash infra/scripts/docs-state.sh --write
 
 # Reconcile docs/roadmap/roadmap.yaml into GitHub Issues and the Project board.
 # Dry by default; pass 0 to write. Requires GUARDYN_PROJECT_TOKEN for the board half.
