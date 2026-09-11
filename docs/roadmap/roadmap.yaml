@@ -29,7 +29,7 @@ project_sync_enabled: true
 
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
-  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78], note: "server side is done and no longer reads the flags, so PR-32c is unblocked; both clients now refuse rather than send plaintext one-to-one, but client-mobile still sends groups in the clear (PR-76) and desktop cannot yet establish a session (PR-79..PR-81)"}
+  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify now enforces it - and no client path transmits plaintext. Remaining: client-desktop cannot establish a session so it refuses every send (PR-79..PR-81), and mobile groups refuse for want of MLS"}
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
@@ -82,7 +82,7 @@ steps:
   - {id: PR-31d, issue: 153, phase: 3, type: docs, status: done, title: "ADR-0010 - the server is a pure relay"}
   - {id: PR-32a, issue: 43, phase: 3, type: security, status: done, title: "Delete the server-side E2EE handlers"}
   - {id: PR-32b, issue: 154, phase: 3, type: security, status: done, title: "Delete the E2EE and MLS configuration flags"}
-  - {id: PR-32c, issue: 155, phase: 3, type: security, status: todo, title: "Remove the E2EE kill-switch environment variables"}
+  - {id: PR-32c, issue: 155, phase: 3, type: security, status: done, title: "Remove the E2EE kill-switch environment variables"}
   - {id: PR-33, issue: 44, phase: 3, type: security, status: done, title: "Add cargo-fuzz targets for attacker-controlled parsers"}
   - {id: PR-34, issue: 45, phase: 3, type: security, status: done, title: "Add proptest suites for crypto invariants"}
   - {id: PR-35, issue: 46, phase: 3, type: chore, status: done, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}

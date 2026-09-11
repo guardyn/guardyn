@@ -133,6 +133,30 @@ check_e2ee_dup() {
   fi
 }
 
+# ------------------------------------------------------------------ E2EE-FLAG
+# No deployment file may carry a switch that turns encryption off. PR-32b removed
+# the flags from the code, so nothing reads them; PR-32c removed the variables that
+# were still being set. Both halves matter - between them the variables were inert,
+# but a deployment file that looks like a kill switch reads as one whether or not
+# any code consults it, and the prod overlay set GUARDYN_E2EE_ENABLED: "true" as
+# though that were where encryption came from.
+check_e2ee_flag() {
+  local hits
+  #
+  # Excludes this script, which contains the pattern it searches for - the same
+  # self-match ORG-LOCAL and LANG-MD already carve out. A rule may state its own
+  # violation.
+  hits="$(grep -rln 'GUARDYN_E2EE_ENABLED\|GUARDYN_MLS_ENABLED' \
+            backend/crates backend/proto infra docker-compose.dev.yml 2>/dev/null \
+            | grep -v '^infra/scripts/rules-verify.sh$' || true)"
+  if [ -n "$hits" ]; then
+    fail "E2EE-FLAG: a configuration key can turn encryption off"
+    show "$hits"
+  else
+    pass "E2EE-FLAG: no encryption kill switch in code or deployment"
+  fi
+}
+
 # -------------------------------------------------------------------- ZK-PII
 # A log macro handed a raw IP, email or phone number. AGENTS.md §4 lists all
 # three as PII, and I-1 forbids PII in any log, span or metric.
@@ -239,6 +263,7 @@ check_rs_unwrap
 check_rs_unsafe
 check_zk_init
 check_e2ee_dup
+check_e2ee_flag
 check_zk_pii
 check_proto_edit
 check_lang_md

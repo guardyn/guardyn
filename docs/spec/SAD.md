@@ -53,7 +53,7 @@ Ten members in the `backend/` workspace.
 | Crate | Kind | Depends on | Role |
 |---|---|---|---|
 | `auth-service` | binary | common, crypto | Identity, devices, contacts, key bundles. 13 handlers. |
-| `messaging-service` | binary | common, crypto | Messages, conversations, groups, reactions, receipts. 32 handlers. |
+| `messaging-service` | binary | common, crypto | Messages, conversations, groups, reactions, receipts. 32 handlers. Relays `encrypted_content` byte-for-byte and holds no key material, so it exposes **no cryptographic configuration** — see [ADR-0010](../adr/ADR-0010-pure-relay-server.md). |
 | `presence-service` | binary | common | Reachability and status. 8 handlers. |
 | `media-service` | binary | common | Encrypted blob upload and retrieval. 9 handlers. |
 | `call-service` | binary | common, crypto | Call signalling and SFrame key exchange. |
