@@ -113,7 +113,7 @@ likely to break them.
 Bash, git and awk only, so the job needs no toolchain and finishes in seconds. `cargo fmt` and
 `cargo clippy` stay in `build.yml`, where a Rust toolchain already exists.
 
-**Two predicates are ratcheted rather than enforced.** `RS-UNWRAP` (49 sites) and `NAME-SH`
+**Two predicates are ratcheted rather than enforced.** `RS-UNWRAP` (48 sites) and `NAME-SH`
 (5 files) fail today and are owned by later work, so each carries a budget equal to its
 measured count: the build fails when the number **grows**, and every fix lowers the ceiling.
 

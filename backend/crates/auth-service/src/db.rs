@@ -56,6 +56,44 @@ pub struct KeyBundle {
     pub created_at: i64,
 }
 
+impl KeyBundle {
+    /// Reject a bundle that would blank a peer's view of this account.
+    ///
+    /// `store_key_bundle` writes every path unconditionally, so a bundle missing identity
+    /// material is not a partial write - it is a destructive one. The damage is silent and
+    /// one-sided: an empty `identity_key` is not absent, so `get_key_bundle` still returns
+    /// `Some`, every peer then fails the Ed25519 check on a zero-length key, and the account
+    /// becomes unreachable without ever seeing an error.
+    ///
+    /// Failing loudly here rather than skipping empty fields is deliberate. A silent skip
+    /// makes two different requests - "store this bundle" and "store part of this bundle" -
+    /// look identical at the call site, which is how `UploadPreKeys` came to call the wrong
+    /// one at all.
+    fn validate_for_store(&self) -> Result<()> {
+        if self.identity_key.is_empty() {
+            anyhow::bail!("refusing to store a key bundle with an empty identity key");
+        }
+        if self.signed_pre_key.is_empty() {
+            anyhow::bail!("refusing to store a key bundle with an empty signed pre-key");
+        }
+        if self.signed_pre_key_signature.is_empty() {
+            anyhow::bail!("refusing to store a key bundle with an unsigned signed pre-key");
+        }
+        Ok(())
+    }
+}
+
+/// Every TiKV key a one-time pre-key write touches, in index order.
+///
+/// Pure, so the write set can be asserted on without a live TiKV. The defect this was written
+/// for was entirely a question of *which* keys get written, and a write set is the thing to
+/// test - the `put` calls around it need a cluster.
+fn one_time_pre_key_paths(user_id: &str, device_id: &str, count: usize) -> Vec<String> {
+    (0..count)
+        .map(|i| format!("/devices/{}/{}/one_time_keys/{}", user_id, device_id, i))
+        .collect()
+}
+
 /// Contact relationship stored in TiKV
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contact {
@@ -417,13 +455,20 @@ impl DatabaseClient {
         Ok(deleted_count)
     }
 
-    /// Store key bundle
+    /// Store a complete key bundle: identity key, signed pre-key, its signature, and any
+    /// one-time pre-keys.
+    ///
+    /// Every path is written unconditionally, so the bundle must be complete. Passing empty
+    /// identity material is rejected rather than written - see [`KeyBundle::validate_for_store`].
+    /// To add one-time pre-keys to an existing bundle, use [`Self::store_one_time_pre_keys`].
     pub async fn store_key_bundle(
         &self,
         user_id: &str,
         device_id: &str,
         key_bundle: &KeyBundle,
     ) -> Result<()> {
+        key_bundle.validate_for_store()?;
+
         // Store identity key
         let identity_key = format!("/users/{}/identity_key", user_id).into_bytes();
         self.client
@@ -447,11 +492,32 @@ impl DatabaseClient {
             .put(sig_path, key_bundle.signed_pre_key_signature.clone())
             .await?;
 
-        // Store one-time pre-keys
-        for (i, otk) in key_bundle.one_time_pre_keys.iter().enumerate() {
-            let otk_path =
-                format!("/devices/{}/{}/one_time_keys/{}", user_id, device_id, i).into_bytes();
-            self.client.put(otk_path, otk.clone()).await?;
+        self.store_one_time_pre_keys(user_id, device_id, &key_bundle.one_time_pre_keys)
+            .await
+    }
+
+    /// Store one-time pre-keys for an existing bundle, touching nothing else.
+    ///
+    /// This exists because `UploadPreKeys` carries only one-time keys, and routing it through
+    /// [`Self::store_key_bundle`] with empty identity material blanked the caller's identity
+    /// key and signed pre-key - after which no peer could verify the bundle and the account
+    /// became unreachable. Writing one kind of key is the operation that handler needs; a
+    /// method that silently skips empty fields would have been a worse contract than one that
+    /// does a single thing.
+    ///
+    /// Keys are stored at `one_time_keys/{index}`, which is also the id an initiator reports
+    /// back, so the index is part of the wire contract and not an implementation detail.
+    pub async fn store_one_time_pre_keys(
+        &self,
+        user_id: &str,
+        device_id: &str,
+        one_time_pre_keys: &[Vec<u8>],
+    ) -> Result<()> {
+        for (path, key) in one_time_pre_key_paths(user_id, device_id, one_time_pre_keys.len())
+            .into_iter()
+            .zip(one_time_pre_keys)
+        {
+            self.client.put(path.into_bytes(), key.clone()).await?;
         }
 
         Ok(())
@@ -890,6 +956,111 @@ mod tests {
         assert_eq!(
             back.email.map(Redacted::into_inner).as_deref(),
             Some(SECRET)
+        );
+    }
+
+    fn complete_bundle() -> KeyBundle {
+        KeyBundle {
+            identity_key: vec![1; 32],
+            signed_pre_key: vec![2; 32],
+            signed_pre_key_signature: vec![3; 64],
+            one_time_pre_keys: vec![vec![4; 32], vec![5; 32]],
+            created_at: 0,
+        }
+    }
+
+    #[test]
+    fn test_a_complete_bundle_is_storable() {
+        complete_bundle()
+            .validate_for_store()
+            .expect("a complete bundle must store");
+    }
+
+    /// The exact value `handlers::key_bundle::upload` used to build. It reached
+    /// `store_key_bundle`, which writes every path unconditionally, so uploading one-time
+    /// pre-keys overwrote `/users/{id}/identity_key` with an empty value.
+    ///
+    /// This is the shape that must never be storable again. It is not caught by a type:
+    /// `Vec<u8>` is as happy empty as full, and the field name reads correct at the call site.
+    #[test]
+    fn test_the_upload_shaped_bundle_is_refused() {
+        let destructive = KeyBundle {
+            identity_key: vec![],
+            signed_pre_key: vec![],
+            signed_pre_key_signature: vec![],
+            one_time_pre_keys: vec![vec![4; 32]],
+            created_at: 0,
+        };
+
+        let err = destructive
+            .validate_for_store()
+            .expect_err("a bundle with no identity key must be refused, not written");
+        assert!(
+            err.to_string().contains("identity key"),
+            "the error must name what is missing: {err}"
+        );
+    }
+
+    /// An empty signature is the same class of defect one field over: the bundle verifies
+    /// against nothing, so every peer rejects it.
+    #[test]
+    fn test_unsigned_and_keyless_bundles_are_refused() {
+        for (field, bundle) in [
+            (
+                "signed pre-key",
+                KeyBundle {
+                    signed_pre_key: vec![],
+                    ..complete_bundle()
+                },
+            ),
+            (
+                "signature",
+                KeyBundle {
+                    signed_pre_key_signature: vec![],
+                    ..complete_bundle()
+                },
+            ),
+        ] {
+            assert!(
+                bundle.validate_for_store().is_err(),
+                "an empty {field} must be refused"
+            );
+        }
+    }
+
+    /// `store_one_time_pre_keys` is the narrow path `upload` now takes. Its write set is the
+    /// whole point: one-time keys and nothing else.
+    #[test]
+    fn test_one_time_pre_key_write_set_touches_nothing_else() {
+        let paths = one_time_pre_key_paths("u1", "d1", 3);
+
+        assert_eq!(
+            paths,
+            vec![
+                "/devices/u1/d1/one_time_keys/0",
+                "/devices/u1/d1/one_time_keys/1",
+                "/devices/u1/d1/one_time_keys/2",
+            ]
+        );
+        assert!(
+            !paths.iter().any(|p| p.contains("identity_key")),
+            "an upload must never write an identity key path: {paths:?}"
+        );
+        assert!(
+            !paths.iter().any(|p| p.contains("signed_pre_key")),
+            "an upload must never write a signed pre-key path: {paths:?}"
+        );
+    }
+
+    /// The index is the id an initiator reports back in `X3DHPrekeyMessage`, so it is part of
+    /// the wire contract rather than an implementation detail - `common.KeyBundle` carries no
+    /// key ids of its own.
+    #[test]
+    fn test_one_time_pre_key_paths_are_zero_based_and_ordered() {
+        assert!(one_time_pre_key_paths("u1", "d1", 0).is_empty());
+        assert_eq!(
+            one_time_pre_key_paths("u1", "d1", 1),
+            vec!["/devices/u1/d1/one_time_keys/0"]
         );
     }
 }
