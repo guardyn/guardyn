@@ -78,12 +78,26 @@ pub async fn send_message(
         request.recipient_id
     );
 
-    // Encrypt message content using Double Ratchet
-    // In a real implementation, we would:
-    // 1. Get or create a Double Ratchet session for this conversation
-    // 2. Apply PADMÉ padding to the message
-    // 3. Encrypt with the session
-    let encrypted_content = request.content.as_bytes().to_vec();
+    // Encrypt, or refuse to send.
+    //
+    // This previously assigned `request.content.as_bytes().to_vec()` - the plaintext, into a
+    // field named `encrypted_content` (#163). That was survivable only while the server
+    // encrypted on the client's behalf, and it stopped doing so when the E2EE handler fork was
+    // removed: `messaging-service` now stores what it is handed byte-for-byte, so the plaintext
+    // was reaching ScyllaDB in the clear.
+    //
+    // There is no fallback branch here on purpose. Invariant I-2 is that encryption cannot be
+    // turned off, which means the only correct behaviour when it is unavailable is to refuse,
+    // exactly as `client-mobile` now does (#226).
+    let self_user_id = state
+        .user_id()
+        .ok_or_else(|| "Not authenticated: no local user id".to_string())?;
+    let encrypted_content =
+        crate::commands::crypto::encrypt_for_peer(&request.content, &request.recipient_id, &self_user_id)
+            .map_err(|e| {
+                tracing::warn!("Refusing to send: {}", e);
+                format!("Failed to send message: {}", e)
+            })?;
 
     // Create outgoing message - use recipient_id (user ID), not conversation_id
     let outgoing = OutgoingMessage {
@@ -101,7 +115,7 @@ pub async fn send_message(
             let message = Message {
                 id: result.message_id,
                 conversation_id: request.conversation_id,
-                sender_id: state.user_id().unwrap_or_default(),
+                sender_id: self_user_id,
                 content: request.content,
                 timestamp: result.server_timestamp,
                 status: match result.delivery_status {
