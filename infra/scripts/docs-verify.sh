@@ -9,6 +9,7 @@
 #   3 glossary     no forbidden alias used in place of a canonical term
 #   4 links        every relative link resolves; no tracked doc links into _local/
 #   5 language     no Cyrillic in docs/ outside the allowlist
+#   6 staleness    a generated document matches what its generator renders today
 #
 # Bash, awk and git only. Adding a YAML or Markdown parser would mean a runtime this
 # repository does not otherwise depend on, and I-4 makes every added dependency a cost.
@@ -201,12 +202,41 @@ check_language() {
   [ "$bad" = 0 ] && pass "language: no Cyrillic in tracked Markdown outside the allowlist"
 }
 
+# ---------------------------------------------------------------------------- 6. staleness
+#
+# .claude/rules/40-doc-sync.md has declared since PR-15 that generated documents are
+# regenerated rather than hand-edited and that docs-verify fails when one goes stale. Nothing
+# enforced it, and STATE.md rotted sixty steps behind roadmap.yaml while carrying a header
+# telling the reader it was machine-derived (#101).
+#
+# Scope is deliberately STATE.md alone. docs/INDEX.md and the per-document `tokens:` counts
+# make the same claim and have no generator yet - that is #241, and pretending to check them
+# here would be the same empty promise one level down.
+check_staleness() {
+  local gen="infra/scripts/docs-state.sh" target="docs/roadmap/STATE.md" tmp
+  if [ ! -x "$gen" ]; then
+    fail "staleness: $gen is missing or not executable"; return
+  fi
+  tmp="$(mktemp)" || { fail "staleness: cannot create a temp file"; return; }
+  if ! bash "$gen" > "$tmp" 2>/dev/null; then
+    rm -f "$tmp"; fail "staleness: $gen exited non-zero"; return
+  fi
+  if ! diff -q "$target" "$tmp" > /dev/null 2>&1; then
+    fail "staleness: $target differs from \`just docs-state\` - regenerate it, do not hand-edit"
+    diff -u "$target" "$tmp" | head -20
+    rm -f "$tmp"; return
+  fi
+  rm -f "$tmp"
+  pass "staleness: $target matches its generator"
+}
+
 echo "docs-verify (base: $BASE)"
 check_frontmatter
 check_impact
 check_glossary
 check_links
 check_language
+check_staleness
 
 if [ "$failures" -gt 0 ]; then
   printf "\n${RED}%d check(s) failed${NC}\n" "$failures"

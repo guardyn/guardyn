@@ -33,11 +33,19 @@ invariants:
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
+# `status` is the gate's own state, recorded here rather than inferred from its step.
+# A gate step reaching `done` means its WORK landed; it does not mean the user approved the
+# gate, and AGENTS.md 2.5 makes that approval the thing that lets the next phase begin. Only
+# one of those two facts is derivable from a step, so the other needs somewhere to live.
+#
+#   not-reached - the gate's step has not landed
+#   reached     - the step landed, approval outstanding
+#   passed      - the user approved
 gates:
-  - {id: G1, after: PR-17, phase: 1, description: "Purge, agent contract, documentation core, CI truthfulness"}
-  - {id: G2, after: PR-23, phase: 2, description: "Board sync, SSOT rules, protobuf unification"}
-  - {id: G3, after: PR-35, phase: 3, description: "ZK logging, store hygiene, E2EE repair, fuzzing. Behaviour-change sign-off required"}
-  - {id: G4, after: PR-44, phase: 4, description: "Hybrid PQXDH end to end, launch optimization"}
+  - {id: G1, after: PR-17, phase: 1, status: passed, description: "Purge, agent contract, documentation core, CI truthfulness"}
+  - {id: G2, after: PR-23, phase: 2, status: passed, description: "Board sync, SSOT rules, protobuf unification"}
+  - {id: G3, after: PR-35, phase: 3, status: passed, description: "ZK logging, store hygiene, E2EE repair, fuzzing. Behaviour-change sign-off required"}
+  - {id: G4, after: PR-44, phase: 4, status: not-reached, description: "Hybrid PQXDH end to end, launch optimization"}
 
 steps:
   - {id: PR-00, issue: 56, phase: 1, type: docs, status: done, title: "Land implementation_plan.md as the execution charter"}
@@ -154,3 +162,8 @@ steps:
   - {id: PR-87, issue: 231, phase: 3, type: fix, status: done, title: "client-mobile - show an explicit cannot-decrypt placeholder"}
   - {id: PR-88, issue: 232, phase: 3, type: fix, status: done, title: "client-desktop - show an explicit cannot-decrypt placeholder"}
   - {id: PR-89, issue: 235, phase: 3, type: fix, status: todo, title: "group_chat_page_test renders a replica of the page, not the page"}
+  # Tracking mechanism. STATE.md has claimed to be generated since PR-14 while nothing
+  # generated it, so it rotted sixty steps behind this file. PR-90 builds the generator and
+  # the check that fails on drift; PR-91 is the half of #101 that did not fit the budget.
+  - {id: PR-90, issue: 101, phase: 3, type: feat, status: done, title: "Generate STATE.md from roadmap.yaml and fail docs-verify on drift"}
+  - {id: PR-91, issue: 241, phase: 4, type: feat, status: todo, title: "Generate docs/INDEX.md and the tokens: counts"}

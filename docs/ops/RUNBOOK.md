@@ -89,7 +89,7 @@ cheap for a local cluster.
 just docs-verify
 ```
 
-Five checks — frontmatter, impact, glossary, links, language — defined in
+Six checks — frontmatter, impact, glossary, links, language, staleness — defined in
 [`../../.claude/rules/40-doc-sync.md`](../../.claude/rules/40-doc-sync.md) and run in CI on
 every pull request. Check 2 is the one that matters: changing a source path without
 updating the documents mapped to it in `docs/.manifest.yaml` fails the build, unless the PR
@@ -232,6 +232,22 @@ pass is never skipped.
 just roadmap-sync        # dry: print the plan, write nothing
 just roadmap-sync 0      # write
 ```
+
+### Regenerating STATE.md
+
+[`STATE.md`](../roadmap/STATE.md) is rendered from `roadmap.yaml`, in that direction only:
+
+```sh
+just docs-state          # rewrite docs/roadmap/STATE.md
+```
+
+Run it in the same pull request that changes a step's `status`, a gate's `status`, or an
+invariant. `docs-verify` check 6 regenerates the file into a temp path and fails on any
+difference, so a forgotten run is caught by CI rather than by a reader trusting a stale
+number. **Never hand-edit `STATE.md`** — the next generation run reverts it.
+
+It renders only what the YAML records. If something you want in there is not in
+`roadmap.yaml`, add it to the YAML; do not add it to the output.
 
 It runs in CI on every push to `main` that touches `roadmap.yaml`, and a manual
 `workflow_dispatch` defaults to dry.
