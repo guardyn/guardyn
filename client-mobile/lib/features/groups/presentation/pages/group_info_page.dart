@@ -319,15 +319,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           ),
           const SizedBox(height: AppSpacing.space2),
 
-          // MLS Encryption Badge
+          // Encryption badge. Reports the real state, which is that group messages are not
+          // encrypted on this client - see GroupRepositoryImpl.sendGroupMessage. The success
+          // colouring goes with it: a warning surface must not be tinted as reassurance.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: SemanticColors.success.withValues(alpha: 0.1),
+              color: SemanticColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const E2EEIndicator(
-              status: E2EEStatus.mlsEncrypted,
+              status: E2EEStatus.notEncrypted,
               showLabel: true,
               size: 14,
             ),

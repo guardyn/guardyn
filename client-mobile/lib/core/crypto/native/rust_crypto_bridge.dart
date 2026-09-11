@@ -427,38 +427,12 @@ class NativeRustCryptoBridge implements CryptoBridge {
   }
 }
 
-/// Extended CryptoBridgeFactory that includes native support
-///
-/// IMPORTANT: Web is NOT supported. Use only on native platforms:
-/// - Android, iOS (mobile)
-/// - Linux, macOS, Windows (desktop)
-class ExtendedCryptoBridgeFactory {
-  static CryptoBridge? _instance;
-
-  /// Get the singleton crypto bridge instance
-  static CryptoBridge get instance {
-    _instance ??= _createBridge();
-    return _instance!;
-  }
-
-  static CryptoBridge _createBridge() {
-    // Native Rust implementation is required on all supported platforms
-    if (NativeRustCryptoBridge.checkNativeAvailable()) {
-      debugPrint('🔐 Native Rust crypto available');
-      return NativeRustCryptoBridge();
-    }
-
-    // Native bridge not available - this is a critical error
-    throw UnsupportedError(
-      'Native Rust crypto is required but not available. '
-      'Ensure libguardyn_crypto_ffi is built and included in the app bundle. '
-      'Web platform is not supported.',
-    );
-  }
-
-  /// Reset instance (for testing)
-  @visibleForTesting
-  static void reset() {
-    _instance = null;
-  }
-}
+// ExtendedCryptoBridgeFactory was removed here.
+//
+// It was the fail-closed factory - it threw UnsupportedError when the native library was
+// missing, which is the correct behaviour - and it had zero call sites anywhere in lib/, test/
+// or integration_test/. Production went through CryptoBridgeFactory, which fell back silently
+// instead. The right code was written and never wired up.
+//
+// CryptoBridgeFactory now refuses too, so keeping a second copy of that logic would be exactly
+// the arrangement that let the two drift apart in the first place.

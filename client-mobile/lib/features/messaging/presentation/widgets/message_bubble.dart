@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/crypto/undecryptable_message.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_shadows.dart';
 import '../../../../shared/theme/app_spacing.dart';
@@ -95,16 +96,47 @@ class MessageBubble extends StatelessWidget {
                                 right: AppSpacing.space1,
                               )
                             : EdgeInsets.zero,
-                        child: Text(
-                          message.textContent,
-                          style: TextStyle(
-                            color: isSentByMe
-                                ? Colors.white
-                                : (isDark ? Colors.white : GrayColors.gray900),
-                            fontSize: 15,
-                            height: 1.4,
-                          ),
-                        ),
+                        child: isUndecryptable(message.metadata)
+                            // Styled apart from real content on purpose: the placeholder must
+                            // not be mistakable for something the sender wrote.
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.lock_open,
+                                    size: 15,
+                                    color: isSentByMe
+                                        ? Colors.white70
+                                        : GrayColors.gray500,
+                                  ),
+                                  const SizedBox(width: AppSpacing.space1),
+                                  Flexible(
+                                    child: Text(
+                                      message.textContent,
+                                      style: TextStyle(
+                                        color: isSentByMe
+                                            ? Colors.white70
+                                            : GrayColors.gray500,
+                                        fontSize: 15,
+                                        height: 1.4,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                message.textContent,
+                                style: TextStyle(
+                                  color: isSentByMe
+                                      ? Colors.white
+                                      : (isDark
+                                            ? Colors.white
+                                            : GrayColors.gray900),
+                                  fontSize: 15,
+                                  height: 1.4,
+                                ),
+                              ),
                       ),
                     SizedBox(height: hasMedia && message.textContent.isEmpty 
                         ? AppSpacing.space0_5 
