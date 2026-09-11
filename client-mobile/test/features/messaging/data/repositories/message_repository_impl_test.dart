@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/crypto/double_ratchet.dart';
+import 'package:guardyn_client/core/crypto/undecryptable_message.dart';
 import 'package:guardyn_client/core/error/failures.dart';
 import 'package:guardyn_client/core/storage/secure_storage.dart';
 import 'package:guardyn_client/features/messaging/data/datasources/key_exchange_datasource.dart';
@@ -374,9 +375,95 @@ void main() {
     });
   });
 
+  group('undecryptable messages', () {
+    // The receive path used to return whatever it could not decrypt, so ciphertext - or any
+    // other bytes that arrived - was rendered to the user as the message. A payload that could
+    // not be authenticated was presented as though it had been.
+
+    void noSession() {
+      when(() => mockCryptoService.getSession(
+            remoteUserId: any(named: 'remoteUserId'),
+            remoteDeviceId: any(named: 'remoteDeviceId'),
+          )).thenAnswer((_) async => null);
+    }
+
+    test('decryptMessageContent returns the placeholder, not the ciphertext', () async {
+      noSession();
+      when(() => mockSecureStorage.getUserId())
+          .thenAnswer((_) async => tCurrentUserId);
+      const ciphertext = 'AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRo=';
+
+      final result = await repository.decryptMessageContent(
+        encryptedContent: ciphertext,
+        senderUserId: tRecipientUserId,
+        senderDeviceId: tRecipientDeviceId,
+      );
+
+      result.fold(
+        (failure) => fail('Expected Right but got Left'),
+        (content) {
+          expect(content, undecryptableMessagePlaceholder);
+          expect(content, isNot(ciphertext));
+        },
+      );
+    });
+
+    test('content that is not valid base64 is undecryptable, not reinterpreted', () async {
+      // This used to fall through to `encryptedContent.codeUnits`, which truncates every unit
+      // above 0xFF - the same defect #218 fixed in the AAD - and then attempted decryption on
+      // bytes it had invented.
+      noSession();
+      when(() => mockSecureStorage.getUserId())
+          .thenAnswer((_) async => tCurrentUserId);
+
+      final result = await repository.decryptMessageContent(
+        encryptedContent: 'привет — not base64 at all',
+        senderUserId: tRecipientUserId,
+        senderDeviceId: tRecipientDeviceId,
+      );
+
+      result.fold(
+        (failure) => fail('Expected Right but got Left'),
+        (content) => expect(content, undecryptableMessagePlaceholder),
+      );
+    });
+
+    test('getMessages marks undecryptable messages in metadata', () async {
+      noSession();
+      when(() => mockSecureStorage.getAccessToken())
+          .thenAnswer((_) async => tAccessToken);
+      when(() => mockSecureStorage.getUserId())
+          .thenAnswer((_) async => tCurrentUserId);
+      when(() => mockDatasource.getMessages(
+            accessToken: any(named: 'accessToken'),
+            conversationUserId: any(named: 'conversationUserId'),
+            conversationId: any(named: 'conversationId'),
+            limit: any(named: 'limit'),
+            beforeMessageId: any(named: 'beforeMessageId'),
+            currentUserId: any(named: 'currentUserId'),
+          )).thenAnswer((_) async => tMessagesList);
+
+      final result = await repository.getMessages(
+        conversationUserId: tRecipientUserId,
+      );
+
+      result.fold(
+        (failure) => fail('Expected Right but got Left'),
+        (messages) {
+          for (final message in messages) {
+            expect(isUndecryptable(message.metadata), isTrue,
+                reason: 'the UI keys off this marker to render the placeholder');
+            expect(message.textContent, undecryptableMessagePlaceholder);
+          }
+        },
+      );
+    });
+  });
+
   group('getMessages', () {
     void setUpCryptoMocks() {
-      // E2EE: Return null session to skip decryption (messages returned as-is)
+      // No session, so nothing can be decrypted. Content therefore comes back as the
+      // undecryptable placeholder rather than as the stored bytes.
       when(() => mockCryptoService.getSession(
             remoteUserId: any(named: 'remoteUserId'),
             remoteDeviceId: any(named: 'remoteDeviceId'),

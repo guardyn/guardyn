@@ -8,6 +8,7 @@ import 'package:logger/logger.dart';
 
 import '../../../../core/crypto/crypto_exceptions.dart';
 import '../../../../core/crypto/message_aad.dart';
+import '../../../../core/crypto/undecryptable_message.dart';
 import '../../../../core/crypto/crypto_service.dart';
 import '../../../../core/crypto/x3dh.dart';
 import '../../../../core/error/failures.dart';
@@ -177,7 +178,7 @@ class MessageRepositoryImpl implements MessageRepository {
           // Extract X3DH prekey from message metadata (for first message in session)
           final x3dhPrekey = message.metadata['x3dh_prekey'];
 
-          final decryptedContent = await _decryptMessage(
+          final decrypted = await _decryptMessage(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
             senderDeviceId: message.senderDeviceId,
@@ -193,8 +194,8 @@ class MessageRepositoryImpl implements MessageRepository {
               recipientUserId: message.recipientUserId,
               recipientDeviceId: message.recipientDeviceId,
               messageType: message.messageType,
-              textContent: decryptedContent,
-              metadata: message.metadata,
+              textContent: decrypted.text,
+              metadata: decrypted.metadataFrom(message.metadata),
               timestamp: message.timestamp,
               deliveryStatus: message.deliveryStatus,
               currentUserId: currentUserId,
@@ -237,7 +238,7 @@ class MessageRepositoryImpl implements MessageRepository {
           // Extract X3DH prekey from message metadata (for first message in session)
           final x3dhPrekey = message.metadata['x3dh_prekey'];
 
-          final decryptedContent = await _decryptMessage(
+          final decrypted = await _decryptMessage(
             encryptedContent: message.textContent,
             senderUserId: message.senderUserId,
             senderDeviceId: message.senderDeviceId,
@@ -253,8 +254,8 @@ class MessageRepositoryImpl implements MessageRepository {
               recipientUserId: message.recipientUserId,
               recipientDeviceId: message.recipientDeviceId,
               messageType: message.messageType,
-              textContent: decryptedContent,
-              metadata: message.metadata,
+              textContent: decrypted.text,
+              metadata: decrypted.metadataFrom(message.metadata),
               timestamp: message.timestamp,
               deliveryStatus: message.deliveryStatus,
               currentUserId: currentUserId,
@@ -362,7 +363,7 @@ class MessageRepositoryImpl implements MessageRepository {
         return const Left(AuthFailure('User not authenticated'));
       }
 
-      final decryptedContent = await _decryptMessage(
+      final decrypted = await _decryptMessage(
         encryptedContent: encryptedContent,
         senderUserId: senderUserId,
         senderDeviceId: senderDeviceId,
@@ -370,11 +371,14 @@ class MessageRepositoryImpl implements MessageRepository {
         x3dhPrekey: x3dhPrekey,
       );
 
-      return Right(decryptedContent);
+      // Returns the placeholder rather than the content it could not decrypt. _decryptMessage
+      // already handles the expected failures, so reaching this as a Right with the original
+      // content - which is what used to happen - meant handing the caller ciphertext labelled
+      // as plaintext.
+      return Right(decrypted.text);
     } catch (e) {
       _logger.e('Failed to decrypt message: $e');
-      // Return original content on failure
-      return Right(encryptedContent);
+      return const Right(undecryptableMessagePlaceholder);
     }
   }
 
@@ -416,29 +420,17 @@ class MessageRepositoryImpl implements MessageRepository {
   }) async {
     String? x3dhPrekey;
 
-    // ignore: avoid_print
-    print(
-      '🔐 _encryptMessageWithPrekey: checking session for $recipientUserId:$recipientDeviceId',
-    );
-    // ignore: avoid_print
-    print('🔐 CryptoService initialized: ${cryptoService.isInitialized}');
-
     // Check if E2EE session exists
     var session = await cryptoService.getSession(
       remoteUserId: recipientUserId,
       remoteDeviceId: recipientDeviceId,
     );
 
-    // ignore: avoid_print
-    print('🔐 Existing session: ${session != null}');
-
     // No session? Create one via X3DH key exchange
     if (session == null) {
       _logger.i(
         'No E2EE session for $recipientUserId:$recipientDeviceId, initiating X3DH',
       );
-      // ignore: avoid_print
-      print('🔐 No session found, creating new X3DH session...');
       try {
         final prekeyMessage = await _createE2ESessionWithPrekey(
           recipientUserId: recipientUserId,
@@ -451,10 +443,6 @@ class MessageRepositoryImpl implements MessageRepository {
         );
         // Get X3DH prekey data for first message
         x3dhPrekey = prekeyMessage?.toBase64();
-        // ignore: avoid_print
-        print(
-          '🔐 Session created, prekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
-        );
         _logger.i(
           'E2EE session created successfully, prekey: ${x3dhPrekey != null}',
         );
@@ -467,11 +455,6 @@ class MessageRepositoryImpl implements MessageRepository {
           'Could not establish an encrypted session with the recipient: $e',
         );
       }
-    } else {
-      // ignore: avoid_print
-      print(
-        '🔐 Session already exists: hasSendingChainKey=${session.hasSendingChainKey}',
-      );
     }
 
     // Encrypt with Double Ratchet
@@ -533,20 +516,17 @@ class MessageRepositoryImpl implements MessageRepository {
   /// Returns plaintext if decryption successful, or original content if not encrypted.
   /// Handles both base64-encoded content (from WebSocket) and raw bytes (from gRPC).
   /// If X3DH prekey data is provided, creates responder session first.
-  Future<String> _decryptMessage({
+  Future<_DecryptedContent> _decryptMessage({
     required String encryptedContent,
     required String senderUserId,
     required String senderDeviceId,
     required String currentUserId,
     String? x3dhPrekey,
   }) async {
-    // ignore: avoid_print
-    print(
-      '🔐 _decryptMessage: from $senderUserId, x3dhPrekey: ${x3dhPrekey != null ? 'present (${x3dhPrekey.length} chars)' : 'null'}',
-    );
-
+    // An empty payload is a media-only message, not a failure - there is nothing to decrypt
+    // and nothing to warn about.
     if (encryptedContent.isEmpty) {
-      return encryptedContent;
+      return const _DecryptedContent.plaintext('');
     }
 
     // Check if E2EE session exists
@@ -557,8 +537,6 @@ class MessageRepositoryImpl implements MessageRepository {
 
     // If no session but we have X3DH prekey data, create responder session
     if (session == null && x3dhPrekey != null && x3dhPrekey.isNotEmpty) {
-      // ignore: avoid_print
-      print('🔐 No session found, creating responder session with X3DH prekey');
       _logger.i('Creating responder session with X3DH prekey data');
       try {
         await _createResponderSession(
@@ -571,42 +549,33 @@ class MessageRepositoryImpl implements MessageRepository {
           remoteUserId: senderUserId,
           remoteDeviceId: senderDeviceId,
         );
-        // ignore: avoid_print
-        print(
-          '🔐 Responder session created: hasSendingChainKey=${session?.hasSendingChainKey}, hasReceivingChainKey=${session?.hasReceivingChainKey}',
-        );
         _logger.i('Responder session created successfully');
       } catch (e) {
+        // Leaves `session` null, so the check below returns the placeholder. Previously that
+        // path returned the raw content instead.
         _logger.e('Failed to create responder session: $e');
       }
     }
 
     if (session == null) {
-      // No E2EE session - return content as-is (not encrypted or legacy message)
-      _logger.d('No E2EE session for $senderUserId - returning content as-is');
-      return encryptedContent;
+      // No session, so there is nothing to decrypt with. Returning the content as-is here is
+      // what let ciphertext render as message text.
+      _logger.d('No E2EE session for $senderUserId');
+      return const _DecryptedContent.undecryptable();
     }
 
-    // Try to detect if content is base64 encoded (from WebSocket)
-    // Base64 uses only A-Za-z0-9+/= characters
-    Uint8List ciphertextBytes;
+    // Ciphertext arrives base64-encoded. This used to sniff for base64 with a regex and fall
+    // back to `encryptedContent.codeUnits`, which is wrong twice over: codeUnits yields UTF-16
+    // units that Uint8List.fromList truncates above 0xFF - the same defect #218 fixed in the
+    // AAD - and the regex was a guess about which transport produced the string. A payload that
+    // does not decode is one this client cannot read, which is the undecryptable case, not a
+    // reason to invent bytes.
+    final Uint8List ciphertextBytes;
     try {
-      // Check if it looks like base64 (common pattern for encrypted messages)
-      final base64Regex = RegExp(r'^[A-Za-z0-9+/]+=*$');
-      if (base64Regex.hasMatch(encryptedContent) &&
-          encryptedContent.length > 20) {
-        // Looks like base64 - try to decode
-        ciphertextBytes = base64.decode(encryptedContent);
-        _logger.d('Decoded base64 content: ${ciphertextBytes.length} bytes');
-      } else {
-        // Not base64 - use codeUnits (raw bytes encoded as string)
-        ciphertextBytes = Uint8List.fromList(encryptedContent.codeUnits);
-        _logger.d('Using raw codeUnits: ${ciphertextBytes.length} bytes');
-      }
-    } catch (e) {
-      // Base64 decode failed - use codeUnits
-      ciphertextBytes = Uint8List.fromList(encryptedContent.codeUnits);
-      _logger.d('Base64 decode failed, using codeUnits: $e');
+      ciphertextBytes = base64.decode(encryptedContent);
+    } on FormatException catch (e) {
+      _logger.w('Content is not valid base64: $e');
+      return const _DecryptedContent.undecryptable();
     }
 
     final associatedData = messageAssociatedData(
@@ -623,11 +592,12 @@ class MessageRepositoryImpl implements MessageRepository {
       );
       final result = utf8.decode(decrypted);
       _logger.d('Decryption successful: ${result.length} chars');
-      return result;
+      return _DecryptedContent.plaintext(result);
     } catch (e) {
-      // Decryption failed - message might not be encrypted
-      _logger.w('Decryption failed: $e - returning original content');
-      return encryptedContent;
+      // A failed tag is indistinguishable from tampering, a desynchronised ratchet and an
+      // unsupported wire version. None of them makes the payload safe to display.
+      _logger.w('Decryption failed: $e');
+      return const _DecryptedContent.undecryptable();
     }
   }
 
@@ -663,4 +633,26 @@ class MessageRepositoryImpl implements MessageRepository {
       rethrow;
     }
   }
+}
+
+/// The outcome of trying to decrypt one received message.
+///
+/// A plain `String` return could not distinguish "this is the message" from "this is what I
+/// could not decrypt", which is why the receive path used to render the latter as the former.
+class _DecryptedContent {
+  const _DecryptedContent.plaintext(this.text) : undecryptable = false;
+
+  const _DecryptedContent.undecryptable()
+      : text = undecryptableMessagePlaceholder,
+        undecryptable = true;
+
+  /// What to display. For the undecryptable case this is the placeholder, never the bytes.
+  final String text;
+
+  /// Whether [text] is the placeholder rather than the sender's content.
+  final bool undecryptable;
+
+  /// Metadata for the resulting message, carrying the marker when it applies.
+  Map<String, String> metadataFrom(Map<String, String> original) =>
+      undecryptable ? markUndecryptable(original) : original;
 }
