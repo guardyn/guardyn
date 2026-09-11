@@ -4,7 +4,6 @@
 
 use crate::proto::common::{KeyBundle, Timestamp};
 use crate::state::AppState;
-use guardyn_crypto::x3dh::X3DHProtocol;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -39,20 +38,30 @@ pub struct AuthResponse {
     pub error: Option<String>,
 }
 
-/// Generate a key bundle for registration/login
+/// Generate a key bundle for registration/login, keeping every private half on the device.
+///
+/// This used to call `X3DHProtocol::generate_key_bundle()`, which mints an entire fresh key
+/// set - identity key included - and returns only the public bundle. So the identity key the
+/// server served for this account was not the identity key the device held, and no pre-key
+/// secret was kept at all. A peer could fetch the bundle and start a session; this client
+/// could never answer it.
 fn generate_key_bundle() -> Result<KeyBundle, String> {
     tracing::debug!("Generating key bundle...");
-    let bundle = X3DHProtocol::generate_key_bundle()
-        .map_err(|e| {
-            tracing::error!("Failed to generate key bundle: {}", e);
-            format!("Failed to generate key bundle: {}", e)
-        })?;
-    
+    let bundle = crate::commands::crypto::generate_and_persist_key_bundle(
+        crate::commands::crypto::published_one_time_prekey_count(),
+    )
+    .map_err(|e| {
+        tracing::error!("Failed to generate key bundle: {}", e);
+        e
+    })?;
+
     tracing::debug!("Key bundle generated successfully");
     Ok(KeyBundle {
         identity_key: bundle.identity_key,
         signed_pre_key: bundle.signed_pre_key,
         signed_pre_key_signature: bundle.signed_pre_key_signature,
+        // Order is the contract: the server stores these with `.enumerate()`, and an initiator
+        // reports the one it used by that index, since `common.KeyBundle` carries no key ids.
         one_time_pre_keys: bundle.one_time_pre_keys
             .into_iter()
             .map(|k| k.public_key)

@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 949
+tokens: 964
 supersedes: []
 ---
 
@@ -19,15 +19,15 @@ supersedes: []
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 55 | 66 | `████████░░` |
-| 4 | 0 | 10 | `░░░░░░░░░░` |
-| **all** | **81** | **102** | |
+| 3 | 56 | 66 | `████████░░` |
+| 4 | 0 | 11 | `░░░░░░░░░░` |
+| **all** | **82** | **103** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 21 of 102
+- **Open steps:** 21 of 103
 
 ## Gates
 
@@ -59,7 +59,6 @@ supersedes: []
 | PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
 | PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
 | PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
-| PR-79 | 3 | — | client-desktop - retain private prekey material |
 | PR-80 | 3 | — | client-desktop - implement the X3DH responder path |
 | PR-81 | 3 | — | client-desktop - restore the ratchet store from persisted state |
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
@@ -75,3 +74,4 @@ supersedes: []
 | PR-43 | 4 | [#54](https://github.com/guardyn/guardyn/issues/54) | Wire the compose observability stack |
 | PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
+| PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |
