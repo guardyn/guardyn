@@ -149,6 +149,9 @@ steps:
   - {id: PR-78, issue: 163, phase: 3, type: security, status: done, title: "client-desktop - encrypt on the send path"}
   - {id: PR-79, issue: 245, phase: 3, type: fix, status: done, title: "client-desktop - retain private prekey material"}
   - {id: PR-80, issue: 248, phase: 3, type: feat, status: done, title: "client-desktop - implement the X3DH responder path"}
+  # The initiator path is complete and has nothing to feed it: AuthClient::get_key_bundle has
+  # no callers and NewConversationModal carries a TODO where the fetch belongs.
+  - {id: PR-80b, issue: 250, phase: 3, type: feat, status: done, title: "client-desktop - wire get_key_bundle to the frontend"}
   - {id: PR-81, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - restore the ratchet store from persisted state"}
   # Deferred deliberately, each with a stated reason in its step above.
   - {id: PR-82, issue: 211, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}

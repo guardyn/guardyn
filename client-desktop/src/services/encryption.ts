@@ -13,6 +13,7 @@ import {
   EncryptedMessage,
   SessionInfo,
   generateKeyBundle,
+  getKeyBundleForPeer,
   getSession,
   listSessions,
   isPqAvailable,
@@ -121,9 +122,14 @@ class EncryptionManager {
   // ---------------------------------------------------------------------------
 
   /**
-   * Establish encrypted session with a peer
+   * Establish encrypted session with a peer.
+   *
+   * `peerBundle` is optional: when omitted the peer's published bundle is fetched from
+   * auth-service. That fetch is the piece that was missing - every other part of the initiator
+   * path existed, so `startSession` was never reached and `peerStates` stayed permanently
+   * empty.
    */
-  async establishSession(peerId: string, peerBundle: KeyBundle): Promise<SessionInfo> {
+  async establishSession(peerId: string, peerBundle?: KeyBundle): Promise<SessionInfo> {
     if (!this.initialized) {
       throw new Error('EncryptionManager not initialized');
     }
@@ -136,7 +142,8 @@ class EncryptionManager {
     });
 
     try {
-      const session = await encryptionService.startSession(peerId, peerBundle);
+      const bundle = peerBundle ?? (await getKeyBundleForPeer(peerId));
+      const session = await encryptionService.startSession(peerId, bundle);
 
       // Update peer state to established
       this.updatePeerState(peerId, {

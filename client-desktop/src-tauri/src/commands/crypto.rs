@@ -6,7 +6,9 @@
 //! Keys are persisted to secure storage (OS keychain/credential manager).
 
 use crate::services::SecureStorage;
+use crate::state::AppState;
 use serde::{Deserialize, Serialize};
+use tauri::State;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
@@ -509,6 +511,69 @@ pub async fn generate_key_bundle(include_pq: bool) -> Result<KeyBundle, String> 
 // =============================================================================
 // X3DH KEY AGREEMENT
 // =============================================================================
+
+/// Fetch a peer's published key bundle from auth-service.
+///
+/// `AuthClient::get_key_bundle` has existed since the desktop gained a gRPC client and had no
+/// callers: it was not a command, so the frontend had no way to reach it and
+/// `NewConversationModal` carried a TODO where the fetch belongs. Every other piece of the
+/// initiator path was already in place and simply had nothing to act on.
+///
+/// **The key ids are reconstructed, not received.** `common.KeyBundle` carries none: the
+/// server assigns a one-time pre-key's id implicitly by its position when it stores the array
+/// (`auth-service/src/db.rs`, `.enumerate()`), and the initiator later names the key it used by
+/// that same index. So the first one-time pre-key is id `0`, and the signed pre-key is id `1`,
+/// matching `client-mobile`'s `key_exchange_datasource.dart` exactly. Diverging here would not
+/// fail at agreement time - both ends would derive a secret, just not the same one, and the
+/// first message would surface it as an AEAD tag rejection.
+#[tauri::command]
+pub async fn get_key_bundle_for_peer(
+    state: State<'_, AppState>,
+    user_id: String,
+) -> Result<KeyBundle, String> {
+    tracing::debug!("Fetching key bundle for peer");
+
+    let bundle = state
+        .auth()
+        .get_key_bundle(user_id)
+        .await
+        .map_err(|e| format!("Failed to fetch key bundle: {}", e))?;
+
+    key_bundle_from_proto(&bundle)
+}
+
+/// Convert a published `common.KeyBundle` into the form the X3DH initiator takes.
+///
+/// Pure, so the id convention can be asserted on without a server.
+fn key_bundle_from_proto(bundle: &crate::proto::common::KeyBundle) -> Result<KeyBundle, String> {
+    // An empty identity key is not an absent bundle: `get_key_bundle` returns `Some` for it,
+    // and it is what a destroyed bundle looks like (#243). Refuse it here rather than let
+    // signature verification fail later with a less useful message.
+    if bundle.identity_key.is_empty() {
+        return Err(
+            "Peer key bundle has no identity key: the bundle cannot be verified and no session \
+             can be established against it"
+                .to_string(),
+        );
+    }
+    if bundle.signed_pre_key.is_empty() || bundle.signed_pre_key_signature.is_empty() {
+        return Err(
+            "Peer key bundle has no signed pre-key or no signature: X3DH requires a signed \
+             pre-key and never downgrades to an unsigned exchange"
+                .to_string(),
+        );
+    }
+
+    Ok(KeyBundle {
+        identity_key: hex::encode(&bundle.identity_key),
+        signed_prekey: hex::encode(&bundle.signed_pre_key),
+        prekey_signature: hex::encode(&bundle.signed_pre_key_signature),
+        // Index 0 by convention; see the note above. `GetKeyBundle` returns the whole pool and
+        // consumes nothing (#246), so this is also the only key any initiator is ever served.
+        one_time_prekey: bundle.one_time_pre_keys.first().map(hex::encode),
+        pq_prekey: None,
+    })
+}
 
 /// Perform X3DH key agreement as initiator (Alice)
 /// Returns shared secret for Double Ratchet initialization
@@ -1243,6 +1308,62 @@ mod tests {
 
         // Both should derive the same shared secret
         assert_eq!(alice_secret, bob_secret);
+    }
+
+    fn proto_bundle(one_time: Vec<Vec<u8>>) -> crate::proto::common::KeyBundle {
+        crate::proto::common::KeyBundle {
+            identity_key: vec![1; 32],
+            signed_pre_key: vec![2; 32],
+            signed_pre_key_signature: vec![3; 64],
+            one_time_pre_keys: one_time,
+            created_at: None,
+        }
+    }
+
+    /// `common.KeyBundle` carries no key ids. The server assigns a one-time pre-key's id by its
+    /// position when it stores the array, and the initiator names the key it used by that same
+    /// index - so taking the first element is what makes id 0 mean the same key on both ends.
+    ///
+    /// `client-mobile` does the same at `key_exchange_datasource.dart:65-69`. If these two ever
+    /// diverge the failure is silent: both sides derive a secret, they simply differ, and only
+    /// the first message shows it as an AEAD tag rejection.
+    #[test]
+    fn test_the_first_one_time_prekey_is_the_one_selected() {
+        let first = vec![9u8; 32];
+        let second = vec![8u8; 32];
+        let converted = key_bundle_from_proto(&proto_bundle(vec![first.clone(), second])).unwrap();
+
+        assert_eq!(converted.one_time_prekey, Some(hex::encode(&first)));
+    }
+
+    /// SRS: "No one-time pre-keys left: proceed with the three-DH variant - never refuse."
+    #[test]
+    fn test_an_empty_one_time_pool_yields_the_three_dh_variant() {
+        let converted = key_bundle_from_proto(&proto_bundle(vec![])).unwrap();
+        assert_eq!(converted.one_time_prekey, None);
+        assert!(!converted.identity_key.is_empty());
+    }
+
+    /// A bundle whose identity key was destroyed (#243) still comes back as `Some`. Refusing it
+    /// here gives a message that names the cause, instead of an opaque signature failure.
+    #[test]
+    fn test_a_bundle_with_no_identity_key_is_refused() {
+        let mut bundle = proto_bundle(vec![]);
+        bundle.identity_key = vec![];
+
+        let err = key_bundle_from_proto(&bundle).expect_err("must refuse");
+        assert!(err.contains("identity key"), "{err}");
+    }
+
+    /// SRS: the signature "must verify against the identity key. Failure aborts - never
+    /// downgrade to an unsigned exchange." An absent signature is that case at its limit.
+    #[test]
+    fn test_a_bundle_with_no_signature_is_refused() {
+        let mut bundle = proto_bundle(vec![]);
+        bundle.signed_pre_key_signature = vec![];
+
+        let err = key_bundle_from_proto(&bundle).expect_err("must refuse");
+        assert!(err.contains("signature"), "{err}");
     }
 
     /// The whole responder path, end to end, over the pieces `respond_x3dh` and `init_session`
