@@ -124,5 +124,4 @@ and any `*.key` are gitignored and must never reach the repository.
 | `infra/k8s/base/envoy/ingress.yaml:18` hardcodes `envoy.guardyn.local` | breaks the `${DOMAIN}` rule above | **unowned** |
 | Production images are tagged, not digest-pinned | a tag can be moved under a running cluster | PR-44 |
 | `infra/secrets/.gitignore` ignores `*.enc.yaml` — the **encrypted** file — while the plaintext `app-secrets.yaml` is tracked | exactly inverted: the safe artefact is excluded and the unsafe one committed. The tracked values are placeholders, so no live credential is exposed *yet* | PR-42 |
-| `client-desktop` cannot establish a session, so it refuses every one-to-one send | desktop messaging is non-functional until the session stack lands — deliberate, since the alternative was plaintext at rest | PR-79…PR-81 |
 | `infra/justfile` is a second, divergent task file whose `k8s:deploy` references a values file that does not exist | dead code that will mislead | unowned |

@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1050
+tokens: 1029
 supersedes: []
 ---
 
@@ -19,15 +19,15 @@ supersedes: []
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 60 | 70 | `█████████░` |
+| 3 | 61 | 70 | `█████████░` |
 | 4 | 0 | 13 | `░░░░░░░░░░` |
-| **all** | **86** | **109** | |
+| **all** | **87** | **109** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 23 of 109
+- **Open steps:** 22 of 109
 
 ## Gates
 
@@ -44,8 +44,8 @@ supersedes: []
 |---|---|---|---|
 | I-1 | Zero-Knowledge | partial | — |
 | | | | *rate_limit.rs logs a raw IP; span fields are not redacted* |
-| I-2 | Always-On E2EE | partial | PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78 |
-| | | | *no switch can disable encryption - E2EE-FLAG passes and rules-verify now enforces it - and no client path transmits plaintext. Remaining: client-desktop cannot establish a session so it refuses every send (PR-79..PR-81), and mobile groups refuse for want of MLS* |
+| I-2 | Always-On E2EE | partial | PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c |
+| | | | *no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS* |
 | I-3 | Post-Quantum | false | PR-36, PR-37, PR-38, PR-39, PR-40 |
 | I-4 | Data Sovereignty | partial | — |
 | | | | *envoy/ingress.yaml hardcodes a domain* |
@@ -59,7 +59,6 @@ supersedes: []
 | PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
 | PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
 | PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
-| PR-81c | 3 | [#258](https://github.com/guardyn/guardyn/issues/258) | client-desktop - decrypt on receive |
 | PR-95 | 3 | [#255](https://github.com/guardyn/guardyn/issues/255) | X3DHPrekeyMessage one-time key id endianness differs between Rust and Dart |
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | — | Clear the 314 flutter analyze info diagnostics |

@@ -147,6 +147,13 @@ const Chat: Component<ChatPageProps> = () => {
             if (!self) {
               throw new Error('no local user id; cannot build the message associated data');
             }
+            // A message carrying a prekey message is a peer opening a session with us. Answer
+            // it before trying to read the message it came with, or there is no ratchet to
+            // decrypt with. Repeats are a no-op, which matters because the initiator keeps
+            // attaching it until a send is accepted.
+            if (data.x3dh_prekey) {
+              await encryptionManager.acceptSession(data.sender_id, data.x3dh_prekey);
+            }
             content = await encryptionManager.decryptMessage(
               data.sender_id,
               { ciphertext: data.content, nonce: '', header: '' },
@@ -154,9 +161,10 @@ const Chat: Component<ChatPageProps> = () => {
             );
             undecryptable = false;
           } catch (err) {
-            // Expected until session establishment lands: there is no session to decrypt with,
-            // so every inbound message is undecryptable. Showing the placeholder is the honest
-            // result, and is what the user would see anyway for a genuinely broken message.
+            // No longer the expected case. A message can still be genuinely unreadable - it
+            // predates this device's session, or arrived while one was being re-established -
+            // and the placeholder is what that must look like. Rendering the bytes instead is
+            // the defect #232 fixed.
             console.warn('[Chat] Could not decrypt message:', err);
           }
 

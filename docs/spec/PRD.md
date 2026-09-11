@@ -124,8 +124,9 @@ Stated plainly, because a PRD that implies capability is a PRD that misleads.
   cannot publish one (PR-36…PR-40).
 - **Always-on encryption, end to end.** The server side is done: the E2EE handler fork, the
   configuration flags and the deployment variables are all gone (PR-32a/b/c), and both clients
-  now refuse to send rather than transmit plaintext (#226, #229, #163). What remains is that
-  `client-desktop` cannot yet establish a session, so it refuses every send — encryption is
-  never bypassed, but desktop one-to-one messaging does not function until PR-79…PR-81 land.
+  refuse to send rather than transmit plaintext (#226, #229, #163). `client-desktop` one-to-one
+  messaging now works over that path: it establishes a session, encrypts every send and
+  decrypts what it receives (PR-79…PR-81c). What remains is **groups**, where `client-mobile`
+  refuses to send for want of MLS.
 - **A browser client.** Envoy routes three of six services; media, calls and notifications
   are not reachable from a browser today.

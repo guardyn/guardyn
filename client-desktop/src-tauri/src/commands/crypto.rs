@@ -1057,6 +1057,164 @@ pub const UNDECRYPTABLE_PLACEHOLDER: &str = "Message cannot be decrypted";
 /// because nothing on the desktop establishes a session yet; the callers are nevertheless
 /// written against the real contract so that landing session establishment needs no change
 /// here.
+/// Establish the responder side of a session from the prekey message that arrived with a
+/// peer's first message. A no-op when a session already exists.
+///
+/// The single implementation of the inbound path: `get_messages` calls it directly and the
+/// frontend reaches it through the `accept_session` command, so history and live delivery
+/// cannot drift apart.
+///
+/// Re-arrival is normal rather than exceptional. The initiator keeps attaching the prekey
+/// message until a send is accepted, so a retry or a duplicate delivery brings it again -
+/// acting on it twice would replace a ratchet that has already advanced and lose every message
+/// after the first.
+pub(crate) fn ensure_responder_session(peer_id: &str, x3dh_prekey: &str) -> Result<(), String> {
+    if RATCHET_STORE
+        .lock()
+        .map_err(|e| e.to_string())?
+        .contains_key(peer_id)
+    {
+        return Ok(());
+    }
+
+    let prekey = guardyn_crypto::x3dh::X3DHPrekeyMessage::from_base64(x3dh_prekey)
+        .map_err(|e| format!("Malformed X3DH prekey message: {}", e))?;
+
+    let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+    let identity_data = store
+        .identity_keypair
+        .as_ref()
+        .ok_or_else(|| "Identity keys not generated".to_string())?;
+    let private_bytes = hex::decode(&identity_data.private_key)
+        .map_err(|e| format!("Invalid stored identity private key: {}", e))?;
+    let identity_keypair = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
+        .map_err(|e| format!("Failed to restore identity keypair: {}", e))?;
+
+    let signed_prekey_data = store
+        .signed_prekey
+        .as_ref()
+        .ok_or_else(|| "Signed prekey not generated".to_string())?;
+    let signed_prekey = restore_signed_prekey(signed_prekey_data)?;
+    let one_time_prekeys = store
+        .one_time_prekeys
+        .iter()
+        .map(restore_one_time_prekey)
+        .collect::<Result<Vec<_>, String>>()?;
+    drop(store);
+
+    let ratchet_secret = signed_prekey.ratchet_secret();
+    let key_material = guardyn_crypto::x3dh::X3DHKeyMaterial {
+        identity_key: identity_keypair,
+        signed_pre_key: signed_prekey,
+        one_time_pre_keys: one_time_prekeys,
+    };
+
+    let shared_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+        &key_material,
+        &prekey.sender_identity_key,
+        &prekey.ephemeral_key,
+        prekey.used_one_time_key_id,
+    )
+    .map_err(|e| format!("X3DH respond failed: {}", e))?;
+
+    let ratchet = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, ratchet_secret)
+        .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?;
+
+    let session = SessionData {
+        peer_id: peer_id.to_string(),
+        established_at: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
+        messages_sent: 0,
+        messages_received: 0,
+        state: ratchet.serialize(),
+    };
+
+    RATCHET_STORE
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(peer_id.to_string(), ratchet);
+    SESSION_STORE
+        .lock()
+        .map_err(|e| e.to_string())?
+        .sessions
+        .insert(peer_id.to_string(), session);
+
+    // Not persisted here: a responder has no sending chain key until its first decrypt performs
+    // the DH ratchet, and `rehydrate_ratchets` rightly discards a session that cannot send.
+    // `decrypt_from_peer` writes it once that decrypt succeeds.
+    tracing::info!("Responder session established from an inbound prekey message");
+    Ok(())
+}
+
+/// Establish the responder side of a session, for the frontend's live-delivery path.
+#[tauri::command]
+pub async fn accept_session(peer_id: String, x3dh_prekey: String) -> Result<(), String> {
+    ensure_responder_session(&peer_id, &x3dh_prekey)
+}
+
+/// Decrypt a message received from `sender_id`, returning `None` when it cannot be decrypted.
+///
+/// The mirror of [`encrypt_for_peer`]. `None` rather than an error, because "we could not read
+/// this" is a normal outcome the UI renders as a placeholder, not a failure of the operation
+/// that is fetching messages - one unreadable message must not blank a whole conversation.
+///
+/// The associated data names the parties by role, originator first, so both ends compute the
+/// same bytes: the sender here is the peer, not the local user (ADR-0011).
+pub(crate) fn decrypt_from_peer(
+    ciphertext: &[u8],
+    sender_id: &str,
+    self_user_id: &str,
+) -> Option<String> {
+    let encrypted = match guardyn_crypto::double_ratchet::EncryptedMessage::from_bytes(ciphertext) {
+        Ok(message) => message,
+        Err(e) => {
+            tracing::debug!("Message is not a well-formed ciphertext: {}", e);
+            return None;
+        }
+    };
+
+    let associated_data = message_associated_data(sender_id, self_user_id);
+
+    let mut ratchet_store = RATCHET_STORE.lock().ok()?;
+    let ratchet = ratchet_store.get_mut(sender_id)?;
+    let padded = match ratchet.decrypt(&encrypted, &associated_data) {
+        Ok(plaintext) => plaintext,
+        Err(e) => {
+            tracing::debug!("Double Ratchet could not decrypt: {}", e);
+            return None;
+        }
+    };
+    // Take the state now, while the ratchet is still borrowed and known to have advanced.
+    let state = ratchet.serialize();
+    drop(ratchet_store);
+
+    let plaintext = guardyn_crypto::unpad_message(&padded)
+        .map_err(|e| tracing::debug!("PADME unpad failed: {}", e))
+        .ok()?;
+
+    // The ratchet advanced, so the stored state is now stale. Persisting here is also what
+    // writes a responder session for the first time: it is deliberately not persisted at
+    // creation, because it cannot send until this decrypt completes it (see init_session).
+    if let Ok(mut store) = SESSION_STORE.lock() {
+        if let Some(session) = store.sessions.get_mut(sender_id) {
+            session.messages_received += 1;
+            session.state = state;
+        }
+        let sessions = store.sessions.clone();
+        drop(store);
+        if let Err(e) = persist_sessions(&sessions) {
+            // The message decrypted; losing the write costs a re-agreement, not the message.
+            tracing::warn!("Could not persist the advanced ratchet state: {}", e);
+        }
+    }
+
+    String::from_utf8(plaintext)
+        .map_err(|_| tracing::debug!("Decrypted bytes are not valid UTF-8"))
+        .ok()
+}
+
 pub(crate) fn encrypt_for_peer(
     plaintext: &str,
     recipient_id: &str,
@@ -1516,6 +1674,45 @@ mod tests {
         assert_eq!(parsed.sender_identity_key, identity.public_bytes());
         assert_eq!(parsed.ephemeral_key, ephemeral.public_bytes());
         assert_eq!(parsed.used_one_time_key_id, Some(0));
+    }
+
+    /// `decrypt_from_peer` must never hand back the bytes it failed to read. This is the #232
+    /// guarantee at the Rust boundary: the old code used `String::from_utf8_lossy`, which
+    /// cannot fail, so ciphertext rendered as replacement characters and anything that happened
+    /// to be valid UTF-8 rendered as the message.
+    #[test]
+    fn test_decrypt_returns_nothing_for_bytes_that_are_not_a_message() {
+        // Valid UTF-8, so a lossy conversion would have rendered it as the message text.
+        assert_eq!(
+            decrypt_from_peer(b"this is not a ciphertext", "someone", "me"),
+            None
+        );
+        assert_eq!(decrypt_from_peer(&[], "someone", "me"), None);
+        assert_eq!(decrypt_from_peer(&[0xff; 80], "someone", "me"), None);
+    }
+
+    /// A well-formed ciphertext from a peer we have no session with is unreadable, not an
+    /// error: the fetch that found it must still return every other message.
+    #[test]
+    fn test_decrypt_returns_nothing_when_there_is_no_session() {
+        let material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let peer_public: [u8; 32] = material
+            .signed_pre_key
+            .public_bytes()
+            .try_into()
+            .unwrap();
+        let mut sender = guardyn_crypto::DoubleRatchet::init_alice(
+            &[3u8; 32],
+            guardyn_crypto::X25519PublicKey::from(peer_public),
+        )
+        .unwrap();
+        let aad = message_associated_data("stranger-with-no-session", "me");
+        let ciphertext = sender.encrypt(b"hello", &aad).unwrap().to_bytes();
+
+        assert_eq!(
+            decrypt_from_peer(&ciphertext, "stranger-with-no-session", "me"),
+            None
+        );
     }
 
     /// The restart round-trip. A session established before the process ended must decrypt the
