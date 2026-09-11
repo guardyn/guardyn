@@ -52,6 +52,11 @@ it is recorded here so nobody "fixes" it.
 
 ## Session establishment (X3DH)
 
+0. **A client keeps the private half of everything it publishes.** A bundle is a promise to
+   answer an X3DH run against it, and the publisher is the only party that can. Generating a
+   bundle and discarding its secrets — or publishing an identity key the device does not hold
+   — produces an account other people can start sessions with and never reach. The failure is
+   silent and one-sided: the initiator succeeds, and only the responder's decrypt fails.
 1. The initiator fetches the responder's `KeyBundle`: identity key, signed pre-key with its
    signature, and one `OneTimePreKey` if any remain.
 2. The signed pre-key signature **must** verify against the identity key. Failure aborts —
@@ -64,6 +69,16 @@ it is recorded here so nobody "fixes" it.
 **Edge cases.** No one-time pre-keys left: proceed with the three-DH variant — never refuse,
 never fall back to an unauthenticated exchange. Bundle from an unknown device: `NOT_FOUND`.
 A replayed prekey message fails because the one-time key is already consumed.
+
+> **Rules 3 and the replay edge case are not implemented.** `auth-service` serves the
+> one-time pre-keys with a range scan and deletes nothing, so every initiator is handed index
+> `0` for ever, the fourth DH contributes the same secret to every session, and a replayed
+> prekey message succeeds rather than failing. Recorded rather than quietly corrected, because
+> the rules above are the intended behaviour and
+> [#246](https://github.com/guardyn/guardyn/issues/246) is the step that delivers them.
+>
+> Rule 0 holds on both clients as of PR-79; `common.KeyBundle` still carries no key ids, so an
+> initiator names the one-time key by the index it occupied in the published array.
 
 ## Message encryption (Double Ratchet)
 

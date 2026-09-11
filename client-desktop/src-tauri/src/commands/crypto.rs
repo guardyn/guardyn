@@ -142,6 +142,33 @@ pub struct PreKeyData {
     pub signature: String,
 }
 
+/// The public half of a pre-key - everything the frontend is allowed to see.
+///
+/// [`PreKeyData`] serves two destinations with one serde impl: the OS credential manager,
+/// which must receive `private_key`, and the frontend, which must not. It was safe only while
+/// `private_key` was always empty and `skip_serializing_if` dropped it. Now that the secret is
+/// retained, returning `PreKeyData` from a command would hand it to the renderer, where it
+/// would sit in JS memory and reachable from a devtools console or a crash dump.
+///
+/// The shape is unchanged from the frontend's side: `src/api/crypto.ts` already declares
+/// exactly these three fields.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PublicPreKeyData {
+    pub key_id: u32,
+    pub public_key: String,
+    pub signature: String,
+}
+
+impl From<&PreKeyData> for PublicPreKeyData {
+    fn from(data: &PreKeyData) -> Self {
+        Self {
+            key_id: data.key_id,
+            public_key: data.public_key.clone(),
+            signature: data.signature.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyBundle {
     pub identity_key: String,
@@ -250,7 +277,7 @@ pub async fn has_identity_keys() -> Result<bool, String> {
 
 /// Generate signed prekey
 #[tauri::command]
-pub async fn generate_signed_prekey() -> Result<PreKeyData, String> {
+pub async fn generate_signed_prekey() -> Result<PublicPreKeyData, String> {
     tracing::info!("Generating signed prekey");
 
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
@@ -271,21 +298,26 @@ pub async fn generate_signed_prekey() -> Result<PreKeyData, String> {
     let prekey = PreKeyData {
         key_id: signed_prekey.key_id,
         public_key: hex::encode(signed_prekey.public_bytes()),
-        private_key: String::new(), // SignedPreKey doesn't expose private key directly, stored internally
+        // Retained, not dropped. The comment here used to claim `SignedPreKey` kept the secret
+        // internally; it does not - the struct is a value holding a `StaticSecret` that dies
+        // with it. Publishing a pre-key whose private half no one kept means no peer can ever
+        // be answered.
+        private_key: hex::encode(signed_prekey.ratchet_secret().to_bytes()),
         signature: hex::encode(&signed_prekey.signature),
     };
 
     // Store in session and persist
+    let public = PublicPreKeyData::from(&prekey);
     store.signed_prekey = Some(prekey.clone());
     persist_signed_prekey(&prekey)?;
 
     tracing::info!("Signed prekey generated and persisted (key_id: {})", key_id);
-    Ok(prekey)
+    Ok(public)
 }
 
 /// Generate one-time prekeys (batch)
 #[tauri::command]
-pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PreKeyData>, String> {
+pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PublicPreKeyData>, String> {
     tracing::info!("Generating {} one-time prekeys", count);
 
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
@@ -300,10 +332,10 @@ pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PreKeyData>, St
         let prekey = PreKeyData {
             key_id: otk.key_id,
             public_key: hex::encode(otk.public_bytes()),
-            private_key: String::new(), // Private key stored internally in the crypto lib
+            private_key: hex::encode(otk.secret().to_bytes()),
             signature: String::new(), // OTKs are not signed
         };
-        prekeys.push(prekey.clone());
+        prekeys.push(PublicPreKeyData::from(&prekey));
         store.one_time_prekeys.push(prekey);
     }
 
@@ -317,6 +349,143 @@ pub async fn generate_one_time_prekeys(count: u32) -> Result<Vec<PreKeyData>, St
 // =============================================================================
 // KEY BUNDLE COMMANDS
 // =============================================================================
+
+/// How many one-time pre-keys a published bundle carries.
+///
+/// Ten, not the hundred `X3DHProtocol::generate_key_bundle` uses, because every private half
+/// is now kept and the pool is stored as one blob in the OS credential manager. Windows caps a
+/// credential at 2560 bytes, which a hundred retained keys clear several times over - and a
+/// pool that cannot be persisted is worse than a small one, because the keys it names are
+/// published and unanswerable.
+///
+/// Nothing is lost today: `GetKeyBundle` scans and returns the whole set without consuming
+/// any, so every initiator is served index `0` for ever and the other ninety-nine were never
+/// reachable. Growing the pool belongs with the step that makes the server consume a key, and
+/// with `UploadPreKeys` replenishment - which is only safe to call as of #243.
+const PUBLISHED_ONE_TIME_PREKEY_COUNT: usize = 10;
+
+/// The one-time pre-key count a published bundle carries.
+pub(crate) fn published_one_time_prekey_count() -> usize {
+    PUBLISHED_ONE_TIME_PREKEY_COUNT
+}
+
+/// Build the key material for a bundle, and the storable records that carry its private
+/// halves. Pure: no keychain, no global store, so the "what we published is what we kept"
+/// property can be tested without an OS credential manager.
+///
+/// Returns the bundle to publish, the signed pre-key record, and the one-time pre-key records.
+#[allow(clippy::type_complexity)]
+fn build_key_material(
+    identity_keypair: &guardyn_crypto::x3dh::IdentityKeyPair,
+    signed_prekey_id: u32,
+    one_time_count: usize,
+) -> Result<
+    (
+        guardyn_crypto::x3dh::X3DHKeyBundle,
+        PreKeyData,
+        Vec<PreKeyData>,
+    ),
+    String,
+> {
+    let signed_prekey =
+        guardyn_crypto::x3dh::SignedPreKey::generate(signed_prekey_id, identity_keypair)
+            .map_err(|e| format!("Failed to generate signed prekey: {}", e))?;
+
+    let signed_prekey_data = PreKeyData {
+        key_id: signed_prekey.key_id,
+        public_key: hex::encode(signed_prekey.public_bytes()),
+        private_key: hex::encode(signed_prekey.ratchet_secret().to_bytes()),
+        signature: hex::encode(&signed_prekey.signature),
+    };
+
+    // Ids are zero-based and contiguous because `common.KeyBundle` carries no key ids at all:
+    // an initiator reports the id as the index the key occupied in the published array
+    // (auth-service `db.rs` assigns them with `.enumerate()`), so index and id must agree or
+    // DH4 is computed against the wrong key.
+    let mut one_time_prekeys = Vec::with_capacity(one_time_count);
+    let mut one_time_data = Vec::with_capacity(one_time_count);
+    for id in 0..one_time_count as u32 {
+        let otk = guardyn_crypto::x3dh::OneTimePreKey::generate(id);
+        one_time_data.push(PreKeyData {
+            key_id: otk.key_id,
+            public_key: hex::encode(otk.public_bytes()),
+            private_key: hex::encode(otk.secret().to_bytes()),
+            signature: String::new(),
+        });
+        one_time_prekeys.push(otk);
+    }
+
+    let material = guardyn_crypto::x3dh::X3DHKeyMaterial {
+        identity_key: identity_keypair.clone(),
+        signed_pre_key: signed_prekey,
+        one_time_pre_keys: one_time_prekeys,
+    };
+
+    Ok((material.export_bundle(), signed_prekey_data, one_time_data))
+}
+
+/// Generate a publishable key bundle and keep every private half.
+///
+/// This is the single generator for the material a peer will run X3DH against. It exists
+/// because there were three, none wired to the others, and the one that published
+/// (`commands::auth::generate_key_bundle`) called `X3DHProtocol::generate_key_bundle()` - which
+/// mints a whole fresh key set, identity key included, and returns only the public bundle.
+///
+/// The consequence was worse than dropped pre-key secrets: the identity key the server served
+/// for this user was not the identity key on the device. A peer verified the bundle against a
+/// key this client had never held, and the client could not have answered even if it had kept
+/// the pre-keys.
+///
+/// The identity keypair is loaded from secure storage and only generated when absent, so
+/// re-publishing on a later login keeps the account's identity stable.
+pub(crate) fn generate_and_persist_key_bundle(
+    one_time_count: usize,
+) -> Result<guardyn_crypto::x3dh::X3DHKeyBundle, String> {
+    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+
+    let identity_keypair = match store.identity_keypair.as_ref() {
+        Some(data) => {
+            let private_bytes = hex::decode(&data.private_key)
+                .map_err(|e| format!("Invalid stored identity private key: {}", e))?;
+            guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
+                .map_err(|e| format!("Failed to restore identity keypair: {}", e))?
+        }
+        None => {
+            let keypair = guardyn_crypto::x3dh::IdentityKeyPair::generate()
+                .map_err(|e| format!("Failed to generate identity keys: {}", e))?;
+            let data = IdentityKeyData {
+                public_key: hex::encode(keypair.public_bytes()),
+                private_key: hex::encode(keypair.private_key_bytes()),
+            };
+            store.identity_keypair = Some(data.clone());
+            persist_identity_keypair(&data)?;
+            keypair
+        }
+    };
+
+    let key_id = store
+        .signed_prekey
+        .as_ref()
+        .map(|p| p.key_id + 1)
+        .unwrap_or(1);
+    let (bundle, signed_prekey_data, one_time_data) =
+        build_key_material(&identity_keypair, key_id, one_time_count)?;
+
+    // Persist before returning. A bundle that reaches the server while its private halves are
+    // still only in memory is exactly the unanswerable state this step exists to remove.
+    store.signed_prekey = Some(signed_prekey_data.clone());
+    store.one_time_prekeys = one_time_data.clone();
+    persist_signed_prekey(&signed_prekey_data)?;
+    persist_one_time_prekeys(&one_time_data)?;
+
+    tracing::info!(
+        "Key bundle generated and persisted: signed prekey id {}, {} one-time prekeys",
+        key_id,
+        one_time_data.len()
+    );
+
+    Ok(bundle)
+}
 
 /// Generate a complete key bundle for E2EE
 #[tauri::command]
@@ -1020,6 +1189,119 @@ mod tests {
 
         // Both should derive the same shared secret
         assert_eq!(alice_secret, bob_secret);
+    }
+
+    /// The property PR-79 exists to establish: every private half of a published bundle is
+    /// still on the device, and restoring from it reproduces the exact key that was published.
+    ///
+    /// Before this step, `commands::auth::generate_key_bundle` called
+    /// `X3DHProtocol::generate_key_bundle()`, which returns only `export_bundle()` and drops
+    /// the material - so the published pre-keys had no private half anywhere, and the
+    /// published *identity* key was not even the one the device held.
+    #[test]
+    fn test_published_bundle_is_backed_by_retained_private_keys() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (bundle, signed, one_time) = build_key_material(&identity, 1, 3).unwrap();
+
+        assert_eq!(
+            bundle.identity_key,
+            identity.public_bytes(),
+            "the published identity key must be the device's own"
+        );
+
+        // Signed pre-key: restore from what was stored, and check it is the published key.
+        assert!(
+            !signed.private_key.is_empty(),
+            "signed prekey secret dropped"
+        );
+        let secret_bytes: [u8; 32] = hex::decode(&signed.private_key)
+            .unwrap()
+            .try_into()
+            .expect("32-byte secret");
+        let restored = guardyn_crypto::x3dh::SignedPreKey::from_secret_bytes(
+            signed.key_id,
+            secret_bytes,
+            hex::decode(&signed.signature).unwrap(),
+            0,
+        );
+        assert_eq!(
+            restored.public_bytes(),
+            bundle.signed_pre_key,
+            "the retained secret must reproduce the published signed pre-key"
+        );
+
+        // One-time pre-keys: same property, and ids must match their published index, because
+        // `common.KeyBundle` carries no ids and the initiator reports the index it used.
+        assert_eq!(one_time.len(), 3);
+        assert_eq!(bundle.one_time_pre_keys.len(), 3);
+        for (index, stored) in one_time.iter().enumerate() {
+            assert!(
+                !stored.private_key.is_empty(),
+                "one-time prekey {index} secret dropped"
+            );
+            assert_eq!(stored.key_id, index as u32, "id must equal published index");
+
+            let bytes: [u8; 32] = hex::decode(&stored.private_key)
+                .unwrap()
+                .try_into()
+                .expect("32-byte secret");
+            let restored =
+                guardyn_crypto::x3dh::OneTimePreKey::from_secret_bytes(stored.key_id, bytes);
+            assert_eq!(
+                restored.public_bytes(),
+                bundle.one_time_pre_keys[index].public_key,
+                "retained secret must reproduce published one-time prekey {index}"
+            );
+        }
+    }
+
+    /// `PreKeyData` must reach the keychain with its secret and the frontend without it. The
+    /// two destinations share no serde impl any more, and this pins that: the public view has
+    /// no field a secret could travel in.
+    #[test]
+    fn test_the_public_prekey_view_carries_no_secret() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (_, signed, _) = build_key_material(&identity, 1, 1).unwrap();
+        assert!(
+            !signed.private_key.is_empty(),
+            "storage view keeps the secret"
+        );
+
+        let rendered = serde_json::to_string(&PublicPreKeyData::from(&signed)).unwrap();
+
+        assert!(
+            !rendered.contains(&signed.private_key),
+            "the secret reached the frontend view: {rendered}"
+        );
+        assert!(
+            !rendered.contains("private"),
+            "no secret-shaped field: {rendered}"
+        );
+        assert!(
+            rendered.contains(&signed.public_key),
+            "public key must survive"
+        );
+
+        // The storage view must still round-trip the secret, or persistence silently breaks.
+        let stored = serde_json::to_string(&signed).unwrap();
+        let back: PreKeyData = serde_json::from_str(&stored).unwrap();
+        assert_eq!(back.private_key, signed.private_key);
+    }
+
+    /// A published pool the credential manager cannot hold is worse than a small one: the keys
+    /// are advertised and unanswerable. Windows caps a credential blob at 2560 bytes.
+    #[test]
+    fn test_published_prekey_pool_fits_a_windows_credential() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (_, _, one_time) =
+            build_key_material(&identity, 1, published_one_time_prekey_count()).unwrap();
+
+        let blob = serde_json::to_string(&one_time).unwrap();
+        assert!(
+            blob.len() < 2560,
+            "retained one-time prekey pool is {} bytes, over the Windows credential cap",
+            blob.len()
+        );
     }
 
     #[test]

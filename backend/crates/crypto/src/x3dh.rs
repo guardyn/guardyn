@@ -174,6 +174,34 @@ impl SignedPreKey {
     pub fn ratchet_secret(&self) -> StaticSecret {
         self.secret.clone()
     }
+
+    /// Rebuild a signed pre-key from a secret held in client storage.
+    ///
+    /// A client that publishes a bundle must be able to answer an X3DH run against it later,
+    /// which means restoring the exact key it published - not generating a new one under the
+    /// same `key_id`. Regenerating produces a fresh random secret, so the responder derives a
+    /// different shared secret and every message fails to decrypt with no signal about why.
+    ///
+    /// The signature is supplied rather than recomputed: it was made over this public key by
+    /// the identity key at publication time, and the peer verifies against the copy the server
+    /// serves. Re-signing here would work only while the identity key is unchanged and would
+    /// hide the case where it is not.
+    pub fn from_secret_bytes(
+        key_id: u32,
+        secret: [u8; 32],
+        signature: Vec<u8>,
+        timestamp: i64,
+    ) -> Self {
+        let secret = StaticSecret::from(secret);
+        let public = X25519PublicKey::from(&secret);
+        Self {
+            key_id,
+            public,
+            secret,
+            signature,
+            timestamp,
+        }
+    }
 }
 
 /// One-time pre-key (X25519)
@@ -206,6 +234,35 @@ impl OneTimePreKey {
     pub fn dh(&self, other_public: &X25519PublicKey) -> Vec<u8> {
         let shared = self.secret.diffie_hellman(other_public);
         shared.as_bytes().to_vec()
+    }
+
+    /// The X25519 secret backing this pre-key, for a client that must persist it.
+    ///
+    /// One-time pre-keys are published and then answered against much later - after an app
+    /// restart, on a device that has forgotten everything not written down. Unlike `dh`, which
+    /// serves a live key, this exists so the key can outlive the process that made it.
+    ///
+    /// Taking a secret out of its struct is the thing this module otherwise refuses to do, so:
+    /// do not use it to re-implement `dh`, and never log or serialize the returned value in
+    /// the clear. Its one legitimate destination is an OS keychain.
+    pub fn secret(&self) -> StaticSecret {
+        self.secret.clone()
+    }
+
+    /// Rebuild a one-time pre-key from a secret held in client storage.
+    ///
+    /// See [`SignedPreKey::from_secret_bytes`] for why restoring beats regenerating. The `key_id` is
+    /// load-bearing in a way it is not elsewhere: `common.KeyBundle` carries no key ids, so an
+    /// initiator reports the id as the index the key occupied in the published array, and DH4
+    /// only matches if this key is the one that sat at that index.
+    pub fn from_secret_bytes(key_id: u32, secret: [u8; 32]) -> Self {
+        let secret = StaticSecret::from(secret);
+        let public = X25519PublicKey::from(&secret);
+        Self {
+            key_id,
+            public,
+            secret,
+        }
     }
 }
 
@@ -818,5 +875,108 @@ mod tests {
         // Too long
         let result = IdentityKeyPair::from_private_bytes(&[0u8; 64]);
         assert!(result.is_err());
+    }
+
+    /// A restored pre-key must be indistinguishable from the original, not merely
+    /// well-formed. `client-desktop` used to "restore" by regenerating under the same
+    /// `key_id`, which produced a fresh random secret - the public halves differed, so the
+    /// responder derived a different shared secret and every message failed to decrypt with
+    /// no signal about why. Asserting on the DH output is what catches that; asserting the
+    /// key merely exists does not.
+    #[test]
+    fn test_restored_signed_pre_key_agrees_with_the_original() {
+        let identity = IdentityKeyPair::generate().expect("identity");
+        let original = SignedPreKey::generate(7, &identity).expect("signed pre-key");
+        let peer = OneTimePreKey::generate(0);
+
+        let restored = SignedPreKey::from_secret_bytes(
+            original.key_id,
+            original.ratchet_secret().to_bytes(),
+            original.signature.clone(),
+            original.timestamp,
+        );
+
+        assert_eq!(restored.key_id, original.key_id);
+        assert_eq!(restored.public_bytes(), original.public_bytes());
+        assert_eq!(restored.signature, original.signature);
+        assert_eq!(restored.dh(&peer.public), original.dh(&peer.public));
+    }
+
+    #[test]
+    fn test_restored_one_time_pre_key_agrees_with_the_original() {
+        let original = OneTimePreKey::generate(3);
+        let peer = OneTimePreKey::generate(0);
+
+        let restored =
+            OneTimePreKey::from_secret_bytes(original.key_id, original.secret().to_bytes());
+
+        assert_eq!(restored.key_id, original.key_id);
+        assert_eq!(restored.public_bytes(), original.public_bytes());
+        assert_eq!(restored.dh(&peer.public), original.dh(&peer.public));
+    }
+
+    /// The failure mode the restore constructors exist to prevent, asserted directly: a key
+    /// regenerated under the same id is a different key.
+    #[test]
+    fn test_regenerating_under_the_same_key_id_yields_a_different_key() {
+        let identity = IdentityKeyPair::generate().expect("identity");
+        let original = SignedPreKey::generate(7, &identity).expect("signed pre-key");
+        let regenerated = SignedPreKey::generate(7, &identity).expect("signed pre-key");
+
+        assert_eq!(regenerated.key_id, original.key_id, "same id");
+        assert_ne!(
+            regenerated.public_bytes(),
+            original.public_bytes(),
+            "a regenerated pre-key must not be mistaken for the published one"
+        );
+    }
+
+    /// End to end: a responder that restores its published material derives the same secret
+    /// the initiator did. This is the property PR-80 depends on.
+    #[test]
+    fn test_responder_restored_from_storage_agrees_with_initiator() {
+        let bob_identity = IdentityKeyPair::generate().expect("bob identity");
+        let bob_spk = SignedPreKey::generate(1, &bob_identity).expect("bob spk");
+        let bob_otk = OneTimePreKey::generate(0);
+
+        let bundle = X3DHKeyBundle {
+            identity_key: bob_identity.public_bytes(),
+            signed_pre_key: bob_spk.public_bytes(),
+            signed_pre_key_id: bob_spk.key_id,
+            signed_pre_key_signature: bob_spk.signature.clone(),
+            one_time_pre_keys: vec![OneTimePreKeyPublic {
+                key_id: bob_otk.key_id,
+                public_key: bob_otk.public_bytes(),
+            }],
+        };
+
+        let alice_identity = IdentityKeyPair::generate().expect("alice identity");
+        let (alice_secret, alice_ephemeral) =
+            X3DHProtocol::initiate_key_agreement(&alice_identity, &bundle, true).expect("initiate");
+
+        // Bob comes back after a restart holding only what he persisted.
+        let restored = X3DHKeyMaterial {
+            identity_key: bob_identity,
+            signed_pre_key: SignedPreKey::from_secret_bytes(
+                bob_spk.key_id,
+                bob_spk.ratchet_secret().to_bytes(),
+                bob_spk.signature.clone(),
+                bob_spk.timestamp,
+            ),
+            one_time_pre_keys: vec![OneTimePreKey::from_secret_bytes(
+                bob_otk.key_id,
+                bob_otk.secret().to_bytes(),
+            )],
+        };
+
+        let bob_secret = X3DHProtocol::respond_key_agreement(
+            &restored,
+            &alice_identity.public_bytes(),
+            alice_ephemeral.as_bytes(),
+            Some(bob_otk.key_id),
+        )
+        .expect("respond");
+
+        assert_eq!(alice_secret, bob_secret, "both ends must derive one secret");
     }
 }
