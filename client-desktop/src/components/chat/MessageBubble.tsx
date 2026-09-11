@@ -22,6 +22,12 @@ export interface MessageReaction {
 export interface MessageBubbleProps {
   /** Message content */
   content: string;
+  /**
+   * Set when [content] is the cannot-decrypt placeholder rather than anything the sender
+   * wrote. Keyed off rather than string-matching the placeholder, so a user who types those
+   * words is still rendered as having written them.
+   */
+  undecryptable?: boolean;
   /** Message timestamp */
   timestamp: Date | string;
   /** Whether this message was sent by the current user */
@@ -207,7 +213,35 @@ export const MessageBubble: Component<MessageBubbleProps> = (props) => {
 
           {/* Text content */}
           <Show when={props.content.trim()}>
-            <p class="whitespace-pre-wrap break-words">{props.content}</p>
+            <Show
+              when={props.undecryptable}
+              fallback={
+                <p class="whitespace-pre-wrap break-words">{props.content}</p>
+              }
+            >
+              {/* Styled apart from real content on purpose: the placeholder must not be
+                  mistakable for something the sender wrote. */}
+              <p
+                class="whitespace-pre-wrap break-words italic opacity-70 flex items-center gap-1"
+                data-undecryptable="true"
+              >
+                <svg
+                  class="w-4 h-4 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                  />
+                </svg>
+                {props.content}
+              </p>
+            </Show>
           </Show>
 
           {/* Timestamp and read status */}

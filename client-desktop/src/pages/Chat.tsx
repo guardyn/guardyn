@@ -8,6 +8,7 @@ import { ForwardModal, MessageInput, MessageStatusIndicator, QuotedMessage, Reac
 import { TypingIndicator } from '../components/shared';
 import { CallAudioService } from '../services/callAudioService';
 import { encryptionManager } from '../services/encryption';
+import { UNDECRYPTABLE_PLACEHOLDER } from '../lib/undecryptable';
 import {
   addMessage,
   addTypingUser,
@@ -137,12 +138,35 @@ const Chat: Component<ChatPageProps> = () => {
           // For 1-to-1 chats, use conversation name as sender name
           const senderDisplayName = conv?.name || 'User';
 
+          // Decrypt, or show that we could not. `data.content` went straight into the store
+          // before, so ciphertext was rendered as the message text (#232).
+          let content = UNDECRYPTABLE_PLACEHOLDER;
+          let undecryptable = true;
+          try {
+            const self = selfUserId();
+            if (!self) {
+              throw new Error('no local user id; cannot build the message associated data');
+            }
+            content = await encryptionManager.decryptMessage(
+              data.sender_id,
+              { ciphertext: data.content, nonce: '', header: '' },
+              self,
+            );
+            undecryptable = false;
+          } catch (err) {
+            // Expected until session establishment lands: there is no session to decrypt with,
+            // so every inbound message is undecryptable. Showing the placeholder is the honest
+            // result, and is what the user would see anyway for a genuinely broken message.
+            console.warn('[Chat] Could not decrypt message:', err);
+          }
+
           addMessage({
             id: data.message_id || crypto.randomUUID(),
             conversationId: convId,
             senderId: data.sender_id || 'other',
             senderName: senderDisplayName,
-            content: data.content,
+            content,
+            undecryptable,
             timestamp: typeof data.timestamp === 'string' ? new Date(data.timestamp).getTime() : (data.timestamp || Date.now()),
             status: 'delivered',
           });
@@ -196,6 +220,7 @@ const Chat: Component<ChatPageProps> = () => {
         id: string;
         sender_id: string;
         content: string;
+        undecryptable: boolean;
         timestamp: string;
       }>>('get_messages', { conversationId: id });
 
@@ -211,6 +236,7 @@ const Chat: Component<ChatPageProps> = () => {
           senderId: msg.sender_id,
           senderName: msg.sender_id === 'self' ? 'You' : partnerName,
           content: msg.content,
+          undecryptable: msg.undecryptable,
           timestamp: new Date(msg.timestamp).getTime(),
           status: 'delivered',
         });
@@ -629,7 +655,35 @@ const Chat: Component<ChatPageProps> = () => {
                           {message.senderName}
                         </p>
                       </Show>
-                      <p>{message.content}</p>
+                      {/* An undecryptable message is styled apart from real content on
+                          purpose: the placeholder must not be mistakable for something the
+                          sender wrote. Keyed off the flag, not the text, so a user who types
+                          those words is still rendered as having written them. */}
+                      <Show
+                        when={message.undecryptable}
+                        fallback={<p>{message.content}</p>}
+                      >
+                        <p
+                          class="italic opacity-70 flex items-center gap-1"
+                          data-undecryptable="true"
+                        >
+                          <svg
+                            class="w-4 h-4 shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                            />
+                          </svg>
+                          {message.content}
+                        </p>
+                      </Show>
                       <div class="flex items-center justify-end gap-1 mt-1">
                         <p class="text-xs opacity-70">
                           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

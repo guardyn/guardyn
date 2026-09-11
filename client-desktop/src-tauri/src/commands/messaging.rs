@@ -32,6 +32,9 @@ pub struct Message {
     pub conversation_id: String,
     pub sender_id: String,
     pub content: String,
+    /// Set when `content` could not be decrypted and is the placeholder rather than anything
+    /// the sender wrote. The UI keys off this rather than matching the placeholder text.
+    pub undecryptable: bool,
     pub timestamp: i64,
     pub status: MessageStatus,
     pub reply_to: Option<String>,
@@ -116,7 +119,9 @@ pub async fn send_message(
                 id: result.message_id,
                 conversation_id: request.conversation_id,
                 sender_id: self_user_id,
+                // Our own outgoing text, never a decryption result.
                 content: request.content,
+                undecryptable: false,
                 timestamp: result.server_timestamp,
                 status: match result.delivery_status {
                     0 => MessageStatus::Sending,
@@ -198,15 +203,22 @@ pub async fn get_messages(
             let result: Vec<Message> = messages
                 .into_iter()
                 .map(|m| {
-                    // Decrypt message content
-                    // In a real implementation, we would use Double Ratchet session
-                    let content = String::from_utf8_lossy(&m.encrypted_content).to_string();
+                    // Show that we could not decrypt, rather than showing what we could not
+                    // decrypt. This was `String::from_utf8_lossy(&m.encrypted_content)`, which
+                    // cannot fail - so ciphertext rendered as replacement characters instead of
+                    // as an error, and anything that happened to be valid UTF-8 rendered as the
+                    // message (#232).
+                    //
+                    // Every message is undecryptable today, because nothing on this client
+                    // establishes a session yet (PR-79..PR-81). Saying so is the honest result.
+                    let content = crate::commands::crypto::UNDECRYPTABLE_PLACEHOLDER.to_string();
 
                     Message {
                         id: m.message_id,
                         conversation_id: conversation_id.clone(),
                         sender_id: m.sender_user_id,
                         content,
+                        undecryptable: true,
                         timestamp: m.server_timestamp,
                         status: match m.delivery_status {
                             0 => MessageStatus::Sending,

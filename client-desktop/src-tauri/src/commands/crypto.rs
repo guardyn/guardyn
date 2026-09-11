@@ -633,6 +633,14 @@ fn message_associated_data(sender_user_id: &str, recipient_user_id: &str) -> Vec
 /// byte-for-byte, so an unencrypted send is plaintext at rest, not merely plaintext in flight.
 pub const ENCRYPTION_UNAVAILABLE: &str = "encryption unavailable";
 
+/// Shown in place of content that could not be decrypted.
+///
+/// Kept identical to `client-desktop/src/lib/undecryptable.ts` and to
+/// `client-mobile/lib/core/crypto/undecryptable_message.dart`, so the clients say the same
+/// thing. Callers set a flag alongside it; the UI keys off the flag rather than matching this
+/// string, so a user who types these words is still rendered as having written them.
+pub const UNDECRYPTABLE_PLACEHOLDER: &str = "Message cannot be decrypted";
+
 /// Encrypt one message for a peer and return the serialized ciphertext.
 ///
 /// This is the single encryption entry point for the send path. `encrypt_message` exposes it
