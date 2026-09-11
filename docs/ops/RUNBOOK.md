@@ -136,6 +136,21 @@ encrypted the client's plaintext server-side and decrypted on the way back out, 
 unsuffixed handler relayed ciphertext untouched. The fix is to delete the twin, never to rename
 it or to exempt the path.
 
+**If `E2EE-FLAG` fails**, something has reintroduced a switch that can turn encryption off —
+`GUARDYN_E2EE_ENABLED` or `GUARDYN_MLS_ENABLED`, in code or in a deployment file. **I-2** is
+that encryption cannot be disabled, so there is no correct value for such a variable and no
+environment that may set one. Delete it; do not set it to `"true"`.
+
+The check covers deployment files as well as Rust, and that is the point. Between PR-32b and
+PR-32c the flags were gone from the code but still present in Compose and both k8s overlays —
+inert, yet reading exactly like an operational control. The prod overlay set
+`GUARDYN_E2EE_ENABLED: "true"`, which invited the conclusion that production encryption
+depended on it; #163 reasoned from precisely that and concluded desktop plaintext was safe at
+rest. It was not. A file that looks like a kill switch is treated as one.
+
+If you need to understand what the server does with message payloads, the answer is in
+[ADR-0010](../adr/ADR-0010-pure-relay-server.md): nothing. It relays opaque bytes.
+
 **If `ZK-PII` fails**, a log macro is being handed a raw IP address, email or phone number.
 All three are PII under `AGENTS.md` §4, and **I-1** forbids PII in any log, span or metric.
 Do not silence it by renaming the field — the address is the problem, not the label. For a
