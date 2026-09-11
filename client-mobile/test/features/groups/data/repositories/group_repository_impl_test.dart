@@ -243,96 +243,62 @@ void main() {
   });
 
   group('sendGroupMessage', () {
-    test('returns GroupMessage when datasource call is successful', () async {
-      // Arrange
-      setUpAuthenticatedUser();
-      when(() => mockDatasource.sendGroupMessage(
-            accessToken: tAccessToken,
-            groupId: tGroupId,
-            textContent: 'Hello group!',
-            currentUserId: tUserId,
-          )).thenAnswer((_) async => tMessageModel);
+    // These replace four tests that assumed the send worked. The first of them asserted
+    //
+    //     expect(message.textContent, 'Hello group!');
+    //
+    // after stubbing the datasource to echo it back - so it pinned the plaintext round-trip
+    // rather than catching it, exactly as the one-to-one test did before #226. A test that
+    // requires the defective behaviour has to be corrected, not kept.
+    //
+    // The authentication cases went with them: the repository now refuses before it looks at
+    // credentials, because whether the user is signed in has no bearing on the fact that this
+    // client cannot encrypt a group message.
 
-      // Act
+    test('refuses with CryptoFailure and sends nothing', () async {
+      setUpAuthenticatedUser();
+
       final result = await repository.sendGroupMessage(
         groupId: tGroupId,
         textContent: 'Hello group!',
       );
 
-      // Assert
-      expect(result.isRight(), true);
+      expect(result.isLeft(), true);
       result.fold(
-        (failure) => fail('Expected Right but got Left'),
-        (message) {
-          expect(message.textContent, 'Hello group!');
-          expect(message.groupId, tGroupId);
+        (failure) {
+          expect(failure, isA<CryptoFailure>());
+          expect(failure.message, contains('unavailable'));
         },
+        (_) => fail('a group message must not be sent while it cannot be encrypted'),
       );
     });
 
-    test('returns AuthFailure when not authenticated', () async {
-      // Arrange
+    test('refuses even when authenticated and the transport is healthy', () async {
+      // The point of fail-closed: nothing about the environment being fine makes an
+      // unencrypted send acceptable.
+      setUpAuthenticatedUser();
+
+      final result = await repository.sendGroupMessage(
+        groupId: tGroupId,
+        textContent: 'Hello group!',
+      );
+
+      expect(result.isLeft(), true);
+      verifyZeroInteractions(mockDatasource);
+    });
+
+    test('refuses when unauthenticated too', () async {
       setUpUnauthenticatedUser();
 
-      // Act
       final result = await repository.sendGroupMessage(
         groupId: tGroupId,
         textContent: 'Hello!',
       );
 
-      // Assert
       expect(result.isLeft(), true);
-      result.fold(
-        (failure) => expect(failure, isA<AuthFailure>()),
-        (_) => fail('Expected Left but got Right'),
-      );
-    });
-
-    test('returns AuthFailure when user ID is null', () async {
-      // Arrange
-      when(() => mockSecureStorage.getAccessToken())
-          .thenAnswer((_) async => tAccessToken);
-      when(() => mockSecureStorage.getUserId()).thenAnswer((_) async => null);
-
-      // Act
-      final result = await repository.sendGroupMessage(
-        groupId: tGroupId,
-        textContent: 'Hello!',
-      );
-
-      // Assert
-      expect(result.isLeft(), true);
-      result.fold(
-        (failure) => expect(failure, isA<AuthFailure>()),
-        (_) => fail('Expected Left but got Right'),
-      );
-    });
-
-    test('returns ServerFailure when GrpcError occurs', () async {
-      // Arrange
-      setUpAuthenticatedUser();
-      when(() => mockDatasource.sendGroupMessage(
-            accessToken: tAccessToken,
-            groupId: tGroupId,
-            textContent: 'Hello!',
-            currentUserId: tUserId,
-          )).thenThrow(GrpcError.unavailable('Server unavailable'));
-
-      // Act
-      final result = await repository.sendGroupMessage(
-        groupId: tGroupId,
-        textContent: 'Hello!',
-      );
-
-      // Assert
-      expect(result.isLeft(), true);
-      result.fold(
-        (failure) => expect(failure, isA<ServerFailure>()),
-        (_) => fail('Expected Left but got Right'),
-      );
+      verifyZeroInteractions(mockDatasource);
     });
   });
-
   group('getGroupMessages', () {
     test('returns list of messages when datasource call is successful',
         () async {
