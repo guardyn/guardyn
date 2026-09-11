@@ -153,6 +153,13 @@ steps:
   # no callers and NewConversationModal carries a TODO where the fetch belongs.
   - {id: PR-80b, issue: 250, phase: 3, type: feat, status: done, title: "client-desktop - wire get_key_bundle to the frontend"}
   - {id: PR-81, issue: 252, phase: 3, type: fix, status: done, title: "client-desktop - restore the ratchet store from persisted state"}
+  # The flip. Everything needed to hold a session now exists; two wires remain unconnected.
+  - {id: PR-81b, issue: 256, phase: 3, type: feat, status: done, title: "client-desktop - encrypt on send"}
+  - {id: PR-81c, issue: 258, phase: 3, type: feat, status: todo, title: "client-desktop - decrypt on receive"}
+  # Masked while every one-time key id on the wire is 0, which is byte-order invariant. Must
+  # land before PR-93 makes other ids reachable.
+  - {id: PR-95, issue: 255, phase: 3, type: security, status: todo, title: "X3DHPrekeyMessage one-time key id endianness differs between Rust and Dart"}
+  - {id: PR-96, issue: 257, phase: 4, type: fix, status: todo, title: "kube-bootstrap races the cert-manager webhook CA"}
   # Deferred deliberately, each with a stated reason in its step above.
   - {id: PR-82, issue: 211, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
   - {id: PR-83, issue: null, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}

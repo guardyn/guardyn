@@ -64,6 +64,35 @@ static SESSION_STORE: LazyLock<Mutex<SessionStore>> = LazyLock::new(|| {
 static RATCHET_STORE: LazyLock<Mutex<HashMap<String, guardyn_crypto::DoubleRatchet>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// The X3DH prekey message an initiator owes its peer, keyed by peer id.
+///
+/// A responder cannot complete X3DH without the initiator's identity key, ephemeral key and the
+/// id of the one-time pre-key it consumed. Those travel once, on the first message of a
+/// session, in `SendMessageRequest.x3dh_prekey`.
+///
+/// In memory only, and deliberately so: it is derivable from a session that already exists, and
+/// it is owed for exactly as long as it takes one message to send. If the process ends first
+/// the peer never received anything to answer, so both sides start again from nothing.
+static PENDING_PREKEY: LazyLock<Mutex<HashMap<String, String>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// The prekey message owed to `peer_id`, if any. Does not consume it - see
+/// [`clear_pending_prekey`].
+pub(crate) fn peek_pending_prekey(peer_id: &str) -> Option<String> {
+    PENDING_PREKEY.lock().ok()?.get(peer_id).cloned()
+}
+
+/// Drop the prekey message owed to `peer_id`, once a message carrying it has actually been
+/// accepted by the server.
+///
+/// Clearing on send rather than on attach is what makes a failed send retryable. Re-sending it
+/// is harmless: a responder that already has a session ignores the prekey message.
+pub(crate) fn clear_pending_prekey(peer_id: &str) {
+    if let Ok(mut pending) = PENDING_PREKEY.lock() {
+        pending.remove(peer_id);
+    }
+}
+
 /// Load keys from secure storage into the session store
 fn load_from_secure_storage(store: &mut SessionStore) -> Result<(), String> {
     let storage = SecureStorage::default_instance();
@@ -700,12 +729,24 @@ pub async fn perform_x3dh(
         use_one_time_key,
     ).map_err(|e| format!("X3DH key agreement failed: {}", e))?;
 
+    // Park what the peer will need to answer. It rides the first message of this session.
+    let used_prekey_id = if use_one_time_key { Some(0) } else { None };
+    let prekey_message = guardyn_crypto::x3dh::X3DHPrekeyMessage::new(
+        identity_keypair.public_bytes(),
+        ephemeral_public.as_bytes().to_vec(),
+        used_prekey_id,
+    );
+    PENDING_PREKEY
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(recipient_id.clone(), prekey_message.to_base64());
+
     tracing::info!("X3DH key agreement successful with {}", recipient_id);
 
     Ok(X3DHResult {
         shared_secret: hex::encode(&shared_secret),
         ephemeral_key: hex::encode(ephemeral_public.as_bytes()),
-        used_prekey_id: if use_one_time_key { Some(0) } else { None },
+        used_prekey_id,
     })
 }
 
@@ -1453,6 +1494,28 @@ mod tests {
                 state,
             },
         )
+    }
+
+    /// What `perform_x3dh` parks must survive the trip and parse back. `x3dh_prekey` is an
+    /// opaque base64 string on the wire that no type checks, so the format is worth pinning at
+    /// the end that produces it - the end that consumes it arrives with #258.
+    #[test]
+    fn test_the_parked_prekey_message_round_trips() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let ephemeral = guardyn_crypto::x3dh::OneTimePreKey::generate(0);
+
+        let parked = guardyn_crypto::x3dh::X3DHPrekeyMessage::new(
+            identity.public_bytes(),
+            ephemeral.public_bytes(),
+            Some(0),
+        )
+        .to_base64();
+
+        let parsed = guardyn_crypto::x3dh::X3DHPrekeyMessage::from_base64(&parked).unwrap();
+
+        assert_eq!(parsed.sender_identity_key, identity.public_bytes());
+        assert_eq!(parsed.ephemeral_key, ephemeral.public_bytes());
+        assert_eq!(parsed.used_one_time_key_id, Some(0));
     }
 
     /// The restart round-trip. A session established before the process ended must decrypt the

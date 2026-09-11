@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 956
+tokens: 1050
 supersedes: []
 ---
 
@@ -19,15 +19,15 @@ supersedes: []
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 59 | 67 | `█████████░` |
-| 4 | 0 | 12 | `░░░░░░░░░░` |
-| **all** | **85** | **105** | |
+| 3 | 60 | 70 | `█████████░` |
+| 4 | 0 | 13 | `░░░░░░░░░░` |
+| **all** | **86** | **109** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 20 of 105
+- **Open steps:** 23 of 109
 
 ## Gates
 
@@ -59,6 +59,8 @@ supersedes: []
 | PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
 | PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
 | PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
+| PR-81c | 3 | [#258](https://github.com/guardyn/guardyn/issues/258) | client-desktop - decrypt on receive |
+| PR-95 | 3 | [#255](https://github.com/guardyn/guardyn/issues/255) | X3DHPrekeyMessage one-time key id endianness differs between Rust and Dart |
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | — | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
@@ -71,6 +73,7 @@ supersedes: []
 | PR-42 | 4 | [#53](https://github.com/guardyn/guardyn/issues/53) | Fix the inverted secrets gitignore |
 | PR-43 | 4 | [#54](https://github.com/guardyn/guardyn/issues/54) | Wire the compose observability stack |
 | PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
+| PR-96 | 4 | [#257](https://github.com/guardyn/guardyn/issues/257) | kube-bootstrap races the cert-manager webhook CA |
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
 | PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |
 | PR-94 | 4 | [#253](https://github.com/guardyn/guardyn/issues/253) | Partition client-desktop SecureStorage per account |

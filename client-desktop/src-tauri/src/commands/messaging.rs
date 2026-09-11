@@ -102,6 +102,11 @@ pub async fn send_message(
                 format!("Failed to send message: {}", e)
             })?;
 
+    // The first message of a session carries what the peer needs to answer it: our identity
+    // key, the ephemeral key X3DH ran with, and the id of the one-time pre-key we consumed.
+    // Without it the recipient holds ciphertext it can never derive a key for.
+    let x3dh_prekey = crate::commands::crypto::peek_pending_prekey(&request.recipient_id);
+
     // Create outgoing message - use recipient_id (user ID), not conversation_id
     let outgoing = OutgoingMessage {
         recipient_user_id: request.recipient_id.clone(),
@@ -109,12 +114,16 @@ pub async fn send_message(
         message_type: 0, // TEXT message
         client_message_id: uuid::Uuid::new_v4().to_string(),
         media_id: None,
-        x3dh_prekey: None,
+        x3dh_prekey,
     };
 
     // Send via gRPC
     match state.messaging().send_message(outgoing).await {
         Ok(result) => {
+            // Cleared only now. A send that failed leaves it parked, so the retry still carries
+            // it; a peer that already has a session ignores a repeat (#258).
+            crate::commands::crypto::clear_pending_prekey(&request.recipient_id);
+
             let message = Message {
                 id: result.message_id,
                 conversation_id: request.conversation_id,
