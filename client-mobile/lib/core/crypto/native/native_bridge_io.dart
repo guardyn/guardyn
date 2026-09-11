@@ -10,22 +10,36 @@ import '../native_crypto_bridge.dart';
 import 'dart_crypto_bridge.dart';
 import 'rust_crypto_bridge.dart';
 
-/// Create crypto bridge for IO platforms
+/// Create the crypto bridge for IO platforms.
 ///
-/// Tries native Rust implementation first, falls back to Dart if not available.
-CryptoBridge? createNativeCryptoBridge() {
-  // Try native Rust implementation first
+/// Returns the native Rust implementation, or throws [UnsupportedError].
+///
+/// This used to fall back to [DartCryptoBridge] whenever the FFI failed to load, announcing it
+/// with a `debugPrint` - which is compiled out of release builds. So any failure to load the
+/// library, from a missing `.so` to an ABI mismatch, silently demoted the entire application to
+/// an implementation that describes itself as *"for development purposes only"*, with nothing
+/// in a release build to say so. There is no `kReleaseMode` check anywhere in the app to catch
+/// it either.
+///
+/// A downgrade the user cannot observe is worse than a crash: a crash is reported, a quiet
+/// downgrade ships. So the fallback now requires
+/// [CryptoBridgeFactory.allowInsecureDartFallback] to be set explicitly, which only the test
+/// suite does.
+CryptoBridge createNativeCryptoBridge() {
   if (NativeRustCryptoBridge.checkNativeAvailable()) {
-    debugPrint('🔐 Using native Rust crypto implementation');
     return NativeRustCryptoBridge();
   }
 
-  // Fall back to pure Dart implementation
-  debugPrint(
-    '🔐 Native Rust crypto not available, using Dart fallback. '
-    'Build native libraries for production use.',
+  if (CryptoBridgeFactory.insecureDartFallbackAllowed) {
+    debugPrint('🔐 Native crypto unavailable; using DartCryptoBridge by explicit opt-in.');
+    return DartCryptoBridge();
+  }
+
+  throw UnsupportedError(
+    'Native Rust crypto is required but not available. Ensure libguardyn_crypto_ffi is built '
+    'and bundled with the app. Refusing to fall back to the development-only Dart '
+    'implementation.',
   );
-  return DartCryptoBridge();
 }
 
 /// Check if native crypto is available

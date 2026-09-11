@@ -137,7 +137,7 @@ steps:
   - {id: PR-74, issue: 224, phase: 3, type: fix, status: done, title: "client-desktop - make the ratchet AAD symmetric"}
   - {id: PR-75, issue: 226, phase: 3, type: security, status: done, title: "client-mobile - fail closed instead of sending plaintext"}
   - {id: PR-76, issue: 229, phase: 3, type: security, status: done, title: "client-mobile - fail closed on group messaging"}
-  - {id: PR-77, issue: 230, phase: 3, type: security, status: todo, title: "client-mobile - refuse the native to Dart crypto downgrade"}
+  - {id: PR-77, issue: 230, phase: 3, type: security, status: done, title: "client-mobile - refuse the native to Dart crypto downgrade"}
   - {id: PR-78, issue: 163, phase: 3, type: security, status: todo, title: "client-desktop - encrypt on the send path"}
   - {id: PR-79, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - retain private prekey material"}
   - {id: PR-80, issue: null, phase: 3, type: feat, status: todo, title: "client-desktop - implement the X3DH responder path"}
