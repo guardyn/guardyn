@@ -102,10 +102,15 @@ export const NewConversationModal: Component<NewConversationModalProps> = (props
         await encryptionManager.initialize();
       }
 
-      // TODO: Fetch recipient's key bundle from server
-      // For now, pass to parent to handle
+      // Establish the session before the conversation opens. `establishSession` fetches the
+      // peer's published bundle itself. Doing it here rather than on first send means a peer
+      // with no usable bundle is reported now, while the user is looking at a dialog that can
+      // show the error - not as a refused send later, which reads as the message failing.
+      await encryptionManager.establishSession(user.id);
+
       props.onStartConversation(user.id, user.displayName);
-      
+
+
       // Reset state and close
       setSearchQuery('');
       setSearchResults([]);

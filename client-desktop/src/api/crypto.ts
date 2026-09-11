@@ -172,6 +172,31 @@ export async function generateKeyBundle(includePq: boolean = false): Promise<Key
 // =============================================================================
 
 /**
+ * Fetch a peer's published key bundle from auth-service.
+ *
+ * The key ids are reconstructed on the Rust side rather than received: `common.KeyBundle`
+ * carries none, so the signed pre-key is id 1 and the one-time pre-key is the array's first
+ * element at id 0 - the same convention `client-mobile` uses. Diverging would not fail here;
+ * both ends would derive a secret and only the first message would show they differ.
+ */
+export async function getKeyBundleForPeer(userId: string): Promise<KeyBundle> {
+  const result = await invoke<{
+    identity_key: string;
+    signed_prekey: string;
+    prekey_signature: string;
+    one_time_prekey?: string;
+    pq_prekey?: string;
+  }>('get_key_bundle_for_peer', { userId });
+  return {
+    identityKey: result.identity_key,
+    signedPrekey: result.signed_prekey,
+    prekeySignature: result.prekey_signature,
+    oneTimePrekey: result.one_time_prekey,
+    pqPrekey: result.pq_prekey,
+  };
+}
+
+/**
  * Perform X3DH key agreement as initiator
  * Returns shared secret for Double Ratchet initialization
  */

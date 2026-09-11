@@ -150,6 +150,7 @@ fn main() {
             commands::calls::get_call_state,
             // Crypto commands
             commands::crypto::generate_key_bundle,
+            commands::crypto::get_key_bundle_for_peer,
             commands::crypto::encrypt_message,
             commands::crypto::decrypt_message,
             commands::crypto::generate_identity_keys,
