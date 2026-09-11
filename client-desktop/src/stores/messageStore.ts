@@ -32,6 +32,12 @@ export interface Message {
   /** Number of retry attempts */
   retryCount?: number;
   reactions?: { emoji: string; count: number; hasReacted: boolean }[];
+  /**
+   * Set when the content could not be decrypted, in which case `content` is the placeholder
+   * rather than anything the sender wrote. The UI keys off this rather than matching the
+   * placeholder text, so a user who types those words is still rendered as having written them.
+   */
+  undecryptable?: boolean;
   /** Media attachment ID (from media-service) */
   mediaId?: string;
   /** Optional attachment metadata */

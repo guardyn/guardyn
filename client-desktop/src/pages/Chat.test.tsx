@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Conversation, Message } from '../types';
 
 // Create hoisted mock that can be used by vi.mock
-const { mockInvoke, mockWs, mockEncryptMessage } = vi.hoisted(() => {
+const { mockInvoke, mockWs, mockEncryptMessage, mockDecryptMessage } = vi.hoisted(() => {
   const ws = {
     connect: vi.fn(async () => {}),
     disconnect: vi.fn(),
@@ -18,15 +18,19 @@ const { mockInvoke, mockWs, mockEncryptMessage } = vi.hoisted(() => {
     onStateChange: vi.fn((cb: (state: string) => void) => {
       ws._stateCb = cb;
     }),
-    onMessage: vi.fn(),
+    onMessage: vi.fn((cb: (data: unknown) => void) => {
+      ws._messageCb = cb;
+    }),
     onTyping: vi.fn(),
     isConnected: false,
     _stateCb: undefined as ((state: string) => void) | undefined,
+    _messageCb: undefined as ((data: unknown) => void) | undefined,
   };
   return {
     mockInvoke: vi.fn(),
     mockWs: ws,
     mockEncryptMessage: vi.fn(),
+    mockDecryptMessage: vi.fn(),
   };
 });
 
@@ -52,6 +56,7 @@ vi.mock('../api/websocket', () => ({
 vi.mock('../services/encryption', () => ({
   encryptionManager: {
     encryptMessage: (...args: unknown[]) => mockEncryptMessage(...args),
+    decryptMessage: (...args: unknown[]) => mockDecryptMessage(...args),
   },
 }));
 
@@ -60,6 +65,7 @@ vi.mock('../api/websocket.mock', () => ({
   stopMockGenerator: vi.fn(),
 }));
 
+import { UNDECRYPTABLE_PLACEHOLDER } from '../lib/undecryptable';
 import { resetMessageStore } from '../stores/messageStore';
 import Chat from './Chat';
 
@@ -134,6 +140,7 @@ describe('Chat Page', () => {
     mockWs.sendMessage.mockClear();
     mockWs._stateCb = undefined;
     mockEncryptMessage.mockReset();
+    mockDecryptMessage.mockReset();
     resetMessageStore();
   });
 
@@ -296,6 +303,74 @@ describe('Chat Page', () => {
     // that used to be invoked alongside the socket.
     expect(mockInvoke).not.toHaveBeenCalledWith('send_message', expect.anything());
     expect(JSON.stringify(mockWs.sendMessage.mock.calls)).not.toContain('New message');
+  });
+
+  it('renders an inbound message as the placeholder when it cannot be decrypted', async () => {
+    // The receive path put `data.content` straight into the store, so ciphertext - or whatever
+    // else arrived - was displayed as the message text (#232).
+    setupMockInvoke(mockConversations, mockMessages, mockMessages);
+    mockDecryptMessage.mockRejectedValue(
+      new Error('No established session with peer: user-1')
+    );
+
+    renderWithRouter(() => <Chat />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Alice').closest('button')!);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    });
+
+    mockWs._messageCb?.({
+      message_id: 'msg-in-1',
+      conversation_id: 'conv-1',
+      sender_id: 'user-1',
+      sender_device_id: 'device-1',
+      recipient_id: 'user-2',
+      content: 'AQIDBAUGBwgJCgsMDQ4PEA==',
+      encrypted: true,
+      timestamp: Date.now(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(UNDECRYPTABLE_PLACEHOLDER)).toBeInTheDocument();
+    });
+
+    // The ciphertext must not appear anywhere on screen.
+    expect(screen.queryByText('AQIDBAUGBwgJCgsMDQ4PEA==')).not.toBeInTheDocument();
+  });
+
+  it('renders a decrypted inbound message as ordinary text', async () => {
+    setupMockInvoke(mockConversations, mockMessages, mockMessages);
+    mockDecryptMessage.mockResolvedValue('the real message');
+
+    renderWithRouter(() => <Chat />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Alice').closest('button')!);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    });
+
+    mockWs._messageCb?.({
+      message_id: 'msg-in-2',
+      conversation_id: 'conv-1',
+      sender_id: 'user-1',
+      sender_device_id: 'device-1',
+      recipient_id: 'user-2',
+      content: 'AQIDBAUGBwgJCgsMDQ4PEA==',
+      encrypted: true,
+      timestamp: Date.now(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('the real message')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(UNDECRYPTABLE_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
   it('refuses to send when encryption is unavailable', async () => {
