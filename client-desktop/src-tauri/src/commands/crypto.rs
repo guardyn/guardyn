@@ -578,6 +578,51 @@ pub async fn perform_x3dh(
     })
 }
 
+/// Rebuild a signed pre-key from the secret kept in secure storage.
+///
+/// The stored record is the one published to the server (PR-79), so restoring it reproduces
+/// exactly the key an initiator ran X3DH against. An empty `private_key` means the record
+/// predates PR-79 and its secret was never kept - unrecoverable rather than transient, and it
+/// must say so instead of silently regenerating.
+fn restore_signed_prekey(data: &PreKeyData) -> Result<guardyn_crypto::x3dh::SignedPreKey, String> {
+    let secret = decode_prekey_secret(&data.private_key, "signed pre-key", data.key_id)?;
+    let signature = hex::decode(&data.signature)
+        .map_err(|e| format!("Invalid stored signed pre-key signature: {}", e))?;
+
+    // The timestamp is metadata on the published bundle and plays no part in key agreement.
+    Ok(guardyn_crypto::x3dh::SignedPreKey::from_secret_bytes(
+        data.key_id,
+        secret,
+        signature,
+        0,
+    ))
+}
+
+/// Rebuild a one-time pre-key from the secret kept in secure storage.
+fn restore_one_time_prekey(
+    data: &PreKeyData,
+) -> Result<guardyn_crypto::x3dh::OneTimePreKey, String> {
+    let secret = decode_prekey_secret(&data.private_key, "one-time pre-key", data.key_id)?;
+    Ok(guardyn_crypto::x3dh::OneTimePreKey::from_secret_bytes(
+        data.key_id,
+        secret,
+    ))
+}
+
+fn decode_prekey_secret(private_key: &str, kind: &str, key_id: u32) -> Result<[u8; 32], String> {
+    if private_key.is_empty() {
+        return Err(format!(
+            "{} {} has no stored secret: it was published before the secret was retained, so no \
+             session can be answered against it. Re-publish the key bundle.",
+            kind, key_id
+        ));
+    }
+    hex::decode(private_key)
+        .map_err(|e| format!("Invalid stored {} secret: {}", kind, e))?
+        .try_into()
+        .map_err(|_| format!("Stored {} secret is not 32 bytes", kind))
+}
+
 /// Respond to X3DH key agreement as responder (Bob)
 /// This is called when receiving the first message from a new peer
 #[tauri::command]
@@ -602,15 +647,16 @@ pub async fn respond_x3dh(
     let identity_keypair = guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
         .map_err(|e| format!("Failed to reconstruct identity keypair: {}", e))?;
 
-    // Generate key material (we need the full SignedPreKey, not just public bytes)
-    // For now, regenerate signed prekey with same key_id
-    let signed_prekey = guardyn_crypto::x3dh::SignedPreKey::generate(signed_prekey_data.key_id, &identity_keypair)
-        .map_err(|e| format!("Failed to regenerate signed prekey: {}", e))?;
-
-    // Build one-time prekeys from store
-    let one_time_prekeys: Vec<guardyn_crypto::x3dh::OneTimePreKey> = (0..store.one_time_prekeys.len() as u32)
-        .map(|id| guardyn_crypto::x3dh::OneTimePreKey::generate(id))
-        .collect();
+    // Restore the published pre-keys. This used to call `SignedPreKey::generate` and
+    // `OneTimePreKey::generate` with the stored key ids, which mints fresh random secrets
+    // wearing those ids - so the secret derived here could never match the one the initiator
+    // derived, and every message failed its tag check while both sides looked healthy.
+    let signed_prekey = restore_signed_prekey(signed_prekey_data)?;
+    let one_time_prekeys = store
+        .one_time_prekeys
+        .iter()
+        .map(restore_one_time_prekey)
+        .collect::<Result<Vec<_>, String>>()?;
 
     drop(store);
 
@@ -651,10 +697,9 @@ pub async fn respond_x3dh(
 /// Initialize a Double Ratchet session with a peer
 ///
 /// The initiator (Alice) ratchets against the peer's signed pre-key, so `peer_public_key`
-/// is required and must be that key. The responder (Bob) must seed his ratchet with his own
-/// signed pre-key secret - the one whose public half the initiator used - which this command
-/// cannot reach, so the responder path is refused rather than silently producing a session
-/// that can never decrypt.
+/// is required and must be that key. The responder (Bob) seeds his ratchet with his own signed
+/// pre-key secret - the one whose public half the initiator used - restored from secure
+/// storage, so `peer_public_key` is ignored on that path.
 #[tauri::command]
 pub async fn init_session(
     peer_id: String,
@@ -673,28 +718,37 @@ pub async fn init_session(
 
     // Initialize Double Ratchet.
     // Alice derives her first root key from DH(her fresh key, Bob's signed pre-key); Bob must
-    // use the matching secret. Using init_bob for both roles leaves the two sides with
-    // different DH outputs, so nothing decrypts.
-    if !is_initiator {
-        return Err(
-            "Responder sessions are not supported by this command: Bob's ratchet must be \
-             seeded with his signed pre-key secret from key storage"
-                .to_string(),
-        );
-    }
+    // use the matching secret. Using init_bob for both roles - or init_alice for both - leaves
+    // the two sides with different DH outputs, so nothing decrypts.
+    let ratchet = if is_initiator {
+        let peer_public_key = peer_public_key.ok_or_else(|| {
+            "peer_public_key is required to initialize an initiator session".to_string()
+        })?;
+        let peer_public_bytes =
+            hex::decode(&peer_public_key).map_err(|e| format!("Invalid peer public key: {}", e))?;
+        let peer_public_bytes: [u8; 32] = peer_public_bytes
+            .try_into()
+            .map_err(|_| "Peer public key must be 32 bytes".to_string())?;
+        let peer_public = guardyn_crypto::X25519PublicKey::from(peer_public_bytes);
 
-    let peer_public_key = peer_public_key.ok_or_else(|| {
-        "peer_public_key is required to initialize an initiator session".to_string()
-    })?;
-    let peer_public_bytes =
-        hex::decode(&peer_public_key).map_err(|e| format!("Invalid peer public key: {}", e))?;
-    let peer_public_bytes: [u8; 32] = peer_public_bytes
-        .try_into()
-        .map_err(|_| "Peer public key must be 32 bytes".to_string())?;
-    let peer_public = guardyn_crypto::X25519PublicKey::from(peer_public_bytes);
+        guardyn_crypto::DoubleRatchet::init_alice(&secret_bytes, peer_public)
+            .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?
+    } else {
+        // Bob's initial ratchet key is his signed pre-key - the key whose public half the
+        // initiator ran X3DH against. This path was refused outright until PR-79 retained the
+        // secret; the refusal was right while there was nothing to seed with, because a
+        // session that can never decrypt is worse than a loud failure.
+        let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+        let signed_prekey_data = store
+            .signed_prekey
+            .as_ref()
+            .ok_or_else(|| "Signed prekey not generated".to_string())?;
+        let signed_prekey = restore_signed_prekey(signed_prekey_data)?;
+        drop(store);
 
-    let ratchet = guardyn_crypto::DoubleRatchet::init_alice(&secret_bytes, peer_public)
-        .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?;
+        guardyn_crypto::DoubleRatchet::init_bob(&secret_bytes, signed_prekey.ratchet_secret())
+            .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?
+    };
 
     // Serialize ratchet state for persistence
     let ratchet_state = ratchet.serialize();
@@ -1189,6 +1243,94 @@ mod tests {
 
         // Both should derive the same shared secret
         assert_eq!(alice_secret, bob_secret);
+    }
+
+    /// The whole responder path, end to end, over the pieces `respond_x3dh` and `init_session`
+    /// use: Bob restores the pre-keys he published from storage, completes X3DH, seeds his
+    /// ratchet from the same signed pre-key, and decrypts Alice's first message.
+    ///
+    /// This fails if the restore is replaced by a regenerate - which is exactly what
+    /// `respond_x3dh` did before this step. The shared secrets diverge, and the failure
+    /// surfaces as an AEAD tag rejection with both sides looking healthy.
+    #[test]
+    fn test_responder_restored_from_storage_decrypts_the_first_message() {
+        // Bob publishes a bundle and keeps the private halves (PR-79).
+        let bob_identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (bob_bundle, bob_signed_stored, bob_one_time_stored) =
+            build_key_material(&bob_identity, 1, 3).unwrap();
+
+        // Alice fetches the bundle and initiates.
+        let alice_identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (alice_secret, alice_ephemeral) =
+            guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
+                &alice_identity,
+                &bob_bundle,
+                true,
+            )
+            .unwrap();
+
+        // Bob comes back holding only what he persisted, and restores rather than regenerates.
+        let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial {
+            identity_key: guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(
+                &hex::decode(hex::encode(bob_identity.private_key_bytes())).unwrap(),
+            )
+            .unwrap(),
+            signed_pre_key: restore_signed_prekey(&bob_signed_stored).unwrap(),
+            one_time_pre_keys: bob_one_time_stored
+                .iter()
+                .map(|d| restore_one_time_prekey(d).unwrap())
+                .collect(),
+        };
+
+        let bob_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &alice_identity.public_bytes(),
+            alice_ephemeral.as_bytes(),
+            Some(0),
+        )
+        .unwrap();
+
+        assert_eq!(alice_secret, bob_secret, "restored responder must agree");
+
+        // And the ratchet must seed from the same signed pre-key, or nothing decrypts.
+        let bob_signed = restore_signed_prekey(&bob_signed_stored).unwrap();
+        let peer_public_bytes: [u8; 32] = bob_bundle.signed_pre_key.clone().try_into().unwrap();
+        let mut alice_ratchet = guardyn_crypto::DoubleRatchet::init_alice(
+            &alice_secret,
+            guardyn_crypto::X25519PublicKey::from(peer_public_bytes),
+        )
+        .unwrap();
+        let mut bob_ratchet =
+            guardyn_crypto::DoubleRatchet::init_bob(&bob_secret, bob_signed.ratchet_secret())
+                .unwrap();
+
+        let aad = message_associated_data("alice", "bob");
+        let encrypted = alice_ratchet.encrypt(b"first message", &aad).unwrap();
+        let decrypted = bob_ratchet.decrypt(&encrypted, &aad).unwrap();
+
+        assert_eq!(decrypted, b"first message");
+    }
+
+    /// A pre-key published before PR-79 has no stored secret. Restoring must say so, not
+    /// quietly mint a new key - the regenerated key would look fine and decrypt nothing.
+    #[test]
+    fn test_restoring_a_prekey_with_no_stored_secret_fails_loudly() {
+        let stored = PreKeyData {
+            key_id: 4,
+            public_key: "aa".repeat(32),
+            private_key: String::new(),
+            signature: String::new(),
+        };
+
+        // `expect_err` is unavailable here on purpose: `OneTimePreKey` implements no `Debug`,
+        // because a type holding key material must not be renderable into a log line.
+        match restore_one_time_prekey(&stored) {
+            Ok(_) => panic!("a pre-key with no retained secret must not be restored"),
+            Err(err) => assert!(
+                err.contains("no stored secret"),
+                "the error must name the cause: {err}"
+            ),
+        }
     }
 
     /// The property PR-79 exists to establish: every private half of a published bundle is

@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 964
+tokens: 946
 supersedes: []
 ---
 
@@ -19,15 +19,15 @@ supersedes: []
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 56 | 66 | `████████░░` |
+| 3 | 57 | 66 | `█████████░` |
 | 4 | 0 | 11 | `░░░░░░░░░░` |
-| **all** | **82** | **103** | |
+| **all** | **83** | **103** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 21 of 103
+- **Open steps:** 20 of 103
 
 ## Gates
 
@@ -59,7 +59,6 @@ supersedes: []
 | PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
 | PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
 | PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
-| PR-80 | 3 | — | client-desktop - implement the X3DH responder path |
 | PR-81 | 3 | — | client-desktop - restore the ratchet store from persisted state |
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | — | Clear the 314 flutter analyze info diagnostics |
