@@ -4,8 +4,15 @@
 # narrative view of it, and STATE.md is generated telemetry. When any of the three
 # disagree, this file wins.
 #
-# Generated from the live issue list, not hand-typed. `status` mirrors issue state:
-# done = closed, todo = open. Regenerate rather than edit by hand.
+# `status` is the DESIRED state and is written here first. roadmap-sync then moves GitHub to
+# match it: `done` closes the issue, anything else reopens it.
+#
+# Do not copy status back from the live issue list. That inverts the direction of truth, and a
+# step left `todo` after its work merged will reopen a correctly-closed issue on the next push
+# to main - which is exactly what happened to twenty-one steps before #228.
+#
+# A step's status therefore changes in the SAME pull request that does its work, never in a
+# later reconciliation pass.
 ---
 project_number: 3
 project_url: https://github.com/orgs/guardyn/projects/3
@@ -22,7 +29,7 @@ project_sync_enabled: true
 
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
-  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-78], note: "server side is done; both clients still transmit plaintext, so PR-32c stays blocked on #163 (now owned by PR-78)"}
+  - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78], note: "server side is done and no longer reads the flags, so PR-32c is unblocked; client-desktop still sends plaintext (PR-78) and client-mobile still sends groups in the clear (PR-76)"}
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
@@ -62,22 +69,22 @@ steps:
   - {id: PR-24b, issue: 133, phase: 3, type: security, status: done, title: "Redact denied fields in the tracing formatter"}
   - {id: PR-25, issue: 36, phase: 3, type: security, status: done, title: "Apply Redacted<T> across crypto, auth and messaging types"}
   - {id: PR-26, issue: 37, phase: 3, type: security, status: done, title: "Migrate call-service and notification-service to observability::init_tracing"}
-  - {id: PR-27, issue: 38, phase: 3, type: feat, status: todo, title: "Add health checks for all stores and a media-service Health RPC"}
-  - {id: PR-27b, issue: 150, phase: 3, type: feat, status: todo, title: "Add store health checks to notification-service and call-service"}
+  - {id: PR-27, issue: 38, phase: 3, type: feat, status: done, title: "Add health checks for all stores and a media-service Health RPC"}
+  - {id: PR-27b, issue: 150, phase: 3, type: feat, status: done, title: "Add store health checks to notification-service and call-service"}
   - {id: PR-28, issue: 39, phase: 3, type: refactor, status: done, title: "Wire or delete the unused Redpanda topic constants"}
   - {id: PR-29, issue: 40, phase: 3, type: fix, status: done, title: "Replace the presence-service Redis TODO with TTL-correct TiKV storage"}
   # PR-30/31/32 re-scoped under ADR-0010: the server becomes a pure relay. See
   # implementation_plan.md 6.3 for the two false premises the original scoping rested on.
   - {id: PR-30, issue: 41, phase: 3, type: security, status: done, title: "Delete the server-side Double Ratchet key storage"}
   - {id: PR-31a, issue: 42, phase: 3, type: fix, status: done, title: "Delete the dead server-side MLS handlers"}
-  - {id: PR-31b, issue: 151, phase: 3, type: security, status: todo, title: "Stop the server holding MLS group secrets"}
+  - {id: PR-31b, issue: 151, phase: 3, type: security, status: done, title: "Stop the server holding MLS group secrets"}
   - {id: PR-31c, issue: 152, phase: 3, type: chore, status: done, title: "Remove the blanket dead_code allow in messaging-service"}
-  - {id: PR-31d, issue: 153, phase: 3, type: docs, status: todo, title: "ADR-0010 - the server is a pure relay"}
+  - {id: PR-31d, issue: 153, phase: 3, type: docs, status: done, title: "ADR-0010 - the server is a pure relay"}
   - {id: PR-32a, issue: 43, phase: 3, type: security, status: done, title: "Delete the server-side E2EE handlers"}
-  - {id: PR-32b, issue: 154, phase: 3, type: security, status: todo, title: "Delete the E2EE and MLS configuration flags"}
-  - {id: PR-32c, issue: 155, phase: 3, type: security, status: todo, blocked_by: 163, title: "Remove the E2EE kill-switch environment variables"}
+  - {id: PR-32b, issue: 154, phase: 3, type: security, status: done, title: "Delete the E2EE and MLS configuration flags"}
+  - {id: PR-32c, issue: 155, phase: 3, type: security, status: todo, title: "Remove the E2EE kill-switch environment variables"}
   - {id: PR-33, issue: 44, phase: 3, type: security, status: done, title: "Add cargo-fuzz targets for attacker-controlled parsers"}
-  - {id: PR-34, issue: 45, phase: 3, type: security, status: todo, title: "Add proptest suites for crypto invariants"}
+  - {id: PR-34, issue: 45, phase: 3, type: security, status: done, title: "Add proptest suites for crypto invariants"}
   - {id: PR-35, issue: 46, phase: 3, type: chore, status: done, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
   - {id: PR-36, issue: 47, phase: 4, type: feat, status: todo, title: "Extend protos with ML-KEM key material fields"}
   - {id: PR-37, issue: 48, phase: 4, type: feat, status: todo, title: "Persist and serve ML-KEM public keys in auth-service"}
@@ -103,7 +110,7 @@ steps:
   - {id: PR-55, issue: 182, phase: 3, type: chore, status: done, title: "Remove continue-on-error from the desktop workflows"}
   - {id: PR-56, issue: 188, phase: 3, type: fix, status: todo, title: "Regenerate or drop the stale client-desktop protobuf"}
   - {id: PR-57, issue: 180, phase: 3, type: fix, status: todo, title: "Make roadmap-sync detect drift and create issues"}
-  - {id: PR-58, issue: 189, phase: 3, type: chore, status: todo, title: "Reconcile roadmap.yaml after the G3 merge wave"}
+  - {id: PR-58, issue: 189, phase: 3, type: chore, status: done, title: "Reconcile roadmap.yaml after the G3 merge wave"}
   # The ciphertext format break. #105 and #106 were Phase-3 security issues with no step,
   # so G3 would have passed over them; folding them in was a G3 sign-off decision.
   - {id: PR-59, issue: 105, phase: 3, type: security, status: done, title: "Bind the ratchet header into the AEAD and version the wire"}
@@ -112,25 +119,25 @@ steps:
   # Debt measured while removing continue-on-error, each too large for that step.
   - {id: PR-62, issue: 191, phase: 3, type: chore, status: todo, title: "Clear the 132 client-desktop clippy errors"}
   - {id: PR-63, issue: 192, phase: 3, type: chore, status: todo, title: "Reconcile the desktop coverage thresholds with reality"}
-  - {id: PR-64, issue: 198, phase: 3, type: fix, status: todo, title: "Fix the Dart skip-message-keys counter and bound"}
+  - {id: PR-64, issue: 198, phase: 3, type: fix, status: done, title: "Fix the Dart skip-message-keys counter and bound"}
   - {id: PR-65, issue: 199, phase: 3, type: fix, status: todo, title: "Stop Build Linux flaking in linuxdeploy"}
-  - {id: PR-66, issue: 200, phase: 3, type: chore, status: todo, title: "Reconcile roadmap.yaml after the ciphertext format break"}
+  - {id: PR-66, issue: 200, phase: 3, type: chore, status: done, title: "Reconcile roadmap.yaml after the ciphertext format break"}
   # Client-side E2EE repair. ADR-0010 made the server a pure relay and ADR-0011 broke the
   # ciphertext format; neither client followed. Both transmit plaintext today, so these are
   # I-2 repairs rather than catch-up work. PR-67..PR-69 pull mobile CI forward out of PR-44,
   # because rewriting the Dart crypto layer with no CI is flying blind.
-  - {id: PR-67, issue: 202, phase: 3, type: fix, status: todo, title: "Repair the nine failing Dart tests and the analyzer error"}
-  - {id: PR-68, issue: 203, phase: 3, type: chore, status: todo, title: "Add the mobile CI workflow (split out of PR-44)"}
-  - {id: PR-69, issue: 204, phase: 3, type: chore, status: todo, title: "Un-gate the Dart crypto suite so it runs under flutter test"}
-  - {id: PR-70, issue: 213, phase: 3, type: security, status: todo, title: "Dart - adopt ratchet wire format v1 and bind the header into the AEAD"}
-  - {id: PR-71, issue: 216, phase: 3, type: security, status: todo, title: "Dart - make ratchet decryption atomic"}
-  - {id: PR-72, issue: 218, phase: 3, type: security, status: todo, title: "Unify the client AAD convention and fix UTF-8 handling"}
-  - {id: PR-73a, issue: 220, phase: 3, type: security, status: todo, title: "Implement PADME correctly in Dart"}
-  - {id: PR-73b, issue: 222, phase: 3, type: security, status: todo, title: "Apply PADME padding on the mobile message path"}
-  - {id: PR-74, issue: 224, phase: 3, type: fix, status: todo, title: "client-desktop - make the ratchet AAD symmetric"}
-  - {id: PR-75, issue: 226, phase: 3, type: security, status: todo, title: "client-mobile - fail closed instead of sending plaintext"}
-  - {id: PR-76, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - fail closed on group messaging"}
-  - {id: PR-77, issue: null, phase: 3, type: security, status: todo, title: "client-mobile - refuse the native to Dart crypto downgrade"}
+  - {id: PR-67, issue: 202, phase: 3, type: fix, status: done, title: "Repair the nine failing Dart tests and the analyzer error"}
+  - {id: PR-68, issue: 203, phase: 3, type: chore, status: done, title: "Add the mobile CI workflow (split out of PR-44)"}
+  - {id: PR-69, issue: 204, phase: 3, type: chore, status: done, title: "Un-gate the Dart crypto suite so it runs under flutter test"}
+  - {id: PR-70, issue: 213, phase: 3, type: security, status: done, title: "Dart - adopt ratchet wire format v1 and bind the header into the AEAD"}
+  - {id: PR-71, issue: 216, phase: 3, type: security, status: done, title: "Dart - make ratchet decryption atomic"}
+  - {id: PR-72, issue: 218, phase: 3, type: security, status: done, title: "Unify the client AAD convention and fix UTF-8 handling"}
+  - {id: PR-73a, issue: 220, phase: 3, type: security, status: done, title: "Implement PADME correctly in Dart"}
+  - {id: PR-73b, issue: 222, phase: 3, type: security, status: done, title: "Apply PADME padding on the mobile message path"}
+  - {id: PR-74, issue: 224, phase: 3, type: fix, status: done, title: "client-desktop - make the ratchet AAD symmetric"}
+  - {id: PR-75, issue: 226, phase: 3, type: security, status: done, title: "client-mobile - fail closed instead of sending plaintext"}
+  - {id: PR-76, issue: 229, phase: 3, type: security, status: todo, title: "client-mobile - fail closed on group messaging"}
+  - {id: PR-77, issue: 230, phase: 3, type: security, status: todo, title: "client-mobile - refuse the native to Dart crypto downgrade"}
   - {id: PR-78, issue: 163, phase: 3, type: security, status: todo, title: "client-desktop - encrypt on the send path"}
   - {id: PR-79, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - retain private prekey material"}
   - {id: PR-80, issue: null, phase: 3, type: feat, status: todo, title: "client-desktop - implement the X3DH responder path"}
@@ -138,5 +145,11 @@ steps:
   # Deferred deliberately, each with a stated reason in its step above.
   - {id: PR-82, issue: 211, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
   - {id: PR-83, issue: null, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}
-  - {id: PR-84, issue: 205, phase: 3, type: chore, status: todo, title: "Record the client-side E2EE repair steps in roadmap.yaml"}
-  - {id: PR-85, issue: 208, phase: 3, type: fix, status: todo, title: "Pin the Flutter toolchain to 3.47.3 so flutter pub get resolves"}
+  - {id: PR-84, issue: 205, phase: 3, type: chore, status: done, title: "Record the client-side E2EE repair steps in roadmap.yaml"}
+  - {id: PR-85, issue: 208, phase: 3, type: fix, status: done, title: "Pin the Flutter toolchain to 3.47.3 so flutter pub get resolves"}
+  # The fail-closed wave. Every remaining path where a client would rather emit or display
+  # unverified bytes than refuse. PR-86 comes first: until the statuses above are correct,
+  # roadmap-sync reopens each of these seconds after it merges.
+  - {id: PR-86, issue: 228, phase: 3, type: chore, status: done, title: "Reconcile roadmap status so roadmap-sync stops reopening issues"}
+  - {id: PR-87, issue: 231, phase: 3, type: fix, status: todo, title: "client-mobile - show an explicit cannot-decrypt placeholder"}
+  - {id: PR-88, issue: 232, phase: 3, type: fix, status: todo, title: "client-desktop - show an explicit cannot-decrypt placeholder"}
