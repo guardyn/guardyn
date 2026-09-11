@@ -200,6 +200,36 @@ export async function performX3DH(
   };
 }
 
+/**
+ * Complete X3DH key agreement as responder (Bob), from the prekey message the initiator
+ * attached to its first message.
+ *
+ * The pre-keys are restored from secure storage, never regenerated: a key regenerated under
+ * the same id is a different key, and the derived secret would silently fail to match.
+ */
+export async function respondX3DH(
+  peerIdentityKey: string,
+  peerEphemeralKey: string,
+  usedOneTimeKeyId: number | undefined,
+  peerId: string
+): Promise<X3DHResult> {
+  const result = await invoke<{
+    shared_secret: string;
+    ephemeral_key: string;
+    used_prekey_id?: number;
+  }>('respond_x3dh', {
+    peerIdentityKey,
+    peerEphemeralKey,
+    usedOneTimeKeyId: usedOneTimeKeyId ?? null,
+    peerId,
+  });
+  return {
+    sharedSecret: result.shared_secret,
+    ephemeralKey: result.ephemeral_key,
+    usedPrekeyId: result.used_prekey_id,
+  };
+}
+
 // =============================================================================
 // SESSION MANAGEMENT
 // =============================================================================
@@ -211,7 +241,9 @@ export async function initSession(
   peerId: string,
   sharedSecret: string,
   isInitiator: boolean,
-  peerPublicKey: string
+  // Required for the initiator, which ratchets against the peer's signed pre-key. The
+  // responder seeds from its own stored signed pre-key secret and ignores this.
+  peerPublicKey?: string
 ): Promise<SessionInfo> {
   const result = await invoke<{
     peer_id: string;
@@ -219,7 +251,7 @@ export async function initSession(
     messages_sent: number;
     messages_received: number;
     is_active: boolean;
-  }>('init_session', { peerId, sharedSecret, isInitiator, peerPublicKey });
+  }>('init_session', { peerId, sharedSecret, isInitiator, peerPublicKey: peerPublicKey ?? null });
   return {
     peerId: result.peer_id,
     establishedAt: result.established_at,
@@ -402,6 +434,34 @@ export class EncryptionService {
     );
 
     return session;
+  }
+
+  /**
+   * Answer a peer that opened a session with us, from the prekey message it attached to its
+   * first message.
+   *
+   * The mirror of `startSession`. Nothing is passed for `peerPublicKey`: the responder's
+   * initial ratchet key is its own signed pre-key - the key the initiator ran X3DH against -
+   * which the Rust side restores from secure storage.
+   */
+  async acceptSession(
+    peerId: string,
+    peerIdentityKey: string,
+    peerEphemeralKey: string,
+    usedOneTimeKeyId?: number
+  ): Promise<SessionInfo> {
+    if (!this.initialized) {
+      throw new Error('EncryptionService not initialized');
+    }
+
+    const x3dhResult = await respondX3DH(
+      peerIdentityKey,
+      peerEphemeralKey,
+      usedOneTimeKeyId,
+      peerId
+    );
+
+    return initSession(peerId, x3dhResult.sharedSecret, false);
   }
 
   /**

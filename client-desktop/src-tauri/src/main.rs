@@ -158,6 +158,7 @@ fn main() {
             commands::crypto::generate_signed_prekey,
             commands::crypto::generate_one_time_prekeys,
             commands::crypto::perform_x3dh,
+            commands::crypto::respond_x3dh,
             commands::crypto::init_session,
             commands::crypto::get_session,
             commands::crypto::list_sessions,
