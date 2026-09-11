@@ -167,3 +167,7 @@ steps:
   # the check that fails on drift; PR-91 is the half of #101 that did not fit the budget.
   - {id: PR-90, issue: 101, phase: 3, type: feat, status: done, title: "Generate STATE.md from roadmap.yaml and fail docs-verify on drift"}
   - {id: PR-91, issue: 241, phase: 4, type: feat, status: todo, title: "Generate docs/INDEX.md and the tokens: counts"}
+  # Found while mapping the desktop session stack. UploadPreKeys writes an empty identity key
+  # over the real one, so a single call bricks an account's bundle for every peer. Nothing
+  # calls it today - it is disarmed before PR-79 goes near prekey replenishment.
+  - {id: PR-92, issue: 243, phase: 3, type: security, status: done, title: "UploadPreKeys must not destroy the identity key"}

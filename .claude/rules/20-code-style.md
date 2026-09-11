@@ -20,7 +20,7 @@ predicate you cannot argue with.
 
 | ID | Predicate | Today | Enforcement |
 |---|---|---|---|
-| `RS-UNWRAP` | No `unwrap()` / `expect()` in non-test Rust | FAIL — 52 in 25 files | ratchet at 52 |
+| `RS-UNWRAP` | No `unwrap()` / `expect()` in non-test Rust | FAIL — 48 sites | ratchet at 48 |
 | `RS-UNSAFE` | No `unsafe` outside an FFI crate | PASS | hard fail |
 | `RS-FMT` | `cargo fmt` is clean | PASS | `build.yml` |
 | `RS-CLIPPY` | `cargo clippy -- -D warnings` is clean | PASS | `build.yml`, real since PR-17 |

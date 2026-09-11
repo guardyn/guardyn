@@ -82,25 +82,17 @@ pub async fn upload(
         }
     };
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
-
-    // Update key bundle in database
-    let key_bundle = crate::db::KeyBundle {
-        identity_key: vec![],             // Keep existing identity key
-        signed_pre_key: vec![],           // Signed pre-key not provided in this request
-        signed_pre_key_signature: vec![], // Signature not provided in this request
-        one_time_pre_keys: req.one_time_pre_keys.clone(),
-        created_at: now,
-    };
-
     let keys_count = req.one_time_pre_keys.len() as u32;
 
+    // One-time pre-keys only. This used to build a whole `db::KeyBundle` with empty identity
+    // material and hand it to `store_key_bundle`, whose comment claimed it would "keep
+    // existing identity key" - but that method writes every path unconditionally, so a single
+    // upload blanked the caller's identity key, signed pre-key and signature. The account then
+    // stayed reachable to itself and unreachable to every peer, which is the worst shape a
+    // failure can take.
     match service
         .db
-        .store_key_bundle(&claims.sub, &claims.device_id, &key_bundle)
+        .store_one_time_pre_keys(&claims.sub, &claims.device_id, &req.one_time_pre_keys)
         .await
     {
         Ok(_) => {
