@@ -51,6 +51,26 @@ and `SCYLLA_HOSTS`; setting only `GUARDYN_PORT` and `GUARDYN_DATABASE__SCYLLADB_
 it binding the wrong port and dialling the Kubernetes ScyllaDB FQDN. Compose now sets both
 forms. Unifying this is tracked separately.
 
+### There is no encryption switch
+
+`messaging-service` used to carry `GUARDYN_E2EE_ENABLED`, `GUARDYN_MLS_ENABLED` and four
+companions in Compose and both k8s overlays. **They are gone, and nothing replaces them.**
+
+The server is a pure relay ([ADR-0010](../adr/ADR-0010-pure-relay-server.md)): the ratchet and
+MLS run on the clients, it stores `encrypted_content` byte-for-byte and holds no key material,
+so there is nothing left for such a flag to select. Invariant I-2 forbids one existing at all.
+
+Two details worth keeping straight when reading older deployment files or git history:
+
+- The dev overlay set `GUARDYN_E2EE_ENABLED: "false"` with a comment offering it as a debugging
+  convenience. Encryption was never something an operator could turn off for convenience.
+- The prod overlay set it to `"true"`, which read as though production encryption depended on
+  it. It did not. After PR-32a/32b the code stopped consulting these variables entirely, so for
+  a period they were inert while still appearing authoritative — which is precisely why they
+  had to be deleted rather than left as harmless.
+
+`rules-verify` enforces their absence (`E2EE-FLAG`), so reintroducing one fails CI.
+
 ## Kubernetes
 
 ```sh
@@ -104,4 +124,5 @@ and any `*.key` are gitignored and must never reach the repository.
 | `infra/k8s/base/envoy/ingress.yaml:18` hardcodes `envoy.guardyn.local` | breaks the `${DOMAIN}` rule above | **unowned** |
 | Production images are tagged, not digest-pinned | a tag can be moved under a running cluster | PR-44 |
 | `infra/secrets/.gitignore` ignores `*.enc.yaml` — the **encrypted** file — while the plaintext `app-secrets.yaml` is tracked | exactly inverted: the safe artefact is excluded and the unsafe one committed. The tracked values are placeholders, so no live credential is exposed *yet* | PR-42 |
+| `client-desktop` cannot establish a session, so it refuses every one-to-one send | desktop messaging is non-functional until the session stack lands — deliberate, since the alternative was plaintext at rest | PR-79…PR-81 |
 | `infra/justfile` is a second, divergent task file whose `k8s:deploy` references a values file that does not exist | dead code that will mislead | unowned |

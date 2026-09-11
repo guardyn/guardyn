@@ -122,7 +122,10 @@ Stated plainly, because a PRD that implies capability is a PRD that misleads.
 - **Post-quantum end to end.** The hybrid implementation exists in `crates/crypto`, but the
   `pq` feature is off by default and no proto field carries an ML-KEM key, so the server
   cannot publish one (PR-36…PR-40).
-- **Always-on encryption.** `GUARDYN_E2EE_ENABLED` still exists and the non-E2EE handler is
-  the registered one (PR-32).
+- **Always-on encryption, end to end.** The server side is done: the E2EE handler fork, the
+  configuration flags and the deployment variables are all gone (PR-32a/b/c), and both clients
+  now refuse to send rather than transmit plaintext (#226, #229, #163). What remains is that
+  `client-desktop` cannot yet establish a session, so it refuses every send — encryption is
+  never bypassed, but desktop one-to-one messaging does not function until PR-79…PR-81 land.
 - **A browser client.** Envoy routes three of six services; media, calls and notifications
   are not reachable from a browser today.

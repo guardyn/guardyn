@@ -20,7 +20,7 @@ If a task appears to require it, stop and ask the user.
 |---|---|---|---|---|
 | `ZK-INIT` | I-1 | Tracing is initialised only via `guardyn_common::observability::init_tracing` | PASS | `rules-verify` |
 | `ZK-PII` | I-1 | No log macro is passed a raw IP, email or phone number | PASS | `rules-verify` |
-| `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | FAIL (4) | PR-32b, PR-32c |
+| `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | PASS | `rules-verify` |
 | `E2EE-DUP` | I-2 | No handler has a non-E2EE twin | PASS | `rules-verify` |
 | `PQ-DEFAULT` | I-3 | The `pq` feature is on by default in the crypto crate | FAIL | PR-38 |
 | `PQ-WIRE` | I-3 | The wire contract carries ML-KEM key material | FAIL | PR-36 |
@@ -53,12 +53,20 @@ already the zero-knowledge relay. Collapsing the other way would have traded an 
 an I-1 one. §1 also says four such pairs existed; the measured count was **two**
 (`send_message`, `receive_messages`). PR-31d (#153) amends §1.
 
+`E2EE-FLAG` passed with PR-32c. PR-32b removed the flags from the code, so `E2eeConfig` and
+`MlsConfig` no longer exist and nothing in the backend reads an encryption switch; PR-32c then
+deleted the variables that were still being set in `docker-compose.dev.yml` and the two k8s
+manifests. Between those two steps the variables were inert - which is worth remembering, because
+a deployment file that looks like a kill switch reads as one whether or not any code consults it,
+and the prod overlay's `GUARDYN_E2EE_ENABLED: "true"` was actively misleading about where
+encryption came from.
+
 `PQ-WIRE` fails while `crypto/src/pqxdh.rs` is a complete hybrid X25519 + ML-KEM-768
 implementation. It is unreached, not absent — no proto field can carry the public key.
 
-**A known failure is not licence to patch it.** Three of the remaining failures have an owned
-step - `E2EE-FLAG` (PR-32b, PR-32c), `PQ-DEFAULT` (PR-38) and `PQ-WIRE` (PR-36) - and fixing one
-outside that step breaks the micro-step contract.
+**A known failure is not licence to patch it.** Both remaining failures have an owned step -
+`PQ-DEFAULT` (PR-38) and `PQ-WIRE` (PR-36) - and fixing one outside that step breaks the
+micro-step contract.
 
 `ZK-PII` and `SOV-DOMAIN` were both found while writing this file, with no owning step. Each had
 an issue opened before any fix. `ZK-PII` is now closed by #81 and enforced by `rules-verify`;
