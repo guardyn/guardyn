@@ -626,40 +626,55 @@ fn message_associated_data(sender_user_id: &str, recipient_user_id: &str) -> Vec
     format!("{}|{}", sender_user_id, recipient_user_id).into_bytes()
 }
 
-/// Encrypt a message for a peer using Double Ratchet
-#[tauri::command]
-pub async fn encrypt_message(
-    plaintext: String,
-    recipient_id: String,
-    self_user_id: String,
-) -> Result<EncryptedMessage, String> {
-    tracing::debug!("Encrypting message for {} ({} bytes)", recipient_id, plaintext.len());
+/// Returned when a message cannot be encrypted, so callers can fail closed on it.
+///
+/// The desktop client must never fall back to transmitting plaintext: the server is a pure
+/// relay (see `docs/adr/ADR-0010-pure-relay-server.md`) and stores whatever it is handed
+/// byte-for-byte, so an unencrypted send is plaintext at rest, not merely plaintext in flight.
+pub const ENCRYPTION_UNAVAILABLE: &str = "encryption unavailable";
 
-    // Apply PADMÉ padding for traffic analysis protection
+/// Encrypt one message for a peer and return the serialized ciphertext.
+///
+/// This is the single encryption entry point for the send path. `encrypt_message` exposes it
+/// to the frontend and `commands::messaging::send_message` uses it directly, so neither can
+/// acquire a way to emit an unencrypted payload without the other noticing.
+///
+/// Returns an error beginning with [`ENCRYPTION_UNAVAILABLE`] when no Double Ratchet session
+/// exists for `recipient_id`. **That error must abort the send.** Today it is the only outcome,
+/// because nothing on the desktop establishes a session yet; the callers are nevertheless
+/// written against the real contract so that landing session establishment needs no change
+/// here.
+pub(crate) fn encrypt_for_peer(
+    plaintext: &str,
+    recipient_id: &str,
+    self_user_id: &str,
+) -> Result<Vec<u8>, String> {
+    // Apply PADMÉ padding for traffic analysis protection.
     let padded = guardyn_crypto::pad_message(plaintext.as_bytes())
         .map_err(|e| format!("Padding failed: {}", e))?;
 
-    // Get Double Ratchet for this peer
+    // Get Double Ratchet for this peer.
     let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
-    let ratchet = ratchet_store.get_mut(&recipient_id)
-        .ok_or_else(|| format!("No Double Ratchet session with peer: {}", recipient_id))?;
+    let ratchet = ratchet_store.get_mut(recipient_id).ok_or_else(|| {
+        format!("{}: no Double Ratchet session with peer {}", ENCRYPTION_UNAVAILABLE, recipient_id)
+    })?;
 
     // Encrypt with Double Ratchet. The local user is the sender.
-    let associated_data = message_associated_data(&self_user_id, &recipient_id);
-    let encrypted = ratchet.encrypt(&padded, &associated_data)
+    let associated_data = message_associated_data(self_user_id, recipient_id);
+    let encrypted = ratchet
+        .encrypt(&padded, &associated_data)
         .map_err(|e| format!("Double Ratchet encryption failed: {}", e))?;
 
-    // Serialize encrypted message
     let encrypted_bytes = encrypted.to_bytes();
     drop(ratchet_store);
 
-    // Update session metadata
+    // Update session metadata.
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    if let Some(session) = store.sessions.get_mut(&recipient_id) {
+    if let Some(session) = store.sessions.get_mut(recipient_id) {
         session.messages_sent += 1;
         // Update serialized ratchet state
         if let Ok(ratchet_store) = RATCHET_STORE.lock() {
-            if let Some(ratchet) = ratchet_store.get(&recipient_id) {
+            if let Some(ratchet) = ratchet_store.get(recipient_id) {
                 session.state = ratchet.serialize();
             }
         }
@@ -670,9 +685,26 @@ pub async fn encrypt_message(
     drop(store);
     persist_sessions(&sessions_clone)?;
 
+    Ok(encrypted_bytes)
+}
+
+/// Encrypt a message for a peer using Double Ratchet
+#[tauri::command]
+pub async fn encrypt_message(
+    plaintext: String,
+    recipient_id: String,
+    self_user_id: String,
+) -> Result<EncryptedMessage, String> {
+    tracing::debug!("Encrypting message for {} ({} bytes)", recipient_id, plaintext.len());
+
+    let encrypted_bytes = encrypt_for_peer(&plaintext, &recipient_id, &self_user_id)?;
+
     Ok(EncryptedMessage {
-        ciphertext: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &encrypted_bytes),
-        nonce: String::new(), // Nonce is included in encrypted message
+        ciphertext: base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            &encrypted_bytes,
+        ),
+        nonce: String::new(),  // Nonce is included in encrypted message
         header: String::new(), // Header is included in encrypted message
     })
 }
@@ -1068,6 +1100,30 @@ mod tests {
         let encrypted = alice.encrypt(&padded, &alice_sends).unwrap();
         let out = bob.decrypt(&encrypted, &bob_receives).unwrap();
         assert_eq!(guardyn_crypto::unpad_message(&out).unwrap(), b"hello bob");
+    }
+
+    #[test]
+    fn encrypt_for_peer_refuses_when_there_is_no_session() {
+        // The #163 regression test. Before the fix the send path did not consult the ratchet at
+        // all - it assigned `content.as_bytes().to_vec()` and sent it - so a peer with no
+        // session produced a perfectly successful "encrypted" send carrying plaintext.
+        //
+        // A peer id that cannot collide with anything another test established, because
+        // RATCHET_STORE is process-global.
+        let peer = "no-session-peer-e6f1a4c2";
+
+        let result = encrypt_for_peer("attack at dawn", peer, "self-user");
+
+        let err = result.expect_err("a send with no session must fail, never fall back to plaintext");
+        assert!(
+            err.starts_with(ENCRYPTION_UNAVAILABLE),
+            "callers fail closed by matching on this prefix, so it is part of the contract; got: {}",
+            err
+        );
+        assert!(
+            !err.contains("attack at dawn"),
+            "the error must not carry the plaintext it refused to send"
+        );
     }
 
     #[test]

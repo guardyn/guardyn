@@ -4,9 +4,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Conversation, Message } from '../types';
 
 // Create hoisted mock that can be used by vi.mock
-const { mockInvoke } = vi.hoisted(() => ({
-  mockInvoke: vi.fn(),
-}));
+const { mockInvoke, mockWs, mockEncryptMessage } = vi.hoisted(() => {
+  const ws = {
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(),
+    send: vi.fn(),
+    sendMessage: vi.fn(),
+    sendTyping: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    // Chat.tsx registers these in onMount; capture the state callback so a test can bring
+    // the socket up and actually exercise the send path.
+    onStateChange: vi.fn((cb: (state: string) => void) => {
+      ws._stateCb = cb;
+    }),
+    onMessage: vi.fn(),
+    onTyping: vi.fn(),
+    isConnected: false,
+    _stateCb: undefined as ((state: string) => void) | undefined,
+  };
+  return {
+    mockInvoke: vi.fn(),
+    mockWs: ws,
+    mockEncryptMessage: vi.fn(),
+  };
+});
 
 // Mock Tauri API using hoisted mock
 vi.mock('@tauri-apps/api/core', () => ({
@@ -21,16 +43,16 @@ vi.mock('../api/websocket', () => ({
     TYPING_STOP: 'TYPING_STOP',
     PRESENCE_UPDATE: 'PRESENCE_UPDATE',
   },
-  initWebSocket: vi.fn(),
-  getWebSocket: vi.fn(() => ({
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    send: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    isConnected: false,
-  })),
+  initWebSocket: vi.fn(() => mockWs),
+  getWebSocket: vi.fn(() => mockWs),
   destroyWebSocket: vi.fn(),
+}));
+
+// The send path now runs through the encryption manager, and must refuse when it throws.
+vi.mock('../services/encryption', () => ({
+  encryptionManager: {
+    encryptMessage: (...args: unknown[]) => mockEncryptMessage(...args),
+  },
 }));
 
 vi.mock('../api/websocket.mock', () => ({
@@ -108,7 +130,10 @@ describe('Chat Page', () => {
   };
 
   beforeEach(() => {
-    mockInvoke.mockClear();
+    mockInvoke.mockReset();
+    mockWs.sendMessage.mockClear();
+    mockWs._stateCb = undefined;
+    mockEncryptMessage.mockReset();
     resetMessageStore();
   });
 
@@ -220,49 +245,73 @@ describe('Chat Page', () => {
     });
   });
 
-  it('sends a new message', async () => {
-    setupMockInvoke(
-      mockConversations,  // get_conversations
-      mockMessages,       // get_messages
-      undefined,          // send_message
-      [...mockMessages, { // get_messages after send
-        id: 'msg-3',
-        conversation_id: 'conv-1',
-        sender_id: 'user-1',
-        content: 'New message',
-        timestamp: Date.now(),
-        status: 'Sending',
-        reactions: [],
-      }],
-    );
+  // These two replace a test named "sends a new message", which asserted
+  //
+  //     expect(mockInvoke).toHaveBeenCalledWith('send_message', {
+  //       conversationId: 'conv-1', recipientId: 'user-1', content: 'New message', ...
+  //     })
+  //
+  // - that is, it pinned #163: it required the plaintext to be handed to the transport, and
+  // would have failed had the client started encrypting. A test that enforces the defect has
+  // to be corrected rather than kept, the same way #227 corrected the mobile equivalent.
 
+  const openAliceAndType = async (text: string) => {
     renderWithRouter(() => <Chat />);
 
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 
-    const aliceConv = screen.getByText('Alice').closest('button');
-    await fireEvent.click(aliceConv!);
+    await fireEvent.click(screen.getByText('Alice').closest('button')!);
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
     });
 
-    const messageInput = screen.getByPlaceholderText('Type a message...') as HTMLInputElement;
-    const sendButton = screen.getByRole('button', { name: /send message/i });
+    // Bring the socket up, as onStateChange would at runtime.
+    mockWs._stateCb?.('connected');
 
-    await fireEvent.input(messageInput, { target: { value: 'New message' } });
-    await fireEvent.click(sendButton);
+    const messageInput = screen.getByPlaceholderText('Type a message...') as HTMLInputElement;
+    await fireEvent.input(messageInput, { target: { value: text } });
+    await fireEvent.click(screen.getByRole('button', { name: /send message/i }));
+  };
+
+  it('sends ciphertext, never the plaintext', async () => {
+    setupMockInvoke(mockConversations, mockMessages, undefined, mockMessages);
+    mockEncryptMessage.mockResolvedValue({ ciphertext: 'AQIDBA==', nonce: '', header: '' });
+
+    await openAliceAndType('New message');
 
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith('send_message', {
-        conversationId: 'conv-1',
-        recipientId: 'user-1',
-        content: 'New message',
-        mediaId: undefined,
-      });
+      expect(mockWs.sendMessage).toHaveBeenCalled();
     });
+
+    const [recipientId, payload, options] = mockWs.sendMessage.mock.calls[0];
+    expect(recipientId).toBe('user-1');
+    expect(payload).toBe('AQIDBA==');
+    expect(payload).not.toBe('New message');
+    expect(options.encrypted).toBe(true);
+
+    // The plaintext must not reach the transport by any route, including the gRPC command
+    // that used to be invoked alongside the socket.
+    expect(mockInvoke).not.toHaveBeenCalledWith('send_message', expect.anything());
+    expect(JSON.stringify(mockWs.sendMessage.mock.calls)).not.toContain('New message');
+  });
+
+  it('refuses to send when encryption is unavailable', async () => {
+    setupMockInvoke(mockConversations, mockMessages, undefined, mockMessages);
+    mockEncryptMessage.mockRejectedValue(
+      new Error('No established session with peer: user-1')
+    );
+
+    await openAliceAndType('New message');
+
+    // Fail closed: nothing leaves the client at all.
+    await waitFor(() => {
+      expect(mockEncryptMessage).toHaveBeenCalled();
+    });
+    expect(mockWs.sendMessage).not.toHaveBeenCalled();
+    expect(mockInvoke).not.toHaveBeenCalledWith('send_message', expect.anything());
   });
 
   // TODO: Fix these tests after WebSocket integration stabilizes
