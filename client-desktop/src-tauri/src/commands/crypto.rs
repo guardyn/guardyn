@@ -54,7 +54,13 @@ static SESSION_STORE: LazyLock<Mutex<SessionStore>> = LazyLock::new(|| {
 });
 
 /// Global storage for Double Ratchet states (cannot be Clone, stored separately)
-/// Key is peer_id, value is the serialized Double Ratchet state
+/// Key is peer_id, value is the live Double Ratchet.
+///
+/// Rehydrated from `SessionData.state` by `load_from_secure_storage`. It used to start empty
+/// and never be populated, while the metadata beside it *was* restored - so after a restart
+/// `get_session` reported an active session and every send failed with "no Double Ratchet
+/// session". A session the UI shows as present and that refuses every message is worse than no
+/// session, which would at least trigger a fresh key agreement.
 static RATCHET_STORE: LazyLock<Mutex<HashMap<String, guardyn_crypto::DoubleRatchet>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -80,14 +86,74 @@ fn load_from_secure_storage(store: &mut SessionStore) -> Result<(), String> {
         store.one_time_prekeys = prekeys;
     }
 
-    // Load sessions
+    // Load sessions, and rehydrate the ratchet each one carries.
     if let Ok(sessions) = storage.get_sessions() {
         tracing::info!("Loaded {} sessions from secure storage", sessions.len());
-        store.sessions = sessions;
+        let (restored, ratchets) = rehydrate_ratchets(sessions);
+        match RATCHET_STORE.lock() {
+            Ok(mut guard) => {
+                guard.extend(ratchets);
+                store.sessions = restored;
+            }
+            Err(e) => {
+                // Without the ratchets the metadata is the exact half-state this step removes.
+                tracing::error!("Ratchet store is poisoned, starting with no sessions: {}", e);
+            }
+        }
     }
 
     store.loaded_from_storage = true;
     Ok(())
+}
+
+/// Restore every stored ratchet into `RATCHET_STORE`, returning the sessions worth keeping.
+///
+/// A session is dropped - rather than kept without its ratchet - in three cases: its state is
+/// empty, it fails to deserialize, or it deserializes into a ratchet that cannot send. The
+/// last is the subtle one. A responder has no sending chain key until its first `decrypt`
+/// performs the DH ratchet, so a ratchet can be well-formed and still unable to send a single
+/// message. `client-mobile` learned this and deletes such a session so a fresh X3DH runs
+/// (`crypto_service.dart:508-513`); keeping it would resurrect a half-session that fails on
+/// every send while looking established.
+///
+/// Dropping the metadata alongside the ratchet is the point: the two must agree, and it was
+/// their disagreement that produced a session the UI reported as active and that refused
+/// everything.
+#[allow(clippy::type_complexity)]
+fn rehydrate_ratchets(
+    sessions: HashMap<String, SessionData>,
+) -> (
+    HashMap<String, SessionData>,
+    HashMap<String, guardyn_crypto::DoubleRatchet>,
+) {
+    let mut restored = HashMap::with_capacity(sessions.len());
+    let mut ratchets = HashMap::with_capacity(sessions.len());
+
+    for (peer_id, session) in sessions {
+        if session.state.is_empty() {
+            tracing::warn!("Session has no stored ratchet state, dropping it");
+            continue;
+        }
+        match guardyn_crypto::DoubleRatchet::deserialize(&session.state) {
+            Ok(ratchet) if ratchet.can_send() => {
+                ratchets.insert(peer_id.clone(), ratchet);
+                restored.insert(peer_id, session);
+            }
+            Ok(_) => {
+                tracing::warn!(
+                    "Stored session cannot send - it was persisted before its first decrypt \
+                     completed the ratchet. Dropping it so a fresh key agreement runs."
+                );
+            }
+            Err(e) => {
+                // No key material in the message: `CryptoError` reports shape, not content.
+                tracing::warn!("Stored ratchet state could not be restored: {}", e);
+            }
+        }
+    }
+
+    tracing::info!("Restored {} ratchet session(s)", restored.len());
+    (restored, ratchets)
 }
 
 /// Save identity keypair to secure storage
@@ -815,8 +881,13 @@ pub async fn init_session(
             .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?
     };
 
-    // Serialize ratchet state for persistence
-    let ratchet_state = ratchet.serialize();
+    // A responder has no sending chain key until its first `decrypt` performs the DH ratchet
+    // against the initiator's public key, so it cannot be persisted yet: what would be written
+    // is a session that reloads unable to send, and `rehydrate_ratchets` would rightly discard
+    // it - losing the ratchet that was about to become usable. `encrypt_for_peer` and
+    // `decrypt_message` persist after each operation, so the first successful decrypt writes it.
+    // (client-mobile reached the same conclusion: crypto_service.dart:436-441.)
+    let can_persist = ratchet.can_send();
 
     let session = SessionData {
         peer_id: peer_id.clone(),
@@ -826,7 +897,7 @@ pub async fn init_session(
             .as_secs(),
         messages_sent: 0,
         messages_received: 0,
-        state: ratchet_state, // Store serialized Double Ratchet state
+        state: ratchet.serialize(),
     };
 
     // Store ratchet in memory
@@ -835,12 +906,17 @@ pub async fn init_session(
         ratchet_store.insert(peer_id.clone(), ratchet);
     }
 
-    // Store session metadata and persist
+    // Store session metadata, and persist only what will survive a reload.
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     store.sessions.insert(peer_id.clone(), session.clone());
-    persist_sessions(&store.sessions)?;
-
-    tracing::info!("Double Ratchet session established and persisted with peer: {}", peer_id);
+    if can_persist {
+        persist_sessions(&store.sessions)?;
+        tracing::info!("Double Ratchet session established and persisted");
+    } else {
+        tracing::info!(
+            "Responder session established in memory; it is persisted after its first decrypt"
+        );
+    }
     Ok(SessionInfo {
         peer_id: session.peer_id,
         established_at: session.established_at,
@@ -1364,6 +1440,115 @@ mod tests {
 
         let err = key_bundle_from_proto(&bundle).expect_err("must refuse");
         assert!(err.contains("signature"), "{err}");
+    }
+
+    fn stored_session(peer: &str, state: Vec<u8>) -> (String, SessionData) {
+        (
+            peer.to_string(),
+            SessionData {
+                peer_id: peer.to_string(),
+                established_at: 0,
+                messages_sent: 0,
+                messages_received: 0,
+                state,
+            },
+        )
+    }
+
+    /// The restart round-trip. A session established before the process ended must decrypt the
+    /// next message after it restarts.
+    ///
+    /// `RATCHET_STORE` used to start empty and never be populated, while the metadata beside it
+    /// was restored - so `get_session` reported an active session and `encrypt_for_peer` failed
+    /// with "no Double Ratchet session" for ever.
+    #[test]
+    fn test_a_session_survives_a_restart() {
+        let alice_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let bob_bundle = bob_material.export_bundle();
+
+        let (secret, ephemeral) = guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
+            &alice_material.identity_key,
+            &bob_bundle,
+            true,
+        )
+        .unwrap();
+        let bob_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &alice_material.identity_key.public_bytes(),
+            ephemeral.as_bytes(),
+            Some(0),
+        )
+        .unwrap();
+
+        let peer_public: [u8; 32] = bob_bundle.signed_pre_key.clone().try_into().unwrap();
+        let mut alice = guardyn_crypto::DoubleRatchet::init_alice(
+            &secret,
+            guardyn_crypto::X25519PublicKey::from(peer_public),
+        )
+        .unwrap();
+        let mut bob = guardyn_crypto::DoubleRatchet::init_bob(
+            &bob_secret,
+            bob_material.signed_pre_key.ratchet_secret(),
+        )
+        .unwrap();
+
+        let aad = message_associated_data("alice", "bob");
+
+        // Bob cannot send until his first decrypt completes the ratchet, so he must not be
+        // persisted before it.
+        assert!(!bob.can_send(), "a fresh responder has no sending chain");
+        bob.decrypt(&alice.encrypt(b"hello", &aad).unwrap(), &aad)
+            .unwrap();
+        assert!(bob.can_send(), "the first decrypt completes the ratchet");
+
+        // The process ends here. Only what was persisted comes back.
+        let stored: HashMap<_, _> = [stored_session("alice", bob.serialize())].into();
+        let (restored_sessions, mut restored_ratchets) = rehydrate_ratchets(stored);
+
+        assert_eq!(restored_sessions.len(), 1, "the session must come back");
+        let bob_again = restored_ratchets
+            .get_mut("alice")
+            .expect("the ratchet must come back");
+
+        let second = alice.encrypt(b"after the restart", &aad).unwrap();
+        assert_eq!(bob_again.decrypt(&second, &aad).unwrap(), b"after the restart");
+    }
+
+    /// A responder persisted before its first decrypt reloads unable to send. Keeping it would
+    /// resurrect a half-session that looks established and refuses everything, so it is dropped
+    /// and a fresh key agreement runs instead (client-mobile: crypto_service.dart:508-513).
+    #[test]
+    fn test_a_session_that_cannot_send_is_dropped_rather_than_restored() {
+        let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let bob = guardyn_crypto::DoubleRatchet::init_bob(
+            &[7u8; 32],
+            bob_material.signed_pre_key.ratchet_secret(),
+        )
+        .unwrap();
+        assert!(!bob.can_send());
+
+        let stored: HashMap<_, _> = [stored_session("alice", bob.serialize())].into();
+        let (sessions, ratchets) = rehydrate_ratchets(stored);
+
+        assert!(sessions.is_empty(), "the metadata must go with the ratchet");
+        assert!(ratchets.is_empty());
+    }
+
+    /// Metadata without a usable ratchet is the exact half-state this step removes, so a
+    /// session whose state is missing or corrupt is dropped rather than half-restored.
+    #[test]
+    fn test_sessions_without_restorable_state_are_dropped() {
+        let stored: HashMap<_, _> = [
+            stored_session("empty", Vec::new()),
+            stored_session("corrupt", vec![0xff; 9]),
+        ]
+        .into();
+
+        let (sessions, ratchets) = rehydrate_ratchets(stored);
+
+        assert!(sessions.is_empty(), "no session should survive: {sessions:?}");
+        assert!(ratchets.is_empty());
     }
 
     /// The whole responder path, end to end, over the pieces `respond_x3dh` and `init_session`

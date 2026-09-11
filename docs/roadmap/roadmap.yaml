@@ -152,7 +152,7 @@ steps:
   # The initiator path is complete and has nothing to feed it: AuthClient::get_key_bundle has
   # no callers and NewConversationModal carries a TODO where the fetch belongs.
   - {id: PR-80b, issue: 250, phase: 3, type: feat, status: done, title: "client-desktop - wire get_key_bundle to the frontend"}
-  - {id: PR-81, issue: null, phase: 3, type: fix, status: todo, title: "client-desktop - restore the ratchet store from persisted state"}
+  - {id: PR-81, issue: 252, phase: 3, type: fix, status: done, title: "client-desktop - restore the ratchet store from persisted state"}
   # Deferred deliberately, each with a stated reason in its step above.
   - {id: PR-82, issue: 211, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
   - {id: PR-83, issue: null, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}
@@ -177,3 +177,6 @@ steps:
   # The other half of the prekey story. Consumption is a protocol change - mutating RPC,
   # exhaustion behaviour, replenishment - so it waits rather than riding along with PR-79.
   - {id: PR-93, issue: 246, phase: 4, type: security, status: todo, title: "Consume the one-time pre-key that GetKeyBundle serves"}
+  # Latent until a second account is used on one machine, but PR-81 grew its consequence:
+  # ratchets now outlive the process, so a cross-read session can decrypt real messages.
+  - {id: PR-94, issue: 253, phase: 4, type: security, status: todo, title: "Partition client-desktop SecureStorage per account"}

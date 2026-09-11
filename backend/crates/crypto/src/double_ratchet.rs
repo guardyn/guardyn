@@ -448,6 +448,21 @@ impl DoubleRatchet {
         self.skipped_message_keys.len()
     }
 
+    /// Whether this ratchet can send.
+    ///
+    /// A responder built by [`Self::init_bob`] deliberately has no sending chain key: it gains
+    /// one only when its first `decrypt` performs the DH ratchet against the initiator's
+    /// public key. So a ratchet can be well-formed, restorable, and still unable to send a
+    /// single message.
+    ///
+    /// A client needs this on two paths. It must not persist a responder before its first
+    /// successful decrypt, and it must discard a restored session that reports `false` here and
+    /// run a fresh key agreement instead - because the alternative is a session the UI shows as
+    /// active that refuses every send.
+    pub fn can_send(&self) -> bool {
+        self.sending_chain_key.is_some()
+    }
+
     /// Serialize Double Ratchet state for persistent storage
     ///
     /// Format (all little-endian):
