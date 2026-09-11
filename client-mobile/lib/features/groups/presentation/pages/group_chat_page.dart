@@ -235,11 +235,16 @@ class _GroupChatPageState extends State<GroupChatPage> {
                 ],
               ),
               actions: [
-                // E2EE indicator showing MLS encryption
+                // Group messages are NOT encrypted: this client has no MLS implementation,
+                // and GroupRepositoryImpl.sendGroupMessage now refuses rather than transmit
+                // them in the clear. This badge claimed mlsEncrypted, which was the opposite
+                // of the truth and is the more dangerous half of the defect - an unprotected
+                // channel a user knows about is survivable, one they are told is protected is
+                // not. It goes back to mlsEncrypted when MLS actually lands.
                 const Padding(
                   padding: EdgeInsets.only(right: 8),
                   child: E2EEIndicator(
-                    status: E2EEStatus.mlsEncrypted,
+                    status: E2EEStatus.notEncrypted,
                     showLabel: false,
                     size: 20,
                   ),

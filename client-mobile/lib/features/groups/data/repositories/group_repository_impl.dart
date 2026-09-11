@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dartz/dartz.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
@@ -150,6 +148,22 @@ class GroupRepositoryImpl implements GroupRepository {
     }
   }
 
+  /// Refuses to send. This client cannot encrypt a group message.
+  ///
+  /// There is no MLS implementation on mobile: `GroupRemoteDatasource.sendGroupMessage` put
+  /// `utf8.encode(textContent)` straight into the field named `encryptedContent`, and this
+  /// repository has no [CryptoService] injected at all - unlike the one-to-one
+  /// `MessageRepositoryImpl`, which does.
+  ///
+  /// While the server encrypted on the client's behalf that was merely dishonest. It is now a
+  /// pure relay (`docs/adr/ADR-0010-pure-relay-server.md`) and stores what it is handed
+  /// byte-for-byte, so every group message was plaintext at rest - beneath a chat header that
+  /// displayed an "MLS" badge claiming the opposite.
+  ///
+  /// Invariant I-2 is that encryption cannot be turned off, so the only correct behaviour is to
+  /// refuse, exactly as the one-to-one path now does (#226). Restoring the send is the job of
+  /// whichever step implements MLS; until then this failure is the honest answer, and the
+  /// group UI reports `E2EEStatus.notEncrypted` to match.
   @override
   Future<Either<Failure, GroupMessage>> sendGroupMessage({
     required String groupId,
@@ -157,58 +171,12 @@ class GroupRepositoryImpl implements GroupRepository {
     GroupMessageType messageType = GroupMessageType.text,
     Map<String, String>? metadata,
   }) async {
-    try {
-      final accessToken = await _getAccessToken();
-      if (accessToken == null) {
-        return const Left(AuthFailure('Not authenticated'));
-      }
-
-      final currentUserId = await _getCurrentUserId();
-      if (currentUserId == null) {
-        return const Left(AuthFailure('User ID not found'));
-      }
-
-      final currentDeviceId = await _getCurrentDeviceId();
-      final username = await _secureStorage.getUsername();
-
-      // For media messages with empty textContent, create JSON with media metadata
-      String contentToSend = textContent;
-      if (textContent.isEmpty && metadata != null && metadata['media_id'] != null) {
-        contentToSend = json.encode({
-          'type': 'media',
-          'media_id': metadata['media_id'],
-          'media_type': metadata['media_type'] ?? 'image',
-          'filename': metadata['filename'] ?? '',
-          'mime_type': metadata['mime_type'] ?? '',
-        });
-      }
-
-      final message = await _remoteDatasource.sendGroupMessage(
-        accessToken: accessToken,
-        groupId: groupId,
-        textContent: contentToSend,
-        currentUserId: currentUserId,
-        metadata: metadata,
-      );
-
-      // Return message with complete user info
-      return Right(GroupMessageModel(
-        messageId: message.messageId,
-        groupId: message.groupId,
-        senderUserId: currentUserId,
-        senderDeviceId: currentDeviceId ?? '',
-        senderUsername: username ?? currentUserId,
-        messageType: message.messageType,
-        textContent: textContent,
-        clientTimestamp: message.clientTimestamp,
-        serverTimestamp: message.serverTimestamp,
-        currentUserId: currentUserId,
-      ));
-    } on GrpcError catch (e) {
-      return Left(ServerFailure(e.message ?? 'Failed to send group message'));
-    } catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
+    return const Left(
+      CryptoFailure(
+        'Group encryption is unavailable: this client has no MLS implementation, '
+        'so sending would transmit the message unencrypted.',
+      ),
+    );
   }
 
   @override

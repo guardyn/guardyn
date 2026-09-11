@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/network/grpc_clients.dart';
 import '../../../../generated/common.pb.dart' as proto_common;
@@ -16,7 +15,6 @@ import '../models/group_model.dart';
 @injectable
 class GroupRemoteDatasource {
   final GrpcClients _grpcClients;
-  final _uuid = const Uuid();
 
   GroupRemoteDatasource(this._grpcClients);
 
@@ -203,51 +201,13 @@ class GroupRemoteDatasource {
     );
   }
 
-  /// Send a message to a group via gRPC
-  Future<GroupMessageModel> sendGroupMessage({
-    required String accessToken,
-    required String groupId,
-    required String textContent,
-    required String currentUserId,
-    Map<String, String>? metadata,
-    proto.MessageType messageType = proto.MessageType.TEXT,
-  }) async {
-    final clientMessageId = _uuid.v4();
-    final clientTimestamp = DateTime.now();
-
-    // Determine message type based on metadata
-    final actualMessageType = metadata != null && metadata['media_id'] != null
-        ? proto.MessageType.IMAGE  // Use IMAGE for media messages
-        : messageType;
-
-    final request = proto.SendGroupMessageRequest(
-      accessToken: accessToken,
-      groupId: groupId,
-      encryptedContent: utf8.encode(textContent),
-      messageType: actualMessageType,
-      clientMessageId: clientMessageId,
-      clientTimestamp: _createTimestamp(clientTimestamp),
-    );
-
-    final response = await _messagingClient.sendGroupMessage(request);
-
-    if (response.hasError()) {
-      throw GrpcError.custom(response.error.code.value, response.error.message);
-    }
-
-    return GroupMessageModel(
-      messageId: response.success.messageId,
-      groupId: groupId,
-      senderUserId: currentUserId,
-      senderDeviceId: '', // Will be filled by repository
-      senderUsername: '', // Will be filled by repository
-      messageType: _messageTypeFromProto(messageType),
-      textContent: textContent,
-      clientTimestamp: clientTimestamp,
-      serverTimestamp: _timestampFromProto(response.success.serverTimestamp),
-      currentUserId: currentUserId,
-    );
-  }
+  // GroupRemoteDatasource.sendGroupMessage was removed here.
+  //
+  // It built `encryptedContent: utf8.encode(textContent)` - the plaintext, in the field
+  // named for ciphertext - and since the server became a pure relay it stored exactly those
+  // bytes. With GroupRepositoryImpl.sendGroupMessage now refusing, this had no caller left,
+  // and a method that assembles a plaintext group send is a defect one call site away from
+  // returning. Whichever step implements MLS reintroduces it emitting real ciphertext.
 
   /// Get group messages via gRPC
   Future<List<GroupMessageModel>> getGroupMessages({
