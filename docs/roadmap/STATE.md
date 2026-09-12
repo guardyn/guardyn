@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1084
+tokens: 1119
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 70 | `█████████░` |
-| 4 | 3 | 19 | `██░░░░░░░░` |
-| **all** | **92** | **115** | |
+| 4 | 4 | 21 | `██░░░░░░░░` |
+| **all** | **93** | **117** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 23 of 115
+- **Open steps:** 24 of 117
 
 ## Gates
 
@@ -63,6 +63,7 @@ supersedes: []
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
 | PR-38 | 4 | [#49](https://github.com/guardyn/guardyn/issues/49) | Enable the pq feature across backend services |
 | PR-97 | 4 | [#261](https://github.com/guardyn/guardyn/issues/261) | Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext |
+| PR-103 | 4 | [#274](https://github.com/guardyn/guardyn/issues/274) | GetKeyBundle never implemented its documented any-device fallback |
 | PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop negotiates hybrid PQXDH |
 | PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |
 | PR-40 | 4 | [#51](https://github.com/guardyn/guardyn/issues/51) | Add fuzz, proptest and bench coverage for the hybrid PQ path |
