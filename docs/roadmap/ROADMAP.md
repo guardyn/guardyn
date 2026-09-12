@@ -44,6 +44,12 @@ micro-steps across four phases, each ending at an approval gate.
 Phases 1 and 2 touch no source code. Phase 3 carries the security-critical work. Phase 4
 closes invariant I-3.
 
+Phase 4's step list has grown past `PR-44` as defects were found while executing it —
+`PR-96`…`PR-102` are Phase 4 steps too. `roadmap.yaml` is the list; this range is the shape.
+Most recently **PR-102** ([#272](https://github.com/guardyn/guardyn/issues/272)) was split out
+of PR-37, which `implementation_plan.md` had directed to fix an unrelated MLS key-package
+defect in the same breath as the ML-KEM work.
+
 Each phase is a **GitHub Milestone** titled `Phase N — …`, naming its gate. That is the only
 place phase is recorded: the `phase:1`…`phase:4` labels were retired in PR-21, and the custom
 `Phase` field on the Project v2 board goes with them. One fact, one encoding — and the
@@ -57,7 +63,7 @@ reason phases 3 and 4 exist.
 | Invariant | State | Closed by |
 |---|---|---|
 | **I-2** Always-On E2EE | server-side encryption removed, no flag remains, no client transmits plaintext, and desktop one-to-one messaging runs over the encrypted path; **mobile groups still refuse for want of MLS** | PR-30′, PR-31a–d, PR-32a–c, PR-75–PR-81c (Phase 3) |
-| **I-3** Post-Quantum | `pq` is off by default and no proto field carries an ML-KEM key, so no server can publish one | PR-36…PR-40 (Phase 4) |
+| **I-3** Post-Quantum | the wire carries ML-KEM material (PR-36) and `auth-service` now stores and serves it (PR-37), but `pq` is still off by default, nothing populates the fields, and no client reads them | PR-36…PR-40 (Phase 4) |
 
 Until those land, **the product must not be described as always-encrypted or
 post-quantum protected.**

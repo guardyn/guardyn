@@ -2,6 +2,31 @@
 use crate::{proto::auth::*, proto::common::*, AuthServiceImpl};
 use tonic::{Request, Response, Status};
 
+/// Convert a stored bundle into the wire form.
+///
+/// Pure, so the one thing worth asserting about the read path - that it is faithful - can
+/// be asserted without a live TiKV.
+///
+/// The ML-KEM fields are carried across exactly as stored, `None` included. `None` means
+/// this device published no post-quantum pre-key: a classical-only peer, not a missing
+/// bundle and not an error. Nothing here repairs a half-pair into a classical bundle
+/// either - that would be the relay performing the very SRS 4a downgrade an attacker wants,
+/// and `KeyBundle::validate_for_store` is what makes the half-pair unreachable instead.
+fn to_proto(kb: crate::db::KeyBundle) -> KeyBundle {
+    KeyBundle {
+        identity_key: kb.identity_key,
+        signed_pre_key: kb.signed_pre_key,
+        signed_pre_key_signature: kb.signed_pre_key_signature,
+        one_time_pre_keys: kb.one_time_pre_keys,
+        created_at: Some(Timestamp {
+            seconds: kb.created_at,
+            nanos: 0,
+        }),
+        ml_kem_public: kb.ml_kem_public,
+        ml_kem_public_signature: kb.ml_kem_public_signature,
+    }
+}
+
 /// Get key bundle for a user
 pub async fn get(
     service: &AuthServiceImpl,
@@ -16,19 +41,7 @@ pub async fn get(
         .await
     {
         Ok(Some(kb)) => {
-            let key_bundle = KeyBundle {
-                identity_key: kb.identity_key,
-                signed_pre_key: kb.signed_pre_key,
-                signed_pre_key_signature: kb.signed_pre_key_signature,
-                one_time_pre_keys: kb.one_time_pre_keys,
-                created_at: Some(Timestamp {
-                    seconds: kb.created_at,
-                    nanos: 0,
-                }),
-                // PR-37 populates these; until then auth-service neither stores nor
-                // serves ML-KEM material and the bundle goes out classical-only.
-                ..Default::default()
-            };
+            let key_bundle = to_proto(kb);
 
             let success = GetKeyBundleSuccess {
                 user_id: req.user_id.clone(),
@@ -227,5 +240,62 @@ mod tests {
         let decoded = KeyBundle::decode(half.encode_to_vec().as_slice()).expect("decodes");
         assert!(decoded.ml_kem_public.is_some());
         assert!(decoded.ml_kem_public_signature.is_none());
+    }
+
+    /// A stored bundle with ML-KEM material reaches the wire with it intact.
+    #[test]
+    fn stored_ml_kem_material_reaches_the_wire() {
+        let stored = crate::db::KeyBundle {
+            identity_key: vec![1u8; 32],
+            signed_pre_key: vec![2u8; 32],
+            signed_pre_key_signature: vec![3u8; 64],
+            one_time_pre_keys: vec![vec![4u8; 32]],
+            created_at: 1,
+            ml_kem_public: Some(vec![5u8; 1184]),
+            ml_kem_public_signature: Some(vec![6u8; 64]),
+        };
+
+        let wire = to_proto(stored);
+
+        assert_eq!(wire.ml_kem_public, Some(vec![5u8; 1184]));
+        assert_eq!(wire.ml_kem_public_signature, Some(vec![6u8; 64]));
+        assert_eq!(
+            wire,
+            KeyBundle {
+                ml_kem_public: Some(vec![5u8; 1184]),
+                ml_kem_public_signature: Some(vec![6u8; 64]),
+                ..classical_bundle()
+            }
+        );
+    }
+
+    /// A classical-only device is served as a complete bundle, not as an absence.
+    ///
+    /// The distinction matters because every *classical* field missing from the store makes
+    /// `get_key_bundle` return `None` and the RPC answer `NOT_FOUND`. ML-KEM material is the
+    /// first field for which absence is a legitimate state, so the read path must not treat
+    /// it the same way.
+    #[test]
+    fn an_absent_ml_kem_pair_still_yields_a_whole_bundle() {
+        let stored = crate::db::KeyBundle {
+            identity_key: vec![1u8; 32],
+            signed_pre_key: vec![2u8; 32],
+            signed_pre_key_signature: vec![3u8; 64],
+            one_time_pre_keys: vec![vec![4u8; 32]],
+            created_at: 1,
+            ml_kem_public: None,
+            ml_kem_public_signature: None,
+        };
+
+        let wire = to_proto(stored);
+
+        assert_eq!(wire, classical_bundle());
+        assert!(wire.ml_kem_public.is_none());
+        assert!(wire.ml_kem_public_signature.is_none());
+        assert_eq!(
+            wire.encode_to_vec(),
+            v1_0_1_golden(),
+            "a classical-only device must still look exactly like a v1.0.1 bundle on the wire"
+        );
     }
 }
