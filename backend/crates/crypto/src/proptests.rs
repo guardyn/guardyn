@@ -23,7 +23,7 @@ use proptest::prelude::*;
 
 use crate::double_ratchet::DoubleRatchet;
 use crate::padding::{next_padme_length, pad_message, unpad_message};
-use crate::x3dh::{IdentityKeyPair, SignedPreKey};
+use crate::x3dh::{IdentityKeyPair, SignedPreKey, X3DHPrekeyMessage};
 
 /// Messages up to 4 KiB. `pad_message` accepts 16 MiB, but generating those makes
 /// the suite slow without exercising a different branch: the size classes that
@@ -124,6 +124,40 @@ proptest! {
 
         prop_assert!(IdentityKeyPair::verify(&identity.public_bytes(), &msg, &signature).is_ok());
         prop_assert!(IdentityKeyPair::verify(&identity.public_bytes(), &other, &signature).is_err());
+    }
+
+    /// A prekey message round-trips for *any* one-time key id, not just the `0` every
+    /// client sends today.
+    ///
+    /// The unit tests in `x3dh.rs` used ids 0, 42 and 123 and asserted only the length and
+    /// field equality, so the byte order of this field went unconstrained until #255 - and
+    /// `0`, the only id ever on the wire, is byte-order invariant. The known-answer vectors
+    /// pin the encoding to one constant; this pins the parser across the whole `u32` range,
+    /// where an off-by-one slice or a width mistake would show up as a value that does not
+    /// survive the trip.
+    #[test]
+    fn x3dh_prekey_message_round_trips_any_one_time_key_id(
+        identity in prop::collection::vec(any::<u8>(), 32),
+        ephemeral in prop::collection::vec(any::<u8>(), 32),
+        id in prop::option::of(any::<u32>()),
+    ) {
+        let message = X3DHPrekeyMessage::new(identity.clone(), ephemeral.clone(), id);
+        let decoded = X3DHPrekeyMessage::from_bytes(&message.to_bytes()).expect("decode");
+
+        prop_assert_eq!(decoded.sender_identity_key, identity);
+        prop_assert_eq!(decoded.ephemeral_key, ephemeral);
+        prop_assert_eq!(decoded.used_one_time_key_id, id);
+    }
+
+    /// `from_bytes` is reachable from attacker-controlled bytes - the server relays the
+    /// prekey message without inspecting it - so it must refuse or parse, never panic.
+    /// The `x3dh_prekey_message` fuzz target covers this continuously; this keeps a cheap
+    /// version in the suite that runs on every build.
+    #[test]
+    fn x3dh_prekey_message_never_panics_on_arbitrary_input(
+        bytes in prop::collection::vec(any::<u8>(), 0..256)
+    ) {
+        let _ = X3DHPrekeyMessage::from_bytes(&bytes);
     }
 }
 

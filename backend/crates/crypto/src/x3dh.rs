@@ -310,9 +310,23 @@ impl X3DHPrekeyMessage {
         }
     }
 
-    /// Serialize to bytes (for transmission)
+    /// Serialize to bytes (for transmission).
+    ///
+    /// Layout: `identity_key(32) || ephemeral_key(32) || otk_flag(1) || [otk_id(4)]` -
+    /// 69 bytes with a one-time key id, 65 without.
+    ///
+    /// **`otk_id` is big-endian**, as is every multi-byte integer in a format that crosses
+    /// the Rust/Dart boundary: the ratchet header and frame length
+    /// ([`crate::double_ratchet`]) and the sealed sender certificate and envelope
+    /// ([`crate::sealed_sender`]) are all network byte order on both sides. This field was
+    /// little-endian here and big-endian in `client-mobile/lib/core/crypto/x3dh.dart` until
+    /// #255, which nothing detected because `0` is the only id either client ever sends and
+    /// `0` is byte-order invariant.
+    ///
+    /// The little-endian encodings that remain in [`crate::double_ratchet`] are the local
+    /// session state blob, which never crosses a language boundary - the Dart client
+    /// serializes its state as JSON.
     pub fn to_bytes(&self) -> Vec<u8> {
-        // Simple format: identity_key (32) + ephemeral_key (32) + otk_flag (1) + otk_id (4 if present)
         let mut bytes = Vec::with_capacity(69);
         bytes.extend_from_slice(&self.sender_identity_key);
         bytes.extend_from_slice(&self.ephemeral_key);
@@ -320,7 +334,7 @@ impl X3DHPrekeyMessage {
         match self.used_one_time_key_id {
             Some(id) => {
                 bytes.push(1); // flag: OTK used
-                bytes.extend_from_slice(&id.to_le_bytes());
+                bytes.extend_from_slice(&id.to_be_bytes());
             }
             None => {
                 bytes.push(0); // flag: no OTK
@@ -350,7 +364,7 @@ impl X3DHPrekeyMessage {
             let id_bytes: [u8; 4] = bytes[65..69]
                 .try_into()
                 .map_err(|_| crate::CryptoError::Protocol("Invalid OTK ID bytes".into()))?;
-            Some(u32::from_le_bytes(id_bytes))
+            Some(u32::from_be_bytes(id_bytes))
         } else {
             None
         };
@@ -789,6 +803,121 @@ mod tests {
         assert_eq!(decoded.sender_identity_key, sender_identity);
         assert_eq!(decoded.ephemeral_key, ephemeral_key);
         assert_eq!(decoded.used_one_time_key_id, Some(123));
+    }
+
+    /// The known-answer vectors for [`X3DHPrekeyMessage`], shared by the byte-exact test and
+    /// the Dart emitter below so the two cannot drift apart.
+    ///
+    /// `(name, identity_key_fill, ephemeral_key_fill, used_one_time_key_id)`. The fills are
+    /// distinct per vector so a shifted offset cannot pass unnoticed.
+    const PREKEY_MESSAGE_VECTORS: &[(&str, u8, u8, Option<u32>)] = &[
+        ("no_otk", 0x01, 0x02, None),
+        // The id every client sends today, and the reason #255 stayed invisible.
+        ("otk_id_zero", 0x03, 0x04, Some(0)),
+        // The discriminating case: big-endian writes 00000001, little-endian 01000000.
+        ("otk_id_one", 0x05, 0x06, Some(1)),
+        // Fully asymmetric, so any byte permutation fails rather than only a full reversal.
+        ("otk_id_asymmetric", 0x07, 0x08, Some(0x0102_0304)),
+        ("otk_id_max", 0x09, 0x0a, Some(u32::MAX)),
+    ];
+
+    fn prekey_message_vector(
+        identity_fill: u8,
+        ephemeral_fill: u8,
+        id: Option<u32>,
+    ) -> X3DHPrekeyMessage {
+        X3DHPrekeyMessage::new(vec![identity_fill; 32], vec![ephemeral_fill; 32], id)
+    }
+
+    fn hex_of(bytes: &[u8]) -> String {
+        bytes.iter().map(|b| format!("{:02x}", b)).collect()
+    }
+
+    /// The byte order of `otk_id` is a cross-platform wire contract, and until #255 no test
+    /// constrained it: `test_x3dh_prekey_message_with_otk` asserts a length and a
+    /// Rust-to-Rust round-trip, which passes just as happily when both ends share a bug.
+    /// That is exactly how this field stayed little-endian here while
+    /// `client-mobile/lib/core/crypto/x3dh.dart` read it big-endian. ADR-0011 makes the same
+    /// argument about the ratchet frame and answers it with known-answer vectors; these are
+    /// the prekey message's, and `wire_vectors_test.dart` asserts on the same constants, so
+    /// the two implementations are pinned to one answer rather than to each other.
+    #[test]
+    fn prekey_message_serializes_to_the_known_answer_vectors() {
+        // Everything from the flag byte onward - the whole of what the byte order affects.
+        let expected_tails = ["00", "0100000000", "0100000001", "0101020304", "01ffffffff"];
+
+        for ((name, identity_fill, ephemeral_fill, id), expected_tail) in
+            PREKEY_MESSAGE_VECTORS.iter().zip(expected_tails)
+        {
+            let bytes = prekey_message_vector(*identity_fill, *ephemeral_fill, *id).to_bytes();
+
+            assert_eq!(
+                hex_of(&bytes[..32]),
+                format!("{:02x}", identity_fill).repeat(32),
+                "{name}: identity key is not at offset 0"
+            );
+            assert_eq!(
+                hex_of(&bytes[32..64]),
+                format!("{:02x}", ephemeral_fill).repeat(32),
+                "{name}: ephemeral key is not at offset 32"
+            );
+            assert_eq!(
+                hex_of(&bytes[64..]),
+                expected_tail,
+                "{name}: flag byte and one-time key id are not the known answer"
+            );
+        }
+    }
+
+    /// Every vector above must also survive a round-trip, so a future edit cannot satisfy the
+    /// byte-exact test by breaking the parser instead.
+    #[test]
+    fn prekey_message_round_trips_every_known_answer_vector() {
+        for (name, identity_fill, ephemeral_fill, id) in PREKEY_MESSAGE_VECTORS {
+            let msg = prekey_message_vector(*identity_fill, *ephemeral_fill, *id);
+            let decoded = X3DHPrekeyMessage::from_bytes(&msg.to_bytes())
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+
+            assert_eq!(
+                decoded.sender_identity_key, msg.sender_identity_key,
+                "{name}"
+            );
+            assert_eq!(decoded.ephemeral_key, msg.ephemeral_key, "{name}");
+            assert_eq!(decoded.used_one_time_key_id, *id, "{name}");
+        }
+    }
+
+    /// Emit the Dart half of the vectors above.
+    ///
+    /// Run with
+    /// `cargo test -p guardyn-crypto emit_dart_prekey_message_vectors -- --nocapture`
+    /// and paste the output into `client-mobile/test/core/crypto/wire_vectors_test.dart`.
+    ///
+    /// ADR-0011 requires the known-answer vectors to be regenerated whenever a layout
+    /// changes, but the ratchet vectors it introduced were transcribed from an ad-hoc run
+    /// with no committed emitter - so "regenerate" had no procedure behind it. This is that
+    /// procedure for the prekey message, following the precedent of
+    /// `x3dh_conversion_tests.rs::generate_dart_test_vectors`.
+    #[test]
+    fn emit_dart_prekey_message_vectors() {
+        println!("\n=== X3DHPrekeyMessage vectors for wire_vectors_test.dart ===\n");
+
+        for (name, identity_fill, ephemeral_fill, id) in PREKEY_MESSAGE_VECTORS {
+            let msg = prekey_message_vector(*identity_fill, *ephemeral_fill, *id);
+            let otk = match id {
+                Some(value) => value.to_string(),
+                None => "null".to_string(),
+            };
+
+            println!("    '{name}': {{");
+            println!("      'ik': '{:02x}',", identity_fill);
+            println!("      'ek': '{:02x}',", ephemeral_fill);
+            println!("      'otkId': {otk},");
+            println!("      'frame': '{}',", hex_of(&msg.to_bytes()));
+            println!("    }},");
+        }
+
+        println!("\n=== end ===\n");
     }
 
     #[test]

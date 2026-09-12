@@ -93,6 +93,34 @@ sides share a bug — which is exactly how the format drift went unnoticed. **A 
 layout here must regenerate those vectors**, and the only check that proves the two ends actually
 interoperate is `just test-two-client-messaging`.
 
+**The vectors were scoped to the ratchet frame, and that scope was too narrow.** Three binary
+formats cross the Rust/Dart boundary; this ADR pinned one. `X3DHPrekeyMessage` was left to
+Dart-against-Dart round-trips on both sides — the precise situation the paragraph above argues
+against — and it had been encoding its one-time pre-key id **little-endian in Rust and
+big-endian in Dart** the whole time. The Dart implementation even states network byte order as
+its reason (`x3dh.dart:512`) and picks the opposite convention from the implementation it has
+to match.
+
+Nothing detected it because `0` is byte-order invariant, and `0` is the only id either client
+has ever sent: `GetKeyBundle` consumes nothing (#246), so every initiator is served index `0`.
+The first id other than `0` to cross platforms would have been misread — `1` written
+little-endian reads as `16777216` — and the failure arrives either as
+`ProtocolException('One-time prekey not found')` or, where both readings name a real key, as
+the wrong key, a different DH4 and an AEAD tag rejection with both sides looking healthy.
+
+#255 made the Rust side big-endian, matching every other field on the wire, and extended
+`wire_vectors_test.dart` to cover the prekey message. It also added the emitter this ADR's
+"must regenerate" sentence assumed existed: the ratchet vectors were transcribed from an ad-hoc
+run, with nothing committed to reproduce them. `emit_dart_prekey_message_vectors` in `x3dh.rs`
+is that procedure for the prekey message.
+
+**The third format is still unpinned.** The sealed sender certificate and envelope agree today
+— both ends are big-endian throughout — but nothing holds them there. That is
+[#264](https://github.com/guardyn/guardyn/issues/264).
+
+The general rule this produced now lives in [`SRS.md`](../spec/SRS.md): every multi-byte
+integer in a format that crosses the boundary is big-endian.
+
 **It does not close #106.** Binding the header authenticates the counter that drives
 `skip_message_keys`, which narrows the exposure but does not remove it: a replayed genuine
 header still drives the loop, and `dh_ratchet_receive` mutates `dh_self`, `root_key` and both
