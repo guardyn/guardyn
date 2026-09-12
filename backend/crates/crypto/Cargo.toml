@@ -10,9 +10,15 @@ description = "Unified cryptography core for Guardyn - X3DH, Double Ratchet, MLS
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = ["std"]
+# `pq` is on by default because I-3 makes hybrid key agreement the floor, not an option.
+# A post-quantum feature that must be opted into is one that ships off, which is how
+# pqxdh.rs sat unreachable in every backend service while the invariant read as unmet.
+# Predicate: PQ-DEFAULT in .claude/rules/00-invariants.md.
+default = ["std", "pq"]
 std = []
-# Post-quantum hybrid encryption (ML-KEM + X25519)
+# Post-quantum hybrid encryption (ML-KEM + X25519). Kept as a named feature rather than
+# folded into `std` so a `--no-default-features` consumer can still build without ml-kem;
+# nothing in this repository does, and nothing should.
 pq = ["ml-kem"]
 # FFI bindings for Flutter/Tauri
 ffi = ["chacha20poly1305"]

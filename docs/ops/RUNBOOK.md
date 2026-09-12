@@ -121,6 +121,19 @@ If `rules-verify` fails on a ratchet you did not mean to touch, you added a site
 you the count is *down*, lower the budget in the same PR - the number is a claim about the
 repository, and a stale one is worse than none.
 
+**If `PQ-DEFAULT` fails**, someone has taken `pq` out of `guardyn-crypto`'s `default` feature
+set, and every service built from `cargo build --release -p <service>` will ship with no
+post-quantum code in it. That is not hypothetical: it was the state of every deployed binary
+until PR-38. It is invisible to the test suite, because `crypto-ffi` enables `pq` and Cargo
+unifies features across a `--workspace` build, so the hybrid tests keep passing while the
+shipped artifact has none of it. Restore the feature; do not silence the check.
+
+To confirm what a service actually ships, ask Cargo rather than reading the manifest:
+
+```sh
+cargo tree -p guardyn-auth-service -i ml-kem   # must name ml-kem, not "did not match"
+```
+
 **If `ZK-INIT` fails**, a service is building its own `tracing` subscriber. That service gets
 no JSON logs, no OTel traces, and - the reason this is a hard fail rather than a style nit -
 **no redaction layer**, so any payload or key field it logs reaches the writer in clear. The

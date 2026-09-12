@@ -96,7 +96,7 @@ steps:
   - {id: PR-35, issue: 46, phase: 3, type: chore, status: done, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
   - {id: PR-36, issue: 47, phase: 4, type: feat, status: done, title: "Extend protos with ML-KEM key material fields"}
   - {id: PR-37, issue: 48, phase: 4, type: feat, status: done, title: "Persist and serve ML-KEM public keys in auth-service"}
-  - {id: PR-38, issue: 49, phase: 4, type: feat, status: todo, title: "Enable the pq feature across backend services"}
+  - {id: PR-38, issue: 49, phase: 4, type: feat, status: done, title: "Enable the pq feature across backend services"}
   # Retitled by PR-101. The original scope - "wire PqxdhProtocol into
   # messaging-service/src/crypto.rs" - named a file PR-30' deleted, in a service ADR-0010
   # made a pure relay. Following it would have put key agreement back on the server and

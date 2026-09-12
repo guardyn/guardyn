@@ -105,6 +105,10 @@ A replayed prekey message fails because the one-time key is already consumed.
 > legitimate state throughout: a bundle with no ML-KEM material is a classical-only device,
 > served whole rather than as a `NOT_FOUND`.
 >
+> `pq` is in `guardyn-crypto`'s `default` set as of PR-38, so the hybrid code is compiled into
+> every service that depends on it rather than only into a workspace test build. That closes
+> `PQ-DEFAULT`; it adds no behaviour on its own.
+>
 > **Nothing populates the fields and no client reads them.** Concretely:
 > `pqxdh.rs::verify_hybrid_bundle` checks the signature only under
 > `if let (Some(key), Some(signature))` **with no `else`**, so the half-pair of rule 4a

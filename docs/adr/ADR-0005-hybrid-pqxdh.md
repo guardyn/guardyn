@@ -51,12 +51,26 @@ with X3DH (`x3dh.rs`) rather than carrying its own — an Ed25519 verifying key 
 X25519 public point of the same seed, and treating it as one produces two sides that silently
 derive different secrets.
 
-**The gap, narrowed by one step.** PR-36 added `ml_kem_public` (tag 6) and
-`ml_kem_public_signature` (tag 7) to `common.KeyBundle`, so the wire contract can now carry
-the material and `PQ-WIRE` passes. That removed the blocker; it did not close the gap. The
-`pq` feature is still off by default, no backend service enables it, no client populates the
-fields, and `auth-service` reads a bundle into `db::KeyBundle` — which has no ML-KEM column —
-so anything published is dropped on store. The implementation is still unreached.
+**The gap, narrowed by three steps.** PR-36 added `ml_kem_public` (tag 6) and
+`ml_kem_public_signature` (tag 7) to `common.KeyBundle`, so the wire contract can carry the
+material and `PQ-WIRE` passes. PR-37 gave `db::KeyBundle` its ML-KEM columns, so `auth-service`
+persists and serves what it is handed instead of dropping it. PR-38 put `pq` in this crate's
+`default` set, so the code is compiled into the services that depend on it and `PQ-DEFAULT`
+passes.
+
+**What remains is the whole of the client half.** No client populates the fields — the desktop
+hardcodes `pq_prekey: None` and `client-mobile`'s proto is still forked at tag 5 — and nothing
+reads them back, because `derive_sender_shared_secret` is reached from no session-establishment
+path. The implementation is compiled and unreached, which is a better state than uncompiled and
+unreached, and is not the same as met. I-3 is met when PR-40 closes.
+
+**PR-38's real finding was about the build, not the flag.** A `cargo test --workspace` build
+already enabled `pq`, because `crypto-ffi` declares `default = ["full"] = ["pq"]` and Cargo
+unifies features across a workspace. Services ship from `cargo build --release -p <service>`,
+which unifies nothing, so `cargo tree -p guardyn-auth-service -i ml-kem` found no such package:
+the hybrid tests passed in CI while every deployed binary contained no post-quantum code. When
+a feature is an invariant, `default` is the only correct place for it — an opt-in that the test
+build happens to opt into proves nothing about what ships.
 
 The fields are `optional`, not bare `bytes`, so "never published" and "published empty" stay
 distinct values. On a field whose absence is the normal case for years that distinction is
