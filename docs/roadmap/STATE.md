@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1080
+tokens: 1084
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 70 | `█████████░` |
-| 4 | 2 | 18 | `█░░░░░░░░░` |
-| **all** | **91** | **114** | |
+| 4 | 3 | 19 | `██░░░░░░░░` |
+| **all** | **92** | **115** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 23 of 114
+- **Open steps:** 23 of 115
 
 ## Gates
 
@@ -61,7 +61,6 @@ supersedes: []
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
-| PR-37 | 4 | [#48](https://github.com/guardyn/guardyn/issues/48) | Persist and serve ML-KEM public keys in auth-service |
 | PR-38 | 4 | [#49](https://github.com/guardyn/guardyn/issues/49) | Enable the pq feature across backend services |
 | PR-97 | 4 | [#261](https://github.com/guardyn/guardyn/issues/261) | Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext |
 | PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop negotiates hybrid PQXDH |
@@ -77,3 +76,4 @@ supersedes: []
 | PR-94 | 4 | [#253](https://github.com/guardyn/guardyn/issues/253) | Partition client-desktop SecureStorage per account |
 | PR-99 | 4 | [#263](https://github.com/guardyn/guardyn/issues/263) | One-time pre-key ids break at TiKV lexicographic index >= 10 |
 | PR-100 | 4 | [#264](https://github.com/guardyn/guardyn/issues/264) | Add known-answer vectors for the sealed sender wire format |
+| PR-102 | 4 | [#272](https://github.com/guardyn/guardyn/issues/272) | MLS key packages are stored under a hardcoded device_id of default |

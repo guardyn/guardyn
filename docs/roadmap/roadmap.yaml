@@ -95,7 +95,7 @@ steps:
   - {id: PR-34, issue: 45, phase: 3, type: security, status: done, title: "Add proptest suites for crypto invariants"}
   - {id: PR-35, issue: 46, phase: 3, type: chore, status: done, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
   - {id: PR-36, issue: 47, phase: 4, type: feat, status: done, title: "Extend protos with ML-KEM key material fields"}
-  - {id: PR-37, issue: 48, phase: 4, type: feat, status: todo, title: "Persist and serve ML-KEM public keys in auth-service"}
+  - {id: PR-37, issue: 48, phase: 4, type: feat, status: done, title: "Persist and serve ML-KEM public keys in auth-service"}
   - {id: PR-38, issue: 49, phase: 4, type: feat, status: todo, title: "Enable the pq feature across backend services"}
   # Retitled by PR-101. The original scope - "wire PqxdhProtocol into
   # messaging-service/src/crypto.rs" - named a file PR-30' deleted, in a service ADR-0010
@@ -198,6 +198,10 @@ steps:
   # both detonate on PR-93. Opened before any fix, per .claude/rules/00-invariants.md.
   - {id: PR-99, issue: 263, phase: 4, type: fix, status: todo, title: "One-time pre-key ids break at TiKV lexicographic index >= 10"}
   - {id: PR-100, issue: 264, phase: 4, type: security, status: todo, title: "Add known-answer vectors for the sealed sender wire format"}
+  # Split out of PR-37 while executing it. implementation_plan.md folded this into that step,
+  # but it is an MLS key-package defect that shares nothing with ML-KEM except the crate, and
+  # one PR closing one issue cannot fix two unrelated things (AGENTS.md 2.2).
+  - {id: PR-102, issue: 272, phase: 4, type: fix, status: todo, title: "MLS key packages are stored under a hardcoded device_id of default"}
   # This step. The plan of record directed PR-39 at an I-1 breach for the second time; the
   # correction is recorded rather than made silently.
   - {id: PR-101, issue: 265, phase: 4, type: docs, status: done, title: "Reconcile roadmap.yaml for the Phase 4 scope correction"}

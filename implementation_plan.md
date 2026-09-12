@@ -519,8 +519,18 @@ optimization — the invariant outranks speed-to-market.
   Ed25519 signature; extend `auth.proto` `UploadPreKeysRequest` to accept ML-KEM material.
   **Additive field numbers only** — wire-compatible with deployed v1.0.1 clients.
 - **PR-37** — `auth-service`: persist and serve ML-KEM public keys through `db.rs` and
-  `handlers/`. Also fixes the hardcoded `device_id = "default"` at
-  `handlers/mls_key_package.rs:57`.
+  `handlers/`. `store_key_bundle` writes both halves under `/devices/{user}/{device}/`,
+  deleting them when absent so stale material cannot outlive a re-registration;
+  `validate_for_store` refuses a half-pair. The check is **structural only** — no byte
+  lengths, no signature verification, because ADR-0010 makes the server a relay.
+
+  **This step no longer carries the `device_id` fix.** It used to read "Also fixes the
+  hardcoded `device_id = "default"` at `handlers/mls_key_package.rs:57`" — a real defect
+  (every one of a user's devices collides on one storage path) but an MLS key-package one,
+  sharing nothing with ML-KEM but the crate. Bundling it would have made one PR close one
+  issue while fixing two unrelated things, which is what §2.2 exists to prevent. Split out
+  as **PR-102** ([#272](https://github.com/guardyn/guardyn/issues/272)) during PR-37's
+  execution and recorded here rather than dropped silently.
 - **PR-38** — Enable `features = ["pq"]` on `guardyn-crypto` in `auth-service`,
   `messaging-service` and `call-service`; make `pq` part of `crypto`'s `default`.
 - **PR-39** — Wire `PqxdhProtocol` into `messaging-service/src/crypto.rs` session

@@ -90,17 +90,31 @@ A replayed prekey message fails because the one-time key is already consumed.
 > Rule 0 holds on both clients as of PR-79; `common.KeyBundle` still carries no key ids, so an
 > initiator names the one-time key by the index it occupied in the published array.
 
-> **Rule 4 and 4a are expressible but not yet enforced.** PR-36 added tags 6 and 7 to
-> `common.KeyBundle`, so the wire can carry ML-KEM material — that is the whole of what it
-> did. Nothing populates the fields, `auth-service` drops them on store, and no client reads
-> them. Concretely: `pqxdh.rs::verify_hybrid_bundle` checks the signature only under
+> **Rule 4 and 4a are enforced on the server and not yet on the clients.** PR-36 added tags 6
+> and 7 to `common.KeyBundle`, so the wire can carry ML-KEM material. PR-37 made
+> `auth-service` persist and serve it: `store_key_bundle` writes both halves under
+> `/devices/{user_id}/{device_id}/`, `get_key_bundle` reads them back, and
+> `KeyBundle::validate_for_store` refuses a half-pair outright — so rule 4a holds for
+> anything that reaches the store.
+>
+> That check is **structural, not cryptographic**, and the distinction is deliberate. The
+> server asserts that the two fields are present together or absent together; it does not
+> assert their byte lengths and does not verify the signature. Under
+> [ADR-0010](../adr/ADR-0010-pure-relay-server.md) it is a relay, and a relay that knows an
+> algorithm's parameters needs a deploy before a client can move to ML-KEM-1024. Absence is a
+> legitimate state throughout: a bundle with no ML-KEM material is a classical-only device,
+> served whole rather than as a `NOT_FOUND`.
+>
+> **Nothing populates the fields and no client reads them.** Concretely:
+> `pqxdh.rs::verify_hybrid_bundle` checks the signature only under
 > `if let (Some(key), Some(signature))` **with no `else`**, so the half-pair of rule 4a
-> returns `Ok(())` today rather than an error. That path is unreachable while nothing builds
-> a hybrid bundle from the wire, and it is reachable the moment something does — so the fix,
-> with the property tests that belong to it, is owned by
-> [#50](https://github.com/guardyn/guardyn/issues/50) (PR-39) and must land with the code
-> that first reaches it. Until then, **do not describe the handshake as post-quantum
-> protected.**
+> returns `Ok(())` today rather than an error. A server that refuses to store one narrows the
+> ways that path is reached; it does not close it, because a bundle can arrive from somewhere
+> other than `GetKeyBundle`. The fix, with the property tests that belong to it, is owned by
+> [#50](https://github.com/guardyn/guardyn/issues/50) (PR-39) and must land with the code that
+> first reaches it. Until then, **do not describe the handshake as post-quantum protected** —
+> the server can now publish a post-quantum pre-key, which is not the same as agreeing a
+> post-quantum secret.
 
 ## Message encryption (Double Ratchet)
 

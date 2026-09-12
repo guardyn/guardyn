@@ -156,6 +156,8 @@ pub async fn handle(
             signed_pre_key_signature: key_bundle.signed_pre_key_signature,
             one_time_pre_keys: key_bundle.one_time_pre_keys,
             created_at: now,
+            ml_kem_public: key_bundle.ml_kem_public,
+            ml_kem_public_signature: key_bundle.ml_kem_public_signature,
         };
 
         if let Err(e) = service

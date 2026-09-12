@@ -54,6 +54,15 @@ pub struct KeyBundle {
     pub signed_pre_key_signature: Vec<u8>,
     pub one_time_pre_keys: Vec<Vec<u8>>,
     pub created_at: i64,
+    /// ML-KEM-768 encapsulation key, `common.KeyBundle` tag 6.
+    ///
+    /// `Option` rather than an empty `Vec` for the same reason the proto field is
+    /// `optional`: "this device published no post-quantum pre-key" and "this device
+    /// published an empty one" are different facts, and only one of them is legitimate.
+    pub ml_kem_public: Option<Vec<u8>>,
+    /// Ed25519 signature over [`Self::ml_kem_public`], `common.KeyBundle` tag 7, by the
+    /// same identity key that signs the signed pre-key.
+    pub ml_kem_public_signature: Option<Vec<u8>>,
 }
 
 impl KeyBundle {
@@ -79,6 +88,28 @@ impl KeyBundle {
         if self.signed_pre_key_signature.is_empty() {
             anyhow::bail!("refusing to store a key bundle with an unsigned signed pre-key");
         }
+
+        // SRS rule 4a: the ML-KEM key and its signature are present together or absent
+        // together. A half-pair is rejected here so the store can never hold one, and so
+        // `get_key_bundle` never has to choose between serving an unauthenticated
+        // encapsulation key and silently downgrading the bundle to classical-only - which
+        // is the downgrade an active attacker forces by stripping a single field.
+        //
+        // This is a structural check, not a cryptographic one. The server deliberately does
+        // not assert the 1184/64 byte lengths and does not verify the signature: under
+        // ADR-0010 it is a relay, and the moment it knows an algorithm's parameters, moving
+        // to ML-KEM-1024 needs a server deploy. Verification is the peer's obligation, in
+        // `pqxdh::verify_hybrid_bundle`.
+        match (&self.ml_kem_public, &self.ml_kem_public_signature) {
+            (Some(_), None) => {
+                anyhow::bail!("refusing to store an ML-KEM pre-key with no signature")
+            }
+            (None, Some(_)) => {
+                anyhow::bail!("refusing to store an ML-KEM signature with no pre-key")
+            }
+            (Some(_), Some(_)) | (None, None) => {}
+        }
+
         Ok(())
     }
 }
@@ -92,6 +123,41 @@ fn one_time_pre_key_paths(user_id: &str, device_id: &str, count: usize) -> Vec<S
     (0..count)
         .map(|i| format!("/devices/{}/{}/one_time_keys/{}", user_id, device_id, i))
         .collect()
+}
+
+/// Everything `store_key_bundle` does to a device's two ML-KEM paths, as
+/// `(path, Some(value))` for a write and `(path, None)` for a delete.
+///
+/// The material sits under the *device* prefix, beside the signed pre-key it parallels,
+/// rather than under `/users/{id}/` where the identity key lives: it is a per-device
+/// pre-key that the per-user identity key merely signs.
+///
+/// Absence deletes rather than skips, and that is the whole point of this function. A skip
+/// leaves a stale encapsulation key beside a freshly written signed pre-key - both signed
+/// by the same identity key, so every signature still verifies and nothing looks wrong,
+/// while peers encapsulate to a key whose decapsulation half the device may no longer
+/// hold. That is the shape of the `UploadPreKeys` defect in reverse, and a write set is
+/// the thing to test, because the `put` and `delete` calls around it need a cluster.
+fn ml_kem_write_set(
+    user_id: &str,
+    device_id: &str,
+    key_bundle: &KeyBundle,
+) -> Vec<(String, Option<Vec<u8>>)> {
+    let (public_path, signature_path) = ml_kem_paths(user_id, device_id);
+    vec![
+        (public_path, key_bundle.ml_kem_public.clone()),
+        (signature_path, key_bundle.ml_kem_public_signature.clone()),
+    ]
+}
+
+/// The two TiKV keys a device's ML-KEM material occupies, as `(public, signature)`.
+///
+/// One definition, so the read path cannot drift from the write path.
+fn ml_kem_paths(user_id: &str, device_id: &str) -> (String, String) {
+    (
+        format!("/devices/{}/{}/ml_kem_public", user_id, device_id),
+        format!("/devices/{}/{}/ml_kem_public_signature", user_id, device_id),
+    )
 }
 
 /// Contact relationship stored in TiKV
@@ -461,6 +527,8 @@ impl DatabaseClient {
     /// Every path is written unconditionally, so the bundle must be complete. Passing empty
     /// identity material is rejected rather than written - see [`KeyBundle::validate_for_store`].
     /// To add one-time pre-keys to an existing bundle, use [`Self::store_one_time_pre_keys`].
+    ///
+    /// "Unconditionally" extends to the optional ML-KEM material - see [`ml_kem_write_set`].
     pub async fn store_key_bundle(
         &self,
         user_id: &str,
@@ -491,6 +559,15 @@ impl DatabaseClient {
         self.client
             .put(sig_path, key_bundle.signed_pre_key_signature.clone())
             .await?;
+
+        // Both ML-KEM paths are touched on every store, present or not - see
+        // [`ml_kem_write_set`] for why absence must delete rather than skip.
+        for (path, value) in ml_kem_write_set(user_id, device_id, key_bundle) {
+            match value {
+                Some(value) => self.client.put(path.into_bytes(), value).await?,
+                None => self.client.delete(path.into_bytes()).await?,
+            }
+        }
 
         self.store_one_time_pre_keys(user_id, device_id, &key_bundle.one_time_pre_keys)
             .await
@@ -570,11 +647,23 @@ impl DatabaseClient {
             one_time_pre_keys.push(kv.1);
         }
 
+        // Optional, unlike every field above: absent ML-KEM material is a classical-only
+        // device, not a missing bundle, so it must not turn this into `Ok(None)`.
+        //
+        // Whatever is stored is served verbatim. Collapsing a half-pair to classical here
+        // would be the server performing the SRS 4a downgrade itself; the pair rule in
+        // `validate_for_store` is what makes that state unreachable through the write path.
+        let (ml_kem_public_path, ml_kem_signature_path) = ml_kem_paths(user_id, device_id);
+        let ml_kem_public = self.client.get(ml_kem_public_path.into_bytes()).await?;
+        let ml_kem_public_signature = self.client.get(ml_kem_signature_path.into_bytes()).await?;
+
         Ok(Some(KeyBundle {
             identity_key,
             signed_pre_key,
             signed_pre_key_signature: signature,
             one_time_pre_keys,
+            ml_kem_public,
+            ml_kem_public_signature,
             created_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -966,6 +1055,19 @@ mod tests {
             signed_pre_key_signature: vec![3; 64],
             one_time_pre_keys: vec![vec![4; 32], vec![5; 32]],
             created_at: 0,
+            ml_kem_public: None,
+            ml_kem_public_signature: None,
+        }
+    }
+
+    /// The same bundle with ML-KEM material attached. Byte values are arbitrary and the
+    /// lengths are the real ones only for readability - nothing in `db.rs` may depend on
+    /// either, which is what `test_ml_kem_material_is_stored_without_inspection` pins.
+    fn hybrid_bundle() -> KeyBundle {
+        KeyBundle {
+            ml_kem_public: Some(vec![6; 1184]),
+            ml_kem_public_signature: Some(vec![7; 64]),
+            ..complete_bundle()
         }
     }
 
@@ -990,6 +1092,8 @@ mod tests {
             signed_pre_key_signature: vec![],
             one_time_pre_keys: vec![vec![4; 32]],
             created_at: 0,
+            ml_kem_public: None,
+            ml_kem_public_signature: None,
         };
 
         let err = destructive
@@ -1062,5 +1166,121 @@ mod tests {
             one_time_pre_key_paths("u1", "d1", 1),
             vec!["/devices/u1/d1/one_time_keys/0"]
         );
+    }
+
+    /// SRS rule 4a, enforced at the edge: a bundle carrying one half of the ML-KEM pair is
+    /// refused outright, in both directions.
+    ///
+    /// Rejecting at the write is what lets `get_key_bundle` serve whatever it finds without
+    /// having to choose between handing a peer an unauthenticated encapsulation key and
+    /// silently downgrading the bundle to classical-only. Neither is acceptable, so the
+    /// state simply must not exist.
+    #[test]
+    fn test_half_an_ml_kem_pair_is_refused() {
+        let key_without_signature = KeyBundle {
+            ml_kem_public: Some(vec![6; 1184]),
+            ml_kem_public_signature: None,
+            ..complete_bundle()
+        };
+        let signature_without_key = KeyBundle {
+            ml_kem_public: None,
+            ml_kem_public_signature: Some(vec![7; 64]),
+            ..complete_bundle()
+        };
+
+        assert!(
+            key_without_signature.validate_for_store().is_err(),
+            "an ML-KEM pre-key with no signature is an unauthenticated encapsulation key"
+        );
+        assert!(
+            signature_without_key.validate_for_store().is_err(),
+            "an ML-KEM signature with no pre-key signs nothing"
+        );
+    }
+
+    /// Both halves, or neither, are the only two storable shapes.
+    #[test]
+    fn test_a_whole_pair_and_no_pair_are_both_storable() {
+        hybrid_bundle()
+            .validate_for_store()
+            .expect("a bundle with both ML-KEM halves is storable");
+        complete_bundle()
+            .validate_for_store()
+            .expect("a classical-only bundle is still storable");
+    }
+
+    /// The server stores opaque bytes and asserts nothing about them.
+    ///
+    /// Deliberate, not an oversight: under ADR-0010 auth-service is a relay, and a length
+    /// check here would hardcode ML-KEM-768's parameters into it, so moving to ML-KEM-1024
+    /// would need a server deploy before a client could publish one. Signature verification
+    /// belongs to the peer, in `pqxdh::verify_hybrid_bundle`.
+    #[test]
+    fn test_ml_kem_material_is_stored_without_inspection() {
+        let wrong_lengths = KeyBundle {
+            ml_kem_public: Some(vec![6; 7]),
+            ml_kem_public_signature: Some(vec![7; 1]),
+            ..complete_bundle()
+        };
+
+        wrong_lengths
+            .validate_for_store()
+            .expect("the relay must not know an algorithm's byte lengths");
+    }
+
+    /// A hybrid bundle writes both ML-KEM paths, under the device prefix, and touches
+    /// nothing else.
+    #[test]
+    fn test_ml_kem_write_set_puts_both_paths_under_the_device() {
+        let writes = ml_kem_write_set("u1", "d1", &hybrid_bundle());
+
+        assert_eq!(
+            writes,
+            vec![
+                (
+                    "/devices/u1/d1/ml_kem_public".to_string(),
+                    Some(vec![6; 1184])
+                ),
+                (
+                    "/devices/u1/d1/ml_kem_public_signature".to_string(),
+                    Some(vec![7; 64])
+                ),
+            ]
+        );
+        assert!(
+            !writes.iter().any(|(path, _)| path.contains("identity_key")),
+            "ML-KEM material is per-device; it must never touch the per-user identity key"
+        );
+    }
+
+    /// A classical bundle **deletes** both paths rather than skipping them.
+    ///
+    /// Skipping is the tempting implementation and it is the wrong one, for the reason
+    /// [`ml_kem_write_set`] gives. This is the test that fails if someone makes it.
+    #[test]
+    fn test_a_classical_bundle_deletes_stale_ml_kem_material() {
+        let writes = ml_kem_write_set("u1", "d1", &complete_bundle());
+
+        assert_eq!(
+            writes,
+            vec![
+                ("/devices/u1/d1/ml_kem_public".to_string(), None),
+                ("/devices/u1/d1/ml_kem_public_signature".to_string(), None),
+            ],
+            "absent ML-KEM material must delete both paths, never skip them"
+        );
+    }
+
+    /// The read path and the write path name the same two keys. They are derived from one
+    /// function so they cannot drift, and this asserts that they have not.
+    #[test]
+    fn test_ml_kem_read_and_write_paths_agree() {
+        let (public_path, signature_path) = ml_kem_paths("u1", "d1");
+        let written: Vec<String> = ml_kem_write_set("u1", "d1", &hybrid_bundle())
+            .into_iter()
+            .map(|(path, _)| path)
+            .collect();
+
+        assert_eq!(written, vec![public_path, signature_path]);
     }
 }
