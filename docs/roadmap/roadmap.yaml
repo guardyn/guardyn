@@ -94,7 +94,7 @@ steps:
   - {id: PR-33, issue: 44, phase: 3, type: security, status: done, title: "Add cargo-fuzz targets for attacker-controlled parsers"}
   - {id: PR-34, issue: 45, phase: 3, type: security, status: done, title: "Add proptest suites for crypto invariants"}
   - {id: PR-35, issue: 46, phase: 3, type: chore, status: done, gate: G3, title: "Add baseline test coverage for notification-service and call-service"}
-  - {id: PR-36, issue: 47, phase: 4, type: feat, status: todo, title: "Extend protos with ML-KEM key material fields"}
+  - {id: PR-36, issue: 47, phase: 4, type: feat, status: done, title: "Extend protos with ML-KEM key material fields"}
   - {id: PR-37, issue: 48, phase: 4, type: feat, status: todo, title: "Persist and serve ML-KEM public keys in auth-service"}
   - {id: PR-38, issue: 49, phase: 4, type: feat, status: todo, title: "Enable the pq feature across backend services"}
   # Retitled by PR-101. The original scope - "wire PqxdhProtocol into

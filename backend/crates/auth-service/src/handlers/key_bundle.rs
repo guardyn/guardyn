@@ -25,6 +25,9 @@ pub async fn get(
                     seconds: kb.created_at,
                     nanos: 0,
                 }),
+                // PR-37 populates these; until then auth-service neither stores nor
+                // serves ML-KEM material and the bundle goes out classical-only.
+                ..Default::default()
             };
 
             let success = GetKeyBundleSuccess {
@@ -115,5 +118,114 @@ pub async fn upload(
                 result: Some(upload_pre_keys_response::Result::Error(error)),
             }))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prost::Message;
+
+    /// A `KeyBundle` exactly as a client built before tags 6 and 7 existed, assembled
+    /// from the protobuf wire spec rather than from prost.
+    ///
+    /// Encoding the Rust struct and comparing against itself would prove only that prost
+    /// agrees with prost. The claim PR-36 rests on is narrower and about *other* binaries:
+    /// that a v1.0.1 peer's bytes still mean what they meant. So each record here is
+    /// written out as `(field_number << 3) | wire_type`, then a length, then the payload.
+    /// A field number that silently changed would fail here instead of in production.
+    fn v1_0_1_golden() -> Vec<u8> {
+        let mut b = Vec::new();
+        b.extend_from_slice(&[0x0a, 32]); // 1: identity_key
+        b.extend_from_slice(&[1u8; 32]);
+        b.extend_from_slice(&[0x12, 32]); // 2: signed_pre_key
+        b.extend_from_slice(&[2u8; 32]);
+        b.extend_from_slice(&[0x1a, 64]); // 3: signed_pre_key_signature
+        b.extend_from_slice(&[3u8; 64]);
+        b.extend_from_slice(&[0x22, 32]); // 4: one_time_pre_keys[0]
+        b.extend_from_slice(&[4u8; 32]);
+        b.extend_from_slice(&[0x2a, 2, 0x08, 1]); // 5: created_at { seconds: 1 }
+        b
+    }
+
+    /// The same bundle as a Rust value. `..Default::default()` leaves tags 6 and 7 `None`.
+    fn classical_bundle() -> KeyBundle {
+        KeyBundle {
+            identity_key: vec![1u8; 32],
+            signed_pre_key: vec![2u8; 32],
+            signed_pre_key_signature: vec![3u8; 64],
+            one_time_pre_keys: vec![vec![4u8; 32]],
+            created_at: Some(Timestamp {
+                seconds: 1,
+                nanos: 0,
+            }),
+            ..Default::default()
+        }
+    }
+
+    /// Forward compatibility: a bundle published by a client that predates PR-36 still
+    /// decodes, with every classical field intact and no ML-KEM material invented.
+    #[test]
+    fn v1_0_1_bundle_decodes_with_no_ml_kem_material() {
+        let decoded = KeyBundle::decode(v1_0_1_golden().as_slice()).expect("v1.0.1 bundle decodes");
+
+        assert_eq!(decoded, classical_bundle());
+        assert!(
+            decoded.ml_kem_public.is_none(),
+            "an absent field must stay absent, not become Some(empty)"
+        );
+        assert!(decoded.ml_kem_public_signature.is_none());
+    }
+
+    /// Absence costs nothing on the wire. This is what makes the change additive for a
+    /// deployment where no client has been updated yet: every byte is where it was.
+    #[test]
+    fn absent_ml_kem_material_costs_no_bytes() {
+        assert_eq!(classical_bundle().encode_to_vec(), v1_0_1_golden());
+    }
+
+    /// Backward compatibility, as a prefix property.
+    ///
+    /// prost emits fields in declaration order, and tags 6 and 7 are declared after 5, so a
+    /// hybrid bundle is byte-for-byte the v1.0.1 encoding followed by two further records.
+    /// That is precisely the condition under which a decoder that has never heard of those
+    /// tags skips them as unknown fields and recovers the identical old message - and it is
+    /// checkable without an old decoder, which cannot be instantiated from this tree.
+    #[test]
+    fn ml_kem_material_appends_to_the_v1_0_1_encoding() {
+        let hybrid = KeyBundle {
+            ml_kem_public: Some(vec![5u8; 1184]),
+            ml_kem_public_signature: Some(vec![6u8; 64]),
+            ..classical_bundle()
+        };
+
+        let encoded = hybrid.encode_to_vec();
+        let golden = v1_0_1_golden();
+
+        assert!(
+            encoded.starts_with(&golden),
+            "ML-KEM material must append to the v1.0.1 encoding, never reorder or displace it"
+        );
+        assert!(encoded.len() > golden.len());
+        assert_eq!(
+            KeyBundle::decode(encoded.as_slice()).expect("hybrid decodes"),
+            hybrid
+        );
+    }
+
+    /// A key without its signature is representable on the wire - nothing in protobuf can
+    /// forbid it - so rejecting it is a client obligation, not a schema guarantee. The rule
+    /// lives in `docs/spec/SRS.md` and is enforced by PR-39 (#50); `verify_hybrid_bundle`
+    /// currently returns `Ok(())` for this shape. This test pins the hazard, not the fix.
+    #[test]
+    fn a_half_pair_survives_a_round_trip_and_must_be_rejected_downstream() {
+        let half = KeyBundle {
+            ml_kem_public: Some(vec![5u8; 1184]),
+            ..classical_bundle()
+        };
+
+        let decoded = KeyBundle::decode(half.encode_to_vec().as_slice()).expect("decodes");
+        assert!(decoded.ml_kem_public.is_some());
+        assert!(decoded.ml_kem_public_signature.is_none());
     }
 }

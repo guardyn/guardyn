@@ -64,7 +64,17 @@ it is recorded here so nobody "fixes" it.
 3. Three or four DH operations produce the shared secret. A consumed one-time pre-key is
    never reissued.
 4. Under **I-3** the same handshake also encapsulates to an ML-KEM-768 public key, and both
-   secrets feed the KDF. Classical strength is the floor, never the ceiling.
+   secrets feed the KDF. Classical strength is the floor, never the ceiling. The key is
+   `common.KeyBundle.ml_kem_public` (tag 6), a 1184-byte encapsulation key, and what makes it
+   trustworthy is `ml_kem_public_signature` (tag 7): Ed25519 over the raw encapsulation-key
+   bytes, by the **same identity key that signs the signed pre-key**. One identity, one
+   signer, both pre-keys.
+4a. The two fields are **present together or absent together**. A bundle carrying
+   `ml_kem_public` without its signature is rejected **in whole** — not degraded to the
+   classical-only exchange. Degrading is what an attacker wants: stripping one field is
+   cheaper than breaking either primitive, and a silent fallback converts a tampered bundle
+   into a session the post-quantum half no longer protects. This is rule 2's prohibition
+   applied to the second pre-key.
 
 **Edge cases.** No one-time pre-keys left: proceed with the three-DH variant — never refuse,
 never fall back to an unauthenticated exchange. Bundle from an unknown device: `NOT_FOUND`.
@@ -79,6 +89,18 @@ A replayed prekey message fails because the one-time key is already consumed.
 >
 > Rule 0 holds on both clients as of PR-79; `common.KeyBundle` still carries no key ids, so an
 > initiator names the one-time key by the index it occupied in the published array.
+
+> **Rule 4 and 4a are expressible but not yet enforced.** PR-36 added tags 6 and 7 to
+> `common.KeyBundle`, so the wire can carry ML-KEM material — that is the whole of what it
+> did. Nothing populates the fields, `auth-service` drops them on store, and no client reads
+> them. Concretely: `pqxdh.rs::verify_hybrid_bundle` checks the signature only under
+> `if let (Some(key), Some(signature))` **with no `else`**, so the half-pair of rule 4a
+> returns `Ok(())` today rather than an error. That path is unreachable while nothing builds
+> a hybrid bundle from the wire, and it is reachable the moment something does — so the fix,
+> with the property tests that belong to it, is owned by
+> [#50](https://github.com/guardyn/guardyn/issues/50) (PR-39) and must land with the code
+> that first reaches it. Until then, **do not describe the handshake as post-quantum
+> protected.**
 
 ## Message encryption (Double Ratchet)
 

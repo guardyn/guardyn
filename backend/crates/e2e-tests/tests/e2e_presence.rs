@@ -103,6 +103,7 @@ fn mock_key_bundle() -> KeyBundle {
             seconds: now,
             nanos: 0,
         }),
+        ..Default::default()
     }
 }
 

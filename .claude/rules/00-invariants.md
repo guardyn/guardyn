@@ -23,7 +23,7 @@ If a task appears to require it, stop and ask the user.
 | `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | PASS | `rules-verify` |
 | `E2EE-DUP` | I-2 | No handler has a non-E2EE twin | PASS | `rules-verify` |
 | `PQ-DEFAULT` | I-3 | The `pq` feature is on by default in the crypto crate | FAIL | PR-38 |
-| `PQ-WIRE` | I-3 | The wire contract carries ML-KEM key material | FAIL | PR-36 |
+| `PQ-WIRE` | I-3 | The wire contract carries ML-KEM key material | PASS | reviewer |
 | `SOV-DOMAIN` | I-4 | Every hostname derives from `${DOMAIN}` | FAIL (1) | **none — tracked by #82** |
 | `SOV-STORE` | I-4 | No datastore added, replaced or removed without an accepted ADR | PASS | reviewer |
 
@@ -61,12 +61,21 @@ a deployment file that looks like a kill switch reads as one whether or not any 
 and the prod overlay's `GUARDYN_E2EE_ENABLED: "true"` was actively misleading about where
 encryption came from.
 
-`PQ-WIRE` fails while `crypto/src/pqxdh.rs` is a complete hybrid X25519 + ML-KEM-768
-implementation. It is unreached, not absent — no proto field can carry the public key.
+`PQ-WIRE` passed with PR-36, which added `ml_kem_public` and `ml_kem_public_signature` to
+`common.KeyBundle` as tags 6 and 7. The predicate asks only whether the **wire contract** can
+carry the material, and it now can. Nothing else changed: `crypto/src/pqxdh.rs` is still
+unreached, nothing populates the fields, and `auth-service` still drops them on store. Read
+this row as "the blocker is gone", not "the invariant holds" — I-3 is met when PR-40 closes,
+not here.
 
-**A known failure is not licence to patch it.** Both remaining failures have an owned step -
-`PQ-DEFAULT` (PR-38) and `PQ-WIRE` (PR-36) - and fixing one outside that step breaks the
-micro-step contract.
+**Its owner is `reviewer`, not `rules-verify`, and that is a real gap.** `PQ-WIRE` is written
+out in the shell block above but has no counterpart in
+[`rules-verify.sh`](../../infra/scripts/rules-verify.sh), so nothing in CI stops the fields
+being removed again. Every other PASS row on this table is machine-defended; this one is
+defended by somebody noticing. Automating it is unowned work.
+
+**A known failure is not licence to patch it.** The one remaining failure has an owned step -
+`PQ-DEFAULT` (PR-38) - and fixing it outside that step breaks the micro-step contract.
 
 `ZK-PII` and `SOV-DOMAIN` were both found while writing this file, with no owning step. Each had
 an issue opened before any fix. `ZK-PII` is now closed by #81 and enforced by `rules-verify`;

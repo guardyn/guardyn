@@ -51,17 +51,31 @@ with X3DH (`x3dh.rs`) rather than carrying its own — an Ed25519 verifying key 
 X25519 public point of the same seed, and treating it as one produces two sides that silently
 derive different secrets.
 
-**The gap.** The `pq` feature is off by default, no backend service enables it, and —
-decisively — `backend/proto/` contains **zero** ML-KEM fields, so a server cannot publish a
-PQ public key at all. The implementation is unreached, not absent.
+**The gap, narrowed by one step.** PR-36 added `ml_kem_public` (tag 6) and
+`ml_kem_public_signature` (tag 7) to `common.KeyBundle`, so the wire contract can now carry
+the material and `PQ-WIRE` passes. That removed the blocker; it did not close the gap. The
+`pq` feature is still off by default, no backend service enables it, no client populates the
+fields, and `auth-service` reads a bundle into `db::KeyBundle` — which has no ML-KEM column —
+so anything published is dropped on store. The implementation is still unreached.
+
+The fields are `optional`, not bare `bytes`, so "never published" and "published empty" stay
+distinct values. On a field whose absence is the normal case for years that distinction is
+load-bearing: conflating the two is how a stripped field becomes a silent classical-only
+session instead of a rejected bundle.
+
+**`client-mobile/proto/common.proto` was byte-identical to the backend copy and PR-36 forks
+them.** Nothing syncs or checks the two trees, and `PROTO-EDIT` matches only `.rs`, so the
+Dart side will not notice. Recorded here rather than fixed, because routing `client-mobile`
+through the hybrid path is [#262](https://github.com/guardyn/guardyn/issues/262) (PR-98) —
+but an undeclared fork of a wire contract is worse than a declared one.
 
 This ADR previously described `pqxdh.rs` as a complete implementation. That was measured
 against the code compiling, not against it agreeing: the identity-key conversion above was
 missing on both sides, so `test_classical_key_exchange` and `test_hybrid_key_exchange` had
 never passed. Being unreachable end to end is what kept that invisible.
 
-Repair is owned by PR-36 (proto fields) through PR-40 (fuzz, proptest, bench). Until then,
-**do not describe the product as post-quantum protected.**
+Repair is owned by PR-36 (proto fields — **landed**) through PR-40 (fuzz, proptest, bench).
+Until the rest land, **do not describe the product as post-quantum protected.**
 
 ## Alternatives rejected
 
