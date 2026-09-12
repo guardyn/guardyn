@@ -117,7 +117,7 @@ steps:
   - {id: PR-54, issue: 186, phase: 3, type: fix, status: done, title: "Add the missing icon.icns bundle asset"}
   - {id: PR-55, issue: 182, phase: 3, type: chore, status: done, title: "Remove continue-on-error from the desktop workflows"}
   - {id: PR-56, issue: 188, phase: 3, type: fix, status: todo, title: "Regenerate or drop the stale client-desktop protobuf"}
-  - {id: PR-57, issue: 180, phase: 3, type: fix, status: todo, title: "Make roadmap-sync detect drift and create issues"}
+  - {id: PR-57, issue: 180, phase: 3, type: fix, status: done, title: "Make roadmap-sync detect drift and create issues"}
   - {id: PR-58, issue: 189, phase: 3, type: chore, status: done, title: "Reconcile roadmap.yaml after the G3 merge wave"}
   # The ciphertext format break. #105 and #106 were Phase-3 security issues with no step,
   # so G3 would have passed over them; folding them in was a G3 sign-off decision.
@@ -162,7 +162,7 @@ steps:
   - {id: PR-96, issue: 257, phase: 4, type: fix, status: todo, title: "kube-bootstrap races the cert-manager webhook CA"}
   # Deferred deliberately, each with a stated reason in its step above.
   - {id: PR-82, issue: 211, phase: 3, type: chore, status: todo, title: "Add an FFI-backed mobile CI job"}
-  - {id: PR-83, issue: null, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}
+  - {id: PR-83, issue: 268, phase: 3, type: chore, status: todo, title: "Clear the 314 flutter analyze info diagnostics"}
   - {id: PR-84, issue: 205, phase: 3, type: chore, status: done, title: "Record the client-side E2EE repair steps in roadmap.yaml"}
   - {id: PR-85, issue: 208, phase: 3, type: fix, status: done, title: "Pin the Flutter toolchain to 3.47.3 so flutter pub get resolves"}
   # The fail-closed wave. Every remaining path where a client would rather emit or display

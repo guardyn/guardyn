@@ -52,10 +52,12 @@ it:
 
 | | |
 |---|---|
+| **Issue creation** | a step with `issue: null` gets one, titled `<id> · <title>`, carrying its `type:` and `gate:` labels. The number is written back onto that step's line |
 | **Issue state** | `status: done` closes with `state_reason: completed`; anything else reopens |
 | **Milestone** | from `phase: N`. Written only on mismatch |
 | **Project v2 board** | blocked - see P-1 below |
-| **`type:` and `gate:` labels** | **not reconciled.** Set them when you create the issue |
+| **Issue titles and bodies** | **not reconciled.** Set at creation; editing a title afterwards needs `gh issue edit` |
+| **`type:` and `gate:` labels** | applied at creation, **not reconciled** afterwards |
 
 ## Before you change a `status`
 
@@ -64,30 +66,51 @@ it:
 > correctly-closed issue**. This has already happened once: PR-06 through PR-18 stayed `todo`
 > after merging, and would have reopened thirteen issues on the first write-mode run.
 
-Check the file against reality before writing:
+**The dry run now checks this for you.** As of #180 it reads each issue's real state and
+names every divergence before anything is written, so `just roadmap-sync` is the check rather
+than a restatement of the file. It previously printed the *desired* state back at you and
+counted every step as "already correct", which is why the hazard above needed a separate
+command:
 
 ```sh
 gh issue list --state all --limit 200 --json number,state --jq '.[] | "\(.number) \(.state)"'
 ```
 
-## P-1 - the board half cannot run
+That command is still a fine second opinion, but the dry run is no longer blind to what it
+would answer.
 
-`project_sync_enabled: false` in the YAML. The Project v2 board needs `GUARDYN_PROJECT_TOKEN`
-with `repo` + `project` scope, which no agent can create: the organization rejects
-fine-grained PATs over a 366-day lifetime, and the fallback OAuth token has no project scope.
+## P-1 - the board half runs locally, not in CI
 
-The flag gates **the board only**. Issue state and milestones reconcile either way, because
-both are plain REST and need only the ambient token.
+Two things gate the board, and they are no longer in the same state:
 
-Do not work around this. Do not create the token, do not edit the board by hand, and do not
-flip the flag until the secret exists. It is preflight **P-1** in `implementation_plan.md`,
-and it is a human's to resolve.
+- `project_sync_enabled` is **`true`** in the YAML. This section used to say `false`.
+- `GUARDYN_PROJECT_TOKEN` must be set. In a developer's environment it is, so the board
+  reconciles from a local run. As a **repository secret** it still does not exist, so
+  `roadmap-sync.yml` skips the board half and exits 0.
+
+The flag and the token gate **the board only**. Issue creation, issue state and milestones
+reconcile either way - all three are plain REST and need only the ambient token.
+
+Do not work around this. Do not edit the board by hand, and do not treat a CI run that
+reports no board activity as a failure. The remaining half of preflight **P-1** in
+`implementation_plan.md` is a human's to resolve.
 
 ## Adding a step
 
 New steps get an issue too - one micro-step is one branch, one PR, one issue. Set
-`issue: null`, run the dry sync to see what it would create, then record the number the
-issue actually gets. Never retro-fit a second step onto an existing issue.
+`issue: null` and run the loop; the write run creates the issue and records its number back
+onto that step's line. Never retro-fit a second step onto an existing issue.
+
+**This used to be a manual step, and the instruction described a capability that did not
+exist.** Until #180 the script printed `would create` and moved on - in write mode as well as
+dry - so every number was recorded by hand, and the run still reported success for the issue
+it had not opened. If you find a step still carrying `issue: null` after a write run, that is
+a bug, not the design.
+
+Creation adopts before it creates: an issue already titled `<id> · <title>` is taken rather
+than duplicated. That is what makes the pass safe to run from CI, where the checkout is
+discarded and the write-back is lost - so a lost write-back costs an extra search, never a
+duplicate issue.
 
 ## See also
 
