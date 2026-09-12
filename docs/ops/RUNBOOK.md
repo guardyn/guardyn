@@ -229,9 +229,31 @@ carries. Milestones are REST and work with the ambient token, so unlike the boar
 pass is never skipped.
 
 ```sh
-just roadmap-sync        # dry: print the plan, write nothing
+just roadmap-sync        # dry: read GitHub, name every divergence, write nothing
 just roadmap-sync 0      # write
+just roadmap-sync 0      # must report "0 changed" - the convergence proof
 ```
+
+**The dry run reads the platform.** It has to: the difference between the file and GitHub is
+the whole of what there is to report. Before #180 it printed the *desired* state back at the
+reader and counted every step as "already correct", so it agreed with itself no matter what
+GitHub held - and the one mistake it exists to catch is a stale `status:` that reopens a
+correctly-closed issue. Dry and write now differ only in whether the write executes, and both
+count an action into `changed`, so `0 changed` means the same thing either way.
+
+### A step with no issue
+
+`issue: null` means "this step wants an issue and has not got one". A write run creates it,
+titled `<id> · <title>`, with the step's `type:` and `gate:` labels and its phase milestone,
+then records the number back onto that step's line in `roadmap.yaml`.
+
+Creation **adopts before it creates**: if an issue already carries that exact title it is
+taken rather than duplicated. That is the property that holds in CI, where the checkout is
+thrown away and the write-back is lost - so a lost write-back costs one extra search on the
+next run, never a duplicate issue. Commit the recorded number when you run the sync locally.
+
+Before #180 this path printed `would create` and moved on, in write mode as well as dry,
+while still counting the issue it had not opened as a success.
 
 ### Regenerating STATE.md
 

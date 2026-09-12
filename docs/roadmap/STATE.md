@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1029
+tokens: 1012
 supersedes: []
 ---
 
@@ -19,15 +19,15 @@ supersedes: []
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 61 | 70 | `█████████░` |
+| 3 | 62 | 70 | `█████████░` |
 | 4 | 0 | 13 | `░░░░░░░░░░` |
-| **all** | **87** | **109** | |
+| **all** | **88** | **109** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 22 of 109
+- **Open steps:** 21 of 109
 
 ## Gates
 
@@ -55,13 +55,12 @@ supersedes: []
 | Step | Phase | Issue | Title |
 |---|---|---|---|
 | PR-56 | 3 | [#188](https://github.com/guardyn/guardyn/issues/188) | Regenerate or drop the stale client-desktop protobuf |
-| PR-57 | 3 | [#180](https://github.com/guardyn/guardyn/issues/180) | Make roadmap-sync detect drift and create issues |
 | PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
 | PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
 | PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
 | PR-95 | 3 | [#255](https://github.com/guardyn/guardyn/issues/255) | X3DHPrekeyMessage one-time key id endianness differs between Rust and Dart |
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
-| PR-83 | 3 | — | Clear the 314 flutter analyze info diagnostics |
+| PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
 | PR-36 | 4 | [#47](https://github.com/guardyn/guardyn/issues/47) | Extend protos with ML-KEM key material fields |
 | PR-37 | 4 | [#48](https://github.com/guardyn/guardyn/issues/48) | Persist and serve ML-KEM public keys in auth-service |
