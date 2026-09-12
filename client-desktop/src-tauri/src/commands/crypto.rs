@@ -1592,6 +1592,7 @@ mod tests {
             signed_pre_key_signature: vec![3; 64],
             one_time_pre_keys: one_time,
             created_at: None,
+            ..Default::default()
         }
     }
 

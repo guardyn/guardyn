@@ -70,6 +70,9 @@ fn generate_key_bundle() -> Result<KeyBundle, String> {
             seconds: chrono::Utc::now().timestamp(),
             nanos: 0,
         }),
+        // PR-39 fills these in once the desktop negotiates hybrid PQXDH. Publishing an
+        // ml_kem_public without its signature would be worse than publishing neither.
+        ..Default::default()
     })
 }
 

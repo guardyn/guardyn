@@ -30,6 +30,27 @@ message KeyBundle {
   bytes signed_pre_key_signature = 3; // Ed25519 signature (64 bytes)
   repeated bytes one_time_pre_keys = 4; // X25519 public keys (32 bytes each)
   Timestamp created_at = 5;
+
+  // Hybrid PQXDH (I-3). Added by PR-36. Tags 6-7 are additive: a v1.0.1 client that
+  // predates them skips both as unknown fields and is unaffected.
+  //
+  // Present as a pair or not at all. An ml_kem_public without its signature is an
+  // unauthenticated encapsulation key: a peer that encapsulates to a substituted one
+  // gets a post-quantum half the attacker knows, while the exchange still looks
+  // healthy. A bundle carrying one without the other is rejected entirely - never
+  // degraded to the classical-only exchange, which is a downgrade an active attacker
+  // can force by stripping a single field.
+  //
+  // The signature is Ed25519 over the raw encapsulation-key bytes - no domain
+  // separator, no length prefix - matching how the key is signed in
+  // crypto/src/pqxdh.rs, and verified there by verify_hybrid_bundle against the same
+  // identity key that signs the signed pre-key.
+  //
+  // `optional` rather than a zero-length bytes so "not published" and "published
+  // empty" stay distinct: prost elides empty bytes on encode, which would collapse
+  // them into the same value.
+  optional bytes ml_kem_public = 6; // ML-KEM-768 encapsulation key (1184 bytes)
+  optional bytes ml_kem_public_signature = 7; // Ed25519 signature over ml_kem_public (64 bytes)
 }
 
 // Generic error response

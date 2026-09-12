@@ -100,6 +100,7 @@ fn mock_key_bundle() -> KeyBundle {
             seconds: now,
             nanos: 0,
         }),
+        ..Default::default()
     }
 }
 
@@ -529,6 +530,7 @@ async fn test_concurrent_registrations() -> Result<(), Box<dyn std::error::Error
                             .as_secs() as i64,
                         nanos: 0,
                     }),
+                    ..Default::default()
                 }),
             });
 

@@ -52,12 +52,12 @@ the installation record.
 
 | Term | Code symbol | Meaning | forbidden_aliases |
 |---|---|---|---|
-| **KeyBundle** | `KeyBundle` (`common.proto`), `X3DHKeyBundle`, `HybridKeyBundle` | The published public key material a peer needs to start a session. | PreKeyBundle |
+| **KeyBundle** | `KeyBundle` (`common.proto`), `X3DHKeyBundle`, `HybridKeyBundle` | The published public key material a peer needs to start a session. Carries `ml_kem_public` and `ml_kem_public_signature` since PR-36 — present together or not at all. | PreKeyBundle |
 | **IdentityKeyPair** | `IdentityKeyPair` (`crypto`) | A Device's long-term key pair. Never leaves the Device. | MasterKey |
 | **SignedPreKey** | `SignedPreKey` (`crypto`) | Medium-term key, signed by the identity key. | — |
 | **OneTimePreKey** | `OneTimePreKey`, `OneTimePreKeyPublic` | Single-use key consumed by one session handshake. | OTK |
 | **X3DH** | `X3DHProtocol`, `X3DHKeyMaterial`, `X3DHPrekeyMessage` | The asynchronous handshake establishing a shared secret. | — |
-| **PQXDH** | `HybridKeyBundle`, `HybridSharedSecret`, `HybridPrivateKeys` | X3DH extended with ML-KEM-768. **Implemented, not yet enabled** — see I-3. | PostQuantumX3DH |
+| **PQXDH** | `HybridKeyBundle`, `HybridSharedSecret`, `HybridPrivateKeys` | X3DH extended with ML-KEM-768. **Expressible on the wire since PR-36; not yet published or negotiated** — see I-3. | PostQuantumX3DH |
 | **DoubleRatchet** | `DoubleRatchet`, `MessageHeader` | Per-message forward-secret key evolution after the handshake. | — |
 | **MLS** | `MlsGroupManager`, `MlsGroupState`, `MlsKeyPackage` | OpenMLS group encryption. The Group counterpart to Double Ratchet. | GroupCrypto |
 | **SealedSender** | `SealedSender`, `SealedSenderEnvelope`, `SenderCertificate` | Hides sender identity from the server. | AnonymousSender |
