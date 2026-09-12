@@ -157,6 +157,26 @@ check_e2ee_flag() {
   fi
 }
 
+# --------------------------------------------------------------- PQ-DEFAULT
+# The `pq` feature must be in guardyn-crypto's default set. I-3 makes hybrid key
+# agreement the floor, and a post-quantum feature that must be opted into is one
+# that ships off - which is exactly how pqxdh.rs sat unreachable in every backend
+# service while the invariant read as unmet.
+#
+# Machine-defended from the moment it first passed, deliberately. PQ-WIRE was left
+# to "somebody noticing" and .claude/rules/00-invariants.md has carried a paragraph
+# admitting that gap ever since; there is no reason to open a second one.
+check_pq_default() {
+  local line
+  line="$(grep -E '^default = ' backend/crates/crypto/Cargo.toml 2>/dev/null || true)"
+  if printf '%s' "$line" | grep -q '"pq"'; then
+    pass "PQ-DEFAULT: the pq feature is on by default in the crypto crate"
+  else
+    fail "PQ-DEFAULT: the pq feature is not in the crypto crate's default set"
+    show "backend/crates/crypto/Cargo.toml: ${line:-no default = line found}"
+  fi
+}
+
 # -------------------------------------------------------------------- ZK-PII
 # A log macro handed a raw IP, email or phone number. AGENTS.md §4 lists all
 # three as PII, and I-1 forbids PII in any log, span or metric.
@@ -264,6 +284,7 @@ check_rs_unsafe
 check_zk_init
 check_e2ee_dup
 check_e2ee_flag
+check_pq_default
 check_zk_pii
 check_proto_edit
 check_lang_md

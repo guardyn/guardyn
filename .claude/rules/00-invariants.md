@@ -22,7 +22,7 @@ If a task appears to require it, stop and ask the user.
 | `ZK-PII` | I-1 | No log macro is passed a raw IP, email or phone number | PASS | `rules-verify` |
 | `E2EE-FLAG` | I-2 | No configuration key can turn encryption off | PASS | `rules-verify` |
 | `E2EE-DUP` | I-2 | No handler has a non-E2EE twin | PASS | `rules-verify` |
-| `PQ-DEFAULT` | I-3 | The `pq` feature is on by default in the crypto crate | FAIL | PR-38 |
+| `PQ-DEFAULT` | I-3 | The `pq` feature is on by default in the crypto crate | PASS | `rules-verify` |
 | `PQ-WIRE` | I-3 | The wire contract carries ML-KEM key material | PASS | reviewer |
 | `SOV-DOMAIN` | I-4 | Every hostname derives from `${DOMAIN}` | FAIL (1) | **none — tracked by #82** |
 | `SOV-STORE` | I-4 | No datastore added, replaced or removed without an accepted ADR | PASS | reviewer |
@@ -74,8 +74,25 @@ out in the shell block above but has no counterpart in
 being removed again. Every other PASS row on this table is machine-defended; this one is
 defended by somebody noticing. Automating it is unowned work.
 
-**A known failure is not licence to patch it.** The one remaining failure has an owned step -
-`PQ-DEFAULT` (PR-38) - and fixing it outside that step breaks the micro-step contract.
+`PQ-DEFAULT` passed with PR-38, which put `pq` in `guardyn-crypto`'s `default` set. It is
+enforced by `rules-verify` from the same PR that fixed it, rather than being added to the
+table as a second undefended PASS row beside `PQ-WIRE`.
+
+**What that step actually changed is narrower and worse than the row suggests.** A
+`cargo test --workspace` build already had `pq`, because `crypto-ffi` declares
+`default = ["full"] = ["pq"]` and Cargo unifies features across a workspace build. So CI was
+running `test_hybrid_key_exchange` and `test_hybrid_key_bundle_with_pq` the whole time, and the
+hybrid path looked exercised.
+
+Every service is deployed from `cargo build --release -p <service>`
+(`backend/crates/*/Dockerfile`), and a single-package build unifies nothing. Before PR-38
+`cargo tree -p guardyn-auth-service -i ml-kem` answered *"did not match any packages"*: the
+shipped binaries contained no post-quantum code at all, while the test build proved it worked.
+A green suite and an empty binary is the most expensive shape this class of defect takes, and
+it is worth remembering that feature unification is what hid it.
+
+**A known failure is not licence to patch it.** There is no failing predicate on this table
+with an owning step left; `SOV-DOMAIN` remains the one failure, and it has **none**.
 
 `ZK-PII` and `SOV-DOMAIN` were both found while writing this file, with no owning step. Each had
 an issue opened before any fix. `ZK-PII` is now closed by #81 and enforced by `rules-verify`;
