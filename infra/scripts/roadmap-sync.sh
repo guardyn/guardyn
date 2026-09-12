@@ -147,17 +147,39 @@ say "roadmap-sync: $total step(s) in $ROADMAP, repo $REPO"
 #
 # A repository with no such milestones is a documented state, not an error - say so and let
 # the issue pass run alone.
+# **`gh api` writes its error body to STDOUT, not stderr.** `2>/dev/null` therefore does not
+# stop a failure from being captured as data: against a revoked token this assignment took
+# five lines of `{"message":"Bad credentials"...}` as its result, and the count below reported
+# `5 phase milestone(s) resolved` while zero were resolved. Same failure class as the rest of
+# #180 - the script reporting success for work it had not done - so it is fixed here.
+#
+# Two independent guards, because either alone leaves a gap:
+#   1. the exit status, which catches a failed call whatever it printed;
+#   2. a shape filter, which catches anything that is not a `phase<TAB>number` pair however it
+#      got there - a future gh diagnostic, a deprecation warning, a partial page.
 MILESTONE_MAP=""
-if command -v gh >/dev/null 2>&1; then
-  MILESTONE_MAP="$(gh api "repos/$REPO/milestones?state=all" --paginate \
-    --jq '.[] | select(.title | test("^Phase [0-9]+ ")) |
-          "\(.title | capture("^Phase (?<p>[0-9]+) ").p)\t\(.number)"' 2>/dev/null)"
+milestone_read_failed=0
+if [ "$GH_READY" = "1" ]; then
+  if ! MILESTONE_MAP="$(gh api "repos/$REPO/milestones?state=all" --paginate \
+      --jq '.[] | select(.title | test("^Phase [0-9]+ ")) |
+            "\(.title | capture("^Phase (?<p>[0-9]+) ").p)\t\(.number)"' 2>/dev/null)"; then
+    milestone_read_failed=1
+    MILESTONE_MAP=""
+  fi
+  MILESTONE_MAP="$(printf '%s\n' "$MILESTONE_MAP" \
+    | awk -F'\t' 'NF == 2 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/')"
 fi
 
-if [ -z "$MILESTONE_MAP" ]; then
+if [ "$milestone_read_failed" = "1" ]; then
+  bad "the milestone list could not be read from $REPO - milestone pass skipped"
+elif [ "$GH_READY" = "0" ]; then
+  say "${YELLOW}note${RESET} milestones not read - the platform is not readable."
+elif [ -z "$MILESTONE_MAP" ]; then
   say "${YELLOW}note${RESET} no \"Phase N\" milestone found in $REPO - milestone pass skipped."
 else
-  say "milestones: $(printf '%s\n' "$MILESTONE_MAP" | wc -l | tr -d ' ') phase milestone(s) resolved"
+  # `grep -c .` rather than `wc -l`: an empty string is zero lines, not the one newline
+  # `printf` gives it.
+  say "milestones: $(printf '%s\n' "$MILESTONE_MAP" | grep -c .) phase milestone(s) resolved"
 fi
 
 # phase number -> milestone number. Empty output means "no milestone for this phase".
@@ -186,13 +208,29 @@ milestone_for() { printf '%s\n' "$MILESTONE_MAP" | awk -F'\t' -v p="$1" '$1 == p
 # issue opened by hand under that convention is adopted rather than duplicated.
 ISSUE_INDEX=""
 ISSUE_INDEX_READY=0
+ISSUE_INDEX_OK=0
 
 # Read every issue once, lazily - only a file with a null step pays for it.
+#
+# The exit status is load-bearing here, more than anywhere else in this script. `gh api`
+# prints its error body to stdout, so a failed read lands in ISSUE_INDEX as JSON; that JSON
+# contains no tabs, `issue_with_title` matches nothing, and creation would conclude the issue
+# does not exist and **open a duplicate**. An unreadable index must therefore stop creation
+# rather than fall back to it - the one thing worse than not creating an issue is creating a
+# second one for a step that already has one.
 load_issue_index() {
   [ "$ISSUE_INDEX_READY" = "1" ] && return 0
   ISSUE_INDEX_READY=1
-  ISSUE_INDEX="$(gh api "repos/$REPO/issues?state=all&per_page=100" --paginate \
-    --jq '.[] | select(.pull_request == null) | "\(.number)\t\(.title)"' 2>/dev/null)"
+  if ISSUE_INDEX="$(gh api "repos/$REPO/issues?state=all&per_page=100" --paginate \
+      --jq '.[] | select(.pull_request == null) | "\(.number)\t\(.title)"' 2>/dev/null)"; then
+    ISSUE_INDEX_OK=1
+  else
+    ISSUE_INDEX=""
+    ISSUE_INDEX_OK=0
+  fi
+  # Same shape filter as the milestone map: a line is an issue only if it starts with a
+  # number and a tab.
+  ISSUE_INDEX="$(printf '%s\n' "$ISSUE_INDEX" | awk -F'\t' 'NF >= 2 && $1 ~ /^[0-9]+$/')"
 }
 
 issue_with_title() {
@@ -254,6 +292,11 @@ resolve_issue() {
   RESOLVED_ISSUE=""
 
   load_issue_index
+  if [ "$ISSUE_INDEX_OK" = "0" ]; then
+    bad "$id has no issue and the issue list could not be read - refusing to create a possible duplicate"
+    return 1
+  fi
+
   existing="$(issue_with_title "$full")"
   if [ -n "$existing" ]; then
     noop "$id adopted existing #$existing"
