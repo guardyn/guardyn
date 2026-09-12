@@ -97,7 +97,14 @@ steps:
   - {id: PR-36, issue: 47, phase: 4, type: feat, status: todo, title: "Extend protos with ML-KEM key material fields"}
   - {id: PR-37, issue: 48, phase: 4, type: feat, status: todo, title: "Persist and serve ML-KEM public keys in auth-service"}
   - {id: PR-38, issue: 49, phase: 4, type: feat, status: todo, title: "Enable the pq feature across backend services"}
-  - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "Wire PqxdhProtocol into messaging-service session establishment"}
+  # Retitled by PR-101. The original scope - "wire PqxdhProtocol into
+  # messaging-service/src/crypto.rs" - named a file PR-30' deleted, in a service ADR-0010
+  # made a pure relay. Following it would have put key agreement back on the server and
+  # breached I-1. Session establishment runs on the clients; PR-97 gives the prekey message
+  # somewhere to carry the ML-KEM ciphertext, and PR-98 is the same work on mobile.
+  - {id: PR-97, issue: 261, phase: 4, type: feat, status: todo, title: "Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext"}
+  - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH"}
+  - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
   - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
   - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
@@ -187,3 +194,10 @@ steps:
   # Latent until a second account is used on one machine, but PR-81 grew its consequence:
   # ratchets now outlive the process, so a cross-read session can decrypt real messages.
   - {id: PR-94, issue: 253, phase: 4, type: security, status: todo, title: "Partition client-desktop SecureStorage per account"}
+  # Found while mapping Phase 4. Both are the same class of latent id defect as PR-95, and
+  # both detonate on PR-93. Opened before any fix, per .claude/rules/00-invariants.md.
+  - {id: PR-99, issue: 263, phase: 4, type: fix, status: todo, title: "One-time pre-key ids break at TiKV lexicographic index >= 10"}
+  - {id: PR-100, issue: 264, phase: 4, type: security, status: todo, title: "Add known-answer vectors for the sealed sender wire format"}
+  # This step. The plan of record directed PR-39 at an I-1 breach for the second time; the
+  # correction is recorded rather than made silently.
+  - {id: PR-101, issue: 265, phase: 4, type: docs, status: done, title: "Reconcile roadmap.yaml for the Phase 4 scope correction"}

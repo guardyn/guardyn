@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1012
+tokens: 1146
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 62 | 70 | `█████████░` |
-| 4 | 0 | 13 | `░░░░░░░░░░` |
-| **all** | **88** | **109** | |
+| 4 | 1 | 18 | `█░░░░░░░░░` |
+| **all** | **89** | **114** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 21 of 109
+- **Open steps:** 25 of 114
 
 ## Gates
 
@@ -65,7 +65,9 @@ supersedes: []
 | PR-36 | 4 | [#47](https://github.com/guardyn/guardyn/issues/47) | Extend protos with ML-KEM key material fields |
 | PR-37 | 4 | [#48](https://github.com/guardyn/guardyn/issues/48) | Persist and serve ML-KEM public keys in auth-service |
 | PR-38 | 4 | [#49](https://github.com/guardyn/guardyn/issues/49) | Enable the pq feature across backend services |
-| PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | Wire PqxdhProtocol into messaging-service session establishment |
+| PR-97 | 4 | [#261](https://github.com/guardyn/guardyn/issues/261) | Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext |
+| PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop negotiates hybrid PQXDH |
+| PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |
 | PR-40 | 4 | [#51](https://github.com/guardyn/guardyn/issues/51) | Add fuzz, proptest and bench coverage for the hybrid PQ path |
 | PR-41 | 4 | [#52](https://github.com/guardyn/guardyn/issues/52) | Make rate limiting distributed or document the single-replica constraint |
 | PR-42 | 4 | [#53](https://github.com/guardyn/guardyn/issues/53) | Fix the inverted secrets gitignore |
@@ -75,3 +77,5 @@ supersedes: []
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
 | PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |
 | PR-94 | 4 | [#253](https://github.com/guardyn/guardyn/issues/253) | Partition client-desktop SecureStorage per account |
+| PR-99 | 4 | [#263](https://github.com/guardyn/guardyn/issues/263) | One-time pre-key ids break at TiKV lexicographic index >= 10 |
+| PR-100 | 4 | [#264](https://github.com/guardyn/guardyn/issues/264) | Add known-answer vectors for the sealed sender wire format |
