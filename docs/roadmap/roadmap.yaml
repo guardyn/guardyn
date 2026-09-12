@@ -103,6 +103,16 @@ steps:
   # breached I-1. Session establishment runs on the clients; PR-97 gives the prekey message
   # somewhere to carry the ML-KEM ciphertext, and PR-98 is the same work on mobile.
   - {id: PR-97, issue: 261, phase: 4, type: feat, status: todo, title: "Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext"}
+  # Found while executing PR-37 and left out of it rather than widening that step. Must
+  # precede PR-39: PR-37 made auth-service serve ML-KEM material, and this is what stops the
+  # desktop reaching it, so PR-39 would negotiate hybrid against a bundle it cannot fetch.
+  #
+  # The defect is server-side despite surfacing on the client. auth.proto documents
+  # GetKeyBundleRequest.device_id as "optional, if not set returns any device"; the desktop
+  # relies on that and sends an empty string, and auth-service concatenates it into
+  # /devices/{user}//signed_pre_key, which cannot match. Fixing it on the client is not
+  # available: GetKeyBundle is how a peer's device would be learned in the first place.
+  - {id: PR-103, issue: 274, phase: 4, type: fix, status: todo, title: "GetKeyBundle never implemented its documented any-device fallback"}
   - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
   - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
@@ -202,6 +212,9 @@ steps:
   # but it is an MLS key-package defect that shares nothing with ML-KEM except the crate, and
   # one PR closing one issue cannot fix two unrelated things (AGENTS.md 2.2).
   - {id: PR-102, issue: 272, phase: 4, type: fix, status: todo, title: "MLS key packages are stored under a hardcoded device_id of default"}
+  # This step. PR-103 was found while executing PR-37; recording it is its own micro-step
+  # rather than a rider on PR-38, for the same reason PR-102 was split out of PR-37.
+  - {id: PR-104, issue: 275, phase: 4, type: docs, status: done, title: "Record the GetKeyBundle any-device blocker in roadmap.yaml"}
   # This step. The plan of record directed PR-39 at an I-1 breach for the second time; the
   # correction is recorded rather than made silently.
   - {id: PR-101, issue: 265, phase: 4, type: docs, status: done, title: "Reconcile roadmap.yaml for the Phase 4 scope correction"}
