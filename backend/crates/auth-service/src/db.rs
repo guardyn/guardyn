@@ -150,6 +150,33 @@ fn ml_kem_write_set(
     ]
 }
 
+/// The device ids under `/devices/{user_id}/`, read out of a raw key scan.
+///
+/// The prefix is shared by two kinds of key: the device record itself at
+/// `/devices/{user}/{device}`, and its key material one or more segments deeper
+/// (`.../signed_pre_key`, `.../one_time_keys/0`). A device id is therefore exactly a
+/// remainder with no further `/` in it, and everything else is that device's contents.
+///
+/// Sorted and deduplicated, so "any device" is a deterministic device. That matters more
+/// than it looks: an initiator that fetched a different device on each retry would open
+/// sessions against devices its peer may not be reading, and the failure would look like
+/// dropped messages rather than a lookup bug.
+///
+/// Pure, so the selection rule can be tested without a live TiKV - the same reason
+/// [`one_time_pre_key_paths`] is a function.
+fn device_ids_from_scan(user_id: &str, keys: &[String]) -> Vec<String> {
+    let prefix = format!("/devices/{}/", user_id);
+    let mut ids: Vec<String> = keys
+        .iter()
+        .filter_map(|key| key.strip_prefix(&prefix))
+        .filter(|rest| !rest.is_empty() && !rest.contains('/'))
+        .map(str::to_string)
+        .collect();
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
 /// The two TiKV keys a device's ML-KEM material occupies, as `(public, signature)`.
 ///
 /// One definition, so the read path cannot drift from the write path.
@@ -598,6 +625,68 @@ impl DatabaseClient {
         }
 
         Ok(())
+    }
+
+    /// List this user's device ids, in deterministic order.
+    ///
+    /// A range scan over `/devices/{user_id}/`, filtered by [`device_ids_from_scan`]. The
+    /// scan necessarily returns key material as well as device records - one prefix, two
+    /// kinds of key - so the filtering is not optional.
+    pub async fn list_device_ids(&self, user_id: &str) -> Result<Vec<String>> {
+        let prefix = format!("/devices/{}/", user_id);
+        let start_key = prefix.into_bytes();
+        let mut end_key = start_key.clone();
+        if let Some(last) = end_key.last_mut() {
+            *last += 1;
+        }
+
+        let kvs = self.client.scan(start_key..end_key, 1000).await?;
+        let keys: Vec<String> = kvs
+            .into_iter()
+            .filter_map(|kv| String::from_utf8(Vec::<u8>::from(kv.0)).ok())
+            .collect();
+
+        Ok(device_ids_from_scan(user_id, &keys))
+    }
+
+    /// Resolve a key bundle, honouring the any-device contract, and report which device
+    /// answered.
+    ///
+    /// `auth.proto` documents `GetKeyBundleRequest.device_id` as *"optional, if not set
+    /// returns any device"*. That was never implemented: an empty id was concatenated
+    /// straight into `/devices/{user}//signed_pre_key`, which matches nothing, so every
+    /// caller relying on the documented behaviour got `NOT_FOUND`. `client-desktop` is one
+    /// such caller and has no alternative - this RPC is how a peer's device would be
+    /// learned in the first place.
+    ///
+    /// The device id is returned rather than echoed by the handler, because with an empty
+    /// request the caller genuinely does not know which device it is now talking to, and a
+    /// ratchet is per-device.
+    ///
+    /// A device record without a usable bundle is skipped rather than refused. `create_device`
+    /// and `store_key_bundle` are separate writes and registration only *logs* a failure of
+    /// the second, so a device with no key material is a state the store really reaches;
+    /// letting the first such device mask a later complete one would be a lookup bug
+    /// presenting as an unreachable account.
+    pub async fn get_key_bundle_for_any_device(
+        &self,
+        user_id: &str,
+        device_id: &str,
+    ) -> Result<Option<(String, KeyBundle)>> {
+        if !device_id.is_empty() {
+            return Ok(self
+                .get_key_bundle(user_id, device_id)
+                .await?
+                .map(|bundle| (device_id.to_string(), bundle)));
+        }
+
+        for candidate in self.list_device_ids(user_id).await? {
+            if let Some(bundle) = self.get_key_bundle(user_id, &candidate).await? {
+                return Ok(Some((candidate, bundle)));
+            }
+        }
+
+        Ok(None)
     }
 
     /// Get key bundle
@@ -1282,5 +1371,101 @@ mod tests {
             .collect();
 
         assert_eq!(written, vec![public_path, signature_path]);
+    }
+
+    /// The defect this step exists for, as a unit: a device id must be separable from the
+    /// key material stored beneath it, because both live under the same prefix.
+    ///
+    /// Before PR-103 nothing separated them, because nothing enumerated devices at all - an
+    /// empty `device_id` went straight into `/devices/{user}//signed_pre_key` and matched
+    /// nothing.
+    #[test]
+    fn test_device_ids_are_separated_from_their_key_material() {
+        let scanned = vec![
+            "/devices/u1/dA".to_string(),
+            "/devices/u1/dA/signed_pre_key".to_string(),
+            "/devices/u1/dA/signed_pre_key_signature".to_string(),
+            "/devices/u1/dA/one_time_keys/0".to_string(),
+            "/devices/u1/dA/ml_kem_public".to_string(),
+            "/devices/u1/dB".to_string(),
+            "/devices/u1/dB/signed_pre_key".to_string(),
+        ];
+
+        assert_eq!(
+            device_ids_from_scan("u1", &scanned),
+            vec!["dA".to_string(), "dB".to_string()],
+            "only the one-segment remainders are device ids"
+        );
+    }
+
+    /// "Any device" must mean the *same* device every time.
+    ///
+    /// A scan returns whatever order the store hands back. If that leaked through, an
+    /// initiator retrying a fetch could open a session against a different device than the
+    /// one it first addressed, and a ratchet is per-device - the symptom would be dropped
+    /// messages, not a visible lookup error.
+    #[test]
+    fn test_any_device_is_a_deterministic_device() {
+        let one_order = vec![
+            "/devices/u1/dC".to_string(),
+            "/devices/u1/dA".to_string(),
+            "/devices/u1/dB".to_string(),
+        ];
+        let other_order = vec![
+            "/devices/u1/dB".to_string(),
+            "/devices/u1/dC".to_string(),
+            "/devices/u1/dA".to_string(),
+        ];
+
+        assert_eq!(
+            device_ids_from_scan("u1", &one_order),
+            device_ids_from_scan("u1", &other_order)
+        );
+        assert_eq!(
+            device_ids_from_scan("u1", &one_order).first(),
+            Some(&"dA".to_string())
+        );
+    }
+
+    /// A scan is a prefix match, so a different user's keys cannot appear - but a user id
+    /// that is a prefix of another (`u1` and `u10`) is exactly the case a naive
+    /// `starts_with` on the id alone would get wrong. The trailing `/` in the prefix is what
+    /// prevents it, and this pins that.
+    #[test]
+    fn test_a_prefix_sharing_user_is_not_confused_for_a_device() {
+        let scanned = vec!["/devices/u1/dA".to_string(), "/devices/u10/dZ".to_string()];
+
+        assert_eq!(device_ids_from_scan("u1", &scanned), vec!["dA".to_string()]);
+        assert_eq!(
+            device_ids_from_scan("u10", &scanned),
+            vec!["dZ".to_string()]
+        );
+    }
+
+    /// A user with no devices resolves to no device, not to an empty-string device id.
+    ///
+    /// The empty id is the whole defect; producing one here would re-enter it by another
+    /// route, with `get_key_bundle` then reading `/devices/{user}//signed_pre_key` again.
+    #[test]
+    fn test_no_devices_yields_no_device_id() {
+        assert!(device_ids_from_scan("u1", &[]).is_empty());
+        assert!(
+            device_ids_from_scan("u1", &["/devices/u1/".to_string()]).is_empty(),
+            "a bare prefix is not a device"
+        );
+    }
+
+    /// Duplicates collapse. Every device contributes several scanned keys, and its record
+    /// and its material must not make it look like two devices.
+    #[test]
+    fn test_a_device_is_counted_once() {
+        let scanned = vec![
+            "/devices/u1/dA".to_string(),
+            "/devices/u1/dA/signed_pre_key".to_string(),
+            "/devices/u1/dA/one_time_keys/0".to_string(),
+            "/devices/u1/dA/one_time_keys/1".to_string(),
+        ];
+
+        assert_eq!(device_ids_from_scan("u1", &scanned), vec!["dA".to_string()]);
     }
 }
