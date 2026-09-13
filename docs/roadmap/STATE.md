@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1096
+tokens: 1057
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 70 | `█████████░` |
-| 4 | 7 | 23 | `███░░░░░░░` |
-| **all** | **96** | **119** | |
+| 4 | 8 | 23 | `███░░░░░░░` |
+| **all** | **97** | **119** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 23 of 119
+- **Open steps:** 22 of 119
 
 ## Gates
 
@@ -61,7 +61,6 @@ supersedes: []
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
-| PR-105 | 4 | [#279](https://github.com/guardyn/guardyn/issues/279) | Version X3DHPrekeyMessage in client-mobile and repaste the v1 known-answer vectors |
 | PR-106 | 4 | [#280](https://github.com/guardyn/guardyn/issues/280) | Add canonicality and strict-parser coverage for the v1 X3DHPrekeyMessage |
 | PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop negotiates hybrid PQXDH |
 | PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |

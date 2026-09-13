@@ -105,15 +105,15 @@ steps:
   - {id: PR-97, issue: 261, phase: 4, type: feat, status: done, title: "Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext"}
   # Split out of PR-97 rather than bundled into it: the two halves together exceed the
   # AGENTS.md 2.3 budget, and a wire-format break has to be reviewable. The pair is
-  # lockstep - the moment PR-97 merges, Rust speaks v1 and client-mobile still speaks v0, so
-  # mobile and desktop cannot establish a session with each other until this lands. No CI job
-  # detects that: just test-two-client-messaging is the only check that proves the two ends
-  # interoperate and it needs two real devices. This is the highest-priority open step in
-  # Phase 4 for as long as it stays open.
+  # lockstep - between the two merges Rust spoke v1 and client-mobile still spoke v0, so the
+  # two clients could not establish a session with each other. No CI job detected that:
+  # just test-two-client-messaging is the only check that proves the two ends interoperate
+  # and it needs two real devices. The window is closed; both ends are on v1 and pinned to
+  # the same known-answer vectors, which is the only thing that keeps them there.
   #
   # Not folded into PR-98 (#262), which is scoped to exporting the hybrid agreement through
   # crypto-ffi and never mentions the codec - and which sits after PR-39, far too late.
-  - {id: PR-105, issue: 279, phase: 4, type: feat, status: todo, title: "Version X3DHPrekeyMessage in client-mobile and repaste the v1 known-answer vectors"}
+  - {id: PR-105, issue: 279, phase: 4, type: feat, status: done, title: "Version X3DHPrekeyMessage in client-mobile and repaste the v1 known-answer vectors"}
   # Split out of PR-97 before opening it, per AGENTS.md 2.3: the codec, its known-answer
   # vectors and the spec were already 5 files and 524 lines, and the adversarial coverage on
   # top put it over both limits. Separating property and fuzz coverage into its own step is
