@@ -151,11 +151,24 @@ const Chat: Component<ChatPageProps> = () => {
             // it before trying to read the message it came with, or there is no ratchet to
             // decrypt with. Repeats are a no-op, which matters because the initiator keeps
             // attaching it until a send is accepted.
+            //
+            // A session belongs to a device, so the sender's device is what it is answered
+            // and read under. `sender_device_id` has been on this payload since the type was
+            // written - annotated "required for E2EE session lookup" - and nothing read it,
+            // so two devices of one peer collapsed into one session. It is legitimately empty
+            // for a live-delivered message: messaging-service does not stamp the device on
+            // its socket path, and an empty device is a key, not a failure.
+            const senderDeviceId = data.sender_device_id ?? '';
             if (data.x3dh_prekey) {
-              await encryptionManager.acceptSession(data.sender_id, data.x3dh_prekey);
+              await encryptionManager.acceptSession(
+                data.sender_id,
+                senderDeviceId,
+                data.x3dh_prekey,
+              );
             }
             content = await encryptionManager.decryptMessage(
               data.sender_id,
+              senderDeviceId,
               { ciphertext: data.content, nonce: '', header: '' },
               self,
             );

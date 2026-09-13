@@ -710,6 +710,7 @@ fn key_bundle_from_proto(bundle: &crate::proto::common::KeyBundle) -> Result<Key
 pub async fn perform_x3dh(
     recipient_bundle: KeyBundle,
     recipient_id: String,
+    recipient_device_id: String,
 ) -> Result<X3DHResult, String> {
     tracing::info!("Performing X3DH key agreement with {}", recipient_id);
 
@@ -770,6 +771,11 @@ pub async fn perform_x3dh(
         ephemeral_public.as_bytes().to_vec(),
         used_prekey_id,
     );
+    // Still keyed by user alone. The device is carried so the caller cannot forget it and so
+    // the map can be re-keyed in #286 without touching a signature; parking it under a
+    // composite key here would strand the message, because `peek_pending_prekey` is reached
+    // from `send_message`, which knows only the recipient user.
+    let _ = &recipient_device_id;
     PENDING_PREKEY
         .lock()
         .map_err(|e| e.to_string())?
@@ -909,6 +915,7 @@ pub async fn respond_x3dh(
 #[tauri::command]
 pub async fn init_session(
     peer_id: String,
+    peer_device_id: String,
     shared_secret: String,
     is_initiator: bool,
     peer_public_key: Option<String>,
@@ -966,9 +973,7 @@ pub async fn init_session(
 
     let session = SessionData {
         peer_id: peer_id.clone(),
-        // The initiator learns the device from the bundle it fetched, but that does not reach
-        // this command until #285 threads it through. Recorded as unknown rather than guessed.
-        peer_device_id: String::new(),
+        peer_device_id: peer_device_id.clone(),
         established_at: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -1005,9 +1010,18 @@ pub async fn init_session(
     })
 }
 
-/// Get session info for a peer
+/// Get session info for a peer.
+///
+/// **`peer_device_id` is carried, not yet honoured.** The store is still keyed by user alone,
+/// so a peer with two devices resolves to whichever session was written last. Threading the
+/// device through every caller first is what lets #286 re-key the store without touching a
+/// signature; until it lands, this answers per user.
 #[tauri::command]
-pub async fn get_session(peer_id: String) -> Result<Option<SessionInfo>, String> {
+pub async fn get_session(
+    peer_id: String,
+    peer_device_id: String,
+) -> Result<Option<SessionInfo>, String> {
+    let _ = &peer_device_id; // keyed by user until #286
     let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
 
     Ok(store.sessions.get(&peer_id).map(|s| SessionInfo {
@@ -1035,9 +1049,13 @@ pub async fn list_sessions() -> Result<Vec<SessionInfo>, String> {
     }).collect())
 }
 
-/// Delete a session
+/// Delete a session.
+///
+/// `peer_device_id` is carried, not yet honoured - see [`get_session`]. Deleting one device's
+/// session therefore still deletes the peer's only session.
 #[tauri::command]
-pub async fn delete_session(peer_id: String) -> Result<bool, String> {
+pub async fn delete_session(peer_id: String, peer_device_id: String) -> Result<bool, String> {
+    let _ = &peer_device_id; // keyed by user until #286
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     let removed = store.sessions.remove(&peer_id).is_some();
 
@@ -1211,12 +1229,16 @@ pub(crate) fn ensure_responder_session(
 
 /// Establish the responder side of a session, for the frontend's live-delivery path.
 ///
-/// The device is passed empty here: the WebSocket payload carries `sender_device_id` and has
-/// since it was written, but nothing on the frontend reads it yet. #285 threads it through,
-/// and until then this path records an unknown device exactly as `init_session` does.
+/// `peer_device_id` comes off the WebSocket payload's `sender_device_id`, which has carried it
+/// since the type was written and which nothing read until now. It can legitimately be empty:
+/// `messaging-service` does not stamp the device on its socket path.
 #[tauri::command]
-pub async fn accept_session(peer_id: String, x3dh_prekey: String) -> Result<(), String> {
-    ensure_responder_session(&peer_id, "", &x3dh_prekey)
+pub async fn accept_session(
+    peer_id: String,
+    peer_device_id: String,
+    x3dh_prekey: String,
+) -> Result<(), String> {
+    ensure_responder_session(&peer_id, &peer_device_id, &x3dh_prekey)
 }
 
 /// Decrypt a message received from `sender_id`, returning `None` when it cannot be decrypted.
@@ -1326,13 +1348,17 @@ pub(crate) fn encrypt_for_peer(
     Ok(encrypted_bytes)
 }
 
-/// Encrypt a message for a peer using Double Ratchet
+/// Encrypt a message for a peer using Double Ratchet.
+///
+/// `recipient_device_id` is carried, not yet honoured - see [`get_session`].
 #[tauri::command]
 pub async fn encrypt_message(
     plaintext: String,
     recipient_id: String,
+    recipient_device_id: String,
     self_user_id: String,
 ) -> Result<EncryptedMessage, String> {
+    let _ = &recipient_device_id; // keyed by user until #286
     tracing::debug!("Encrypting message for {} ({} bytes)", recipient_id, plaintext.len());
 
     let encrypted_bytes = encrypt_for_peer(&plaintext, &recipient_id, &self_user_id)?;
@@ -1353,6 +1379,7 @@ pub async fn decrypt_message(
     ciphertext: String,
     _nonce: String, // Nonce is now embedded in ciphertext
     sender_id: String,
+    sender_device_id: String,
     self_user_id: String,
 ) -> Result<String, String> {
     tracing::debug!("Decrypting message from {}", sender_id);
@@ -1384,6 +1411,7 @@ pub async fn decrypt_message(
     // Update session metadata
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
     if let Some(session) = store.sessions.get_mut(&sender_id) {
+        backfill_peer_device(session, &sender_device_id);
         session.messages_received += 1;
         // Update serialized ratchet state
         if let Ok(ratchet_store) = RATCHET_STORE.lock() {
