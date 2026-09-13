@@ -123,7 +123,7 @@ steps:
   # eleven-case rejection test, and the pre-existing round-trip and never-panics properties,
   # which still exercise the new parser unchanged. This step adds what those cannot reach -
   # canonicality over mutated frames, and the same assertion inside the fuzz target.
-  - {id: PR-106, issue: 280, phase: 4, type: security, status: todo, title: "Add canonicality and strict-parser coverage for the v1 X3DHPrekeyMessage"}
+  - {id: PR-106, issue: 280, phase: 4, type: security, status: done, title: "Add canonicality and strict-parser coverage for the v1 X3DHPrekeyMessage"}
   # Found while executing PR-37 and left out of it rather than widening that step. Must
   # precede PR-39: PR-37 made auth-service serve ML-KEM material, and this is what stops the
   # desktop reaching it, so PR-39 would negotiate hybrid against a bundle it cannot fetch.
