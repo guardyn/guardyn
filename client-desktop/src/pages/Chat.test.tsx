@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Conversation, Message } from '../types';
 
 // Create hoisted mock that can be used by vi.mock
-const { mockInvoke, mockWs, mockEncryptMessage, mockDecryptMessage } = vi.hoisted(() => {
+const { mockInvoke, mockWs, mockEncryptMessage, mockDecryptMessage, mockAcceptSession } =
+  vi.hoisted(() => {
   const ws = {
     connect: vi.fn(async () => {}),
     disconnect: vi.fn(),
@@ -31,6 +32,7 @@ const { mockInvoke, mockWs, mockEncryptMessage, mockDecryptMessage } = vi.hoiste
     mockWs: ws,
     mockEncryptMessage: vi.fn(),
     mockDecryptMessage: vi.fn(),
+    mockAcceptSession: vi.fn(),
   };
 });
 
@@ -57,6 +59,7 @@ vi.mock('../services/encryption', () => ({
   encryptionManager: {
     encryptMessage: (...args: unknown[]) => mockEncryptMessage(...args),
     decryptMessage: (...args: unknown[]) => mockDecryptMessage(...args),
+    acceptSession: (...args: unknown[]) => mockAcceptSession(...args),
   },
 }));
 
@@ -141,6 +144,7 @@ describe('Chat Page', () => {
     mockWs._stateCb = undefined;
     mockEncryptMessage.mockReset();
     mockDecryptMessage.mockReset();
+    mockAcceptSession.mockReset();
     resetMessageStore();
   });
 
@@ -371,6 +375,86 @@ describe('Chat Page', () => {
       expect(screen.getByText('the real message')).toBeInTheDocument();
     });
     expect(screen.queryByText(UNDECRYPTABLE_PLACEHOLDER)).not.toBeInTheDocument();
+  });
+
+  it('answers and reads a session against the device that sent the message', async () => {
+    // `sender_device_id` has been on this payload since the type was written, annotated
+    // "required for E2EE session lookup", and nothing read it - so both of a peer's devices
+    // resolved to one session and the second one could never be decrypted.
+    setupMockInvoke(mockConversations, mockMessages, mockMessages);
+    mockAcceptSession.mockResolvedValue(undefined);
+    mockDecryptMessage.mockResolvedValue('the real message');
+
+    renderWithRouter(() => <Chat />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Alice').closest('button')!);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    });
+
+    mockWs._messageCb?.({
+      message_id: 'msg-in-3',
+      conversation_id: 'conv-1',
+      sender_id: 'user-1',
+      sender_device_id: 'device-1',
+      recipient_id: 'user-2',
+      content: 'AQIDBAUGBwgJCgsMDQ4PEA==',
+      x3dh_prekey: 'a-prekey-message',
+      encrypted: true,
+      timestamp: Date.now(),
+    });
+
+    await waitFor(() => {
+      expect(mockAcceptSession).toHaveBeenCalledWith('user-1', 'device-1', 'a-prekey-message');
+    });
+    expect(mockDecryptMessage).toHaveBeenCalledWith(
+      'user-1',
+      'device-1',
+      expect.anything(),
+      expect.any(String),
+    );
+  });
+
+  it('reads a message that names no device under the empty device', async () => {
+    // messaging-service does not stamp the sender's device on its WebSocket path
+    // (websocket/handlers.rs:189), so a live-delivered message legitimately names none. That
+    // is a key, not a failure: refusing it would break delivery without making anything more
+    // private, since it is the same ciphertext either way.
+    setupMockInvoke(mockConversations, mockMessages, mockMessages);
+    mockDecryptMessage.mockResolvedValue('the real message');
+
+    renderWithRouter(() => <Chat />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Alice').closest('button')!);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    });
+
+    mockWs._messageCb?.({
+      message_id: 'msg-in-4',
+      conversation_id: 'conv-1',
+      sender_id: 'user-1',
+      recipient_id: 'user-2',
+      content: 'AQIDBAUGBwgJCgsMDQ4PEA==',
+      encrypted: true,
+      timestamp: Date.now(),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('the real message')).toBeInTheDocument();
+    });
+    expect(mockDecryptMessage).toHaveBeenCalledWith(
+      'user-1',
+      '',
+      expect.anything(),
+      expect.any(String),
+    );
   });
 
   it('refuses to send when encryption is unavailable', async () => {

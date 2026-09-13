@@ -28,6 +28,8 @@ export type EncryptionStatus = 'none' | 'pending' | 'established' | 'error';
 
 export interface PeerEncryptionState {
   peerId: string;
+  /** The peer device this state describes; empty when the server named none. */
+  peerDeviceId: string;
   status: EncryptionStatus;
   session?: SessionInfo;
   errorMessage?: string;
@@ -53,8 +55,25 @@ export type EncryptionEventType =
 export interface EncryptionEvent {
   type: EncryptionEventType;
   peerId?: string;
+  peerDeviceId?: string;
   timestamp: number;
   data?: Record<string, unknown>;
+}
+
+/**
+ * The key `peerStates` is indexed by.
+ *
+ * A session belongs to a device, so the status of one belongs to a device too. Keyed by user
+ * alone, a peer's second device overwrote the first's entry and `encryptMessage` then gated
+ * every send on whichever one was written last. Byte-identical to the form `client-mobile`
+ * uses for its session ids (`crypto_service.dart:627`) and to the key #286 gives the Rust
+ * store, so the three indexes read the same.
+ *
+ * The separator is mandatory even when the device is empty: `"bob:"` is a peer whose device
+ * the server did not name, and it must not collide with anything else.
+ */
+function peerStateKey(peerId: string, peerDeviceId: string): string {
+  return `${peerId}:${peerDeviceId}`;
 }
 
 type EncryptionEventHandler = (event: EncryptionEvent) => void;
@@ -134,9 +153,11 @@ class EncryptionManager {
       throw new Error('EncryptionManager not initialized');
     }
 
-    // Update peer state to pending
-    this.updatePeerState(peerId, {
+    // Filed under an unknown device: which of the peer's devices answers is not known until
+    // `getKeyBundleForPeer` returns, and that happens below.
+    this.updatePeerState(peerId, '', {
       peerId,
+      peerDeviceId: '',
       status: 'pending',
       lastUpdated: Date.now(),
     });
@@ -144,24 +165,35 @@ class EncryptionManager {
     try {
       const bundle = peerBundle ?? (await getKeyBundleForPeer(peerId));
       const session = await encryptionService.startSession(peerId, bundle);
+      const peerDeviceId = bundle.deviceId ?? '';
+
+      // The pending entry above was filed under an unknown device, because the device is not
+      // known until the bundle has been fetched. Drop it rather than leave a second entry for
+      // the same peer stuck at 'pending' for ever.
+      if (peerDeviceId !== '') {
+        this.peerStates.delete(peerStateKey(peerId, ''));
+      }
 
       // Update peer state to established
-      this.updatePeerState(peerId, {
+      this.updatePeerState(peerId, peerDeviceId, {
         peerId,
+        peerDeviceId,
         status: 'established',
         session,
         lastUpdated: Date.now(),
       });
 
-      this.emit({ type: 'session_established', peerId, timestamp: Date.now() });
+      this.emit({ type: 'session_established', peerId, peerDeviceId, timestamp: Date.now() });
 
       return session;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Update peer state to error
-      this.updatePeerState(peerId, {
+      // Under the unknown device, matching the pending entry this replaces: a failure can
+      // happen before any device is known, so there is no better key available.
+      this.updatePeerState(peerId, '', {
         peerId,
+        peerDeviceId: '',
         status: 'error',
         errorMessage,
         lastUpdated: Date.now(),
@@ -187,23 +219,25 @@ class EncryptionManager {
    * duplicate delivery, and acting on it twice would replace a ratchet that has already
    * advanced.
    */
-  async acceptSession(peerId: string, x3dhPrekey: string): Promise<void> {
+  async acceptSession(peerId: string, peerDeviceId: string, x3dhPrekey: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('EncryptionManager not initialized');
     }
 
     try {
-      await encryptionService.acceptSession(peerId, x3dhPrekey);
-      this.updatePeerState(peerId, {
+      await encryptionService.acceptSession(peerId, peerDeviceId, x3dhPrekey);
+      this.updatePeerState(peerId, peerDeviceId, {
         peerId,
+        peerDeviceId,
         status: 'established',
         lastUpdated: Date.now(),
       });
-      this.emit({ type: 'session_established', peerId, timestamp: Date.now() });
+      this.emit({ type: 'session_established', peerId, peerDeviceId, timestamp: Date.now() });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.updatePeerState(peerId, {
+      this.updatePeerState(peerId, peerDeviceId, {
         peerId,
+        peerDeviceId,
         status: 'error',
         errorMessage,
         lastUpdated: Date.now(),
@@ -215,43 +249,72 @@ class EncryptionManager {
   /**
    * Get encryption status for a peer
    */
-  getPeerStatus(peerId: string): EncryptionStatus {
-    return this.peerStates.get(peerId)?.status ?? 'none';
+  getPeerStatus(peerId: string, peerDeviceId: string): EncryptionStatus {
+    return this.peerStates.get(peerStateKey(peerId, peerDeviceId))?.status ?? 'none';
   }
 
   /**
    * Get peer encryption state
    */
-  getPeerState(peerId: string): PeerEncryptionState | undefined {
-    return this.peerStates.get(peerId);
+  getPeerState(peerId: string, peerDeviceId: string): PeerEncryptionState | undefined {
+    return this.peerStates.get(peerStateKey(peerId, peerDeviceId));
   }
 
   /**
    * Check if we have an active session with a peer
    */
-  async hasActiveSession(peerId: string): Promise<boolean> {
-    const session = await getSession(peerId);
+  async hasActiveSession(peerId: string, peerDeviceId: string): Promise<boolean> {
+    const session = await getSession(peerId, peerDeviceId);
     return session !== null && session.isActive;
   }
 
   /**
    * End session with a peer
    */
-  async endSession(peerId: string): Promise<void> {
-    await encryptionService.endSession(peerId);
+  async endSession(peerId: string, peerDeviceId: string): Promise<void> {
+    await encryptionService.endSession(peerId, peerDeviceId);
 
-    this.updatePeerState(peerId, {
+    this.updatePeerState(peerId, peerDeviceId, {
       peerId,
+      peerDeviceId,
       status: 'none',
       lastUpdated: Date.now(),
     });
 
-    this.emit({ type: 'session_ended', peerId, timestamp: Date.now() });
+    this.emit({ type: 'session_ended', peerId, peerDeviceId, timestamp: Date.now() });
   }
 
   // ---------------------------------------------------------------------------
   // Message Encryption/Decryption
   // ---------------------------------------------------------------------------
+
+  /**
+   * Which of a peer's devices the next message is sent to.
+   *
+   * The send path is the one place the device cannot simply be passed in: a message is
+   * addressed to a user, and the UI has no device to name. The most recently established
+   * session wins, ties broken by device id so the choice is deterministic rather than
+   * dependent on Map insertion order.
+   *
+   * **It picks one device rather than fanning out, and that is the current behaviour, not a
+   * new limitation.** The desktop sends an empty `recipient_device_id` on the wire, so
+   * `messaging-service` already fans out to every connection the recipient has; choosing one
+   * session to encrypt under is what happens today with the peer collapsed into a single
+   * entry. #286 moves the authoritative version of this rule into Rust, where the send path
+   * actually reaches the store.
+   */
+  private resolveSendDevice(peerId: string): PeerEncryptionState | undefined {
+    let best: PeerEncryptionState | undefined;
+    for (const state of this.peerStates.values()) {
+      if (state.peerId !== peerId || state.status !== 'established') continue;
+      const better =
+        best === undefined ||
+        state.lastUpdated > best.lastUpdated ||
+        (state.lastUpdated === best.lastUpdated && state.peerDeviceId > best.peerDeviceId);
+      if (better) best = state;
+    }
+    return best;
+  }
 
   /**
    * Encrypt a message for a peer
@@ -261,13 +324,14 @@ class EncryptionManager {
     plaintext: string,
     selfUserId: string
   ): Promise<EncryptedMessage> {
-    const state = this.peerStates.get(peerId);
-    if (state?.status !== 'established') {
+    const state = this.resolveSendDevice(peerId);
+    if (!state) {
       throw new Error(`No established session with peer: ${peerId}`);
     }
 
     const encrypted = await encryptionService.sendMessage(
       peerId,
+      state.peerDeviceId,
       plaintext,
       selfUserId
     );
@@ -275,6 +339,7 @@ class EncryptionManager {
     this.emit({
       type: 'message_encrypted',
       peerId,
+      peerDeviceId: state.peerDeviceId,
       timestamp: Date.now(),
       data: { plaintextLength: plaintext.length },
     });
@@ -287,16 +352,18 @@ class EncryptionManager {
    */
   async decryptMessage(
     senderId: string,
+    senderDeviceId: string,
     encrypted: EncryptedMessage,
     selfUserId: string
   ): Promise<string> {
-    const state = this.peerStates.get(senderId);
+    const state = this.peerStates.get(peerStateKey(senderId, senderDeviceId));
     if (state?.status !== 'established') {
       throw new Error(`No established session with peer: ${senderId}`);
     }
 
     const plaintext = await encryptionService.receiveMessage(
       senderId,
+      senderDeviceId,
       encrypted,
       selfUserId
     );
@@ -304,6 +371,7 @@ class EncryptionManager {
     this.emit({
       type: 'message_decrypted',
       peerId: senderId,
+      peerDeviceId: senderDeviceId,
       timestamp: Date.now(),
       data: { plaintextLength: plaintext.length },
     });
@@ -366,8 +434,12 @@ class EncryptionManager {
   // Internal Helpers
   // ---------------------------------------------------------------------------
 
-  private updatePeerState(peerId: string, state: PeerEncryptionState): void {
-    this.peerStates.set(peerId, state);
+  private updatePeerState(
+    peerId: string,
+    peerDeviceId: string,
+    state: PeerEncryptionState
+  ): void {
+    this.peerStates.set(peerStateKey(peerId, peerDeviceId), state);
   }
 
   /**

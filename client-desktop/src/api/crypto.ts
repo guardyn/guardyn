@@ -41,6 +41,14 @@ export interface KeyBundle {
   prekeySignature: string;
   oneTimePrekey?: string;
   pqPrekey?: string;
+  /**
+   * The peer device auth-service answered with, present only on a bundle fetched for a peer.
+   *
+   * `generateKeyBundle` builds our own bundle locally and has no device to name, which is why
+   * this is optional rather than required. A session belongs to a device, so this is what the
+   * initiator keys by.
+   */
+  deviceId?: string;
 }
 
 /**
@@ -72,6 +80,8 @@ export interface EncryptedMessage {
  */
 export interface SessionInfo {
   peerId: string;
+  /** The peer device this session belongs to; empty when the server named none. */
+  peerDeviceId: string;
   establishedAt: number;
   messagesSent: number;
   messagesReceived: number;
@@ -186,6 +196,7 @@ export async function getKeyBundleForPeer(userId: string): Promise<KeyBundle> {
     prekey_signature: string;
     one_time_prekey?: string;
     pq_prekey?: string;
+    device_id: string;
   }>('get_key_bundle_for_peer', { userId });
   return {
     identityKey: result.identity_key,
@@ -193,6 +204,8 @@ export async function getKeyBundleForPeer(userId: string): Promise<KeyBundle> {
     prekeySignature: result.prekey_signature,
     oneTimePrekey: result.one_time_prekey,
     pqPrekey: result.pq_prekey,
+    // Flattened alongside the bundle fields by `PeerKeyBundle`, not nested under a key.
+    deviceId: result.device_id,
   };
 }
 
@@ -202,7 +215,8 @@ export async function getKeyBundleForPeer(userId: string): Promise<KeyBundle> {
  */
 export async function performX3DH(
   recipientBundle: KeyBundle,
-  recipientId: string
+  recipientId: string,
+  recipientDeviceId: string
 ): Promise<X3DHResult> {
   const result = await invoke<{
     shared_secret: string;
@@ -217,6 +231,7 @@ export async function performX3DH(
       pq_prekey: recipientBundle.pqPrekey,
     },
     recipientId,
+    recipientDeviceId,
   });
   return {
     sharedSecret: result.shared_secret,
@@ -231,8 +246,12 @@ export async function performX3DH(
  * Does the X3DH response and the ratchet seeding in one step, and is a no-op when a session
  * already exists.
  */
-export async function acceptSessionCommand(peerId: string, x3dhPrekey: string): Promise<void> {
-  await invoke('accept_session', { peerId, x3dhPrekey });
+export async function acceptSessionCommand(
+  peerId: string,
+  peerDeviceId: string,
+  x3dhPrekey: string
+): Promise<void> {
+  await invoke('accept_session', { peerId, peerDeviceId, x3dhPrekey });
 }
 
 /**
@@ -274,6 +293,7 @@ export async function respondX3DH(
  */
 export async function initSession(
   peerId: string,
+  peerDeviceId: string,
   sharedSecret: string,
   isInitiator: boolean,
   // Required for the initiator, which ratchets against the peer's signed pre-key. The
@@ -282,13 +302,21 @@ export async function initSession(
 ): Promise<SessionInfo> {
   const result = await invoke<{
     peer_id: string;
+    peer_device_id?: string;
     established_at: number;
     messages_sent: number;
     messages_received: number;
     is_active: boolean;
-  }>('init_session', { peerId, sharedSecret, isInitiator, peerPublicKey: peerPublicKey ?? null });
+  }>('init_session', {
+    peerId,
+    peerDeviceId,
+    sharedSecret,
+    isInitiator,
+    peerPublicKey: peerPublicKey ?? null,
+  });
   return {
     peerId: result.peer_id,
+    peerDeviceId: result.peer_device_id ?? '',
     establishedAt: result.established_at,
     messagesSent: result.messages_sent,
     messagesReceived: result.messages_received,
@@ -299,17 +327,22 @@ export async function initSession(
 /**
  * Get session info for a peer
  */
-export async function getSession(peerId: string): Promise<SessionInfo | null> {
+export async function getSession(
+  peerId: string,
+  peerDeviceId: string
+): Promise<SessionInfo | null> {
   const result = await invoke<{
     peer_id: string;
+    peer_device_id?: string;
     established_at: number;
     messages_sent: number;
     messages_received: number;
     is_active: boolean;
-  } | null>('get_session', { peerId });
+  } | null>('get_session', { peerId, peerDeviceId });
   if (!result) return null;
   return {
     peerId: result.peer_id,
+    peerDeviceId: result.peer_device_id ?? '',
     establishedAt: result.established_at,
     messagesSent: result.messages_sent,
     messagesReceived: result.messages_received,
@@ -323,6 +356,7 @@ export async function getSession(peerId: string): Promise<SessionInfo | null> {
 export async function listSessions(): Promise<SessionInfo[]> {
   const results = await invoke<Array<{
     peer_id: string;
+    peer_device_id?: string;
     established_at: number;
     messages_sent: number;
     messages_received: number;
@@ -330,6 +364,7 @@ export async function listSessions(): Promise<SessionInfo[]> {
   }>>('list_sessions');
   return results.map(r => ({
     peerId: r.peer_id,
+    peerDeviceId: r.peer_device_id ?? '',
     establishedAt: r.established_at,
     messagesSent: r.messages_sent,
     messagesReceived: r.messages_received,
@@ -340,8 +375,8 @@ export async function listSessions(): Promise<SessionInfo[]> {
 /**
  * Delete a session with a peer
  */
-export async function deleteSession(peerId: string): Promise<boolean> {
-  return invoke<boolean>('delete_session', { peerId });
+export async function deleteSession(peerId: string, peerDeviceId: string): Promise<boolean> {
+  return invoke<boolean>('delete_session', { peerId, peerDeviceId });
 }
 
 // =============================================================================
@@ -358,13 +393,14 @@ export async function deleteSession(peerId: string): Promise<boolean> {
 export async function encryptMessage(
   plaintext: string,
   recipientId: string,
+  recipientDeviceId: string,
   selfUserId: string
 ): Promise<EncryptedMessage> {
   const result = await invoke<{
     ciphertext: string;
     nonce: string;
     header: string;
-  }>('encrypt_message', { plaintext, recipientId, selfUserId });
+  }>('encrypt_message', { plaintext, recipientId, recipientDeviceId, selfUserId });
   return result;
 }
 
@@ -377,12 +413,14 @@ export async function decryptMessage(
   ciphertext: string,
   nonce: string,
   senderId: string,
+  senderDeviceId: string,
   selfUserId: string
 ): Promise<string> {
   return invoke<string>('decrypt_message', {
     ciphertext,
     nonce,
     senderId,
+    senderDeviceId,
     selfUserId,
   });
 }
@@ -449,20 +487,27 @@ export class EncryptionService {
   }
 
   /**
-   * Start a secure session with a peer
+   * Start a secure session with a peer.
+   *
+   * The device comes from the bundle, not from the caller: `getKeyBundleForPeer` is what
+   * learns which of the peer's devices answered, and a caller that supplied its own would be
+   * naming a device the key material may not belong to.
    */
   async startSession(peerId: string, peerBundle: KeyBundle): Promise<SessionInfo> {
     if (!this.initialized) {
       throw new Error('EncryptionService not initialized');
     }
 
+    const peerDeviceId = peerBundle.deviceId ?? '';
+
     // Perform X3DH key agreement
-    const x3dhResult = await performX3DH(peerBundle, peerId);
+    const x3dhResult = await performX3DH(peerBundle, peerId, peerDeviceId);
 
     // Initialize Double Ratchet session. The initiator ratchets against the peer's signed
     // pre-key - the same key X3DH just ran against - so it has to be passed through.
     const session = await initSession(
       peerId,
+      peerDeviceId,
       x3dhResult.sharedSecret,
       true,
       peerBundle.signedPrekey
@@ -480,12 +525,12 @@ export class EncryptionService {
    * peer that already has a session is a no-op, which matters because the initiator keeps
    * attaching the prekey message until a send is accepted.
    */
-  async acceptSession(peerId: string, x3dhPrekey: string): Promise<void> {
+  async acceptSession(peerId: string, peerDeviceId: string, x3dhPrekey: string): Promise<void> {
     if (!this.initialized) {
       throw new Error('EncryptionService not initialized');
     }
 
-    await acceptSessionCommand(peerId, x3dhPrekey);
+    await acceptSessionCommand(peerId, peerDeviceId, x3dhPrekey);
   }
 
   /**
@@ -493,15 +538,16 @@ export class EncryptionService {
    */
   async sendMessage(
     peerId: string,
+    peerDeviceId: string,
     plaintext: string,
     selfUserId: string
   ): Promise<EncryptedMessage> {
-    const session = await getSession(peerId);
+    const session = await getSession(peerId, peerDeviceId);
     if (!session) {
       throw new Error(`No session with peer: ${peerId}`);
     }
 
-    return encryptMessage(plaintext, peerId, selfUserId);
+    return encryptMessage(plaintext, peerId, peerDeviceId, selfUserId);
   }
 
   /**
@@ -509,10 +555,11 @@ export class EncryptionService {
    */
   async receiveMessage(
     senderId: string,
+    senderDeviceId: string,
     encrypted: EncryptedMessage,
     selfUserId: string
   ): Promise<string> {
-    const session = await getSession(senderId);
+    const session = await getSession(senderId, senderDeviceId);
     if (!session) {
       throw new Error(`No session with peer: ${senderId}`);
     }
@@ -521,6 +568,7 @@ export class EncryptionService {
       encrypted.ciphertext,
       encrypted.nonce,
       senderId,
+      senderDeviceId,
       selfUserId
     );
   }
@@ -528,16 +576,16 @@ export class EncryptionService {
   /**
    * Check if we have a session with a peer
    */
-  async hasSession(peerId: string): Promise<boolean> {
-    const session = await getSession(peerId);
+  async hasSession(peerId: string, peerDeviceId: string): Promise<boolean> {
+    const session = await getSession(peerId, peerDeviceId);
     return session !== null && session.isActive;
   }
 
   /**
    * End session with a peer
    */
-  async endSession(peerId: string): Promise<void> {
-    await deleteSession(peerId);
+  async endSession(peerId: string, peerDeviceId: string): Promise<void> {
+    await deleteSession(peerId, peerDeviceId);
   }
 
   /**
