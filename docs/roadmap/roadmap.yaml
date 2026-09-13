@@ -112,7 +112,7 @@ steps:
   # relies on that and sends an empty string, and auth-service concatenates it into
   # /devices/{user}//signed_pre_key, which cannot match. Fixing it on the client is not
   # available: GetKeyBundle is how a peer's device would be learned in the first place.
-  - {id: PR-103, issue: 274, phase: 4, type: fix, status: todo, title: "GetKeyBundle never implemented its documented any-device fallback"}
+  - {id: PR-103, issue: 274, phase: 4, type: fix, status: done, title: "GetKeyBundle never implemented its documented any-device fallback"}
   - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
   - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}

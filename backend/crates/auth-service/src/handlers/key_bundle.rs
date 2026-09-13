@@ -34,18 +34,21 @@ pub async fn get(
 ) -> Result<Response<GetKeyBundleResponse>, Status> {
     let req = request.into_inner();
 
-    // Get key bundle from database
+    // An empty device_id means "any device", which auth.proto has documented since this RPC
+    // existed. The resolved id comes back with the bundle rather than being echoed from the
+    // request: with an empty request the caller does not know which device answered, and it
+    // needs to, because a ratchet is per-device.
     match service
         .db
-        .get_key_bundle(&req.user_id, &req.device_id)
+        .get_key_bundle_for_any_device(&req.user_id, &req.device_id)
         .await
     {
-        Ok(Some(kb)) => {
+        Ok(Some((device_id, kb))) => {
             let key_bundle = to_proto(kb);
 
             let success = GetKeyBundleSuccess {
                 user_id: req.user_id.clone(),
-                device_id: req.device_id.clone(),
+                device_id,
                 key_bundle: Some(key_bundle),
             };
             Ok(Response::new(GetKeyBundleResponse {

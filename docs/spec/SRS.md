@@ -80,6 +80,21 @@ it is recorded here so nobody "fixes" it.
 never fall back to an unauthenticated exchange. Bundle from an unknown device: `NOT_FOUND`.
 A replayed prekey message fails because the one-time key is already consumed.
 
+**An unset `device_id` means any device, and the response names the one that answered.**
+`GetKeyBundleRequest.device_id` is optional; when it is empty the server picks a device the
+user actually has and returns its id in `GetKeyBundleSuccess.device_id`. The choice is
+deterministic — the lexicographically first device with a usable bundle — because an
+initiator that retried and got a different device would open a session against a device its
+peer may not be reading, and a ratchet is per-device. A device record with no key material is
+skipped rather than refused: `create_device` and `store_key_bundle` are separate writes and
+registration only logs a failure of the second, so such a device is a state the store reaches.
+
+**This is a single-device simplification, not the end state.** Signal-family protocols fan a
+session out to *every* device a user has; serving one means a message reaches one. That is the
+behaviour `auth.proto` documents today and all this RPC can express, and changing it is a
+protocol change rather than a fix. It has **no step and no issue** — record one before
+multi-device delivery is promised to anyone.
+
 > **Rules 3 and the replay edge case are not implemented.** `auth-service` serves the
 > one-time pre-keys with a range scan and deletes nothing, so every initiator is handed index
 > `0` for ever, the fourth DH contributes the same secret to every session, and a replayed
