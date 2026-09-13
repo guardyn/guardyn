@@ -163,7 +163,7 @@ steps:
   # split. The SRS defect #50 names - verify_hybrid_bundle returning Ok(()) for a half pair,
   # pqxdh.rs:266-276, still present - belongs to PR-39b, which is the first code to verify a
   # peer's bundle. It must land with that step and not be deferred past it.
-  - {id: PR-39a, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop generates, persists and publishes its ML-KEM pre-key"}
+  - {id: PR-39a, issue: 50, phase: 4, type: feat, status: done, title: "client-desktop generates, persists and publishes its ML-KEM pre-key"}
   - {id: PR-39b, issue: 292, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH as initiator"}
   - {id: PR-39c, issue: 293, phase: 4, type: feat, status: todo, title: "client-desktop completes hybrid PQXDH as responder"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
@@ -202,7 +202,16 @@ steps:
   - {id: PR-53, issue: 181, phase: 3, type: fix, status: done, title: "Run the desktop workflows on ubuntu-latest"}
   - {id: PR-54, issue: 186, phase: 3, type: fix, status: done, title: "Add the missing icon.icns bundle asset"}
   - {id: PR-55, issue: 182, phase: 3, type: chore, status: done, title: "Remove continue-on-error from the desktop workflows"}
-  - {id: PR-56, issue: 188, phase: 3, type: fix, status: todo, title: "Regenerate or drop the stale client-desktop protobuf"}
+  # Retitled, re-scoped and moved to phase 4 by PR-115 - 4 is when it is being done, not when
+  # it was found. Filed as "regenerate or drop" while the symptom was only a dirty tree; PR-39a
+  # (#50) made it a build failure. `commands/auth.rs:96` writes `ml_kem_public`, a field the
+  # tracked `src/proto/guardyn.common.rs` has never carried - it predates PR-36. `build.rs`
+  # writes generated code into the tree and declares rerun-if-changed on the proto directory,
+  # so a cold checkout regenerates and CI is always green, while a warm-cache local build
+  # compiles the stale copy and fails. ADR-0008 already calls this copy "the one remaining
+  # exception" that "needs its own step"; this is that step. OUT_DIR also satisfies PROTO-EDIT,
+  # which uses --diff-filter=d and so ignores the deletion.
+  - {id: PR-56, issue: 188, phase: 4, type: refactor, status: todo, title: "Move client-desktop protobuf generation to OUT_DIR"}
   - {id: PR-57, issue: 180, phase: 3, type: fix, status: done, title: "Make roadmap-sync detect drift and create issues"}
   - {id: PR-58, issue: 189, phase: 3, type: chore, status: done, title: "Reconcile roadmap.yaml after the G3 merge wave"}
   # The ciphertext format break. #105 and #106 were Phase-3 security issues with no step,
@@ -309,3 +318,15 @@ steps:
   # This step. The plan of record directed PR-39 at an I-1 breach for the second time; the
   # correction is recorded rather than made silently.
   - {id: PR-101, issue: 265, phase: 4, type: docs, status: done, title: "Reconcile roadmap.yaml for the Phase 4 scope correction"}
+  # Two corrections and a re-scope, together so they land under one sync run.
+  #
+  # PR-39a stayed `todo` after #300 merged and closed #50. `roadmap-sync.yml` runs on every push
+  # to main touching this file with ROADMAP_SYNC_DRY_RUN=0, so the next one reopens #50 under the
+  # bot's name - the hazard PR-114 fixed for #284. This PR is itself such a push, so leaving it
+  # would have armed it against us.
+  #
+  # PR-56 is re-scoped, not superseded by a new step: #188 already carries the OUT_DIR migration
+  # as its Option 1, so a second step would be a second issue for one piece of work. roadmap-sync
+  # does not reconcile titles, so #188's is corrected with `gh issue edit` - the one hand-edit the
+  # skill sanctions. Its state, milestone and board card are left to the sync.
+  - {id: PR-115, issue: 301, phase: 4, type: docs, status: done, title: "Re-scope PR-56 to the OUT_DIR migration and mark PR-39a done"}
