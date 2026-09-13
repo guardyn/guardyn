@@ -134,6 +134,24 @@ steps:
   # /devices/{user}//signed_pre_key, which cannot match. Fixing it on the client is not
   # available: GetKeyBundle is how a peer's device would be learned in the first place.
   - {id: PR-103, issue: 274, phase: 4, type: fix, status: done, title: "GetKeyBundle never implemented its documented any-device fallback"}
+  # Found while planning PR-39 and sliced out of it rather than widening that step. Must
+  # precede PR-39 for the same reason PR-103 did, one layer up. client-desktop keys its
+  # Double Ratchet state by peer user id alone; client-mobile has keyed by user and device
+  # since crypto_service.dart:627. PR-39 adds ML-KEM material to that same keyring blob, so
+  # re-keying afterwards migrates one store twice.
+  #
+  # Three steps because it is ~875 hand-written lines, and because the peer device id is not
+  # in the client to key by: IncomingMessage drops Message.sender_device_id, and
+  # AuthClient::get_key_bundle discards GetKeyBundleSuccess.device_id - the field PR-103 made
+  # answerable. PR-108 carries it in, PR-109 threads it through the Tauri command surface,
+  # PR-110 flips the key and migrates. Any other split leaves main with one end of a
+  # conversation keyed by user and the other by user and device.
+  #
+  # Not a duplicate of PR-94 (#253), which partitions the keyring entry *name* per account,
+  # nor of PR-102 (#272), which is MLS key packages. One family of id defect, three stores.
+  - {id: PR-108, issue: 284, phase: 4, type: fix, status: todo, title: "client-desktop discards the peer device id at every wire boundary"}
+  - {id: PR-109, issue: 285, phase: 4, type: refactor, status: todo, title: "Thread the peer device id through the desktop command surface"}
+  - {id: PR-110, issue: 286, phase: 4, type: security, status: todo, title: "Key desktop session state by peer user and device"}
   - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
   - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
@@ -236,6 +254,10 @@ steps:
   # This step. PR-103 was found while executing PR-37; recording it is its own micro-step
   # rather than a rider on PR-38, for the same reason PR-102 was split out of PR-37.
   - {id: PR-104, issue: 275, phase: 4, type: docs, status: done, title: "Record the GetKeyBundle any-device blocker in roadmap.yaml"}
+  # This step. The gap was found while planning PR-39; recording the slice is its own
+  # micro-step rather than a rider on PR-108, for the same reason PR-104 was not a rider on
+  # PR-103.
+  - {id: PR-107, issue: 287, phase: 4, type: docs, status: done, title: "Record the desktop device-id precursor to PR-39 in roadmap.yaml"}
   # This step. The plan of record directed PR-39 at an I-1 breach for the second time; the
   # correction is recorded rather than made silently.
   - {id: PR-101, issue: 265, phase: 4, type: docs, status: done, title: "Reconcile roadmap.yaml for the Phase 4 scope correction"}
