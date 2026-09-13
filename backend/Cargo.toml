@@ -80,7 +80,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 
 # Config
-config = "0.14"
+config = "0.15"
 
 # Testing
 mockall = "0.13"
