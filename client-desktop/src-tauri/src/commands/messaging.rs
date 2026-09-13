@@ -222,6 +222,7 @@ pub async fn get_messages(
                     if let Some(prekey) = m.x3dh_prekey.as_deref().filter(|p| !p.is_empty()) {
                         if let Err(e) = crate::commands::crypto::ensure_responder_session(
                             &m.sender_user_id,
+                            &m.sender_device_id,
                             prekey,
                         ) {
                             tracing::warn!("Could not establish a responder session: {}", e);
@@ -241,6 +242,7 @@ pub async fn get_messages(
                     let decrypted = crate::commands::crypto::decrypt_from_peer(
                         &m.encrypted_content,
                         &m.sender_user_id,
+                        &m.sender_device_id,
                         &self_user_id,
                     );
                     let undecryptable = decrypted.is_none();

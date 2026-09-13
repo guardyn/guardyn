@@ -276,6 +276,21 @@ pub struct KeyBundle {
     pub pq_prekey: Option<String>,
 }
 
+/// A peer's published key bundle together with the device that served it.
+///
+/// `#[serde(flatten)]` is deliberate: the JSON the frontend receives is the `KeyBundle` object
+/// it already receives, plus one field. `encryption.ts` passes that object straight back into
+/// `perform_x3dh`, and serde ignores the extra key, so the initiator path keeps working
+/// untouched while the device becomes available to it. A nested `{device_id, bundle}` wrapper
+/// would have broken that call site from inside a Rust-only step.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeerKeyBundle {
+    #[serde(flatten)]
+    pub bundle: KeyBundle,
+    /// The device `auth-service` answered with. Empty only from a server predating PR-103.
+    pub device_id: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedMessage {
     /// Base64-encoded ciphertext
@@ -290,6 +305,19 @@ pub struct EncryptedMessage {
 pub struct SessionData {
     /// Peer user ID
     pub peer_id: String,
+    /// The peer device this session belongs to.
+    ///
+    /// A session belongs to a device, not to a user - `client-mobile` has keyed its store by
+    /// `"{user}:{device}"` since `crypto_service.dart:627`. The desktop store is still keyed
+    /// by user alone; #286 flips it. Recording the device first means that step migrates a
+    /// store that already knows what each entry is, rather than guessing.
+    ///
+    /// `#[serde(default)]` because every session written before this step has no such field,
+    /// and `skip_serializing_if` because an empty device is the common case until #285 threads
+    /// it through the command surface - writing `"peer_device_id":""` into every entry would
+    /// grow the blob for nothing, and the pool already has to fit a Windows credential.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub peer_device_id: String,
     /// Session established timestamp
     pub established_at: u64,
     /// Messages sent
@@ -304,6 +332,9 @@ pub struct SessionData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionInfo {
     pub peer_id: String,
+    /// The peer device this session belongs to; empty when it is not yet known.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub peer_device_id: String,
     pub established_at: u64,
     pub messages_sent: u64,
     pub messages_received: u64,
@@ -625,16 +656,19 @@ pub async fn generate_key_bundle(include_pq: bool) -> Result<KeyBundle, String> 
 pub async fn get_key_bundle_for_peer(
     state: State<'_, AppState>,
     user_id: String,
-) -> Result<KeyBundle, String> {
+) -> Result<PeerKeyBundle, String> {
     tracing::debug!("Fetching key bundle for peer");
 
-    let bundle = state
+    let (bundle, device_id) = state
         .auth()
         .get_key_bundle(user_id)
         .await
         .map_err(|e| format!("Failed to fetch key bundle: {}", e))?;
 
-    key_bundle_from_proto(&bundle)
+    Ok(PeerKeyBundle {
+        bundle: key_bundle_from_proto(&bundle)?,
+        device_id,
+    })
 }
 
 /// Convert a published `common.KeyBundle` into the form the X3DH initiator takes.
@@ -932,6 +966,9 @@ pub async fn init_session(
 
     let session = SessionData {
         peer_id: peer_id.clone(),
+        // The initiator learns the device from the bundle it fetched, but that does not reach
+        // this command until #285 threads it through. Recorded as unknown rather than guessed.
+        peer_device_id: String::new(),
         established_at: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -960,6 +997,7 @@ pub async fn init_session(
     }
     Ok(SessionInfo {
         peer_id: session.peer_id,
+        peer_device_id: session.peer_device_id,
         established_at: session.established_at,
         messages_sent: session.messages_sent,
         messages_received: session.messages_received,
@@ -974,6 +1012,7 @@ pub async fn get_session(peer_id: String) -> Result<Option<SessionInfo>, String>
 
     Ok(store.sessions.get(&peer_id).map(|s| SessionInfo {
         peer_id: s.peer_id.clone(),
+        peer_device_id: s.peer_device_id.clone(),
         established_at: s.established_at,
         messages_sent: s.messages_sent,
         messages_received: s.messages_received,
@@ -988,6 +1027,7 @@ pub async fn list_sessions() -> Result<Vec<SessionInfo>, String> {
 
     Ok(store.sessions.values().map(|s| SessionInfo {
         peer_id: s.peer_id.clone(),
+        peer_device_id: s.peer_device_id.clone(),
         established_at: s.established_at,
         messages_sent: s.messages_sent,
         messages_received: s.messages_received,
@@ -1031,6 +1071,22 @@ fn message_associated_data(sender_user_id: &str, recipient_user_id: &str) -> Vec
     format!("{}|{}", sender_user_id, recipient_user_id).into_bytes()
 }
 
+/// Record the device a session belongs to, the first time a message proves which one it is.
+///
+/// **Backfill, never overwrite.** A session restored from a blob written before this step
+/// names no device, and a message that has just decrypted under it proves which device it
+/// belongs to - the AEAD tag is what makes that a fact rather than a guess. An entry that
+/// already names a device is left alone, because a second device cannot have produced the
+/// ciphertext that reached here.
+///
+/// Called only after a successful decrypt. That ordering is the whole guarantee, and it is why
+/// #286 can re-key the store from what these entries say rather than asking the user.
+fn backfill_peer_device(session: &mut SessionData, sender_device_id: &str) {
+    if session.peer_device_id.is_empty() {
+        session.peer_device_id = sender_device_id.to_string();
+    }
+}
+
 /// Returned when a message cannot be encrypted, so callers can fail closed on it.
 ///
 /// The desktop client must never fall back to transmitting plaintext: the server is a pure
@@ -1068,7 +1124,11 @@ pub const UNDECRYPTABLE_PLACEHOLDER: &str = "Message cannot be decrypted";
 /// message until a send is accepted, so a retry or a duplicate delivery brings it again -
 /// acting on it twice would replace a ratchet that has already advanced and lose every message
 /// after the first.
-pub(crate) fn ensure_responder_session(peer_id: &str, x3dh_prekey: &str) -> Result<(), String> {
+pub(crate) fn ensure_responder_session(
+    peer_id: &str,
+    peer_device_id: &str,
+    x3dh_prekey: &str,
+) -> Result<(), String> {
     if RATCHET_STORE
         .lock()
         .map_err(|e| e.to_string())?
@@ -1122,6 +1182,7 @@ pub(crate) fn ensure_responder_session(peer_id: &str, x3dh_prekey: &str) -> Resu
 
     let session = SessionData {
         peer_id: peer_id.to_string(),
+        peer_device_id: peer_device_id.to_string(),
         established_at: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -1149,9 +1210,13 @@ pub(crate) fn ensure_responder_session(peer_id: &str, x3dh_prekey: &str) -> Resu
 }
 
 /// Establish the responder side of a session, for the frontend's live-delivery path.
+///
+/// The device is passed empty here: the WebSocket payload carries `sender_device_id` and has
+/// since it was written, but nothing on the frontend reads it yet. #285 threads it through,
+/// and until then this path records an unknown device exactly as `init_session` does.
 #[tauri::command]
 pub async fn accept_session(peer_id: String, x3dh_prekey: String) -> Result<(), String> {
-    ensure_responder_session(&peer_id, &x3dh_prekey)
+    ensure_responder_session(&peer_id, "", &x3dh_prekey)
 }
 
 /// Decrypt a message received from `sender_id`, returning `None` when it cannot be decrypted.
@@ -1165,6 +1230,7 @@ pub async fn accept_session(peer_id: String, x3dh_prekey: String) -> Result<(), 
 pub(crate) fn decrypt_from_peer(
     ciphertext: &[u8],
     sender_id: &str,
+    sender_device_id: &str,
     self_user_id: &str,
 ) -> Option<String> {
     let encrypted = match guardyn_crypto::double_ratchet::EncryptedMessage::from_bytes(ciphertext) {
@@ -1201,6 +1267,7 @@ pub(crate) fn decrypt_from_peer(
         if let Some(session) = store.sessions.get_mut(sender_id) {
             session.messages_received += 1;
             session.state = state;
+            backfill_peer_device(session, sender_device_id);
         }
         let sessions = store.sessions.clone();
         drop(store);
@@ -1432,6 +1499,7 @@ mod tests {
     fn test_session_data_serialization() {
         let session = SessionData {
             peer_id: "peer123".to_string(),
+            peer_device_id: "peer123-laptop".to_string(),
             established_at: 1234567890,
             messages_sent: 10,
             messages_received: 5,
@@ -1446,6 +1514,7 @@ mod tests {
         // Deserialize and verify state is preserved
         let deserialized: SessionData = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.peer_id, "peer123");
+        assert_eq!(deserialized.peer_device_id, "peer123-laptop");
         assert_eq!(deserialized.state, vec![1, 2, 3, 4, 5]);
     }
 
@@ -1453,6 +1522,7 @@ mod tests {
     fn test_session_data_empty_state_serialization() {
         let session = SessionData {
             peer_id: "peer456".to_string(),
+            peer_device_id: String::new(),
             established_at: 9999999999,
             messages_sent: 0,
             messages_received: 0,
@@ -1489,6 +1559,7 @@ mod tests {
         let mut sessions = HashMap::new();
         sessions.insert("user1".to_string(), SessionData {
             peer_id: "user1".to_string(),
+            peer_device_id: "user1-phone".to_string(),
             established_at: 100,
             messages_sent: 5,
             messages_received: 3,
@@ -1496,6 +1567,7 @@ mod tests {
         });
         sessions.insert("user2".to_string(), SessionData {
             peer_id: "user2".to_string(),
+            peer_device_id: String::new(),
             established_at: 200,
             messages_sent: 10,
             messages_received: 7,
@@ -1642,11 +1714,122 @@ mod tests {
         assert!(err.contains("signature"), "{err}");
     }
 
-    fn stored_session(peer: &str, state: Vec<u8>) -> (String, SessionData) {
+    /// The frontend receives the bundle object it always received, plus one field. `serde`
+    /// ignores unknown keys, so `encryption.ts` can keep passing the whole object back into
+    /// `perform_x3dh` untouched - which is what lets the device arrive in a Rust-only step.
+    #[test]
+    fn test_the_fetched_key_bundle_names_the_device_that_answered() {
+        let peer = PeerKeyBundle {
+            bundle: KeyBundle {
+                identity_key: "aa".to_string(),
+                signed_prekey: "bb".to_string(),
+                prekey_signature: "cc".to_string(),
+                one_time_prekey: Some("dd".to_string()),
+                pq_prekey: None,
+            },
+            device_id: "bob-phone".to_string(),
+        };
+
+        let json = serde_json::to_string(&peer).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        // Flattened, not nested: there is no "bundle" key to reach through.
+        assert_eq!(value["device_id"], "bob-phone");
+        assert_eq!(value["identity_key"], "aa");
+        assert!(value.get("bundle").is_none(), "the bundle must not be nested: {json}");
+
+        // And the same bytes still read as a bare KeyBundle, which is the existing call site.
+        let as_bundle: KeyBundle = serde_json::from_str(&json).unwrap();
+        assert_eq!(as_bundle.identity_key, "aa");
+        assert_eq!(as_bundle.one_time_prekey.as_deref(), Some("dd"));
+    }
+
+    /// Every session already in a user's keyring was written without this field. It must load
+    /// as "device unknown" rather than fail the whole blob and silently lose every session.
+    #[test]
+    fn test_a_stored_session_written_before_devices_still_loads() {
+        let legacy = r#"{"peer_id":"bob","established_at":7,"messages_sent":1,
+                         "messages_received":2,"state":[1,2,3]}"#;
+
+        let session: SessionData = serde_json::from_str(legacy).unwrap();
+
+        assert_eq!(session.peer_id, "bob");
+        assert!(
+            session.peer_device_id.is_empty(),
+            "an old record names no device"
+        );
+        assert_eq!(session.state, vec![1, 2, 3]);
+    }
+
+    /// An unknown device is not written out. Until #285 threads the device through the command
+    /// surface most entries have none, and the pool already has to fit a Windows credential -
+    /// see `test_published_prekey_pool_fits_a_windows_credential`.
+    #[test]
+    fn test_a_session_that_names_no_device_does_not_write_the_field() {
+        let (_, session) = stored_session("bob", "", vec![1]);
+
+        let json = serde_json::to_string(&session).unwrap();
+
+        assert!(!json.contains("peer_device_id"), "{json}");
+    }
+
+    /// Restoring must carry the device across, or a restart would forget which device each
+    /// session belongs to and #286 would have nothing to migrate from.
+    #[test]
+    fn test_a_rehydrated_session_keeps_the_device_it_was_stored_with() {
+        // An initiator ratchet, because only a ratchet that can send survives rehydration.
+        let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let peer_public: [u8; 32] = bob_material
+            .export_bundle()
+            .signed_pre_key
+            .try_into()
+            .unwrap();
+        let alice = guardyn_crypto::DoubleRatchet::init_alice(
+            &[3u8; 32],
+            guardyn_crypto::X25519PublicKey::from(peer_public),
+        )
+        .unwrap();
+        assert!(alice.can_send());
+
+        let stored: HashMap<_, _> =
+            [stored_session("alice", "alice-laptop", alice.serialize())].into();
+
+        let (restored, _) = rehydrate_ratchets(stored);
+
+        assert_eq!(
+            restored.get("alice").map(|s| s.peer_device_id.as_str()),
+            Some("alice-laptop")
+        );
+    }
+
+    /// The AEAD tag is what proves the session belongs to this device, so the backfill happens
+    /// only after a decrypt has succeeded.
+    #[test]
+    fn test_a_decrypt_backfills_the_device_onto_a_session_that_had_none() {
+        let (_, mut session) = stored_session("bob", "", vec![1]);
+
+        backfill_peer_device(&mut session, "bob-phone");
+
+        assert_eq!(session.peer_device_id, "bob-phone");
+    }
+
+    /// A second device cannot claim a session that already names one - its messages would not
+    /// have decrypted under it in the first place.
+    #[test]
+    fn test_a_device_already_recorded_on_a_session_is_never_overwritten() {
+        let (_, mut session) = stored_session("bob", "bob-phone", vec![1]);
+
+        backfill_peer_device(&mut session, "bob-laptop");
+
+        assert_eq!(session.peer_device_id, "bob-phone");
+    }
+
+    fn stored_session(peer: &str, device: &str, state: Vec<u8>) -> (String, SessionData) {
         (
             peer.to_string(),
             SessionData {
                 peer_id: peer.to_string(),
+                peer_device_id: device.to_string(),
                 established_at: 0,
                 messages_sent: 0,
                 messages_received: 0,
@@ -1685,11 +1868,11 @@ mod tests {
     fn test_decrypt_returns_nothing_for_bytes_that_are_not_a_message() {
         // Valid UTF-8, so a lossy conversion would have rendered it as the message text.
         assert_eq!(
-            decrypt_from_peer(b"this is not a ciphertext", "someone", "me"),
+            decrypt_from_peer(b"this is not a ciphertext", "someone", "someone-phone", "me"),
             None
         );
-        assert_eq!(decrypt_from_peer(&[], "someone", "me"), None);
-        assert_eq!(decrypt_from_peer(&[0xff; 80], "someone", "me"), None);
+        assert_eq!(decrypt_from_peer(&[], "someone", "someone-phone", "me"), None);
+        assert_eq!(decrypt_from_peer(&[0xff; 80], "someone", "someone-phone", "me"), None);
     }
 
     /// A well-formed ciphertext from a peer we have no session with is unreadable, not an
@@ -1711,7 +1894,7 @@ mod tests {
         let ciphertext = sender.encrypt(b"hello", &aad).unwrap().to_bytes();
 
         assert_eq!(
-            decrypt_from_peer(&ciphertext, "stranger-with-no-session", "me"),
+            decrypt_from_peer(&ciphertext, "stranger-with-no-session", "stranger-phone", "me"),
             None
         );
     }
@@ -1764,7 +1947,7 @@ mod tests {
         assert!(bob.can_send(), "the first decrypt completes the ratchet");
 
         // The process ends here. Only what was persisted comes back.
-        let stored: HashMap<_, _> = [stored_session("alice", bob.serialize())].into();
+        let stored: HashMap<_, _> = [stored_session("alice", "alice-laptop", bob.serialize())].into();
         let (restored_sessions, mut restored_ratchets) = rehydrate_ratchets(stored);
 
         assert_eq!(restored_sessions.len(), 1, "the session must come back");
@@ -1789,7 +1972,7 @@ mod tests {
         .unwrap();
         assert!(!bob.can_send());
 
-        let stored: HashMap<_, _> = [stored_session("alice", bob.serialize())].into();
+        let stored: HashMap<_, _> = [stored_session("alice", "alice-laptop", bob.serialize())].into();
         let (sessions, ratchets) = rehydrate_ratchets(stored);
 
         assert!(sessions.is_empty(), "the metadata must go with the ratchet");
@@ -1801,8 +1984,8 @@ mod tests {
     #[test]
     fn test_sessions_without_restorable_state_are_dropped() {
         let stored: HashMap<_, _> = [
-            stored_session("empty", Vec::new()),
-            stored_session("corrupt", vec![0xff; 9]),
+            stored_session("empty", "", Vec::new()),
+            stored_session("corrupt", "", vec![0xff; 9]),
         ]
         .into();
 
