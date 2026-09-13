@@ -102,7 +102,28 @@ steps:
   # made a pure relay. Following it would have put key agreement back on the server and
   # breached I-1. Session establishment runs on the clients; PR-97 gives the prekey message
   # somewhere to carry the ML-KEM ciphertext, and PR-98 is the same work on mobile.
-  - {id: PR-97, issue: 261, phase: 4, type: feat, status: todo, title: "Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext"}
+  - {id: PR-97, issue: 261, phase: 4, type: feat, status: done, title: "Version X3DHPrekeyMessage and carry an optional ML-KEM ciphertext"}
+  # Split out of PR-97 rather than bundled into it: the two halves together exceed the
+  # AGENTS.md 2.3 budget, and a wire-format break has to be reviewable. The pair is
+  # lockstep - the moment PR-97 merges, Rust speaks v1 and client-mobile still speaks v0, so
+  # mobile and desktop cannot establish a session with each other until this lands. No CI job
+  # detects that: just test-two-client-messaging is the only check that proves the two ends
+  # interoperate and it needs two real devices. This is the highest-priority open step in
+  # Phase 4 for as long as it stays open.
+  #
+  # Not folded into PR-98 (#262), which is scoped to exporting the hybrid agreement through
+  # crypto-ffi and never mentions the codec - and which sits after PR-39, far too late.
+  - {id: PR-105, issue: 279, phase: 4, type: feat, status: todo, title: "Version X3DHPrekeyMessage in client-mobile and repaste the v1 known-answer vectors"}
+  # Split out of PR-97 before opening it, per AGENTS.md 2.3: the codec, its known-answer
+  # vectors and the spec were already 5 files and 524 lines, and the adversarial coverage on
+  # top put it over both limits. Separating property and fuzz coverage into its own step is
+  # the existing pattern here - PR-34 and PR-40 are both exactly that.
+  #
+  # PR-97 is not shipping an untested parser: it carries the seven known-answer vectors, an
+  # eleven-case rejection test, and the pre-existing round-trip and never-panics properties,
+  # which still exercise the new parser unchanged. This step adds what those cannot reach -
+  # canonicality over mutated frames, and the same assertion inside the fuzz target.
+  - {id: PR-106, issue: 280, phase: 4, type: security, status: todo, title: "Add canonicality and strict-parser coverage for the v1 X3DHPrekeyMessage"}
   # Found while executing PR-37 and left out of it rather than widening that step. Must
   # precede PR-39: PR-37 made auth-service serve ML-KEM material, and this is what stops the
   # desktop reaching it, so PR-39 would negotiate hybrid against a bundle it cannot fetch.

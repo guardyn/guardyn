@@ -282,11 +282,28 @@ pub struct OneTimePreKeyPublic {
     pub public_key: Vec<u8>,
 }
 
+/// Wire format version for [`X3DHPrekeyMessage`]. v1 is a hard break from the unversioned
+/// v0 with no fallback path; `docs/spec/SRS.md` says why.
+const PREKEY_MESSAGE_VERSION: u8 = 1;
+
+/// `flags` bit 0: a big-endian `u32` one-time pre-key id follows.
+const PREKEY_FLAG_ONE_TIME_KEY: u8 = 0x01;
+
+/// `flags` bit 1: a length-prefixed ML-KEM ciphertext follows.
+const PREKEY_FLAG_PQ_CIPHERTEXT: u8 = 0x02;
+
+/// Every bit outside this mask is reserved and must be zero, so that a future field cannot
+/// be silently ignored the way v0's `otk_flag != 1` was read as "no one-time key".
+const PREKEY_FLAGS_KNOWN: u8 = PREKEY_FLAG_ONE_TIME_KEY | PREKEY_FLAG_PQ_CIPHERTEXT;
+
+/// Smallest legal v1 frame: version, both keys, and the flags byte.
+const PREKEY_MESSAGE_MIN_LEN: usize = 1 + 32 + 32 + 1;
+
 /// X3DH prekey message sent with first message to establish session
 ///
 /// This is included in the first encrypted message from Alice to Bob,
 /// allowing Bob to complete the X3DH key agreement on his side.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct X3DHPrekeyMessage {
     /// Sender's Ed25519 identity public key (32 bytes)
     pub sender_identity_key: Vec<u8>,
@@ -294,6 +311,38 @@ pub struct X3DHPrekeyMessage {
     pub ephemeral_key: Vec<u8>,
     /// ID of the one-time prekey used (if any)
     pub used_one_time_key_id: Option<u32>,
+    /// ML-KEM ciphertext for the responder to decapsulate, when the handshake is hybrid.
+    ///
+    /// The second element of [`crate::pqxdh::derive_sender_shared_secret`]'s return value is
+    /// `ephemeral_public(32) || ciphertext`; only the ciphertext belongs here, because the
+    /// ephemeral public key is already in [`Self::ephemeral_key`] and two copies of one value
+    /// are two things that can disagree.
+    ///
+    /// `None` is a classical X3DH handshake. Classical strength is the floor, so a peer
+    /// bundle with no ML-KEM key still establishes a session.
+    pub pq_ciphertext: Option<Vec<u8>>,
+}
+
+/// Redacts the ML-KEM ciphertext; the rest is public key material.
+///
+/// `AGENTS.md` §4 puts ciphertext on the never-emit list. The derive was correct while this
+/// type held only public keys and an integer - `pq_ciphertext` is what makes it wrong, so it
+/// is replaced in the same change that adds the field rather than left to a reviewer.
+impl fmt::Debug for X3DHPrekeyMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("X3DHPrekeyMessage")
+            .field("sender_identity_key", &self.sender_identity_key)
+            .field("ephemeral_key", &self.ephemeral_key)
+            .field("used_one_time_key_id", &self.used_one_time_key_id)
+            .field(
+                "pq_ciphertext",
+                &self
+                    .pq_ciphertext
+                    .as_ref()
+                    .map(|ct| format!("[REDACTED; {} bytes]", ct.len())),
+            )
+            .finish()
+    }
 }
 
 impl X3DHPrekeyMessage {
@@ -307,72 +356,179 @@ impl X3DHPrekeyMessage {
             sender_identity_key,
             ephemeral_key,
             used_one_time_key_id,
+            pq_ciphertext: None,
         }
+    }
+
+    /// Attach the ML-KEM ciphertext from [`crate::pqxdh::derive_sender_shared_secret`],
+    /// making this a hybrid handshake. That function returns
+    /// `ephemeral_public(32) || ciphertext`, so pass `[32..]`.
+    ///
+    /// The ciphertext must be non-empty and at most [`u16::MAX`] bytes - far above
+    /// ML-KEM-768's 1088 or ML-KEM-1024's 1568. See [`Self::to_bytes`] if it is not.
+    pub fn with_pq_ciphertext(mut self, pq_ciphertext: Vec<u8>) -> Self {
+        self.pq_ciphertext = Some(pq_ciphertext);
+        self
     }
 
     /// Serialize to bytes (for transmission).
     ///
-    /// Layout: `identity_key(32) || ephemeral_key(32) || otk_flag(1) || [otk_id(4)]` -
-    /// 69 bytes with a one-time key id, 65 without.
+    /// Layout:
     ///
-    /// **`otk_id` is big-endian**, as is every multi-byte integer in a format that crosses
-    /// the Rust/Dart boundary: the ratchet header and frame length
-    /// ([`crate::double_ratchet`]) and the sealed sender certificate and envelope
-    /// ([`crate::sealed_sender`]) are all network byte order on both sides. This field was
-    /// little-endian here and big-endian in `client-mobile/lib/core/crypto/x3dh.dart` until
-    /// #255, which nothing detected because `0` is the only id either client ever sends and
-    /// `0` is byte-order invariant.
+    /// ```text
+    /// version(1)=0x01 || identity_key(32) || ephemeral_key(32) || flags(1)
+    ///                 || [otk_id:u32 BE (4)]
+    ///                 || [ct_len:u16 BE (2) || ct]
+    /// ```
     ///
-    /// The little-endian encodings that remain in [`crate::double_ratchet`] are the local
-    /// session state blob, which never crosses a language boundary - the Dart client
-    /// serializes its state as JSON.
+    /// 66 bytes minimum, 70 with a one-time key id, `+ 2 + ct_len` with an ML-KEM
+    /// ciphertext; when both are present the id comes first. `flags` bit `0x01` marks the id,
+    /// bit `0x02` the ciphertext, and every other bit is reserved.
+    ///
+    /// **Every multi-byte integer is big-endian**, as in every format crossing the Rust/Dart
+    /// boundary. `docs/spec/SRS.md` carries the full contract - the length-prefix rationale,
+    /// the byte-order rule, and why v1 is a hard break - and is the copy to keep correct.
+    ///
+    /// This method does not validate its fields, which has always been true: a
+    /// `sender_identity_key` that is not 32 bytes shifts every later offset and yields a
+    /// frame [`Self::from_bytes`] refuses. An over-long `pq_ciphertext` keeps that contract
+    /// rather than breaking it - see the `ct_len` computation below.
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(69);
+        let mut flags = 0u8;
+        if self.used_one_time_key_id.is_some() {
+            flags |= PREKEY_FLAG_ONE_TIME_KEY;
+        }
+        if self.pq_ciphertext.is_some() {
+            flags |= PREKEY_FLAG_PQ_CIPHERTEXT;
+        }
+
+        let capacity = PREKEY_MESSAGE_MIN_LEN
+            + if self.used_one_time_key_id.is_some() {
+                4
+            } else {
+                0
+            }
+            + self.pq_ciphertext.as_ref().map_or(0, |ct| 2 + ct.len());
+
+        let mut bytes = Vec::with_capacity(capacity);
+        bytes.push(PREKEY_MESSAGE_VERSION);
         bytes.extend_from_slice(&self.sender_identity_key);
         bytes.extend_from_slice(&self.ephemeral_key);
+        bytes.push(flags);
 
-        match self.used_one_time_key_id {
-            Some(id) => {
-                bytes.push(1); // flag: OTK used
-                bytes.extend_from_slice(&id.to_be_bytes());
-            }
-            None => {
-                bytes.push(0); // flag: no OTK
-            }
+        if let Some(id) = self.used_one_time_key_id {
+            bytes.extend_from_slice(&id.to_be_bytes());
         }
+
+        if let Some(ref ct) = self.pq_ciphertext {
+            // A ciphertext longer than u16::MAX cannot be length-prefixed. Encode 0, which
+            // `from_bytes` rejects outright, rather than a truncated length that would name
+            // a prefix of the real ciphertext and could be mistaken for a valid frame.
+            let ct_len = u16::try_from(ct.len()).unwrap_or(0);
+            bytes.extend_from_slice(&ct_len.to_be_bytes());
+            bytes.extend_from_slice(ct);
+        }
+
         bytes
     }
 
-    /// Deserialize from bytes
+    /// Deserialize from bytes.
+    ///
+    /// **Strict**: rejects an unsupported version, any reserved flag bit, a declared-but-empty
+    /// ciphertext, and any trailing byte - which also makes the encoding canonical, so every
+    /// accepted frame re-encodes to itself. Strictness is the point of v1, and `docs/spec/SRS.md`
+    /// records the v0 defect it closes.
+    ///
+    /// Reachable from attacker-controlled bytes, since the server relays the prekey message
+    /// without inspecting it, so it must refuse or parse and never panic. Every length is
+    /// checked before it is used to slice.
     pub fn from_bytes(bytes: &[u8]) -> crate::Result<Self> {
-        if bytes.len() < 65 {
+        if bytes.len() < PREKEY_MESSAGE_MIN_LEN {
             return Err(crate::CryptoError::Protocol(
                 "X3DH prekey message too short".into(),
             ));
         }
 
-        let sender_identity_key = bytes[0..32].to_vec();
-        let ephemeral_key = bytes[32..64].to_vec();
-        let otk_flag = bytes[64];
+        if bytes[0] != PREKEY_MESSAGE_VERSION {
+            return Err(crate::CryptoError::Protocol(format!(
+                "Unsupported X3DH prekey message version {}",
+                bytes[0]
+            )));
+        }
 
-        let used_one_time_key_id = if otk_flag == 1 {
-            if bytes.len() < 69 {
-                return Err(crate::CryptoError::Protocol(
-                    "X3DH prekey message missing OTK ID".into(),
-                ));
-            }
-            let id_bytes: [u8; 4] = bytes[65..69]
-                .try_into()
-                .map_err(|_| crate::CryptoError::Protocol("Invalid OTK ID bytes".into()))?;
+        let sender_identity_key = bytes[1..33].to_vec();
+        let ephemeral_key = bytes[33..65].to_vec();
+        let flags = bytes[65];
+
+        let unknown = flags & !PREKEY_FLAGS_KNOWN;
+        if unknown != 0 {
+            return Err(crate::CryptoError::Protocol(format!(
+                "Unknown X3DH prekey message flag bits {:#04x}",
+                unknown
+            )));
+        }
+
+        let mut offset = PREKEY_MESSAGE_MIN_LEN;
+
+        let used_one_time_key_id = if flags & PREKEY_FLAG_ONE_TIME_KEY != 0 {
+            let id_bytes: [u8; 4] = bytes
+                .get(offset..offset + 4)
+                .and_then(|slice| slice.try_into().ok())
+                .ok_or_else(|| {
+                    crate::CryptoError::Protocol("X3DH prekey message missing OTK ID".into())
+                })?;
+            offset += 4;
             Some(u32::from_be_bytes(id_bytes))
         } else {
             None
         };
 
+        let pq_ciphertext = if flags & PREKEY_FLAG_PQ_CIPHERTEXT != 0 {
+            let len_bytes: [u8; 2] = bytes
+                .get(offset..offset + 2)
+                .and_then(|slice| slice.try_into().ok())
+                .ok_or_else(|| {
+                    crate::CryptoError::Protocol(
+                        "X3DH prekey message missing ML-KEM ciphertext length".into(),
+                    )
+                })?;
+            offset += 2;
+
+            let ct_len = usize::from(u16::from_be_bytes(len_bytes));
+            if ct_len == 0 {
+                // Otherwise "no ciphertext" would have two encodings - the flag clear, and
+                // the flag set with a zero length - and the frame would not be canonical.
+                return Err(crate::CryptoError::Protocol(
+                    "X3DH prekey message declares an empty ML-KEM ciphertext".into(),
+                ));
+            }
+
+            let ct = bytes
+                .get(offset..offset + ct_len)
+                .ok_or_else(|| {
+                    crate::CryptoError::Protocol(
+                        "X3DH prekey message ML-KEM ciphertext is truncated".into(),
+                    )
+                })?
+                .to_vec();
+            offset += ct_len;
+            Some(ct)
+        } else {
+            None
+        };
+
+        if offset != bytes.len() {
+            return Err(crate::CryptoError::Protocol(format!(
+                "X3DH prekey message has {} trailing byte(s)",
+                bytes.len() - offset
+            )));
+        }
+
         Ok(Self {
             sender_identity_key,
             ephemeral_key,
             used_one_time_key_id,
+            pq_ciphertext,
         })
     }
 
@@ -765,7 +921,7 @@ mod tests {
         let msg = X3DHPrekeyMessage::new(sender_identity.clone(), ephemeral_key.clone(), None);
 
         let bytes = msg.to_bytes();
-        assert_eq!(bytes.len(), 65); // 32 + 32 + 1
+        assert_eq!(bytes.len(), 66); // 1 + 32 + 32 + 1
 
         let decoded = X3DHPrekeyMessage::from_bytes(&bytes).unwrap();
         assert_eq!(decoded.sender_identity_key, sender_identity);
@@ -782,7 +938,7 @@ mod tests {
         let msg = X3DHPrekeyMessage::new(sender_identity.clone(), ephemeral_key.clone(), Some(42));
 
         let bytes = msg.to_bytes();
-        assert_eq!(bytes.len(), 69); // 32 + 32 + 1 + 4
+        assert_eq!(bytes.len(), 70); // 1 + 32 + 32 + 1 + 4
 
         let decoded = X3DHPrekeyMessage::from_bytes(&bytes).unwrap();
         assert_eq!(decoded.sender_identity_key, sender_identity);
@@ -805,66 +961,96 @@ mod tests {
         assert_eq!(decoded.used_one_time_key_id, Some(123));
     }
 
+    /// One known-answer vector: `(name, identity_key_fill, ephemeral_key_fill,
+    /// used_one_time_key_id, pq_ciphertext)`, the ciphertext given as `(fill_byte, length)`.
+    type PrekeyMessageVector = (&'static str, u8, u8, Option<u32>, Option<(u8, usize)>);
+
     /// The known-answer vectors for [`X3DHPrekeyMessage`], shared by the byte-exact test and
     /// the Dart emitter below so the two cannot drift apart.
     ///
-    /// `(name, identity_key_fill, ephemeral_key_fill, used_one_time_key_id)`. The fills are
-    /// distinct per vector so a shifted offset cannot pass unnoticed.
-    const PREKEY_MESSAGE_VECTORS: &[(&str, u8, u8, Option<u32>)] = &[
-        ("no_otk", 0x01, 0x02, None),
+    /// The fills are distinct per vector so a shifted offset cannot pass unnoticed.
+    ///
+    /// Ciphertext lengths are deliberately tiny rather than the real 1088: these are
+    /// transcribed into a Dart source file, where 2176 hex characters per vector would be
+    /// unreviewable. What they must pin is the *framing* - version byte, flag bits, field
+    /// order, big-endian length prefix. `prekey_message_carries_a_real_ml_kem_ciphertext`
+    /// covers the real size.
+    const PREKEY_MESSAGE_VECTORS: &[PrekeyMessageVector] = &[
+        ("no_otk", 0x01, 0x02, None, None),
         // The id every client sends today, and the reason #255 stayed invisible.
-        ("otk_id_zero", 0x03, 0x04, Some(0)),
+        ("otk_id_zero", 0x03, 0x04, Some(0), None),
         // The discriminating case: big-endian writes 00000001, little-endian 01000000.
-        ("otk_id_one", 0x05, 0x06, Some(1)),
+        ("otk_id_one", 0x05, 0x06, Some(1), None),
         // Fully asymmetric, so any byte permutation fails rather than only a full reversal.
-        ("otk_id_asymmetric", 0x07, 0x08, Some(0x0102_0304)),
-        ("otk_id_max", 0x09, 0x0a, Some(u32::MAX)),
+        ("otk_id_asymmetric", 0x07, 0x08, Some(0x0102_0304), None),
+        ("otk_id_max", 0x09, 0x0a, Some(u32::MAX), None),
+        // A hybrid handshake against a bundle with no one-time key: flag 0x02 alone, so the
+        // ciphertext must sit immediately after the flags byte rather than at a fixed offset.
+        ("pq_only", 0x0b, 0x0c, None, Some((0xaa, 4))),
+        // Both optional fields present. This is the vector that pins their *order* - a reader
+        // that took the ciphertext before the one-time key id would still satisfy every other
+        // vector here.
+        ("otk_and_pq", 0x0d, 0x0e, Some(7), Some((0xbb, 4))),
     ];
 
     fn prekey_message_vector(
         identity_fill: u8,
         ephemeral_fill: u8,
         id: Option<u32>,
+        ct: Option<(u8, usize)>,
     ) -> X3DHPrekeyMessage {
-        X3DHPrekeyMessage::new(vec![identity_fill; 32], vec![ephemeral_fill; 32], id)
+        let msg = X3DHPrekeyMessage::new(vec![identity_fill; 32], vec![ephemeral_fill; 32], id);
+        match ct {
+            Some((fill, len)) => msg.with_pq_ciphertext(vec![fill; len]),
+            None => msg,
+        }
     }
 
     fn hex_of(bytes: &[u8]) -> String {
         bytes.iter().map(|b| format!("{:02x}", b)).collect()
     }
 
-    /// The byte order of `otk_id` is a cross-platform wire contract, and until #255 no test
-    /// constrained it: `test_x3dh_prekey_message_with_otk` asserts a length and a
-    /// Rust-to-Rust round-trip, which passes just as happily when both ends share a bug.
-    /// That is exactly how this field stayed little-endian here while
-    /// `client-mobile/lib/core/crypto/x3dh.dart` read it big-endian. ADR-0011 makes the same
-    /// argument about the ratchet frame and answers it with known-answer vectors; these are
-    /// the prekey message's, and `wire_vectors_test.dart` asserts on the same constants, so
-    /// the two implementations are pinned to one answer rather than to each other.
+    /// A Rust-to-Rust round-trip passes just as happily when both ends share a bug, which is
+    /// how `otk_id` stayed little-endian here while `client-mobile` read it big-endian until
+    /// #255. These vectors and `wire_vectors_test.dart` assert the same constants, so the two
+    /// implementations are pinned to one answer rather than to each other - the argument
+    /// ADR-0011 makes about the ratchet frame.
     #[test]
     fn prekey_message_serializes_to_the_known_answer_vectors() {
-        // Everything from the flag byte onward - the whole of what the byte order affects.
-        let expected_tails = ["00", "0100000000", "0100000001", "0101020304", "01ffffffff"];
+        // Everything from the flags byte onward - the whole of what framing affects.
+        let expected_tails = [
+            "00",
+            "0100000000",
+            "0100000001",
+            "0101020304",
+            "01ffffffff",
+            "020004aaaaaaaa",
+            "03000000070004bbbbbbbb",
+        ];
 
-        for ((name, identity_fill, ephemeral_fill, id), expected_tail) in
+        for ((name, identity_fill, ephemeral_fill, id, ct), expected_tail) in
             PREKEY_MESSAGE_VECTORS.iter().zip(expected_tails)
         {
-            let bytes = prekey_message_vector(*identity_fill, *ephemeral_fill, *id).to_bytes();
+            let bytes = prekey_message_vector(*identity_fill, *ephemeral_fill, *id, *ct).to_bytes();
 
             assert_eq!(
-                hex_of(&bytes[..32]),
+                bytes[0], 1,
+                "{name}: the version byte is not 0x01 at offset 0"
+            );
+            assert_eq!(
+                hex_of(&bytes[1..33]),
                 format!("{:02x}", identity_fill).repeat(32),
-                "{name}: identity key is not at offset 0"
+                "{name}: identity key is not at offset 1"
             );
             assert_eq!(
-                hex_of(&bytes[32..64]),
+                hex_of(&bytes[33..65]),
                 format!("{:02x}", ephemeral_fill).repeat(32),
-                "{name}: ephemeral key is not at offset 32"
+                "{name}: ephemeral key is not at offset 33"
             );
             assert_eq!(
-                hex_of(&bytes[64..]),
+                hex_of(&bytes[65..]),
                 expected_tail,
-                "{name}: flag byte and one-time key id are not the known answer"
+                "{name}: flags, one-time key id and ML-KEM ciphertext are not the known answer"
             );
         }
     }
@@ -873,8 +1059,8 @@ mod tests {
     /// byte-exact test by breaking the parser instead.
     #[test]
     fn prekey_message_round_trips_every_known_answer_vector() {
-        for (name, identity_fill, ephemeral_fill, id) in PREKEY_MESSAGE_VECTORS {
-            let msg = prekey_message_vector(*identity_fill, *ephemeral_fill, *id);
+        for (name, identity_fill, ephemeral_fill, id, ct) in PREKEY_MESSAGE_VECTORS {
+            let msg = prekey_message_vector(*identity_fill, *ephemeral_fill, *id, *ct);
             let decoded = X3DHPrekeyMessage::from_bytes(&msg.to_bytes())
                 .unwrap_or_else(|e| panic!("{name}: {e}"));
 
@@ -884,7 +1070,102 @@ mod tests {
             );
             assert_eq!(decoded.ephemeral_key, msg.ephemeral_key, "{name}");
             assert_eq!(decoded.used_one_time_key_id, *id, "{name}");
+            assert_eq!(decoded.pq_ciphertext, msg.pq_ciphertext, "{name}");
         }
+    }
+
+    /// The vectors above use 4-byte ciphertexts for legibility; the real one is 1088 bytes.
+    /// A `u16` holds it with room for ML-KEM-1024's 1568 too - the point of the prefix.
+    #[test]
+    fn prekey_message_carries_a_real_ml_kem_ciphertext() {
+        let ct = vec![0x5au8; 1088];
+        let msg = X3DHPrekeyMessage::new(vec![0x11; 32], vec![0x22; 32], Some(3))
+            .with_pq_ciphertext(ct.clone());
+
+        let bytes = msg.to_bytes();
+        assert_eq!(bytes.len(), 70 + 2 + 1088);
+        // The length prefix is big-endian: 1088 == 0x0440.
+        assert_eq!(&bytes[70..72], &[0x04, 0x40]);
+
+        let decoded = X3DHPrekeyMessage::from_bytes(&bytes).expect("decode");
+        assert_eq!(decoded.pq_ciphertext, Some(ct));
+        assert_eq!(decoded.used_one_time_key_id, Some(3));
+    }
+
+    /// v1's whole purpose is that a frame it cannot fully account for is refused rather than
+    /// half-read; `docs/spec/SRS.md` records the v0 defect. Each case below is one way a
+    /// half-read frame could otherwise reach key agreement.
+    #[test]
+    fn prekey_message_parser_rejects_every_malformed_frame() {
+        let valid = prekey_message_vector(0x0d, 0x0e, Some(7), Some((0xbb, 4))).to_bytes();
+        assert!(X3DHPrekeyMessage::from_bytes(&valid).is_ok(), "baseline");
+
+        let reject = |label: &str, bytes: Vec<u8>| {
+            assert!(
+                X3DHPrekeyMessage::from_bytes(&bytes).is_err(),
+                "{label}: accepted a frame it should refuse"
+            );
+        };
+
+        reject("truncated below the minimum", valid[..65].to_vec());
+
+        // A v0 frame. Its first byte is an Ed25519 key byte, so it is only ever 0x01 by
+        // coincidence - which is exactly why v1 is a hard break with no fallback.
+        let mut v0 = valid.clone();
+        v0[0] = 0x00;
+        reject("version 0", v0);
+
+        let mut future = valid.clone();
+        future[0] = 0x02;
+        reject("a version from the future", future);
+
+        // Reserved flag bits. Reading these as "absent" is the v0 defect that made the whole
+        // format unextendable, so every one of them must be an error, not a shrug.
+        for bit in [0x04u8, 0x08, 0x10, 0x20, 0x40, 0x80] {
+            let mut unknown = valid.clone();
+            unknown[65] |= bit;
+            reject(&format!("reserved flag bit {bit:#04x}"), unknown);
+        }
+
+        // The flag claims a one-time key id that is not there.
+        reject("one-time key id truncated", valid[..68].to_vec());
+
+        // The flag claims a ciphertext; only one byte of its two-byte length is present.
+        reject("ciphertext length truncated", valid[..71].to_vec());
+
+        // ct_len declares more bytes than the frame holds.
+        let mut overlong = valid.clone();
+        overlong[70] = 0xff;
+        overlong[71] = 0xff;
+        reject("ciphertext length exceeds the frame", overlong);
+
+        // A zero-length ciphertext would give "no ciphertext" a second encoding, so the frame
+        // would no longer be canonical and the fuzz target's re-encode assertion would fire.
+        let mut empty_ct = valid[..72].to_vec();
+        empty_ct[70] = 0x00;
+        empty_ct[71] = 0x00;
+        reject("ciphertext declared empty", empty_ct);
+
+        // The defect this version exists to close: extra bytes after a complete frame.
+        let mut trailing = valid.clone();
+        trailing.push(0x00);
+        reject("one trailing byte", trailing);
+    }
+
+    /// `Debug` must not print the ML-KEM ciphertext: `AGENTS.md` §4 forbids payload in any log
+    /// line, and a derived `Debug` reaching a `{:?}` is how that happens.
+    #[test]
+    fn prekey_message_debug_redacts_the_ml_kem_ciphertext() {
+        let msg = X3DHPrekeyMessage::new(vec![0x11; 32], vec![0x22; 32], Some(3))
+            .with_pq_ciphertext(vec![0x7fu8; 1088]);
+
+        let rendered = format!("{:?}", msg);
+
+        assert!(rendered.contains("[REDACTED"), "{rendered}");
+        assert!(
+            !rendered.contains("127, 127"),
+            "the ciphertext reached Debug output: {rendered}"
+        );
     }
 
     /// Emit the Dart half of the vectors above.
@@ -893,19 +1174,26 @@ mod tests {
     /// `cargo test -p guardyn-crypto emit_dart_prekey_message_vectors -- --nocapture`
     /// and paste the output into `client-mobile/test/core/crypto/wire_vectors_test.dart`.
     ///
-    /// ADR-0011 requires the known-answer vectors to be regenerated whenever a layout
-    /// changes, but the ratchet vectors it introduced were transcribed from an ad-hoc run
-    /// with no committed emitter - so "regenerate" had no procedure behind it. This is that
-    /// procedure for the prekey message, following the precedent of
-    /// `x3dh_conversion_tests.rs::generate_dart_test_vectors`.
+    /// ADR-0011 requires these to be regenerated whenever a layout changes, but the ratchet
+    /// vectors it introduced had no committed emitter, so "regenerate" had no procedure behind
+    /// it. This is that procedure for the prekey message.
+    ///
+    /// The emitted map carries the whole frame under `'frame'`. The Dart side used to store a
+    /// `'tail'` and rebuild `ik + ek + tail`, so the documented copy-paste never worked - and
+    /// rebuilding a frame from parts hides layout changes, because the reconstruction encodes
+    /// the very offsets under test.
     #[test]
     fn emit_dart_prekey_message_vectors() {
         println!("\n=== X3DHPrekeyMessage vectors for wire_vectors_test.dart ===\n");
 
-        for (name, identity_fill, ephemeral_fill, id) in PREKEY_MESSAGE_VECTORS {
-            let msg = prekey_message_vector(*identity_fill, *ephemeral_fill, *id);
+        for (name, identity_fill, ephemeral_fill, id, ct) in PREKEY_MESSAGE_VECTORS {
+            let msg = prekey_message_vector(*identity_fill, *ephemeral_fill, *id, *ct);
             let otk = match id {
                 Some(value) => value.to_string(),
+                None => "null".to_string(),
+            };
+            let pq = match ct {
+                Some((fill, len)) => format!("'{}'", format!("{:02x}", fill).repeat(*len)),
                 None => "null".to_string(),
             };
 
@@ -913,6 +1201,7 @@ mod tests {
             println!("      'ik': '{:02x}',", identity_fill);
             println!("      'ek': '{:02x}',", ephemeral_fill);
             println!("      'otkId': {otk},");
+            println!("      'pqCiphertext': {pq},");
             println!("      'frame': '{}',", hex_of(&msg.to_bytes()));
             println!("    }},");
         }

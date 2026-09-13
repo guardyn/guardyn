@@ -185,12 +185,59 @@ Binding the header changed the ciphertext format non-additively. Deployed client
 it cannot decrypt, and this was accepted deliberately at gate G3 rather than carried into
 Phase 4, where #105 and #106 would have forced the clients to re-parse a second time.
 
+## X3DH prekey message wire format
+
+The prekey message rides inside the opaque `x3dh_prekey` base64 string that the server relays
+without inspecting ([ADR-0010](../adr/ADR-0010-pure-relay-server.md)). It is a hand-rolled
+format, not protobuf, so it is specified here.
+
+```
+version(1)=0x01 || identity_key(32) || ephemeral_key(32) || flags(1)
+                || [otk_id:u32 BE (4)]
+                || [ct_len:u16 BE (2) || ct]
+```
+
+66 bytes minimum, 70 with a one-time pre-key id, `+ 2 + ct_len` with an ML-KEM ciphertext.
+When both optional fields are present the id comes first.
+
+| flags bit | meaning |
+|---|---|
+| `0x01` | a one-time pre-key id follows |
+| `0x02` | a length-prefixed ML-KEM ciphertext follows |
+| `0x04`-`0x80` | reserved; a parser **must reject** a frame that sets one |
+
+`ct_len` is a length prefix rather than a fixed 1088 so the frame is independent of the ML-KEM
+parameter set: ML-KEM-1024's 1568-byte ciphertext needs no second version byte. Size validation
+belongs where the ciphertext is consumed - `pqxdh::derive_recipient_shared_secret` requires
+exactly 1088 bytes for ML-KEM-768.
+
+Only the ciphertext travels. `pqxdh::derive_sender_shared_secret` returns
+`ephemeral_public(32) || ciphertext`; the ephemeral public key is already at offset 33, and two
+copies of one value are two things that can disagree.
+
+**The parser is strict.** It rejects an unsupported version, any reserved flag bit, a `ct_len`
+of `0` when the flag is set, and **any trailing byte**. v0 checked `len < 65` and `len < 69`
+but never an exact length, so a v0 parser handed a frame with a ciphertext appended returned a
+valid-looking classical message and discarded the ciphertext: the responder would derive a
+classical secret while the initiator derived a hybrid one, and the mismatch would surface as an
+AEAD tag rejection with both sides looking healthy. Rejecting trailing bytes also makes the
+encoding canonical - every accepted frame re-encodes to itself, which is what the
+`x3dh_prekey_message` fuzz target asserts.
+
+**v1 is a hard break, not a soft one.** The ratchet frame above could be versioned softly
+because its first byte was always the `0x00` high byte of a 40-byte length. Byte 0 of a v0
+prekey message was the first byte of an Ed25519 public key, which is unconstrained, so `0x01`
+is a value v0 could legitimately emit. v0 and v1 are not distinguishable and there is
+deliberately no fallback path - guessing would reintroduce the ambiguity the version byte
+exists to remove.
+
 ## Byte order
 
 **Every multi-byte integer in a format that crosses the Rust/Dart boundary is big-endian**
 (network byte order, RFC 1700). This governs the ratchet `header_len`,
 `previous_chain_length` and `message_number`; the sealed sender `expires_at`, `user_id_len`,
-`device_id_len` and `cert_len`; and the `X3DHPrekeyMessage` one-time pre-key id.
+`device_id_len` and `cert_len`; and the `X3DHPrekeyMessage` one-time pre-key id and ML-KEM
+ciphertext length.
 
 The single exception is the **local** Double Ratchet state blob
 (`double_ratchet.rs` `serialize`/`deserialize`), which is little-endian. It never crosses a
