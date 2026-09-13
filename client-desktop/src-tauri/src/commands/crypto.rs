@@ -64,7 +64,28 @@ static SESSION_STORE: LazyLock<Mutex<SessionStore>> = LazyLock::new(|| {
 static RATCHET_STORE: LazyLock<Mutex<HashMap<String, guardyn_crypto::DoubleRatchet>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// The X3DH prekey message an initiator owes its peer, keyed by peer id.
+/// The key a session is stored under: the peer user and the peer device, joined by a colon.
+///
+/// Byte-identical to `client-mobile`'s `_makeSessionId` (`crypto_service.dart:627`) and to
+/// `peerStateKey` in `services/encryption.ts`, so all three indexes read alike.
+///
+/// **The separator is mandatory even when the device is empty.** `"bob:"` is a peer whose
+/// device the server did not name - `messaging-service` does not stamp one on its WebSocket
+/// path - and `"bob"` is an entry written before sessions were keyed by device. Keeping those
+/// two distinguishable is what makes the migration in [`decrypt_from_peer`] possible.
+fn session_key(user_id: &str, device_id: &str) -> String {
+    format!("{}:{}", user_id, device_id)
+}
+
+/// The user half of a stored key, or the whole key when it predates device keying.
+///
+/// `split_once` rather than `split().collect()`: it takes the *first* colon, so a device id
+/// containing one cannot shift the boundary and steal part of the user id.
+fn key_user(key: &str) -> &str {
+    key.split_once(':').map_or(key, |(user, _)| user)
+}
+
+/// The X3DH prekey message an initiator owes its peer, keyed by session.
 ///
 /// A responder cannot complete X3DH without the initiator's identity key, ephemeral key and the
 /// id of the one-time pre-key it consumed. Those travel once, on the first message of a
@@ -76,10 +97,14 @@ static RATCHET_STORE: LazyLock<Mutex<HashMap<String, guardyn_crypto::DoubleRatch
 static PENDING_PREKEY: LazyLock<Mutex<HashMap<String, String>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// The prekey message owed to `peer_id`, if any. Does not consume it - see
+/// The prekey message owed to the session `key` names, if any. Does not consume it - see
 /// [`clear_pending_prekey`].
-pub(crate) fn peek_pending_prekey(peer_id: &str) -> Option<String> {
-    PENDING_PREKEY.lock().ok()?.get(peer_id).cloned()
+///
+/// Takes a session key rather than a user because the message belongs to one device's
+/// exchange. Keyed by user, initiating with a peer's second device overwrote the first's
+/// parked message, and the next send to either carried the wrong one.
+pub(crate) fn peek_pending_prekey(key: &str) -> Option<String> {
+    PENDING_PREKEY.lock().ok()?.get(key).cloned()
 }
 
 /// Drop the prekey message owed to `peer_id`, once a message carrying it has actually been
@@ -87,9 +112,9 @@ pub(crate) fn peek_pending_prekey(peer_id: &str) -> Option<String> {
 ///
 /// Clearing on send rather than on attach is what makes a failed send retryable. Re-sending it
 /// is harmless: a responder that already has a session ignores the prekey message.
-pub(crate) fn clear_pending_prekey(peer_id: &str) {
+pub(crate) fn clear_pending_prekey(key: &str) {
     if let Ok(mut pending) = PENDING_PREKEY.lock() {
-        pending.remove(peer_id);
+        pending.remove(key);
     }
 }
 
@@ -771,15 +796,13 @@ pub async fn perform_x3dh(
         ephemeral_public.as_bytes().to_vec(),
         used_prekey_id,
     );
-    // Still keyed by user alone. The device is carried so the caller cannot forget it and so
-    // the map can be re-keyed in #286 without touching a signature; parking it under a
-    // composite key here would strand the message, because `peek_pending_prekey` is reached
-    // from `send_message`, which knows only the recipient user.
-    let _ = &recipient_device_id;
     PENDING_PREKEY
         .lock()
         .map_err(|e| e.to_string())?
-        .insert(recipient_id.clone(), prekey_message.to_base64());
+        .insert(
+            session_key(&recipient_id, &recipient_device_id),
+            prekey_message.to_base64(),
+        );
 
     tracing::info!("X3DH key agreement successful with {}", recipient_id);
 
@@ -983,15 +1006,17 @@ pub async fn init_session(
         state: ratchet.serialize(),
     };
 
+    let key = session_key(&peer_id, &peer_device_id);
+
     // Store ratchet in memory
     {
         let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
-        ratchet_store.insert(peer_id.clone(), ratchet);
+        ratchet_store.insert(key.clone(), ratchet);
     }
 
     // Store session metadata, and persist only what will survive a reload.
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    store.sessions.insert(peer_id.clone(), session.clone());
+    store.sessions.insert(key, session.clone());
     if can_persist {
         persist_sessions(&store.sessions)?;
         tracing::info!("Double Ratchet session established and persisted");
@@ -1010,12 +1035,12 @@ pub async fn init_session(
     })
 }
 
-/// Get session info for a peer.
+/// Get session info for a peer device.
 ///
-/// **`peer_device_id` is carried, not yet honoured.** The store is still keyed by user alone,
-/// so a peer with two devices resolves to whichever session was written last. Threading the
-/// device through every caller first is what lets #286 re-key the store without touching a
-/// signature; until it lands, this answers per user.
+/// Falls back to an entry written before device keying, because this is the gate the frontend
+/// puts in front of every send and decrypt: answering "no session" for one that exists and
+/// works would refuse messages this client can read. The fallback is a read - it adopts
+/// nothing. Only a verified decrypt re-keys an entry, in [`decrypt_from_peer`].
 #[tauri::command]
 pub async fn get_session(
     peer_id: String,
@@ -1024,7 +1049,13 @@ pub async fn get_session(
     let _ = &peer_device_id; // keyed by user until #286
     let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
 
-    Ok(store.sessions.get(&peer_id).map(|s| SessionInfo {
+    let key = session_key(&peer_id, &peer_device_id);
+    let session = store
+        .sessions
+        .get(&key)
+        .or_else(|| store.sessions.get(&peer_id));
+
+    Ok(session.map(|s| SessionInfo {
         peer_id: s.peer_id.clone(),
         peer_device_id: s.peer_device_id.clone(),
         established_at: s.established_at,
@@ -1049,23 +1080,38 @@ pub async fn list_sessions() -> Result<Vec<SessionInfo>, String> {
     }).collect())
 }
 
-/// Delete a session.
+/// Delete a session with one of a peer's devices.
 ///
-/// `peer_device_id` is carried, not yet honoured - see [`get_session`]. Deleting one device's
-/// session therefore still deletes the peer's only session.
+/// Removes the ratchet and the parked prekey message alongside the metadata. Leaving those
+/// behind was survivable while there was one session per peer; with one per device, an
+/// orphaned ratchet under a key nothing reads is a live ratchet nothing can ever advance.
+///
+/// Falls back to an entry written before device keying, for the same reason [`get_session`]
+/// does: a user ending a conversation must end the one that actually exists.
 #[tauri::command]
 pub async fn delete_session(peer_id: String, peer_device_id: String) -> Result<bool, String> {
     let _ = &peer_device_id; // keyed by user until #286
+    let key = session_key(&peer_id, &peer_device_id);
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    let removed = store.sessions.remove(&peer_id).is_some();
+    let removed_key = if store.sessions.remove(&key).is_some() {
+        Some(key)
+    } else if store.sessions.remove(&peer_id).is_some() {
+        Some(peer_id.clone())
+    } else {
+        None
+    };
 
-    if removed {
-        // Persist updated sessions to secure storage
+    if let Some(removed_key) = &removed_key {
         persist_sessions(&store.sessions)?;
+        drop(store);
+        if let Ok(mut ratchets) = RATCHET_STORE.lock() {
+            ratchets.remove(removed_key);
+        }
+        clear_pending_prekey(removed_key);
         tracing::info!("Session with peer {} deleted and persisted", peer_id);
     }
 
-    Ok(removed)
+    Ok(removed_key.is_some())
 }
 
 // =============================================================================
@@ -1103,6 +1149,71 @@ fn backfill_peer_device(session: &mut SessionData, sender_device_id: &str) {
     if session.peer_device_id.is_empty() {
         session.peer_device_id = sender_device_id.to_string();
     }
+}
+
+/// Attempt a decrypt under one stored session, returning `None` when there is no such session
+/// or the message is not for it.
+///
+/// **A failed attempt costs nothing.** `DoubleRatchet::decrypt` stages every mutation and
+/// touches `self` only once the tag verifies (`double_ratchet.rs:404-406`), so trying the
+/// wrong session leaves it exactly as it was - no advanced chain, no consumed skipped key.
+/// That guarantee is what makes the fallback in [`decrypt_from_peer`] safe to run against a
+/// session that may belong to a different device.
+fn try_decrypt_under(
+    ratchets: &mut HashMap<String, guardyn_crypto::DoubleRatchet>,
+    key: &str,
+    encrypted: &guardyn_crypto::double_ratchet::EncryptedMessage,
+    associated_data: &[u8],
+) -> Option<Vec<u8>> {
+    match ratchets.get_mut(key)?.decrypt(encrypted, associated_data) {
+        Ok(plaintext) => Some(plaintext),
+        Err(e) => {
+            // Shape, not content: `CryptoError` carries no key material.
+            tracing::debug!("Double Ratchet could not decrypt: {}", e);
+            None
+        }
+    }
+}
+
+/// Decrypt under this device's session, falling back to one written before device keying and
+/// re-keying it when the tag proves it belongs here. Returns the plaintext and whether the
+/// fallback was taken.
+///
+/// **This is the migration.** There is no schema version in the store and no migration pass at
+/// startup: a legacy entry simply stays under its bare user key until a message arrives that
+/// it can read, and reading that message is what proves which device it belongs to. The AEAD
+/// tag is the oracle. A peer's *other* device cannot take the entry, because its ciphertext
+/// would not verify under it.
+///
+/// Trying the wrong session costs nothing - see [`try_decrypt_under`] - so the fallback is
+/// safe to attempt on every miss rather than only when this device has no session at all.
+/// That matters: a responder session built from a re-sent prekey message sits under the
+/// device key and cannot read messages the legacy ratchet has already advanced past, and
+/// without the second attempt those would be lost.
+///
+/// Discarding legacy entries instead was considered and rejected. Nothing on the desktop
+/// re-establishes a session on send: `encryption.ts` throws and the message is marked failed.
+/// A discarded session therefore strands the conversation until the user reopens the new-chat
+/// dialog or the peer initiates. The ratchet state is not suspect; only its label is.
+fn decrypt_and_adopt(
+    ratchets: &mut HashMap<String, guardyn_crypto::DoubleRatchet>,
+    key: &str,
+    legacy_key: &str,
+    encrypted: &guardyn_crypto::double_ratchet::EncryptedMessage,
+    associated_data: &[u8],
+) -> Option<(Vec<u8>, bool)> {
+    if let Some(plaintext) = try_decrypt_under(ratchets, key, encrypted, associated_data) {
+        return Some((plaintext, false));
+    }
+
+    let plaintext = try_decrypt_under(ratchets, legacy_key, encrypted, associated_data)?;
+
+    if let Some(ratchet) = ratchets.remove(legacy_key) {
+        ratchets.insert(key.to_string(), ratchet);
+    }
+    tracing::info!("Re-keyed a session written before sessions were keyed by device");
+
+    Some((plaintext, true))
 }
 
 /// Returned when a message cannot be encrypted, so callers can fail closed on it.
@@ -1147,13 +1258,20 @@ pub(crate) fn ensure_responder_session(
     peer_device_id: &str,
     x3dh_prekey: &str,
 ) -> Result<(), String> {
+    let key = session_key(peer_id, peer_device_id);
     if RATCHET_STORE
         .lock()
         .map_err(|e| e.to_string())?
-        .contains_key(peer_id)
+        .contains_key(&key)
     {
         return Ok(());
     }
+
+    // A session written before device keying is deliberately *not* treated as this device's.
+    // Assuming it were would hand a peer's second device the first device's ratchet. If it
+    // really is this device's, the responder session built below simply fails to decrypt and
+    // `decrypt_from_peer` falls back to it - under the AEAD tag, which is proof rather than
+    // assumption.
 
     let prekey = guardyn_crypto::x3dh::X3DHPrekeyMessage::from_base64(x3dh_prekey)
         .map_err(|e| format!("Malformed X3DH prekey message: {}", e))?;
@@ -1213,12 +1331,12 @@ pub(crate) fn ensure_responder_session(
     RATCHET_STORE
         .lock()
         .map_err(|e| e.to_string())?
-        .insert(peer_id.to_string(), ratchet);
+        .insert(key.clone(), ratchet);
     SESSION_STORE
         .lock()
         .map_err(|e| e.to_string())?
         .sessions
-        .insert(peer_id.to_string(), session);
+        .insert(key, session);
 
     // Not persisted here: a responder has no sending chain key until its first decrypt performs
     // the DH ratchet, and `rehydrate_ratchets` rightly discards a session that cannot send.
@@ -1264,18 +1382,20 @@ pub(crate) fn decrypt_from_peer(
     };
 
     let associated_data = message_associated_data(sender_id, self_user_id);
+    let key = session_key(sender_id, sender_device_id);
+    let legacy_key = sender_id.to_string();
 
     let mut ratchet_store = RATCHET_STORE.lock().ok()?;
-    let ratchet = ratchet_store.get_mut(sender_id)?;
-    let padded = match ratchet.decrypt(&encrypted, &associated_data) {
-        Ok(plaintext) => plaintext,
-        Err(e) => {
-            tracing::debug!("Double Ratchet could not decrypt: {}", e);
-            return None;
-        }
-    };
-    // Take the state now, while the ratchet is still borrowed and known to have advanced.
-    let state = ratchet.serialize();
+    let (padded, adopted) = decrypt_and_adopt(
+        &mut ratchet_store,
+        &key,
+        &legacy_key,
+        &encrypted,
+        &associated_data,
+    )?;
+
+    // Take the state now, while the ratchet is known to have advanced.
+    let state = ratchet_store.get(&key).map(|r| r.serialize())?;
     drop(ratchet_store);
 
     let plaintext = guardyn_crypto::unpad_message(&padded)
@@ -1286,7 +1406,12 @@ pub(crate) fn decrypt_from_peer(
     // writes a responder session for the first time: it is deliberately not persisted at
     // creation, because it cannot send until this decrypt completes it (see init_session).
     if let Ok(mut store) = SESSION_STORE.lock() {
-        if let Some(session) = store.sessions.get_mut(sender_id) {
+        if adopted {
+            if let Some(session) = store.sessions.remove(&legacy_key) {
+                store.sessions.insert(key.clone(), session);
+            }
+        }
+        if let Some(session) = store.sessions.get_mut(&key) {
             session.messages_received += 1;
             session.state = state;
             backfill_peer_device(session, sender_device_id);
@@ -1304,20 +1429,84 @@ pub(crate) fn decrypt_from_peer(
         .ok()
 }
 
+/// Which of a peer's sessions the next outgoing message is encrypted under.
+///
+/// The send path is the one place the device cannot be passed in: a message is addressed to a
+/// user, and `send_message` has no device to name - the wire's `recipient_device_id` is empty,
+/// so `messaging-service` fans out to every connection the recipient has. The most recently
+/// established session wins, ties broken by key so the choice does not depend on `HashMap`
+/// iteration order.
+///
+/// **It picks one session rather than fanning out, and that is today's behaviour rather than a
+/// new limitation** - before this step a peer had exactly one session because both devices
+/// collapsed onto one key. Real multi-device send needs the wire to carry a device and is not
+/// this step's to do.
+///
+/// A key written before device keying is a candidate like any other: [`key_user`] reads a
+/// bare `"bob"` as the user `bob`, so an unmigrated session is still reachable and still
+/// sends. Waiting for an inbound message to migrate it would strand the send path.
+fn send_key_for(sessions: &HashMap<String, SessionData>, recipient_id: &str) -> Option<String> {
+    let mut chosen: Option<(&String, &SessionData)> = None;
+    let mut candidates = 0usize;
+
+    for (key, session) in sessions {
+        if key_user(key) != recipient_id {
+            continue;
+        }
+        candidates += 1;
+        let better = match chosen {
+            None => true,
+            Some((best_key, best)) => {
+                (session.established_at, key) > (best.established_at, best_key)
+            }
+        };
+        if better {
+            chosen = Some((key, session));
+        }
+    }
+
+    if candidates > 1 {
+        // No id in the line: how many devices a peer has is metadata, and naming the peer is
+        // not needed to act on this.
+        tracing::warn!(
+            "Peer has {} device sessions; encrypting under the most recently established one",
+            candidates
+        );
+    }
+
+    chosen.map(|(key, _)| key.clone())
+}
+
+/// Encrypt one message for a peer, returning the ciphertext and the session key it was
+/// encrypted under.
+///
+/// The key is returned because the caller needs it: the X3DH prekey message owed to a peer is
+/// parked per session, and `send_message` would otherwise have to resolve the device a second
+/// time and could resolve it differently.
 pub(crate) fn encrypt_for_peer(
     plaintext: &str,
     recipient_id: &str,
     self_user_id: &str,
-) -> Result<Vec<u8>, String> {
+) -> Result<(Vec<u8>, String), String> {
     // Apply PADMÉ padding for traffic analysis protection.
     let padded = guardyn_crypto::pad_message(plaintext.as_bytes())
         .map_err(|e| format!("Padding failed: {}", e))?;
 
+    let no_session = || {
+        format!(
+            "{}: no Double Ratchet session with peer {}",
+            ENCRYPTION_UNAVAILABLE, recipient_id
+        )
+    };
+
+    let key = {
+        let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+        send_key_for(&store.sessions, recipient_id).ok_or_else(no_session)?
+    };
+
     // Get Double Ratchet for this peer.
     let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
-    let ratchet = ratchet_store.get_mut(recipient_id).ok_or_else(|| {
-        format!("{}: no Double Ratchet session with peer {}", ENCRYPTION_UNAVAILABLE, recipient_id)
-    })?;
+    let ratchet = ratchet_store.get_mut(&key).ok_or_else(no_session)?;
 
     // Encrypt with Double Ratchet. The local user is the sender.
     let associated_data = message_associated_data(self_user_id, recipient_id);
@@ -1330,11 +1519,11 @@ pub(crate) fn encrypt_for_peer(
 
     // Update session metadata.
     let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    if let Some(session) = store.sessions.get_mut(recipient_id) {
+    if let Some(session) = store.sessions.get_mut(&key) {
         session.messages_sent += 1;
         // Update serialized ratchet state
         if let Ok(ratchet_store) = RATCHET_STORE.lock() {
-            if let Some(ratchet) = ratchet_store.get(recipient_id) {
+            if let Some(ratchet) = ratchet_store.get(&key) {
                 session.state = ratchet.serialize();
             }
         }
@@ -1345,7 +1534,7 @@ pub(crate) fn encrypt_for_peer(
     drop(store);
     persist_sessions(&sessions_clone)?;
 
-    Ok(encrypted_bytes)
+    Ok((encrypted_bytes, key))
 }
 
 /// Encrypt a message for a peer using Double Ratchet.
@@ -1361,7 +1550,7 @@ pub async fn encrypt_message(
     let _ = &recipient_device_id; // keyed by user until #286
     tracing::debug!("Encrypting message for {} ({} bytes)", recipient_id, plaintext.len());
 
-    let encrypted_bytes = encrypt_for_peer(&plaintext, &recipient_id, &self_user_id)?;
+    let (encrypted_bytes, _key) = encrypt_for_peer(&plaintext, &recipient_id, &self_user_id)?;
 
     Ok(EncryptedMessage {
         ciphertext: base64::Engine::encode(
@@ -1373,7 +1562,17 @@ pub async fn encrypt_message(
     })
 }
 
-/// Decrypt a message from a peer using Double Ratchet
+/// Decrypt a message from a peer, for the frontend's live-delivery path.
+///
+/// A thin wrapper over [`decrypt_from_peer`], which is the single implementation. This used to
+/// be a second one - its own ratchet lookup, its own metadata update, its own persist - and
+/// two of those cannot be re-keyed, migrated or fixed once without someone remembering the
+/// other exists. `get_messages` already took the shared path; now the socket does too.
+///
+/// `Err` rather than `Ok(None)` because this is a command: the frontend renders the failure as
+/// the undecryptable placeholder. The reason is deliberately not in the message - which
+/// session was tried, and whether one existed, is not the caller's business and not worth
+/// leaking into a UI string.
 #[tauri::command]
 pub async fn decrypt_message(
     ciphertext: String,
@@ -1384,49 +1583,17 @@ pub async fn decrypt_message(
 ) -> Result<String, String> {
     tracing::debug!("Decrypting message from {}", sender_id);
 
-    // Decode base64 ciphertext
-    let encrypted_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &ciphertext)
-        .map_err(|e| format!("Invalid ciphertext base64: {}", e))?;
+    let encrypted_bytes =
+        base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &ciphertext)
+            .map_err(|e| format!("Invalid ciphertext base64: {}", e))?;
 
-    // Parse encrypted message
-    let encrypted_msg = guardyn_crypto::double_ratchet::EncryptedMessage::from_bytes(&encrypted_bytes)
-        .map_err(|e| format!("Failed to parse encrypted message: {}", e))?;
-
-    // Get Double Ratchet for this peer
-    let mut ratchet_store = RATCHET_STORE.lock().map_err(|e| e.to_string())?;
-    let ratchet = ratchet_store.get_mut(&sender_id)
-        .ok_or_else(|| format!("No Double Ratchet session with peer: {}", sender_id))?;
-
-    // Decrypt with Double Ratchet. The local user is the recipient.
-    let associated_data = message_associated_data(&sender_id, &self_user_id);
-    let padded = ratchet.decrypt(&encrypted_msg, &associated_data)
-        .map_err(|e| format!("Double Ratchet decryption failed: {}", e))?;
-
-    drop(ratchet_store);
-
-    // Remove PADMÉ padding
-    let plaintext = guardyn_crypto::unpad_message(&padded)
-        .map_err(|e| format!("Unpadding failed: {}", e))?;
-
-    // Update session metadata
-    let mut store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
-    if let Some(session) = store.sessions.get_mut(&sender_id) {
-        backfill_peer_device(session, &sender_device_id);
-        session.messages_received += 1;
-        // Update serialized ratchet state
-        if let Ok(ratchet_store) = RATCHET_STORE.lock() {
-            if let Some(ratchet) = ratchet_store.get(&sender_id) {
-                session.state = ratchet.serialize();
-            }
-        }
-    }
-
-    // Persist updated sessions
-    let sessions_clone = store.sessions.clone();
-    drop(store);
-    persist_sessions(&sessions_clone)?;
-
-    String::from_utf8(plaintext).map_err(|e| format!("Invalid UTF-8: {}", e))
+    decrypt_from_peer(
+        &encrypted_bytes,
+        &sender_id,
+        &sender_device_id,
+        &self_user_id,
+    )
+    .ok_or_else(|| "Message could not be decrypted".to_string())
 }
 
 // =============================================================================
@@ -1852,11 +2019,222 @@ mod tests {
         assert_eq!(session.peer_device_id, "bob-phone");
     }
 
-    fn stored_session(peer: &str, device: &str, state: Vec<u8>) -> (String, SessionData) {
+    /// A matched pair of ratchets, with Bob's already completed by a first decrypt so it can
+    /// both send and receive.
+    fn agreed_pair() -> (
+        guardyn_crypto::DoubleRatchet,
+        guardyn_crypto::DoubleRatchet,
+        Vec<u8>,
+    ) {
+        let alice_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let bob_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
+        let bob_bundle = bob_material.export_bundle();
+
+        let (secret, ephemeral) = guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
+            &alice_material.identity_key,
+            &bob_bundle,
+            true,
+        )
+        .unwrap();
+        let bob_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+            &bob_material,
+            &alice_material.identity_key.public_bytes(),
+            ephemeral.as_bytes(),
+            Some(0),
+        )
+        .unwrap();
+
+        let peer_public: [u8; 32] = bob_bundle.signed_pre_key.clone().try_into().unwrap();
+        let alice = guardyn_crypto::DoubleRatchet::init_alice(
+            &secret,
+            guardyn_crypto::X25519PublicKey::from(peer_public),
+        )
+        .unwrap();
+        let bob = guardyn_crypto::DoubleRatchet::init_bob(
+            &bob_secret,
+            bob_material.signed_pre_key.ratchet_secret(),
+        )
+        .unwrap();
+
+        let aad = message_associated_data("alice", "bob");
+        (alice, bob, aad)
+    }
+
+    #[test]
+    fn test_the_session_key_is_the_user_and_the_device_joined_by_a_colon() {
+        // Byte-identical to client-mobile's `_makeSessionId` and to `peerStateKey` in
+        // services/encryption.ts. If this changes, three indexes stop agreeing.
+        assert_eq!(session_key("bob", "bob-phone"), "bob:bob-phone");
+        assert_eq!(key_user("bob:bob-phone"), "bob");
+    }
+
+    #[test]
+    fn test_a_peer_that_names_no_device_is_keyed_under_the_empty_device() {
+        // messaging-service does not stamp the device on its WebSocket path, so this is the
+        // ordinary case for a live-delivered message - not an error.
+        assert_eq!(session_key("bob", ""), "bob:");
+        assert_eq!(key_user("bob:"), "bob");
+
+        // And it must stay distinguishable from an entry written before device keying, which
+        // is what the whole migration turns on.
+        assert_ne!(session_key("bob", ""), "bob");
+        assert_eq!(key_user("bob"), "bob");
+    }
+
+    #[test]
+    fn test_a_device_id_containing_a_colon_cannot_steal_part_of_the_user_id() {
+        // `split_once` takes the first colon. `split(':').collect()` would not.
+        assert_eq!(key_user("bob:aa:bb"), "bob");
+    }
+
+    #[test]
+    fn test_the_associated_data_names_users_and_never_devices() {
+        // The session key is per device; the associated data is per user, and they differ on
+        // purpose. Adding the device here breaks desktop-to-mobile silently - both ends look
+        // healthy and every tag rejects (ADR-0011). This test is the guard.
+        assert_eq!(message_associated_data("alice", "bob"), b"alice|bob".to_vec());
+    }
+
+    #[test]
+    fn test_two_devices_of_one_user_hold_two_independent_sessions() {
+        let sessions: HashMap<_, _> = [
+            stored_session("bob:phone", "phone", vec![1]),
+            stored_session("bob:laptop", "laptop", vec![2]),
+        ]
+        .into();
+
+        assert_eq!(sessions.len(), 2, "one key per device");
+        assert!(sessions.keys().all(|k| key_user(k) == "bob"));
+    }
+
+    #[test]
+    fn test_the_send_path_picks_the_most_recently_established_device() {
+        let mut sessions = HashMap::new();
+        for (key, at) in [("bob:phone", 100u64), ("bob:laptop", 300), ("carol:phone", 900)] {
+            sessions.insert(
+                key.to_string(),
+                SessionData {
+                    peer_id: key_user(key).to_string(),
+                    peer_device_id: String::new(),
+                    established_at: at,
+                    messages_sent: 0,
+                    messages_received: 0,
+                    state: vec![1],
+                },
+            );
+        }
+
+        assert_eq!(send_key_for(&sessions, "bob").as_deref(), Some("bob:laptop"));
+        assert_eq!(send_key_for(&sessions, "dave"), None);
+    }
+
+    #[test]
+    fn test_the_send_path_still_reaches_a_session_written_before_device_keying() {
+        // Waiting for an inbound message to migrate it would strand every send to that peer.
+        let sessions: HashMap<_, _> = [stored_session("bob", "", vec![1])].into();
+
+        assert_eq!(send_key_for(&sessions, "bob").as_deref(), Some("bob"));
+    }
+
+    #[test]
+    fn test_the_send_path_breaks_ties_by_key_rather_than_by_hash_order() {
+        let mut sessions = HashMap::new();
+        for key in ["bob:a", "bob:z", "bob:m"] {
+            sessions.insert(key.to_string(), stored_session(key, "", vec![1]).1);
+        }
+
+        // Same established_at for all three: the choice must still be the same every run.
+        assert_eq!(send_key_for(&sessions, "bob").as_deref(), Some("bob:z"));
+    }
+
+    #[test]
+    fn test_a_legacy_user_keyed_session_is_adopted_by_the_device_whose_message_it_decrypts() {
+        let (mut alice, bob, aad) = agreed_pair();
+        let message = alice.encrypt(&guardyn_crypto::pad_message(b"hello").unwrap(), &aad).unwrap();
+
+        // Bob's store predates device keying: one entry, under the bare user id.
+        let mut ratchets: HashMap<String, guardyn_crypto::DoubleRatchet> =
+            [("alice".to_string(), bob)].into();
+
+        let (plaintext, adopted) = decrypt_and_adopt(
+            &mut ratchets,
+            "alice:alice-laptop",
+            "alice",
+            &message,
+            &aad,
+        )
+        .expect("the legacy session reads the message");
+
+        assert!(adopted, "the tag verified, so the entry is re-keyed");
+        assert_eq!(guardyn_crypto::unpad_message(&plaintext).unwrap(), b"hello");
+        assert!(ratchets.contains_key("alice:alice-laptop"));
+        assert!(!ratchets.contains_key("alice"), "the bare key is gone");
+    }
+
+    #[test]
+    fn test_a_legacy_session_is_not_adopted_by_a_device_whose_message_it_cannot_decrypt() {
+        // Two unrelated exchanges. The second device's ciphertext must not let it claim the
+        // first device's session - which is exactly what adopting on first touch would do.
+        let (_, bob_for_alice, aad) = agreed_pair();
+        let (mut other_alice, _, _) = agreed_pair();
+        let foreign = other_alice.encrypt(&guardyn_crypto::pad_message(b"not yours").unwrap(), &aad).unwrap();
+
+        let mut ratchets: HashMap<String, guardyn_crypto::DoubleRatchet> =
+            [("alice".to_string(), bob_for_alice)].into();
+
+        let outcome =
+            decrypt_and_adopt(&mut ratchets, "alice:other-device", "alice", &foreign, &aad);
+
+        assert!(outcome.is_none(), "a message it cannot read proves nothing");
+        assert!(ratchets.contains_key("alice"), "the entry stays for its real owner");
+        assert!(!ratchets.contains_key("alice:other-device"));
+    }
+
+    #[test]
+    fn test_a_failed_adopt_leaves_the_legacy_session_able_to_read_its_own_messages() {
+        // The real cost of a wrong guess: `DoubleRatchet::decrypt` stages every mutation and
+        // touches nothing until the tag verifies, so the rejected attempt above must not have
+        // advanced the chain. If it had, the genuine message would now fail too.
+        let (mut alice, bob, aad) = agreed_pair();
+        let (mut other_alice, _, _) = agreed_pair();
+        let genuine = alice.encrypt(&guardyn_crypto::pad_message(b"hello").unwrap(), &aad).unwrap();
+        let foreign = other_alice.encrypt(&guardyn_crypto::pad_message(b"not yours").unwrap(), &aad).unwrap();
+
+        let mut ratchets: HashMap<String, guardyn_crypto::DoubleRatchet> =
+            [("alice".to_string(), bob)].into();
+
+        assert!(decrypt_and_adopt(&mut ratchets, "alice:d", "alice", &foreign, &aad).is_none());
+
+        let (plaintext, adopted) =
+            decrypt_and_adopt(&mut ratchets, "alice:d", "alice", &genuine, &aad)
+                .expect("the genuine message still reads");
+        assert!(adopted);
+        assert_eq!(guardyn_crypto::unpad_message(&plaintext).unwrap(), b"hello");
+    }
+
+    #[test]
+    fn test_a_session_already_keyed_by_device_is_used_without_any_adoption() {
+        let (mut alice, bob, aad) = agreed_pair();
+        let message = alice.encrypt(&guardyn_crypto::pad_message(b"hello").unwrap(), &aad).unwrap();
+
+        let mut ratchets: HashMap<String, guardyn_crypto::DoubleRatchet> =
+            [("alice:alice-laptop".to_string(), bob)].into();
+
+        let (_, adopted) =
+            decrypt_and_adopt(&mut ratchets, "alice:alice-laptop", "alice", &message, &aad)
+                .expect("its own session reads it");
+
+        assert!(!adopted, "nothing to migrate");
+    }
+
+    /// A stored entry. `key` is the map key as it appears in the blob - `"{user}:{device}"`
+    /// for anything this version wrote, a bare user id for anything older - so a test can
+    /// state which of the two shapes it is exercising.
+    fn stored_session(key: &str, device: &str, state: Vec<u8>) -> (String, SessionData) {
         (
-            peer.to_string(),
+            key.to_string(),
             SessionData {
-                peer_id: peer.to_string(),
+                peer_id: key_user(key).to_string(),
                 peer_device_id: device.to_string(),
                 established_at: 0,
                 messages_sent: 0,
@@ -1933,6 +2311,26 @@ mod tests {
     /// `RATCHET_STORE` used to start empty and never be populated, while the metadata beside it
     /// was restored - so `get_session` reported an active session and `encrypt_for_peer` failed
     /// with "no Double Ratchet session" for ever.
+    /// The restart round-trip, under the key this version writes. `rehydrate_ratchets` moves
+    /// keys across unchanged, so a device-keyed session must come back device-keyed - and a
+    /// legacy one must come back legacy, so the migration still has something to adopt.
+    #[test]
+    fn test_a_session_survives_a_restart_under_its_device_key() {
+        let (alice, _, _) = agreed_pair();
+        let stored: HashMap<_, _> = [
+            stored_session("bob:bob-phone", "bob-phone", alice.serialize()),
+        ]
+        .into();
+
+        let (sessions, ratchets) = rehydrate_ratchets(stored);
+
+        assert!(ratchets.contains_key("bob:bob-phone"));
+        assert_eq!(
+            sessions.get("bob:bob-phone").map(|s| s.peer_id.as_str()),
+            Some("bob")
+        );
+    }
+
     #[test]
     fn test_a_session_survives_a_restart() {
         let alice_material = guardyn_crypto::x3dh::X3DHKeyMaterial::generate(1).unwrap();
@@ -1970,7 +2368,7 @@ mod tests {
         // Bob cannot send until his first decrypt completes the ratchet, so he must not be
         // persisted before it.
         assert!(!bob.can_send(), "a fresh responder has no sending chain");
-        bob.decrypt(&alice.encrypt(b"hello", &aad).unwrap(), &aad)
+        bob.decrypt(&alice.encrypt(&guardyn_crypto::pad_message(b"hello").unwrap(), &aad).unwrap(), &aad)
             .unwrap();
         assert!(bob.can_send(), "the first decrypt completes the ratchet");
 
