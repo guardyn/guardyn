@@ -149,7 +149,7 @@ steps:
   #
   # Not a duplicate of PR-94 (#253), which partitions the keyring entry *name* per account,
   # nor of PR-102 (#272), which is MLS key packages. One family of id defect, three stores.
-  - {id: PR-108, issue: 284, phase: 4, type: fix, status: todo, title: "client-desktop discards the peer device id at every wire boundary"}
+  - {id: PR-108, issue: 284, phase: 4, type: fix, status: done, title: "client-desktop discards the peer device id at every wire boundary"}
   - {id: PR-109, issue: 285, phase: 4, type: refactor, status: done, title: "Thread the peer device id through the desktop command surface"}
   - {id: PR-110, issue: 286, phase: 4, type: security, status: done, title: "Key desktop session state by peer user and device"}
   # Sliced while scoping it, before the branch was opened rather than after the diff grew.
@@ -284,6 +284,15 @@ steps:
   # This step. PR-103 was found while executing PR-37; recording it is its own micro-step
   # rather than a rider on PR-38, for the same reason PR-102 was split out of PR-37.
   - {id: PR-104, issue: 275, phase: 4, type: docs, status: done, title: "Record the GetKeyBundle any-device blocker in roadmap.yaml"}
+  # This step. PR-111 described the reopen hazard and then left PR-108 at `todo`, which is the
+  # condition that arms it. #284 was closed by hand at 10:59; roadmap-sync.yml ran in write
+  # mode when PR-111 merged at 11:14 and reopened it. The file, not GitHub, is what the
+  # automation obeys, so "leave the file alone to avoid undoing a human action" was backwards:
+  # leaving it is what undid the action.
+  #
+  # There is no judgement call left here. PR-108 merged as #289, so `done` is what it is, and
+  # #284 having been reopened by hand once was never a reason to misreport that.
+  - {id: PR-114, issue: 298, phase: 4, type: docs, status: done, title: "Mark PR-108 done so roadmap-sync stops reopening its issue"}
   # This step. The precursor finished and three things needed recording at once: the merged
   # steps, the PR-39 slice, and two defects PR-110 found and did not fix. One reconciliation
   # rather than three, as PR-101 was.

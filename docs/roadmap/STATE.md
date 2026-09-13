@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1193
+tokens: 1159
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 70 | `█████████░` |
-| 4 | 13 | 32 | `████░░░░░░` |
-| **all** | **102** | **128** | |
+| 4 | 15 | 33 | `█████░░░░░` |
+| **all** | **104** | **129** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 26 of 128
+- **Open steps:** 25 of 129
 
 ## Gates
 
@@ -61,7 +61,6 @@ supersedes: []
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
-| PR-108 | 4 | [#284](https://github.com/guardyn/guardyn/issues/284) | client-desktop discards the peer device id at every wire boundary |
 | PR-39a | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop generates, persists and publishes its ML-KEM pre-key |
 | PR-39b | 4 | [#292](https://github.com/guardyn/guardyn/issues/292) | client-desktop negotiates hybrid PQXDH as initiator |
 | PR-39c | 4 | [#293](https://github.com/guardyn/guardyn/issues/293) | client-desktop completes hybrid PQXDH as responder |
