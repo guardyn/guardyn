@@ -126,27 +126,100 @@ proptest! {
         prop_assert!(IdentityKeyPair::verify(&identity.public_bytes(), &other, &signature).is_err());
     }
 
-    /// A prekey message round-trips for *any* one-time key id, not just the `0` every
-    /// client sends today.
+    /// A prekey message round-trips for *any* one-time key id and *any* ML-KEM ciphertext,
+    /// not just the `0` and the `None` every client sends today.
     ///
-    /// The unit tests in `x3dh.rs` used ids 0, 42 and 123 and asserted only the length and
-    /// field equality, so the byte order of this field went unconstrained until #255 - and
-    /// `0`, the only id ever on the wire, is byte-order invariant. The known-answer vectors
-    /// pin the encoding to one constant; this pins the parser across the whole `u32` range,
-    /// where an off-by-one slice or a width mistake would show up as a value that does not
-    /// survive the trip.
+    /// The known-answer vectors pin the encoding to a few constants; this pins the parser
+    /// across the whole `u32` range, where an off-by-one slice or a width mistake shows up as
+    /// a value that does not survive the trip. The ciphertext length is varied for the same
+    /// reason - the vectors use only 4 bytes and 1088, and a `ct_len` mistake could survive
+    /// both.
     #[test]
     fn x3dh_prekey_message_round_trips_any_one_time_key_id(
         identity in prop::collection::vec(any::<u8>(), 32),
         ephemeral in prop::collection::vec(any::<u8>(), 32),
         id in prop::option::of(any::<u32>()),
+        ct in prop::option::of(prop::collection::vec(any::<u8>(), 1..2048)),
     ) {
-        let message = X3DHPrekeyMessage::new(identity.clone(), ephemeral.clone(), id);
+        let mut message = X3DHPrekeyMessage::new(identity.clone(), ephemeral.clone(), id);
+        if let Some(ref bytes) = ct {
+            message = message.with_pq_ciphertext(bytes.clone());
+        }
         let decoded = X3DHPrekeyMessage::from_bytes(&message.to_bytes()).expect("decode");
 
         prop_assert_eq!(decoded.sender_identity_key, identity);
         prop_assert_eq!(decoded.ephemeral_key, ephemeral);
         prop_assert_eq!(decoded.used_one_time_key_id, id);
+        prop_assert_eq!(decoded.pq_ciphertext, ct);
+    }
+
+    /// The v1 encoding is canonical: every frame the parser accepts re-encodes to itself.
+    ///
+    /// This is the property that closes the v0 loophole: v0 never checked an exact length, so
+    /// a frame with anything appended decoded to a message whose re-encoding was shorter than
+    /// the input, and that silent discard is what would have let an ML-KEM ciphertext be
+    /// appended and ignored. A parser that cannot lose bytes cannot have that defect.
+    ///
+    /// The input is a *valid* frame with one byte overwritten, not random bytes: pure noise
+    /// practically never satisfies the version byte and the framing at once, so the assertion
+    /// would almost never run and the property would be decorative.
+    #[test]
+    fn x3dh_prekey_message_encoding_is_canonical(
+        id in prop::option::of(any::<u32>()),
+        ct in prop::option::of(prop::collection::vec(any::<u8>(), 1..256)),
+        index in any::<prop::sample::Index>(),
+        replacement in any::<u8>(),
+    ) {
+        let mut message = X3DHPrekeyMessage::new(vec![7u8; 32], vec![9u8; 32], id);
+        if let Some(bytes) = ct {
+            message = message.with_pq_ciphertext(bytes);
+        }
+
+        let mut frame = message.to_bytes();
+        // The unmutated frame must itself be canonical.
+        let decoded = X3DHPrekeyMessage::from_bytes(&frame).expect("decode");
+        prop_assert_eq!(decoded.to_bytes(), frame.clone());
+
+        let position = index.index(frame.len());
+        frame[position] = replacement;
+        if let Ok(decoded) = X3DHPrekeyMessage::from_bytes(&frame) {
+            prop_assert_eq!(decoded.to_bytes(), frame);
+        }
+    }
+
+    /// Appending anything to a valid frame must be refused, never silently dropped.
+    #[test]
+    fn x3dh_prekey_message_rejects_trailing_bytes(
+        id in prop::option::of(any::<u32>()),
+        ct in prop::option::of(prop::collection::vec(any::<u8>(), 1..256)),
+        suffix in prop::collection::vec(any::<u8>(), 1..16),
+    ) {
+        let mut message = X3DHPrekeyMessage::new(vec![7u8; 32], vec![9u8; 32], id);
+        if let Some(bytes) = ct {
+            message = message.with_pq_ciphertext(bytes);
+        }
+
+        let mut frame = message.to_bytes();
+        prop_assert!(X3DHPrekeyMessage::from_bytes(&frame).is_ok());
+
+        frame.extend_from_slice(&suffix);
+        prop_assert!(X3DHPrekeyMessage::from_bytes(&frame).is_err());
+    }
+
+    /// Any reserved flag bit must be an error. v0 compared its flag byte `== 1`, so `2..=255`
+    /// read as "no one-time key" - a whole byte of extension space silently ignored.
+    #[test]
+    fn x3dh_prekey_message_rejects_reserved_flag_bits(
+        id in prop::option::of(any::<u32>()),
+        reserved in 1u8..64,
+    ) {
+        let frame = X3DHPrekeyMessage::new(vec![7u8; 32], vec![9u8; 32], id).to_bytes();
+        prop_assert!(X3DHPrekeyMessage::from_bytes(&frame).is_ok());
+
+        let mut tampered = frame;
+        // Bits 0x04 and above are reserved; `reserved` is shifted into that range.
+        tampered[65] |= reserved << 2;
+        prop_assert!(X3DHPrekeyMessage::from_bytes(&tampered).is_err());
     }
 
     /// `from_bytes` is reachable from attacker-controlled bytes - the server relays the

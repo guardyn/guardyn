@@ -64,6 +64,43 @@ reads them back, because `derive_sender_shared_secret` is reached from no sessio
 path. The implementation is compiled and unreached, which is a better state than uncompiled and
 unreached, and is not the same as met. I-3 is met when PR-40 closes.
 
+**The ciphertext now has somewhere to ride.** "Every wire structure carrying key material must
+have room for an ML-KEM key" was true of `common.KeyBundle` after PR-36, but the *handshake* has
+a second structure: `derive_sender_shared_secret` returns a 1088-byte ciphertext the responder
+must decapsulate, and that is per-handshake data rather than published key material, so it does
+not belong in a key bundle. It rides in `X3DHPrekeyMessage`, inside the opaque `x3dh_prekey`
+string the server relays without inspecting ([ADR-0010](ADR-0010-pure-relay-server.md)) — which
+is why PR-97 needed no proto change at all.
+
+That format could not grow. It had no version byte, its parser ignored trailing bytes, and its
+one-time-key flag was compared `== 1` so every other value read as "absent". Appending a
+ciphertext to it would have been *silently accepted* by an unchanged peer, which would then
+derive a classical secret against an initiator's hybrid one — an I-3 failure presenting as an
+AEAD tag rejection. PR-97 versioned it, replaced the flag byte with a flags byte, and made the
+parser strict; the layout is in [SRS.md](../spec/SRS.md#x3dh-prekey-message-wire-format).
+
+**The break was accepted, not negotiated.** Byte 0 of the old format was the first byte of an
+Ed25519 public key, so unlike the ratchet frame in
+[ADR-0011](ADR-0011-ratchet-header-authentication.md) there is no value that distinguishes old
+from new. There is deliberately no fallback path: guessing which format a frame is in would
+reintroduce exactly the ambiguity a version byte exists to remove. Rust and `client-desktop`
+moved to v1 in PR-97 and `client-mobile` in PR-105
+([#279](https://github.com/guardyn/guardyn/issues/279)).
+
+**The cost of splitting it across two PRs was a live interop break.** Between those merges the
+two clients could not establish a session with each other at all, and **no CI job detected it** -
+`mobile.yml` runs only Dart tests, `build.yml` only Rust ones, and `just
+test-two-client-messaging`, the one check that proves the two ends interoperate, needs two real
+devices and is wired into no workflow. Both suites stayed green throughout. The split was
+necessary under the `AGENTS.md` §2.3 budget and the break was signposted in both PRs, but a
+lockstep format change is the case where that budget and a green `main` genuinely conflict, and
+the honest record is that green meant nothing here. What now holds the two ends together is the
+known-answer vectors: Rust emits them, Dart asserts them, and the strict-parser cases are ported
+on both sides because a lenient parser satisfies every vector and is still wrong.
+
+Nothing populates the field yet. PR-97 made the format *capable*; PR-39 (desktop) and PR-98
+(mobile) are what put a ciphertext in it.
+
 **PR-38's real finding was about the build, not the flag.** A `cargo test --workspace` build
 already enabled `pq`, because `crypto-ffi` declares `default = ["full"] = ["pq"]` and Cargo
 unifies features across a workspace. Services ship from `cargo build --release -p <service>`,
