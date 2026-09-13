@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1159
+tokens: 1123
 supersedes: []
 ---
 
@@ -19,15 +19,15 @@ supersedes: []
 |---|---|---|---|
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
-| 3 | 63 | 70 | `█████████░` |
-| 4 | 15 | 33 | `█████░░░░░` |
-| **all** | **104** | **129** | |
+| 3 | 63 | 69 | `█████████░` |
+| 4 | 17 | 35 | `█████░░░░░` |
+| **all** | **106** | **130** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 25 of 129
+- **Open steps:** 24 of 130
 
 ## Gates
 
@@ -54,14 +54,12 @@ supersedes: []
 
 | Step | Phase | Issue | Title |
 |---|---|---|---|
-| PR-56 | 3 | [#188](https://github.com/guardyn/guardyn/issues/188) | Regenerate or drop the stale client-desktop protobuf |
 | PR-62 | 3 | [#191](https://github.com/guardyn/guardyn/issues/191) | Clear the 132 client-desktop clippy errors |
 | PR-63 | 3 | [#192](https://github.com/guardyn/guardyn/issues/192) | Reconcile the desktop coverage thresholds with reality |
 | PR-65 | 3 | [#199](https://github.com/guardyn/guardyn/issues/199) | Stop Build Linux flaking in linuxdeploy |
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
-| PR-39a | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop generates, persists and publishes its ML-KEM pre-key |
 | PR-39b | 4 | [#292](https://github.com/guardyn/guardyn/issues/292) | client-desktop negotiates hybrid PQXDH as initiator |
 | PR-39c | 4 | [#293](https://github.com/guardyn/guardyn/issues/293) | client-desktop completes hybrid PQXDH as responder |
 | PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |
@@ -72,6 +70,7 @@ supersedes: []
 | PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
 | PR-112 | 4 | [#294](https://github.com/guardyn/guardyn/issues/294) | clear_crypto_state leaves ratchets and parked prekeys in memory |
 | PR-113 | 4 | [#295](https://github.com/guardyn/guardyn/issues/295) | Address messages to a specific device and fan out per device |
+| PR-56 | 4 | [#188](https://github.com/guardyn/guardyn/issues/188) | Move client-desktop protobuf generation to OUT_DIR |
 | PR-96 | 4 | [#257](https://github.com/guardyn/guardyn/issues/257) | kube-bootstrap races the cert-manager webhook CA |
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
 | PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |
