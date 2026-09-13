@@ -32,7 +32,7 @@ tokio = { version = "1", features = ["rt", "sync"] }
 serde = { version = "1.0", features = ["derive"] }
 
 # Error handling
-thiserror = "1.0"
+thiserror = "2.0"
 anyhow = "1.0"
 
 # Logging
