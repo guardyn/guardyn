@@ -12,6 +12,18 @@ license = "MIT"
 # Guardyn crypto (shared with backend)
 guardyn-crypto = { path = "../backend/crates/crypto", features = ["ffi"] }
 
+# ML-KEM-768, for the device's own post-quantum pre-key. Already in the build through
+# guardyn-crypto's `pq` feature; declared here so the desktop can name the seed-based
+# constructor directly.
+#
+# `deterministic` exposes `KemCore::generate_deterministic(d, z)`, which is FIPS 203's
+# `ML-KEM.KeyGen_internal` - the seed *is* the standard compact private key, not a test hook.
+# It is what lets the device persist 64 bytes instead of a 2400-byte decapsulation key, which
+# matters because a Windows credential caps at 2560. client-desktop is its own cargo
+# workspace, so enabling the feature here cannot reach the backend services.
+ml-kem = { version = "0.2", features = ["deterministic"] }
+rand = "0.8"
+
 # Tauri
 tauri = { version = "2.2", features = ["tray-icon"] }
 tauri-build = "2.0"

@@ -660,6 +660,136 @@ pub async fn generate_key_bundle(include_pq: bool) -> Result<KeyBundle, String> 
 }
 
 // =============================================================================
+// ML-KEM PRE-KEY
+// =============================================================================
+
+/// The device's published post-quantum pre-key: an ML-KEM-768 encapsulation key and the
+/// Ed25519 signature over it.
+///
+/// Both halves or neither. `common.KeyBundle` documents the pair as inseparable, and
+/// `auth-service` refuses a half pair outright (`db.rs::validate_for_store`) - refuses the
+/// *whole bundle*, identity key included, while `register` only logs the failure and still
+/// reports success. Publishing one without the other therefore costs the account all of its
+/// key material, not just its post-quantum half.
+#[derive(Debug, Clone)]
+pub(crate) struct MlKemPreKey {
+    /// ML-KEM-768 encapsulation key, 1184 bytes.
+    pub public_key: Vec<u8>,
+    /// Ed25519 over the raw encapsulation-key bytes - no domain separator, no length prefix.
+    pub signature: Vec<u8>,
+}
+
+/// Bytes in the `(d || z)` seed a keypair is regenerated from.
+const ML_KEM_SEED_LEN: usize = 64;
+
+/// Bytes in an ML-KEM-768 encapsulation key, per FIPS 203.
+const ML_KEM_PUBLIC_LEN: usize = 1184;
+
+/// Derive the device's ML-KEM-768 keypair from its stored seed.
+///
+/// FIPS 203 defines key generation as `ML-KEM.KeyGen_internal(d, z)` over a 64-byte seed, and
+/// the seed is the standard compact private-key form - so regenerating on demand is the
+/// specified representation rather than a trick to save space. It happens to also be the only
+/// representation that fits: a decapsulation key is 2400 bytes, 4800 hex-encoded, against a
+/// 2560-byte Windows credential.
+///
+/// Returns the decapsulation key alongside the encapsulation key. PR-39a publishes only the
+/// latter; #293 is what needs the former, and deriving both here means that step inherits this
+/// function rather than writing a second one that could disagree with it.
+fn ml_kem_keypair_from_seed(
+    seed: &[u8; ML_KEM_SEED_LEN],
+) -> (
+    <ml_kem::MlKem768 as ml_kem::KemCore>::DecapsulationKey,
+    Vec<u8>,
+) {
+    use ml_kem::{EncodedSizeUser, KemCore};
+
+    let (d, z) = seed.split_at(32);
+    let (dk, ek) = ml_kem::MlKem768::generate_deterministic(
+        d.try_into().expect("32 bytes"),
+        z.try_into().expect("32 bytes"),
+    );
+    let public_key = ek.as_bytes().to_vec();
+
+    (dk, public_key)
+}
+
+/// The device's ML-KEM seed, creating and persisting one the first time.
+///
+/// Persisted before it is used, not after: a seed that is used to publish a key and then fails
+/// to store leaves the server advertising an encapsulation key this device can never decapsulate
+/// to, which is worse than having published nothing.
+fn load_or_create_ml_kem_seed() -> Result<[u8; ML_KEM_SEED_LEN], String> {
+    let storage = SecureStorage::default_instance();
+
+    if let Ok(seed_hex) = storage.get_ml_kem_seed() {
+        let bytes =
+            hex::decode(&seed_hex).map_err(|e| format!("Invalid stored ML-KEM seed: {}", e))?;
+        let seed: [u8; ML_KEM_SEED_LEN] = bytes
+            .try_into()
+            .map_err(|_| "Stored ML-KEM seed is not 64 bytes".to_string())?;
+        return Ok(seed);
+    }
+
+    let mut seed = [0u8; ML_KEM_SEED_LEN];
+    rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut seed);
+    storage
+        .store_ml_kem_seed(&hex::encode(seed))
+        .map_err(|e| format!("Failed to persist the ML-KEM seed: {}", e))?;
+    tracing::info!("Generated a new ML-KEM pre-key seed");
+
+    Ok(seed)
+}
+
+/// The ML-KEM pre-key to publish in this device's key bundle.
+///
+/// The signature is recomputed rather than stored. Ed25519 is deterministic (RFC 8032), and
+/// the seed and the identity key are both already persisted, so the same pair of bytes comes
+/// back every time - a stored signature would be a third thing that can fall out of step with
+/// the other two.
+///
+/// The signing key is the device's own identity key, the same one that signs the signed
+/// pre-key. That is what `verify_hybrid_bundle` checks against, and it is why this cannot use
+/// `generate_hybrid_key_bundle`: that function mints a *fresh* identity key and would sign
+/// with one this device does not hold.
+pub(crate) fn ml_kem_prekey_for_publication() -> Result<MlKemPreKey, String> {
+    let identity_keypair = {
+        let store = SESSION_STORE.lock().map_err(|e| e.to_string())?;
+        let data = store
+            .identity_keypair
+            .as_ref()
+            .ok_or_else(|| "Identity keys not generated".to_string())?;
+        let private_bytes = hex::decode(&data.private_key)
+            .map_err(|e| format!("Invalid stored identity private key: {}", e))?;
+        guardyn_crypto::x3dh::IdentityKeyPair::from_private_bytes(&private_bytes)
+            .map_err(|e| format!("Failed to restore identity keypair: {}", e))?
+    };
+
+    let seed = load_or_create_ml_kem_seed()?;
+    let (_decapsulation_key, public_key) = ml_kem_keypair_from_seed(&seed);
+
+    // A length the server would accept and no peer could encapsulate to is the failure this
+    // guards: `derive_sender_shared_secret` requires exactly 1184 bytes and errors otherwise,
+    // so a future ml-kem release changing the encoding must stop here rather than at the peer.
+    if public_key.len() != ML_KEM_PUBLIC_LEN {
+        return Err(format!(
+            "ML-KEM encapsulation key is {} bytes, expected {}",
+            public_key.len(),
+            ML_KEM_PUBLIC_LEN
+        ));
+    }
+
+    let signature = identity_keypair
+        .sign(&public_key)
+        .map_err(|e| format!("Failed to sign the ML-KEM pre-key: {}", e))?;
+
+    Ok(MlKemPreKey {
+        public_key,
+        signature,
+    })
+}
+
+// =============================================================================
 // X3DH KEY AGREEMENT
 // =============================================================================
 
@@ -2225,6 +2355,98 @@ mod tests {
                 .expect("its own session reads it");
 
         assert!(!adopted, "nothing to migrate");
+    }
+
+    /// The constraint that chose the seed representation. Windows caps a credential blob at
+    /// 2560 bytes, which is already why the published one-time pool is ten keys and not a
+    /// hundred (`test_published_prekey_pool_fits_a_windows_credential`). A decapsulation key
+    /// is 2400 bytes - 4800 as hex, which is what every secret here uses - so storing the
+    /// keypair was never available on one of the three platforms this ships to.
+    #[test]
+    fn test_the_ml_kem_seed_fits_a_windows_credential_and_the_keypair_would_not() {
+        let seed = [7u8; ML_KEM_SEED_LEN];
+        let stored = serde_json::to_string(&hex::encode(seed)).unwrap();
+        assert!(stored.len() < 2560, "stored seed is {} bytes", stored.len());
+
+        // And the thing it replaces, for the record: hex of a 2400-byte decapsulation key.
+        assert!(2400 * 2 > 2560, "the keypair would not have fitted");
+    }
+
+    #[test]
+    fn test_the_same_seed_always_yields_the_same_encapsulation_key() {
+        // The whole persistence strategy rests on this: the key is not stored, it is
+        // recomputed, so a device that reloads must publish the byte-identical key it
+        // published before or every peer's encapsulation targets a key it no longer holds.
+        let seed = [3u8; ML_KEM_SEED_LEN];
+
+        let (_, first) = ml_kem_keypair_from_seed(&seed);
+        let (_, second) = ml_kem_keypair_from_seed(&seed);
+
+        assert_eq!(first, second);
+        assert_eq!(first.len(), ML_KEM_PUBLIC_LEN);
+    }
+
+    #[test]
+    fn test_a_different_seed_yields_a_different_encapsulation_key() {
+        let (_, a) = ml_kem_keypair_from_seed(&[1u8; ML_KEM_SEED_LEN]);
+        let (_, b) = ml_kem_keypair_from_seed(&[2u8; ML_KEM_SEED_LEN]);
+
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_the_published_ml_kem_key_verifies_against_the_device_identity_key() {
+        // The signature is what stops a substituted encapsulation key: a peer that
+        // encapsulates to an attacker's key gets a post-quantum half the attacker knows while
+        // the exchange still looks healthy. It must verify under the *same* identity key that
+        // signs the signed pre-key, which is what `verify_hybrid_bundle` checks.
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (_, public_key) = ml_kem_keypair_from_seed(&[9u8; ML_KEM_SEED_LEN]);
+
+        let signature = identity.sign(&public_key).unwrap();
+
+        guardyn_crypto::x3dh::IdentityKeyPair::verify(
+            &identity.public_bytes(),
+            &public_key,
+            &signature,
+        )
+        .expect("the published pair must verify under the device identity key");
+    }
+
+    #[test]
+    fn test_the_signature_is_over_the_raw_key_with_no_domain_separator() {
+        // common.proto states the contract in those words, and pqxdh.rs signs
+        // `ek.as_bytes()` directly. A length prefix or a context string here would verify
+        // nowhere - and would do so silently, since a wrong signature is indistinguishable
+        // from a substituted key.
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (_, public_key) = ml_kem_keypair_from_seed(&[11u8; ML_KEM_SEED_LEN]);
+        let signature = identity.sign(&public_key).unwrap();
+
+        let prefixed = [&(public_key.len() as u32).to_be_bytes()[..], &public_key].concat();
+        assert!(
+            guardyn_crypto::x3dh::IdentityKeyPair::verify(
+                &identity.public_bytes(),
+                &prefixed,
+                &signature
+            )
+            .is_err(),
+            "the signature must be over the bare key, not a framed one"
+        );
+    }
+
+    #[test]
+    fn test_ed25519_signing_is_deterministic_so_the_signature_need_not_be_stored() {
+        // Why `ml_kem_prekey_for_publication` recomputes rather than persists: RFC 8032
+        // signatures are deterministic, so the seed and the identity key are the only two
+        // things that must survive. A stored signature would be a third that can drift.
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let (_, public_key) = ml_kem_keypair_from_seed(&[13u8; ML_KEM_SEED_LEN]);
+
+        assert_eq!(
+            identity.sign(&public_key).unwrap(),
+            identity.sign(&public_key).unwrap()
+        );
     }
 
     /// A stored entry. `key` is the map key as it appears in the blob - `"{user}:{device}"`
