@@ -32,6 +32,19 @@ pub struct OutgoingMessage {
 pub struct IncomingMessage {
     pub message_id: String,
     pub sender_user_id: String,
+    /// The peer device that sent this message.
+    ///
+    /// A session belongs to a device, not to a user: `client-mobile` has keyed its ratchet
+    /// state by `"{user}:{device}"` since `crypto_service.dart:627`, and the desktop is being
+    /// moved to the same shape (#286). This field is what it will be keyed by, and until then
+    /// it is recorded on the session so an entry can say which device it belongs to.
+    ///
+    /// **Empty is a real and expected value, not an error.** `messaging-service` stamps the
+    /// sender's device from the JWT on the gRPC path, but its WebSocket path does not
+    /// (`websocket/handlers.rs:189`), so a live-delivered message names no device. Refusing
+    /// such a message would break delivery without making anything more private - it is the
+    /// same ciphertext either way.
+    pub sender_device_id: String,
     pub recipient_user_id: String,
     pub encrypted_content: Vec<u8>,
     pub message_type: i32,
@@ -41,6 +54,69 @@ pub struct IncomingMessage {
     pub media_id: Option<String>,
     pub is_deleted: bool,
     pub x3dh_prekey: Option<String>,
+}
+
+/// Convert a one-to-one `messaging.Message` off the wire.
+///
+/// A free function rather than a closure inside `get_messages` so the mapping can be asserted
+/// on without a server. It previously dropped `sender_device_id` outright, which is why no
+/// part of the desktop client knew which device it was talking to.
+fn incoming_from_proto(m: crate::proto::messaging::Message) -> IncomingMessage {
+    IncomingMessage {
+        message_id: m.message_id,
+        sender_user_id: m.sender_user_id,
+        sender_device_id: m.sender_device_id,
+        recipient_user_id: m.recipient_user_id,
+        encrypted_content: m.encrypted_content,
+        message_type: m.message_type,
+        client_message_id: m.client_message_id,
+        server_timestamp: m.server_timestamp.map(|t| t.seconds).unwrap_or(0),
+        delivery_status: m.delivery_status,
+        media_id: if m.media_id.is_empty() {
+            None
+        } else {
+            Some(m.media_id)
+        },
+        is_deleted: m.is_deleted,
+        x3dh_prekey: if m.x3dh_prekey.is_empty() {
+            None
+        } else {
+            Some(m.x3dh_prekey)
+        },
+    }
+}
+
+/// Convert a `messaging.GroupMessage` off the wire.
+///
+/// Groups are MLS, not Double Ratchet, so the device is not a session key here. It is carried
+/// anyway because the two paths share `IncomingMessage`, and a field that is populated on one
+/// path and silently empty on the other is the kind of difference that is discovered by a
+/// failing decrypt rather than by reading.
+///
+/// `recipient_user_id` carries the group id: a group message is addressed to the group, and
+/// the per-member fan-out does not exist on the wire.
+fn incoming_from_group_proto(
+    m: crate::proto::messaging::GroupMessage,
+    group_id: &str,
+) -> IncomingMessage {
+    IncomingMessage {
+        message_id: m.message_id,
+        sender_user_id: m.sender_user_id,
+        sender_device_id: m.sender_device_id,
+        recipient_user_id: group_id.to_string(),
+        encrypted_content: m.encrypted_content,
+        message_type: m.message_type,
+        client_message_id: m.client_message_id,
+        server_timestamp: m.server_timestamp.map(|t| t.seconds).unwrap_or(0),
+        delivery_status: 1, // Sent
+        media_id: if m.media_id.is_empty() {
+            None
+        } else {
+            Some(m.media_id)
+        },
+        is_deleted: false,
+        x3dh_prekey: None,
+    }
 }
 
 /// Conversation summary
@@ -172,27 +248,7 @@ impl MessagingClient {
                 Ok(success
                     .messages
                     .into_iter()
-                    .map(|m| IncomingMessage {
-                        message_id: m.message_id,
-                        sender_user_id: m.sender_user_id,
-                        recipient_user_id: m.recipient_user_id,
-                        encrypted_content: m.encrypted_content,
-                        message_type: m.message_type,
-                        client_message_id: m.client_message_id,
-                        server_timestamp: m.server_timestamp.map(|t| t.seconds).unwrap_or(0),
-                        delivery_status: m.delivery_status,
-                        media_id: if m.media_id.is_empty() {
-                            None
-                        } else {
-                            Some(m.media_id)
-                        },
-                        is_deleted: m.is_deleted,
-                        x3dh_prekey: if m.x3dh_prekey.is_empty() {
-                            None
-                        } else {
-                            Some(m.x3dh_prekey)
-                        },
-                    })
+                    .map(incoming_from_proto)
                     .collect())
             }
             Some(crate::proto::messaging::get_messages_response::Result::Error(error)) => {
@@ -588,23 +644,7 @@ impl MessagingClient {
                 Ok(success
                     .messages
                     .into_iter()
-                    .map(|m| IncomingMessage {
-                        message_id: m.message_id,
-                        sender_user_id: m.sender_user_id,
-                        recipient_user_id: group_id.clone(),
-                        encrypted_content: m.encrypted_content,
-                        message_type: m.message_type,
-                        client_message_id: m.client_message_id,
-                        server_timestamp: m.server_timestamp.map(|t| t.seconds).unwrap_or(0),
-                        delivery_status: 1, // Sent
-                        media_id: if m.media_id.is_empty() {
-                            None
-                        } else {
-                            Some(m.media_id)
-                        },
-                        is_deleted: false,
-                        x3dh_prekey: None,
-                    })
+                    .map(|m| incoming_from_group_proto(m, &group_id))
                     .collect())
             }
             Some(crate::proto::messaging::get_group_messages_response::Result::Error(error)) => {
@@ -869,4 +909,90 @@ pub struct GroupMemberInfo {
     pub display_name: Option<String>,
     pub role: String,
     pub avatar_media_id: Option<String>,
+}
+
+// =============================================================================
+// TESTS
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::proto::messaging::{GroupMessage, Message};
+
+    fn wire_message() -> Message {
+        Message {
+            message_id: "m-1".to_string(),
+            sender_user_id: "alice".to_string(),
+            sender_device_id: "alice-laptop".to_string(),
+            recipient_user_id: "bob".to_string(),
+            encrypted_content: vec![1, 2, 3],
+            message_type: 0,
+            client_message_id: "c-1".to_string(),
+            delivery_status: 1,
+            media_id: String::new(),
+            x3dh_prekey: String::new(),
+            ..Default::default()
+        }
+    }
+
+    fn wire_group_message() -> GroupMessage {
+        GroupMessage {
+            message_id: "gm-1".to_string(),
+            sender_user_id: "alice".to_string(),
+            sender_device_id: "alice-laptop".to_string(),
+            encrypted_content: vec![4, 5, 6],
+            message_type: 0,
+            client_message_id: "gc-1".to_string(),
+            media_id: String::new(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_an_incoming_message_keeps_the_device_that_sent_it() {
+        let incoming = incoming_from_proto(wire_message());
+
+        assert_eq!(incoming.sender_user_id, "alice");
+        assert_eq!(incoming.sender_device_id, "alice-laptop");
+    }
+
+    #[test]
+    fn test_a_group_message_keeps_the_device_that_sent_it() {
+        let incoming = incoming_from_group_proto(wire_group_message(), "group-7");
+
+        assert_eq!(incoming.sender_device_id, "alice-laptop");
+        // A group message is addressed to the group; there is no per-member fan-out on the wire.
+        assert_eq!(incoming.recipient_user_id, "group-7");
+    }
+
+    #[test]
+    fn test_a_message_from_a_server_that_names_no_device_maps_to_an_empty_device() {
+        // Not hypothetical: messaging-service stamps the device from the JWT on the gRPC path
+        // but not on the WebSocket path (websocket/handlers.rs:189), so every live-delivered
+        // message arrives like this. It must map, not fail.
+        let mut wire = wire_message();
+        wire.sender_device_id = String::new();
+
+        let incoming = incoming_from_proto(wire);
+
+        assert_eq!(incoming.sender_user_id, "alice");
+        assert!(incoming.sender_device_id.is_empty());
+    }
+
+    #[test]
+    fn test_an_empty_optional_field_maps_to_none_rather_than_an_empty_string() {
+        // proto3 cannot distinguish "unset" from "empty", so the converter is the only place
+        // that decision is made. Extracting it out of the closure is what makes it assertable.
+        let incoming = incoming_from_proto(wire_message());
+        assert_eq!(incoming.media_id, None);
+        assert_eq!(incoming.x3dh_prekey, None);
+
+        let mut wire = wire_message();
+        wire.x3dh_prekey = "prekey".to_string();
+        wire.media_id = "media-9".to_string();
+        let incoming = incoming_from_proto(wire);
+        assert_eq!(incoming.media_id.as_deref(), Some("media-9"));
+        assert_eq!(incoming.x3dh_prekey.as_deref(), Some("prekey"));
+    }
 }

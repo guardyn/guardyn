@@ -264,8 +264,20 @@ impl AuthClient {
         }
     }
 
-    /// Get key bundle for a user (for E2EE session establishment)
-    pub async fn get_key_bundle(&self, user_id: String) -> Result<KeyBundle, GrpcError> {
+    /// Get a key bundle for a user, and the device that answered with it.
+    ///
+    /// The request still names no device. `auth.proto` documents
+    /// `GetKeyBundleRequest.device_id` as "optional, if not set returns any device", and PR-103
+    /// (#274) made `auth-service` honour that - sending a specific device here would undo it,
+    /// and there is nothing to send: this call is how a peer's device is learned in the first
+    /// place.
+    ///
+    /// **The response's `device_id` is the point.** It names which of the user's devices the
+    /// server picked, and it was previously discarded along with the rest of `success`, which
+    /// is why the initiator had no device to key a session by. Returned alongside the bundle
+    /// rather than folded into it, because they come from different layers: the bundle is
+    /// `common.KeyBundle` and is shared with the responder path, the device is addressing.
+    pub async fn get_key_bundle(&self, user_id: String) -> Result<(KeyBundle, String), GrpcError> {
         debug!("Fetching key bundle for user: {}", user_id);
 
         let request = GetKeyBundleRequest {
@@ -285,9 +297,11 @@ impl AuthClient {
 
         match result.result {
             Some(crate::proto::auth::get_key_bundle_response::Result::Success(success)) => {
-                success
+                let device_id = success.device_id;
+                let bundle = success
                     .key_bundle
-                    .ok_or_else(|| GrpcError::RequestFailed("No key bundle found".to_string()))
+                    .ok_or_else(|| GrpcError::RequestFailed("No key bundle found".to_string()))?;
+                Ok((bundle, device_id))
             }
             Some(crate::proto::auth::get_key_bundle_response::Result::Error(error)) => {
                 Err(GrpcError::RequestFailed(error.message))
