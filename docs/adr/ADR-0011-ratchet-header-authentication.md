@@ -126,6 +126,30 @@ integer in a format that crosses the boundary is big-endian.
 header still drives the loop, and `dh_ratchet_receive` mutates `dh_self`, `root_key` and both
 chain keys before any tag is verified. That is a separate step.
 
+### The session key is per device; the associated data is per user
+
+These two differ on purpose, and the difference is easy to "fix" into a silent breakage.
+
+A session belongs to a **device**: `client-mobile` stores one per `"{userId}:{deviceId}"`
+(`crypto_service.dart:627`), and `client-desktop` does the same as of
+[#286](https://github.com/guardyn/guardyn/issues/286). That key is local — it names a row in a
+store, never travels, and the two clients agreeing on its shape is a convenience for whoever
+has to read a keyring dump, not a protocol requirement.
+
+The caller-supplied associated data is `utf8("{sender_user_id}|{recipient_user_id}")` and
+carries **no device**. It is on the wire, in the sense that both ends must compute identical
+bytes or every tag rejects.
+
+So the tempting next change — "we key sessions by device now, the AAD should name the device
+too" — breaks desktop↔mobile interop instantly and invisibly: both ends look healthy, no error
+mentions devices, and every message fails its tag. It would also be wrong on its own terms,
+because a device id is assigned by the server, and binding server-assigned data into a
+client-to-client AEAD gives the server a lever it must not have.
+
+`test_the_associated_data_names_users_and_never_devices` in `commands/crypto.rs` pins
+`message_associated_data("alice", "bob") == b"alice|bob"` so this fails CI rather than
+production.
+
 ## Alternatives rejected
 
 **Bind the header without a version byte.** Smaller diff, and the AEAD would reject old

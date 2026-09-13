@@ -95,7 +95,10 @@ pub async fn send_message(
     let self_user_id = state
         .user_id()
         .ok_or_else(|| "Not authenticated: no local user id".to_string())?;
-    let encrypted_content =
+    // `session_key` names the peer device this was encrypted for. The prekey message owed to
+    // that device is parked under the same key, so resolving the device once here is what
+    // stops the send and the prekey lookup disagreeing about which device is being addressed.
+    let (encrypted_content, session_key) =
         crate::commands::crypto::encrypt_for_peer(&request.content, &request.recipient_id, &self_user_id)
             .map_err(|e| {
                 tracing::warn!("Refusing to send: {}", e);
@@ -105,7 +108,7 @@ pub async fn send_message(
     // The first message of a session carries what the peer needs to answer it: our identity
     // key, the ephemeral key X3DH ran with, and the id of the one-time pre-key we consumed.
     // Without it the recipient holds ciphertext it can never derive a key for.
-    let x3dh_prekey = crate::commands::crypto::peek_pending_prekey(&request.recipient_id);
+    let x3dh_prekey = crate::commands::crypto::peek_pending_prekey(&session_key);
 
     // Create outgoing message - use recipient_id (user ID), not conversation_id
     let outgoing = OutgoingMessage {
@@ -122,7 +125,7 @@ pub async fn send_message(
         Ok(result) => {
             // Cleared only now. A send that failed leaves it parked, so the retry still carries
             // it; a peer that already has a session ignores a repeat (#258).
-            crate::commands::crypto::clear_pending_prekey(&request.recipient_id);
+            crate::commands::crypto::clear_pending_prekey(&session_key);
 
             let message = Message {
                 id: result.message_id,
