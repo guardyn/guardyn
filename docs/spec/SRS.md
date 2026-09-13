@@ -254,6 +254,13 @@ wire format. Do not use it as precedent.
 > [ADR-0011](../adr/ADR-0011-ratchet-header-authentication.md). The ratchet frame and the
 > prekey message have them. The sealed sender format does not — that is
 > [#264](https://github.com/guardyn/guardyn/issues/264).
+>
+> Both implementations of the prekey message are on v1: Rust and `client-desktop` since
+> PR-97, `client-mobile` since PR-105. They are held there by the vectors in
+> `client-mobile/test/core/crypto/wire_vectors_test.dart`, which are emitted by the Rust
+> implementation and asserted by the Dart one — **a change to the layout must regenerate
+> them**, and the strict-parser cases beside them must be ported too. A lenient parser
+> accepts everything the vectors assert and is still wrong.
 
 ## Groups (MLS)
 
