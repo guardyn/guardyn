@@ -150,15 +150,45 @@ steps:
   # Not a duplicate of PR-94 (#253), which partitions the keyring entry *name* per account,
   # nor of PR-102 (#272), which is MLS key packages. One family of id defect, three stores.
   - {id: PR-108, issue: 284, phase: 4, type: fix, status: todo, title: "client-desktop discards the peer device id at every wire boundary"}
-  - {id: PR-109, issue: 285, phase: 4, type: refactor, status: todo, title: "Thread the peer device id through the desktop command surface"}
-  - {id: PR-110, issue: 286, phase: 4, type: security, status: todo, title: "Key desktop session state by peer user and device"}
-  - {id: PR-39, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH"}
+  - {id: PR-109, issue: 285, phase: 4, type: refactor, status: done, title: "Thread the peer device id through the desktop command surface"}
+  - {id: PR-110, issue: 286, phase: 4, type: security, status: done, title: "Key desktop session state by peer user and device"}
+  # Sliced while scoping it, before the branch was opened rather than after the diff grew.
+  # The three pieces are the three halves of a key agreement that do not share a failure mode:
+  # publishing material, using a peer's, and answering with your own. PR-39a is also the only
+  # one with a storage question - an ML-KEM-768 keypair is 3648 raw bytes against a 2560-byte
+  # Windows credential cap, so how it is persisted is decided once, in the step that generates
+  # it, and the other two inherit the answer.
+  #
+  # PR-39a keeps #50 and the later two take new issues, matching how PR-31 and PR-32 were
+  # split. The SRS defect #50 names - verify_hybrid_bundle returning Ok(()) for a half pair,
+  # pqxdh.rs:266-276, still present - belongs to PR-39b, which is the first code to verify a
+  # peer's bundle. It must land with that step and not be deferred past it.
+  - {id: PR-39a, issue: 50, phase: 4, type: feat, status: todo, title: "client-desktop generates, persists and publishes its ML-KEM pre-key"}
+  - {id: PR-39b, issue: 292, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH as initiator"}
+  - {id: PR-39c, issue: 293, phase: 4, type: feat, status: todo, title: "client-desktop completes hybrid PQXDH as responder"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
   - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
   - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
   - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}
   - {id: PR-44, issue: 55, phase: 4, type: chore, status: todo, gate: G4, title: "Deployment parity - call-service k8s Deployment and image digest pins"}
+  # Both were found while executing PR-110 and deliberately left out of it: a known failure is
+  # not licence to patch it (.claude/rules/00-invariants.md). Sequenced after G4 by position -
+  # they carry phase 4 because that is the last milestone that exists, not because they belong
+  # before the gate.
+  #
+  # The first is the sharper of the two. `clear_crypto_state` empties SESSION_STORE.sessions
+  # and calls SecureStorage::clear_all, but leaves RATCHET_STORE and PENDING_PREKEY populated,
+  # so live ratchet state outlives a logout in memory under a function whose name promises
+  # otherwise. Nothing can read it once the metadata is gone, which is why it is not urgent -
+  # but key material surviving an explicit clear is the wrong default for I-1.
+  - {id: PR-112, issue: 294, phase: 4, type: security, status: todo, title: "clear_crypto_state leaves ratchets and parked prekeys in memory"}
+  # Addressing, not keying. The desktop sends an empty recipient_device_id, so messaging-service
+  # fans out to every connection the recipient has and the sender encrypts under one session -
+  # `send_key_for` picks the most recently established and warns when there is more than one.
+  # Real multi-device delivery needs the wire to carry a device and the sender to encrypt once
+  # per device, which is a feature rather than a fix.
+  - {id: PR-113, issue: 295, phase: 4, type: feat, status: todo, title: "Address messages to a specific device and fan out per device"}
   - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
   - {id: PR-46, issue: 132, phase: 3, type: fix, status: done, title: "Adapt to the rdkafka 0.39 Delivery type and vendor libcurl"}
   - {id: PR-47, issue: 137, phase: 3, type: chore, status: done, title: "Record the G2 hotfix steps in roadmap.yaml"}
@@ -254,6 +284,15 @@ steps:
   # This step. PR-103 was found while executing PR-37; recording it is its own micro-step
   # rather than a rider on PR-38, for the same reason PR-102 was split out of PR-37.
   - {id: PR-104, issue: 275, phase: 4, type: docs, status: done, title: "Record the GetKeyBundle any-device blocker in roadmap.yaml"}
+  # This step. The precursor finished and three things needed recording at once: the merged
+  # steps, the PR-39 slice, and two defects PR-110 found and did not fix. One reconciliation
+  # rather than three, as PR-101 was.
+  #
+  # PR-109 and PR-110 said `todo` while their issues were closed, which is the live hazard the
+  # issue-sync skill documents: roadmap-sync reconciles issue state *from* this file, and
+  # roadmap-sync.yml runs it in write mode on every push to main that touches this file. The
+  # next such push would have reopened both.
+  - {id: PR-111, issue: 296, phase: 4, type: docs, status: done, title: "Reconcile roadmap.yaml after the device-id precursor and slice PR-39"}
   # This step. The gap was found while planning PR-39; recording the slice is its own
   # micro-step rather than a rider on PR-108, for the same reason PR-104 was not a rider on
   # PR-103.

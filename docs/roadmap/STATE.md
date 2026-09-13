@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1120
+tokens: 1193
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 70 | `█████████░` |
-| 4 | 10 | 27 | `████░░░░░░` |
-| **all** | **99** | **123** | |
+| 4 | 13 | 32 | `████░░░░░░` |
+| **all** | **102** | **128** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 24 of 123
+- **Open steps:** 26 of 128
 
 ## Gates
 
@@ -62,15 +62,17 @@ supersedes: []
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
 | PR-108 | 4 | [#284](https://github.com/guardyn/guardyn/issues/284) | client-desktop discards the peer device id at every wire boundary |
-| PR-109 | 4 | [#285](https://github.com/guardyn/guardyn/issues/285) | Thread the peer device id through the desktop command surface |
-| PR-110 | 4 | [#286](https://github.com/guardyn/guardyn/issues/286) | Key desktop session state by peer user and device |
-| PR-39 | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop negotiates hybrid PQXDH |
+| PR-39a | 4 | [#50](https://github.com/guardyn/guardyn/issues/50) | client-desktop generates, persists and publishes its ML-KEM pre-key |
+| PR-39b | 4 | [#292](https://github.com/guardyn/guardyn/issues/292) | client-desktop negotiates hybrid PQXDH as initiator |
+| PR-39c | 4 | [#293](https://github.com/guardyn/guardyn/issues/293) | client-desktop completes hybrid PQXDH as responder |
 | PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |
 | PR-40 | 4 | [#51](https://github.com/guardyn/guardyn/issues/51) | Add fuzz, proptest and bench coverage for the hybrid PQ path |
 | PR-41 | 4 | [#52](https://github.com/guardyn/guardyn/issues/52) | Make rate limiting distributed or document the single-replica constraint |
 | PR-42 | 4 | [#53](https://github.com/guardyn/guardyn/issues/53) | Fix the inverted secrets gitignore |
 | PR-43 | 4 | [#54](https://github.com/guardyn/guardyn/issues/54) | Wire the compose observability stack |
 | PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
+| PR-112 | 4 | [#294](https://github.com/guardyn/guardyn/issues/294) | clear_crypto_state leaves ratchets and parked prekeys in memory |
+| PR-113 | 4 | [#295](https://github.com/guardyn/guardyn/issues/295) | Address messages to a specific device and fan out per device |
 | PR-96 | 4 | [#257](https://github.com/guardyn/guardyn/issues/257) | kube-bootstrap races the cert-manager webhook CA |
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
 | PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |
