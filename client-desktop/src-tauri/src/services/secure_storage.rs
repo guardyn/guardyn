@@ -22,6 +22,14 @@ const KEY_IDENTITY_KEYPAIR: &str = "identity_keypair";
 const KEY_SIGNED_PREKEY: &str = "signed_prekey";
 const KEY_ONE_TIME_PREKEYS: &str = "one_time_prekeys";
 const KEY_SESSIONS: &str = "sessions";
+/// The 64-byte `(d || z)` seed the device's ML-KEM-768 pre-key is regenerated from.
+///
+/// The keypair itself is never stored. A decapsulation key is 2400 bytes - 4800 as hex, which
+/// is what every other secret here uses - against a 2560-byte Windows credential cap, so
+/// storing it is not an option on one of the three platforms this ships to. The seed is FIPS
+/// 203's own compact private-key form, so this is the standard representation rather than a
+/// workaround.
+const KEY_ML_KEM_SEED: &str = "ml_kem_seed";
 
 /// Errors that can occur during secure storage operations
 #[derive(Error, Debug)]
@@ -149,6 +157,7 @@ impl SecureStorage {
             KEY_SIGNED_PREKEY,
             KEY_ONE_TIME_PREKEYS,
             KEY_SESSIONS,
+            KEY_ML_KEM_SEED,
         ];
 
         for key in keys {
@@ -219,6 +228,21 @@ impl SecureStorage {
     /// Delete one-time prekeys
     pub fn delete_one_time_prekeys(&self) -> Result<()> {
         self.delete(KEY_ONE_TIME_PREKEYS)
+    }
+
+    /// Store the ML-KEM seed, hex-encoded.
+    pub fn store_ml_kem_seed(&self, seed_hex: &str) -> Result<()> {
+        self.store(KEY_ML_KEM_SEED, seed_hex)
+    }
+
+    /// Retrieve the ML-KEM seed, hex-encoded.
+    pub fn get_ml_kem_seed(&self) -> Result<String> {
+        self.retrieve(KEY_ML_KEM_SEED)
+    }
+
+    /// Delete the ML-KEM seed.
+    pub fn delete_ml_kem_seed(&self) -> Result<()> {
+        self.delete(KEY_ML_KEM_SEED)
     }
 
     /// Store sessions

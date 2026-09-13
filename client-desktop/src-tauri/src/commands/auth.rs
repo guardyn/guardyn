@@ -55,6 +55,19 @@ fn generate_key_bundle() -> Result<KeyBundle, String> {
         e
     })?;
 
+    // A local failure to build the post-quantum half must not refuse the login. It is not a
+    // downgrade an attacker can force - the classical bundle is exactly what this client
+    // published before this step - and refusing would turn a keyring hiccup into an account
+    // that cannot sign in. It is logged loudly because a device that keeps publishing
+    // classical-only is not meeting I-3, and silence is how that goes unnoticed.
+    let ml_kem = match crate::commands::crypto::ml_kem_prekey_for_publication() {
+        Ok(prekey) => Some(prekey),
+        Err(e) => {
+            tracing::warn!("Publishing a classical-only key bundle: {}", e);
+            None
+        }
+    };
+
     tracing::debug!("Key bundle generated successfully");
     Ok(KeyBundle {
         identity_key: bundle.identity_key,
@@ -70,9 +83,18 @@ fn generate_key_bundle() -> Result<KeyBundle, String> {
             seconds: chrono::Utc::now().timestamp(),
             nanos: 0,
         }),
-        // PR-39 fills these in once the desktop negotiates hybrid PQXDH. Publishing an
-        // ml_kem_public without its signature would be worse than publishing neither.
-        ..Default::default()
+        // Both halves or neither, and never one. `auth-service` refuses a half pair by
+        // rejecting the *whole* bundle - identity key included - while `register` only logs
+        // that failure and still reports success, so publishing one field without the other
+        // would leave the account with no key material at all rather than with a classical
+        // one. The pair is built once and destructured once, so there is no branch here that
+        // can set one field and not the other.
+        //
+        // Every field of `common.KeyBundle` is now named. The `..Default::default()` that used
+        // to stand here covered exactly these two, so leaving it would hide the next field the
+        // proto gains behind a default rather than failing to compile.
+        ml_kem_public: ml_kem.as_ref().map(|k| k.public_key.clone()),
+        ml_kem_public_signature: ml_kem.as_ref().map(|k| k.signature.clone()),
     })
 }
 

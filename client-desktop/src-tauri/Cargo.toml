@@ -22,6 +22,8 @@ tauri-plugin-process = { workspace = true }
 
 # Guardyn crypto
 guardyn-crypto = { workspace = true }
+ml-kem = { workspace = true }
+rand = { workspace = true }
 
 # Async
 tokio = { workspace = true }
