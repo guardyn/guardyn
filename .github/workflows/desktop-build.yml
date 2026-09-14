@@ -14,6 +14,10 @@ on:
       - 'client-desktop/**'
       - 'backend/crates/crypto/**'
       - 'backend/crates/common/**'
+      # Without this the workflow cannot run on a PR that only edits the workflow, so a
+      # change to desktop CI was verified solely after merge. The push trigger above has
+      # carried the self-reference all along; the pull_request one was simply missing it.
+      - '.github/workflows/desktop-build.yml'
   workflow_dispatch:
 
 env:
@@ -104,12 +108,15 @@ jobs:
         with:
           name: guardyn-desktop-${{ matrix.target }}
           path: |
-            client-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
-            client-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
-            client-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            client-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            client-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-          if-no-files-found: warn
+            client-desktop/target/${{ matrix.target }}/release/bundle/**/*.deb
+            client-desktop/target/${{ matrix.target }}/release/bundle/**/*.AppImage
+            client-desktop/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            client-desktop/target/${{ matrix.target }}/release/bundle/**/*.exe
+            client-desktop/target/${{ matrix.target }}/release/bundle/**/*.msi
+          # A build that produces no installer is a failed build. Each platform uploads only
+          # its own formats, so the glob list is deliberately wider than any one run matches -
+          # `error` fires on an empty match overall, not on the formats a platform cannot make.
+          if-no-files-found: error
           retention-days: 7
 
   test:
