@@ -30,7 +30,7 @@ project_sync_enabled: true
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
   - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS"}
-  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
+  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
 # `status` is the gate's own state, recorded here rather than inferred from its step.
@@ -195,10 +195,22 @@ steps:
   # with its number recorded - roadmap-sync does not reconcile titles, so #318 is retitled to
   # `PR-116 · <title>` with `gh issue edit`, the one hand-edit the skill sanctions.
   - {id: PR-116, issue: 318, phase: 4, type: fix, status: done, title: "Correct the desktop CI target path and fail on a missing bundle"}
-  - {id: PR-39b, issue: 292, phase: 4, type: feat, status: in-progress, title: "client-desktop negotiates hybrid PQXDH as initiator"}
+  - {id: PR-39b, issue: 292, phase: 4, type: feat, status: done, title: "client-desktop negotiates hybrid PQXDH as initiator"}
   - {id: PR-39c, issue: 293, phase: 4, type: feat, status: done, title: "client-desktop completes hybrid PQXDH as responder"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
-  - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
+  # Split before opening, per AGENTS.md 2.3: fuzz, proptest and bench together came to 456
+  # changed lines over 10 files, past both limits. The bench is the half that AGENTS.md 8 does
+  # not require - it asks for property tests and fuzz targets on every parser reachable from
+  # attacker-controlled bytes, and says nothing about benchmarks - so it is the half that moves.
+  # #51 is retitled to match its narrowed scope with `gh issue edit`, the one hand-edit the
+  # issue-sync skill sanctions, because roadmap-sync does not reconcile titles. Same shape as
+  # PR-39a/b/c, which kept the parent issue on the first sub-step.
+  - {id: PR-40a, issue: 51, phase: 4, type: security, status: done, title: "Add fuzz and proptest coverage for the hybrid PQ path"}
+  # bench_pqxdh measures key generation only, which happens once per device registration.
+  # Encapsulation and decapsulation happen once per session and are the ML-KEM cost a user can
+  # feel; benchmarking both classical and hybrid over the same path is what makes the delta the
+  # post-quantum price rather than two unrelated numbers.
+  - {id: PR-40b, issue: 327, phase: 4, type: chore, status: todo, title: "Extend bench_pqxdh to the hybrid agreement"}
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
   - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
   - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}
@@ -220,6 +232,33 @@ steps:
   # Real multi-device delivery needs the wire to carry a device and the sender to encrypt once
   # per device, which is a feature rather than a fix.
   - {id: PR-113, issue: 295, phase: 4, type: feat, status: todo, title: "Address messages to a specific device and fan out per device"}
+  # The three below were found while preparing PR-40 and deliberately left out of it: a known
+  # failure is not licence to patch it (.claude/rules/00-invariants.md). Phase 4 by position,
+  # for the same reason PR-112 and PR-113 carry it - it is the last milestone that exists.
+  #
+  # Named in #322's body as not fixed there. commands/tests.rs is not declared in
+  # commands/mod.rs, so its 24 tests have never been compiled, never been linted and never run;
+  # #191 counts clippy errors in this crate but cannot see a module the compiler never visits.
+  # It also cannot compile as written - the KeyBundle literal gates pq_prekey on
+  # #[cfg(feature = "pq")], which client-desktop/src-tauri/Cargo.toml does not declare, and omits
+  # pq_prekey_signature entirely, so adding `mod tests;` fails with E0063. Deleting the file is a
+  # legitimate outcome of this step; re-enabling 496 lines of never-compiled test code against
+  # auth.rs, calls.rs, messaging.rs, settings.rs and state.rs will surface more than that struct.
+  - {id: PR-117, issue: 323, phase: 4, type: fix, status: todo, title: "client-desktop commands/tests.rs is never compiled and cannot compile"}
+  # PQ-WIRE is the one PASS row on the .claude/rules/00-invariants.md table that no machine
+  # defends. The predicate is written out there but has no counterpart in rules-verify.sh, so
+  # nothing stops common.proto tags 6 and 7 being removed again - the fields PR-36 added are held
+  # in place by somebody noticing. rules-verify.sh:160-168 records the decision not to open a
+  # second undefended row beside it, and PQ-DEFAULT immediately below is the model to copy.
+  # Closing this also flips that table's Owned by column from `reviewer` to `rules-verify`, and
+  # touching infra/scripts/ obliges a docs/ops/RUNBOOK.md change under docs/.manifest.yaml.
+  - {id: PR-118, issue: 324, phase: 4, type: security, status: todo, title: "Automate the PQ-WIRE predicate in rules-verify"}
+  # This step. #322 left its own row at in-progress, and roadmap-sync reconciles GitHub from this
+  # file, so the bot reopened #292 thirty-six seconds after the merge closed it - the third
+  # recurrence of the hazard this file's header describes. Correcting the row is one line; the
+  # step exists because that line and the two above need a pull request to land in, and a
+  # reconciliation step is the established shape for that (PR-52, PR-58).
+  - {id: PR-119, issue: 325, phase: 4, type: docs, status: done, title: "Reconcile PR-39b and track the tests.rs and PQ-WIRE debt"}
   - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
   - {id: PR-46, issue: 132, phase: 3, type: fix, status: done, title: "Adapt to the rdkafka 0.39 Delivery type and vendor libcurl"}
   - {id: PR-47, issue: 137, phase: 3, type: chore, status: done, title: "Record the G2 hotfix steps in roadmap.yaml"}

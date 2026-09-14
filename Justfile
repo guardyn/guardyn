@@ -516,7 +516,7 @@ rules-verify:
     @bash infra/scripts/rules-verify.sh
 
 # Fuzz one parser. Targets: padme_unpad, ratchet_message, sealed_sender_envelope,
-# x3dh_prekey_message. Runs until interrupted unless `secs` is given.
+# x3dh_prekey_message, pqxdh_decapsulate. Runs until interrupted unless `secs` is given.
 #
 # The nightly is pinned, not floating: cargo-fuzz needs -Z sanitizer=address,
 # which stable does not have, and a bare `nightly` reintroduces exactly the
