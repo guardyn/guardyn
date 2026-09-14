@@ -75,6 +75,15 @@ it is recorded here so nobody "fixes" it.
    cheaper than breaking either primitive, and a silent fallback converts a tampered bundle
    into a session the post-quantum half no longer protects. This is rule 2's prohibition
    applied to the second pre-key.
+4b. **A classical and a hybrid exchange are separate KDF domains.** The classical exchange
+   expands with the HKDF info string `X3DH` (`x3dh.rs`); the hybrid one with
+   `PQXDH_SharedSecret` (`pqxdh.rs`). Everything else about them is identical — the same DH
+   operations in the same order, the same IKM layout — so the info string is the only thing
+   that distinguishes them, and a responder answering under the wrong one derives a secret the
+   initiator never matches. The responder selects the domain on the `0x02` flags bit of the
+   prekey message, which an initiator sets exactly when the bundle it fetched carried an
+   ML-KEM pre-key. That bit is the whole of the negotiation: there is no capability exchange
+   and no downgrade to negotiate over.
 
 **Edge cases.** No one-time pre-keys left: proceed with the three-DH variant — never refuse,
 never fall back to an unauthenticated exchange. Bundle from an unknown device: `NOT_FOUND`.
@@ -124,16 +133,31 @@ multi-device delivery is promised to anyone.
 > every service that depends on it rather than only into a workspace test build. That closes
 > `PQ-DEFAULT`; it adds no behaviour on its own.
 >
-> **Nothing populates the fields and no client reads them.** Concretely:
-> `pqxdh.rs::verify_hybrid_bundle` checks the signature only under
-> `if let (Some(key), Some(signature))` **with no `else`**, so the half-pair of rule 4a
-> returns `Ok(())` today rather than an error. A server that refuses to store one narrows the
-> ways that path is reached; it does not close it, because a bundle can arrive from somewhere
-> other than `GetKeyBundle`. The fix, with the property tests that belong to it, is owned by
-> [#50](https://github.com/guardyn/guardyn/issues/50) (PR-39) and must land with the code that
-> first reaches it. Until then, **do not describe the handshake as post-quantum protected** —
-> the server can now publish a post-quantum pre-key, which is not the same as agreeing a
-> post-quantum secret.
+> **Rule 4a now holds on the client too.** `pqxdh.rs::verify_hybrid_bundle` checked the ML-KEM
+> signature under `if let (Some(key), Some(signature))` **with no `else`**, so a half pair
+> returned `Ok(())` rather than an error and read as a valid classical bundle. A server that
+> refuses to store one narrowed the ways that path was reached but did not close it, because a
+> bundle can arrive from somewhere other than `GetKeyBundle`. The match is exhaustive as of
+> PR-39c ([#293](https://github.com/guardyn/guardyn/issues/293)), which also carries the
+> property test: a bundle verifies **iff** its two ML-KEM fields are present together or absent
+> together.
+>
+> **The desktop can answer a hybrid handshake but not yet start one.** PR-39a publishes an
+> ML-KEM pre-key; PR-39c reads a `0x02` ciphertext back out of the prekey message and completes
+> through `derive_recipient_shared_secret`. The initiator is PR-39b
+> ([#292](https://github.com/guardyn/guardyn/issues/292)) and `client-mobile` is PR-98
+> ([#262](https://github.com/guardyn/guardyn/issues/262)), so **nothing emits a hybrid frame
+> yet**.
+>
+> The responder landed before the initiator deliberately. Every desktop has published an ML-KEM
+> pre-key since PR-39a, so an initiator-first order would have put every desktop-to-desktop
+> handshake in the `PQXDH_SharedSecret` domain (rule 4b) while every responder still answered in
+> the `X3DH` one — an interop break visible only as an AEAD tag rejection. When a protocol change
+> splits into a reader and a writer, the reader ships first.
+>
+> Until PR-40 closes, **do not describe the handshake as post-quantum protected** — a device
+> that can publish and decapsulate a post-quantum pre-key is not the same as two devices
+> agreeing a post-quantum secret.
 
 ## Message encryption (Double Ratchet)
 
