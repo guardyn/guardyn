@@ -138,6 +138,38 @@ pub struct HybridPrivateKeys {
 }
 
 impl HybridPrivateKeys {
+    /// Rebuild the private half of a hybrid bundle from keys held elsewhere.
+    ///
+    /// [`generate_hybrid_key_bundle`] is the only other constructor, and it mints fresh keys. A
+    /// responder answering a handshake holds its published pre-keys in its own secure storage
+    /// and must reconstruct the same value, so this is the seam between that storage and
+    /// [`derive_recipient_shared_secret`].
+    ///
+    /// `identity_key` is the **Ed25519 signing key**, not its X25519 form: the bundle signs its
+    /// pre-keys with it, and the classical half of the agreement converts it internally through
+    /// `ed25519_secret_to_x25519`. An Ed25519 secret is not the X25519 secret of the same seed,
+    /// and passing the converted form here derives a secret the initiator will not match - a
+    /// failure that surfaces only as an AEAD tag rejection. See
+    /// `docs/adr/ADR-0005-hybrid-pqxdh.md`.
+    ///
+    /// `signed_prekey` and `one_time_prekey` are X25519 secrets. `pq_decapsulation_key` is the
+    /// 2400-byte ML-KEM-768 decapsulation key; `None` makes this a classical-only responder,
+    /// which cannot answer a handshake that carries a ciphertext.
+    pub fn from_parts(
+        identity_key: [u8; 32],
+        signed_prekey: [u8; 32],
+        one_time_prekey: Option<[u8; 32]>,
+        #[cfg(feature = "pq")] pq_decapsulation_key: Option<Vec<u8>>,
+    ) -> Self {
+        Self {
+            identity_key,
+            signed_prekey,
+            one_time_prekey,
+            #[cfg(feature = "pq")]
+            pq_decapsulation_key,
+        }
+    }
+
     /// Get identity key bytes
     pub fn identity_key(&self) -> &[u8; 32] {
         &self.identity_key
@@ -249,7 +281,19 @@ pub fn generate_hybrid_key_bundle(
     Ok((bundle, private_keys))
 }
 
-/// Verify a hybrid key bundle's signatures
+/// Verify a hybrid key bundle's signatures.
+///
+/// Both pre-keys are signed by the same Ed25519 identity key: one identity, one signer. The
+/// signed pre-key is mandatory; the ML-KEM pre-key is optional, but its two fields are
+/// **present together or absent together**.
+///
+/// A bundle carrying one half of that pair is rejected **in whole**, never degraded to the
+/// classical-only exchange. Degrading is what an attacker wants - stripping one field is
+/// cheaper than breaking either primitive, and a silent fallback converts a tampered bundle
+/// into a session the post-quantum half no longer protects. `docs/spec/SRS.md` rule 4a is the
+/// contract; `auth-service`'s `db::KeyBundle::validate_for_store` enforces the same shape on
+/// the way into the store, but a bundle can reach a client from somewhere other than
+/// `GetKeyBundle`, so the check has to exist on both sides.
 pub fn verify_hybrid_bundle(bundle: &HybridKeyBundle) -> Result<()> {
     use ed25519_dalek::Verifier;
 
@@ -263,14 +307,28 @@ pub fn verify_hybrid_bundle(bundle: &HybridKeyBundle) -> Result<()> {
         .verify(&bundle.signed_prekey, &spk_signature)
         .map_err(|e| CryptoError::InvalidSignature(format!("Invalid SPK signature: {}", e)))?;
 
-    // Verify PQ prekey signature if present
+    // Verify the ML-KEM pre-key. Exhaustive on purpose: this was an `if let (Some, Some)` with
+    // no `else`, so a half pair fell through to `Ok(())` and read as a valid classical bundle.
     #[cfg(feature = "pq")]
-    if let (Some(pq_prekey), Some(pq_sig_bytes)) = (&bundle.pq_prekey, &bundle.pq_prekey_signature)
-    {
-        let pq_signature = Signature::from_bytes(&pq_sig_bytes.0);
-        identity_key
-            .verify(pq_prekey, &pq_signature)
-            .map_err(|e| CryptoError::InvalidSignature(format!("Invalid PQ signature: {}", e)))?;
+    match (&bundle.pq_prekey, &bundle.pq_prekey_signature) {
+        (Some(pq_prekey), Some(pq_sig_bytes)) => {
+            let pq_signature = Signature::from_bytes(&pq_sig_bytes.0);
+            identity_key.verify(pq_prekey, &pq_signature).map_err(|e| {
+                CryptoError::InvalidSignature(format!("Invalid PQ signature: {}", e))
+            })?;
+        }
+        // Classical-only. Classical strength is the floor, so this is a legitimate bundle.
+        (None, None) => {}
+        (Some(_), None) => {
+            return Err(CryptoError::InvalidKey(
+                "refusing an ML-KEM pre-key with no signature".to_string(),
+            ))
+        }
+        (None, Some(_)) => {
+            return Err(CryptoError::InvalidKey(
+                "refusing an ML-KEM signature with no pre-key".to_string(),
+            ))
+        }
     }
 
     Ok(())
@@ -540,5 +598,172 @@ mod tests {
 
         // Shared secrets should match
         assert_eq!(sender_secret.as_bytes(), recipient_secret.as_bytes());
+    }
+
+    /// A bundle with neither ML-KEM field is a classical-only device, which is legal.
+    ///
+    /// This is the case the half-pair rejection must not catch: classical strength is the
+    /// floor, and absence of post-quantum material is not a tampered bundle.
+    #[test]
+    fn verify_accepts_a_classical_bundle() {
+        let (bundle, _private) = generate_hybrid_key_bundle(true, false).unwrap();
+        verify_hybrid_bundle(&bundle).expect("a classical-only bundle is legitimate");
+    }
+
+    /// Regression for the half-pair defect: the ML-KEM key with its signature stripped.
+    ///
+    /// Before the fix `verify_hybrid_bundle` checked the pair under `if let (Some, Some)` with
+    /// no `else`, so this bundle returned `Ok(())` and was indistinguishable from a classical
+    /// one - which is exactly the downgrade `docs/spec/SRS.md` rule 4a forbids. Stripping a
+    /// field is cheaper than breaking a primitive, so this must fail.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn verify_rejects_a_pq_key_with_no_signature() {
+        let (mut bundle, _private) = generate_hybrid_key_bundle(true, true).unwrap();
+        assert!(bundle.pq_prekey.is_some());
+
+        bundle.pq_prekey_signature = None;
+
+        let err = verify_hybrid_bundle(&bundle)
+            .expect_err("an ML-KEM pre-key with no signature must be rejected in whole");
+        assert!(
+            matches!(err, CryptoError::InvalidKey(_)),
+            "expected InvalidKey, got {:?}",
+            err
+        );
+    }
+
+    /// The mirror of the case above: a signature with no key to verify it against.
+    ///
+    /// Rejected for the same reason and with the same force - the pair is present together or
+    /// absent together, and neither orphan is a classical bundle.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn verify_rejects_a_pq_signature_with_no_key() {
+        let (mut bundle, _private) = generate_hybrid_key_bundle(true, true).unwrap();
+        assert!(bundle.pq_prekey_signature.is_some());
+
+        bundle.pq_prekey = None;
+
+        let err = verify_hybrid_bundle(&bundle)
+            .expect_err("an ML-KEM signature with no pre-key must be rejected in whole");
+        assert!(
+            matches!(err, CryptoError::InvalidKey(_)),
+            "expected InvalidKey, got {:?}",
+            err
+        );
+    }
+
+    /// A whole pair still verifies once the match is exhaustive.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn verify_accepts_a_whole_pq_pair() {
+        let (bundle, _private) = generate_hybrid_key_bundle(true, true).unwrap();
+        verify_hybrid_bundle(&bundle).expect("a whole ML-KEM pair is legitimate");
+    }
+
+    /// A tampered ML-KEM pre-key fails its signature rather than being silently accepted.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn verify_rejects_a_tampered_pq_prekey() {
+        let (mut bundle, _private) = generate_hybrid_key_bundle(true, true).unwrap();
+        bundle.pq_prekey.as_mut().unwrap()[0] ^= 0xff;
+
+        let err = verify_hybrid_bundle(&bundle).expect_err("a tampered ML-KEM pre-key must fail");
+        assert!(
+            matches!(err, CryptoError::InvalidSignature(_)),
+            "expected InvalidSignature, got {:?}",
+            err
+        );
+    }
+
+    /// [`HybridPrivateKeys::from_parts`] reconstructs a private half that agrees with the
+    /// initiator.
+    ///
+    /// This is what the desktop responder does: its pre-key secrets live in the OS keyring, not
+    /// in a [`HybridPrivateKeys`] returned by [`generate_hybrid_key_bundle`], so it has to
+    /// rebuild the value. Round-tripping a real handshake through the rebuilt keys is the only
+    /// thing that proves the reconstruction is faithful - in particular that `identity_key` is
+    /// the Ed25519 secret and not its X25519 form, a confusion that still derives *a* secret,
+    /// just not the same one.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn from_parts_reproduces_the_sender_secret() {
+        let (recipient_bundle, generated) = generate_hybrid_key_bundle(true, true).unwrap();
+
+        let mut rng = rand::thread_rng();
+        let sender_identity = SigningKey::generate(&mut rng);
+        let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
+
+        let (sender_secret, additional_data) = derive_sender_shared_secret(
+            &sender_identity.to_bytes(),
+            &sender_ephemeral.to_bytes(),
+            &recipient_bundle,
+        )
+        .unwrap();
+
+        // `additional_data` is `ephemeral_public(32) || ciphertext`; only the ciphertext travels
+        // in the prekey message, because the ephemeral key is already carried there.
+        let pq_ciphertext = &additional_data[32..];
+
+        // Rebuild the private half from its parts, as a responder loading them from storage
+        // would.
+        let rebuilt = HybridPrivateKeys::from_parts(
+            *generated.identity_key(),
+            *generated.signed_prekey(),
+            generated.one_time_prekey().copied(),
+            generated.pq_decapsulation_key(),
+        );
+
+        let sender_ephemeral_public = X25519PublicKey::from(&sender_ephemeral);
+        let recipient_secret = derive_recipient_shared_secret(
+            &rebuilt,
+            &sender_identity.verifying_key().to_bytes(),
+            sender_ephemeral_public.as_bytes(),
+            Some(pq_ciphertext),
+        )
+        .unwrap();
+
+        assert_eq!(sender_secret.as_bytes(), recipient_secret.as_bytes());
+    }
+
+    /// Without the decapsulation key the rebuilt responder cannot reach the initiator's secret.
+    ///
+    /// It does not error - the classical halves still agree - so the mismatch would surface only
+    /// as an AEAD tag rejection. Pinning it here documents why the responder must treat a
+    /// missing decapsulation key as a hard failure rather than deriving anyway.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn from_parts_without_the_decapsulation_key_diverges() {
+        let (recipient_bundle, generated) = generate_hybrid_key_bundle(true, true).unwrap();
+
+        let mut rng = rand::thread_rng();
+        let sender_identity = SigningKey::generate(&mut rng);
+        let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
+
+        let (sender_secret, additional_data) = derive_sender_shared_secret(
+            &sender_identity.to_bytes(),
+            &sender_ephemeral.to_bytes(),
+            &recipient_bundle,
+        )
+        .unwrap();
+
+        let classical_only = HybridPrivateKeys::from_parts(
+            *generated.identity_key(),
+            *generated.signed_prekey(),
+            generated.one_time_prekey().copied(),
+            None,
+        );
+
+        let sender_ephemeral_public = X25519PublicKey::from(&sender_ephemeral);
+        let recipient_secret = derive_recipient_shared_secret(
+            &classical_only,
+            &sender_identity.verifying_key().to_bytes(),
+            sender_ephemeral_public.as_bytes(),
+            Some(&additional_data[32..]),
+        )
+        .unwrap();
+
+        assert_ne!(sender_secret.as_bytes(), recipient_secret.as_bytes());
     }
 }

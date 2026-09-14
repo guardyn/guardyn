@@ -23,6 +23,8 @@ use proptest::prelude::*;
 
 use crate::double_ratchet::DoubleRatchet;
 use crate::padding::{next_padme_length, pad_message, unpad_message};
+#[cfg(feature = "pq")]
+use crate::pqxdh::{generate_hybrid_key_bundle, verify_hybrid_bundle};
 use crate::x3dh::{IdentityKeyPair, SignedPreKey, X3DHPrekeyMessage};
 
 /// Messages up to 4 KiB. `pad_message` accepts 16 MiB, but generating those makes
@@ -316,5 +318,84 @@ proptest! {
             let decrypted = bob.decrypt(ciphertext, b"aad").expect("decrypt out of order");
             prop_assert_eq!(&decrypted, original);
         }
+    }
+}
+
+// ---------------------------------------------------------------- PQXDH bundles
+
+/// Which halves of the ML-KEM pair survive in an otherwise valid bundle.
+///
+/// The whole point of rule 4a is that only the two symmetric shapes are legal, so the property
+/// enumerates all four rather than testing the two an author happened to think of.
+#[cfg(feature = "pq")]
+#[derive(Debug, Clone, Copy)]
+enum PqPair {
+    /// Key and signature - a hybrid bundle.
+    Both,
+    /// Key with its signature stripped.
+    KeyOnly,
+    /// Signature with its key stripped.
+    SignatureOnly,
+    /// Neither - a classical-only device, which is legitimate.
+    Neither,
+}
+
+#[cfg(feature = "pq")]
+fn pq_pair() -> impl Strategy<Value = PqPair> {
+    prop_oneof![
+        Just(PqPair::Both),
+        Just(PqPair::KeyOnly),
+        Just(PqPair::SignatureOnly),
+        Just(PqPair::Neither),
+    ]
+}
+
+#[cfg(feature = "pq")]
+proptest! {
+    // Each case mints a fresh ML-KEM-768 keypair, so the default 256 buys nothing here: the
+    // input space is four shapes and a byte index, and the keys are already random per case.
+    #![proptest_config(ProptestConfig::with_cases(32))]
+
+    /// A bundle verifies **iff** its ML-KEM fields are present together or absent together.
+    ///
+    /// This is `docs/spec/SRS.md` rule 4a stated as a biconditional. The half-pair shapes used
+    /// to return `Ok(())`, which made a bundle with its signature stripped indistinguishable
+    /// from a classical one - a downgrade an attacker gets for the price of deleting a field,
+    /// rather than for the price of breaking X25519 or ML-KEM.
+    #[test]
+    fn verify_hybrid_bundle_accepts_whole_pairs_only(shape in pq_pair()) {
+        let (mut bundle, _private) =
+            generate_hybrid_key_bundle(true, true).expect("bundle generation");
+
+        match shape {
+            PqPair::Both => {}
+            PqPair::KeyOnly => bundle.pq_prekey_signature = None,
+            PqPair::SignatureOnly => bundle.pq_prekey = None,
+            PqPair::Neither => {
+                bundle.pq_prekey = None;
+                bundle.pq_prekey_signature = None;
+            }
+        }
+
+        let whole = bundle.pq_prekey.is_some() == bundle.pq_prekey_signature.is_some();
+        prop_assert_eq!(verify_hybrid_bundle(&bundle).is_ok(), whole);
+    }
+
+    /// Flipping any bit of the ML-KEM pre-key fails its signature.
+    ///
+    /// The signature covers the raw 1184 encapsulation-key bytes with no domain separator and
+    /// no length prefix, so every byte is in scope; a check that covered only a prefix would
+    /// still pass the unit test that tampers with byte 0.
+    #[test]
+    fn verify_hybrid_bundle_detects_a_tampered_pq_prekey(
+        index in 0usize..1184,
+        flip in 1u8..=255,
+    ) {
+        let (mut bundle, _private) =
+            generate_hybrid_key_bundle(true, true).expect("bundle generation");
+
+        bundle.pq_prekey.as_mut().expect("pq prekey")[index] ^= flip;
+
+        prop_assert!(verify_hybrid_bundle(&bundle).is_err());
     }
 }

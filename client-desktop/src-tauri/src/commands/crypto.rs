@@ -723,12 +723,7 @@ fn load_or_create_ml_kem_seed() -> Result<[u8; ML_KEM_SEED_LEN], String> {
     let storage = SecureStorage::default_instance();
 
     if let Ok(seed_hex) = storage.get_ml_kem_seed() {
-        let bytes =
-            hex::decode(&seed_hex).map_err(|e| format!("Invalid stored ML-KEM seed: {}", e))?;
-        let seed: [u8; ML_KEM_SEED_LEN] = bytes
-            .try_into()
-            .map_err(|_| "Stored ML-KEM seed is not 64 bytes".to_string())?;
-        return Ok(seed);
+        return decode_ml_kem_seed(&seed_hex);
     }
 
     let mut seed = [0u8; ML_KEM_SEED_LEN];
@@ -739,6 +734,38 @@ fn load_or_create_ml_kem_seed() -> Result<[u8; ML_KEM_SEED_LEN], String> {
     tracing::info!("Generated a new ML-KEM pre-key seed");
 
     Ok(seed)
+}
+
+/// Decode a stored ML-KEM seed from its hex form.
+///
+/// Shared by the create-on-demand path and the read-only one below, so the two cannot disagree
+/// about what a valid seed is.
+fn decode_ml_kem_seed(seed_hex: &str) -> Result<[u8; ML_KEM_SEED_LEN], String> {
+    let bytes = hex::decode(seed_hex).map_err(|e| format!("Invalid stored ML-KEM seed: {}", e))?;
+    bytes
+        .try_into()
+        .map_err(|_| "Stored ML-KEM seed is not 64 bytes".to_string())
+}
+
+/// The device's ML-KEM seed, erroring when it has never been generated.
+///
+/// A responder must **not** fall back to creating one. ML-KEM decapsulation never fails: FIPS
+/// 203 specifies implicit rejection, so a wrong decapsulation key yields a pseudorandom shared
+/// secret rather than an error. Minting a seed here would answer the handshake with a secret the
+/// initiator cannot match, and the mismatch would surface only as an AEAD tag rejection with both
+/// ends looking healthy - the failure this step exists to avoid.
+///
+/// A ciphertext addressed to a device that never published an encapsulation key is a protocol
+/// error, and it has to be reported as one.
+fn stored_ml_kem_seed() -> Result<[u8; ML_KEM_SEED_LEN], String> {
+    let seed_hex = SecureStorage::default_instance()
+        .get_ml_kem_seed()
+        .map_err(|_| {
+            "This device holds no ML-KEM seed and cannot answer a hybrid handshake. Re-publish \
+             the key bundle to generate one."
+                .to_string()
+        })?;
+    decode_ml_kem_seed(&seed_hex)
 }
 
 /// The ML-KEM pre-key to publish in this device's key bundle.
@@ -972,6 +999,80 @@ fn restore_one_time_prekey(
         data.key_id,
         secret,
     ))
+}
+
+/// Rebuild this device's private half of a hybrid bundle, for answering a PQXDH handshake.
+///
+/// The pre-key wrappers in `x3dh` keep their secrets private, so the hybrid path needs the raw
+/// bytes rather than a `SignedPreKey`. They are only reachable while the session store lock is
+/// held, which is why this takes the stored records instead of reading them itself.
+///
+/// The decapsulation key is derived from `ml_kem_seed` rather than kept, exactly as
+/// `ml_kem_prekey_for_publication` derives the encapsulation key from it - one seed, one keypair,
+/// no third copy to fall out of step. The seed is a parameter rather than read here so this stays
+/// pure and a round trip can be asserted without a keyring.
+fn responder_hybrid_keys(
+    identity_private: &[u8],
+    signed_prekey: &PreKeyData,
+    one_time_prekeys: &[PreKeyData],
+    used_one_time_key_id: Option<u32>,
+    ml_kem_seed: &[u8; ML_KEM_SEED_LEN],
+) -> Result<guardyn_crypto::pqxdh::HybridPrivateKeys, String> {
+    // The Ed25519 secret, not its X25519 form: `derive_recipient_shared_secret` converts it
+    // internally, and handing it the converted key derives a secret the initiator never matches.
+    let identity_key: [u8; 32] = identity_private
+        .try_into()
+        .map_err(|_| "Stored identity secret is not 32 bytes".to_string())?;
+
+    let signed_prekey_secret = decode_prekey_secret(
+        &signed_prekey.private_key,
+        "signed pre-key",
+        signed_prekey.key_id,
+    )?;
+
+    // The initiator names the one-time key it used. Answering with a different one - or with
+    // none - derives a different secret, so a key this device does not hold is a hard failure
+    // rather than a silent drop to the three-DH variant.
+    let one_time_secret = match used_one_time_key_id {
+        Some(key_id) => {
+            let data = one_time_prekeys
+                .iter()
+                .find(|k| k.key_id == key_id)
+                .ok_or_else(|| {
+                    format!(
+                        "One-time pre-key {} is not held by this device, so the handshake it was \
+                         used in cannot be answered",
+                        key_id
+                    )
+                })?;
+            Some(decode_prekey_secret(
+                &data.private_key,
+                "one-time pre-key",
+                key_id,
+            )?)
+        }
+        None => None,
+    };
+
+    let (decapsulation_key, _public_key) = ml_kem_keypair_from_seed(ml_kem_seed);
+    let decapsulation_key = {
+        use ml_kem::EncodedSizeUser;
+        decapsulation_key.as_bytes().to_vec()
+    };
+
+    Ok(guardyn_crypto::pqxdh::HybridPrivateKeys::from_parts(
+        identity_key,
+        signed_prekey_secret,
+        one_time_secret,
+        Some(decapsulation_key),
+    ))
+}
+
+/// A 32-byte public key off the wire, named so the error says which one was wrong.
+fn prekey_public_key(bytes: &[u8], field: &str) -> Result<[u8; 32], String> {
+    bytes
+        .try_into()
+        .map_err(|_| format!("Prekey message {} is not 32 bytes", field))
 }
 
 fn decode_prekey_secret(private_key: &str, kind: &str, key_id: u32) -> Result<[u8; 32], String> {
@@ -1426,6 +1527,21 @@ pub(crate) fn ensure_responder_session(
         .iter()
         .map(restore_one_time_prekey)
         .collect::<Result<Vec<_>, String>>()?;
+
+    // Built before the lock is released, because the hybrid path needs the raw stored secrets
+    // rather than the `x3dh` wrappers. Only built when the frame actually carries a ciphertext: a
+    // classical handshake must not start failing because this device has no ML-KEM seed.
+    let hybrid_keys = if prekey.pq_ciphertext.is_some() {
+        Some(responder_hybrid_keys(
+            &private_bytes,
+            signed_prekey_data,
+            &store.one_time_prekeys,
+            prekey.used_one_time_key_id,
+            &stored_ml_kem_seed()?,
+        )?)
+    } else {
+        None
+    };
     drop(store);
 
     let ratchet_secret = signed_prekey.ratchet_secret();
@@ -1435,13 +1551,32 @@ pub(crate) fn ensure_responder_session(
         one_time_pre_keys: one_time_prekeys,
     };
 
-    let shared_secret = guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
-        &key_material,
-        &prekey.sender_identity_key,
-        &prekey.ephemeral_key,
-        prekey.used_one_time_key_id,
-    )
-    .map_err(|e| format!("X3DH respond failed: {}", e))?;
+    // The `0x02` flags bit is the whole of the negotiation: an initiator sets it when the peer
+    // bundle it fetched carried an ML-KEM pre-key, and its presence is what selects the hybrid KDF
+    // here. The two derivations use different HKDF `info` strings - `X3DH` and
+    // `PQXDH_SharedSecret` - so they are separate domains over the same DH inputs, and answering
+    // under the wrong one yields a secret that differs from the initiator's. See
+    // `docs/adr/ADR-0005-hybrid-pqxdh.md`.
+    let shared_secret = match (prekey.pq_ciphertext.as_deref(), hybrid_keys) {
+        (Some(ciphertext), Some(keys)) => guardyn_crypto::pqxdh::derive_recipient_shared_secret(
+            &keys,
+            &prekey_public_key(&prekey.sender_identity_key, "sender identity key")?,
+            &prekey_public_key(&prekey.ephemeral_key, "ephemeral key")?,
+            Some(ciphertext),
+        )
+        .map_err(|e| format!("Hybrid PQXDH respond failed: {}", e))?
+        .as_bytes()
+        .to_vec(),
+        // Classical X3DH. Classical strength is the floor, so a peer with no ML-KEM pre-key still
+        // establishes a session; this path is unchanged.
+        _ => guardyn_crypto::x3dh::X3DHProtocol::respond_key_agreement(
+            &key_material,
+            &prekey.sender_identity_key,
+            &prekey.ephemeral_key,
+            prekey.used_one_time_key_id,
+        )
+        .map_err(|e| format!("X3DH respond failed: {}", e))?,
+    };
 
     let ratchet = guardyn_crypto::DoubleRatchet::init_bob(&shared_secret, ratchet_secret)
         .map_err(|e| format!("Failed to init Double Ratchet: {}", e))?;
@@ -2707,6 +2842,148 @@ mod tests {
         let decrypted = bob_ratchet.decrypt(&encrypted, &aad).unwrap();
 
         assert_eq!(decrypted, b"first message");
+    }
+
+    /// Assemble the hybrid bundle a peer would fetch for this device, plus its stored records.
+    ///
+    /// Mirrors what `auth-service` serves: the classical bundle from `build_key_material` with the
+    /// ML-KEM pre-key derived from the same seed `ml_kem_prekey_for_publication` uses, signed by
+    /// the same identity key.
+    fn hybrid_bundle_for(
+        identity: &guardyn_crypto::x3dh::IdentityKeyPair,
+        seed: &[u8; ML_KEM_SEED_LEN],
+        one_time_count: usize,
+    ) -> (
+        guardyn_crypto::pqxdh::HybridKeyBundle,
+        PreKeyData,
+        Vec<PreKeyData>,
+    ) {
+        let (bundle, signed_stored, one_time_stored) =
+            build_key_material(identity, 1, one_time_count).unwrap();
+        let (_dk, encapsulation_key) = ml_kem_keypair_from_seed(seed);
+        let pq_signature = identity.sign(&encapsulation_key).unwrap();
+
+        let hybrid = guardyn_crypto::pqxdh::HybridKeyBundle {
+            identity_key: bundle.identity_key.clone().try_into().unwrap(),
+            signed_prekey: bundle.signed_pre_key.clone().try_into().unwrap(),
+            signed_prekey_signature: guardyn_crypto::pqxdh::SignatureBytes(
+                bundle.signed_pre_key_signature.clone().try_into().unwrap(),
+            ),
+            one_time_prekey: bundle
+                .one_time_pre_keys
+                .first()
+                .map(|k| k.public_key.clone().try_into().unwrap()),
+            pq_prekey: Some(encapsulation_key),
+            pq_prekey_signature: Some(guardyn_crypto::pqxdh::SignatureBytes(
+                pq_signature.try_into().unwrap(),
+            )),
+        };
+
+        (hybrid, signed_stored, one_time_stored)
+    }
+
+    /// The hybrid responder agrees with a hybrid initiator, end to end.
+    ///
+    /// This is the property the whole step exists for, and it is asserted against real
+    /// `derive_sender_shared_secret` output rather than a fixed vector: what can go wrong here -
+    /// the Ed25519 identity secret passed in its X25519 form, the wrong one-time key, a
+    /// decapsulation key from a different seed - all still produce *a* secret. Only comparing the
+    /// two ends catches them, and in production the mismatch would surface as an AEAD tag
+    /// rejection long after the handshake, with both sides looking healthy.
+    #[test]
+    fn test_the_hybrid_responder_agrees_with_a_hybrid_initiator() {
+        let bob_identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let mut bob_seed = [0u8; ML_KEM_SEED_LEN];
+        rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut bob_seed);
+        let (bob_hybrid, bob_signed_stored, bob_one_time_stored) =
+            hybrid_bundle_for(&bob_identity, &bob_seed, 3);
+
+        // The bundle Alice fetched must verify before she uses it.
+        guardyn_crypto::pqxdh::verify_hybrid_bundle(&bob_hybrid).unwrap();
+
+        // Alice encapsulates to Bob's ML-KEM pre-key.
+        let alice_identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let alice_ephemeral = guardyn_crypto::StaticSecret::random_from_rng(rand::rngs::OsRng);
+        let alice_identity_secret: [u8; 32] =
+            alice_identity.private_key_bytes().try_into().unwrap();
+        let (alice_secret, additional_data) = guardyn_crypto::pqxdh::derive_sender_shared_secret(
+            &alice_identity_secret,
+            &alice_ephemeral.to_bytes(),
+            &bob_hybrid,
+        )
+        .unwrap();
+
+        // Only the ciphertext rides in the prekey message; the ephemeral key is already there.
+        let ciphertext = &additional_data[32..];
+        assert_eq!(ciphertext.len(), 1088, "ML-KEM-768 ciphertext");
+
+        // Bob answers holding only what he persisted.
+        let bob_keys = responder_hybrid_keys(
+            &bob_identity.private_key_bytes(),
+            &bob_signed_stored,
+            &bob_one_time_stored,
+            Some(0),
+            &bob_seed,
+        )
+        .unwrap();
+
+        let alice_ephemeral_public = guardyn_crypto::X25519PublicKey::from(&alice_ephemeral);
+        let alice_identity_public: [u8; 32] = alice_identity.public_bytes().try_into().unwrap();
+        let bob_secret = guardyn_crypto::pqxdh::derive_recipient_shared_secret(
+            &bob_keys,
+            &alice_identity_public,
+            alice_ephemeral_public.as_bytes(),
+            Some(ciphertext),
+        )
+        .unwrap();
+
+        assert_eq!(
+            alice_secret.as_bytes(),
+            bob_secret.as_bytes(),
+            "hybrid responder must derive the initiator's secret"
+        );
+    }
+
+    /// A one-time pre-key this device does not hold is a hard failure, not a silent three-DH.
+    ///
+    /// `X3DHProtocol::respond_key_agreement` drops an unknown id and derives without DH4, which
+    /// yields a secret the initiator never matches and no error to say why. The hybrid path
+    /// refuses instead: a handshake that cannot be answered correctly should not be answered.
+    #[test]
+    fn test_an_unknown_one_time_key_id_is_refused_rather_than_ignored() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let seed = [7u8; ML_KEM_SEED_LEN];
+        let (_hybrid, signed_stored, one_time_stored) = hybrid_bundle_for(&identity, &seed, 2);
+
+        // `expect_err` would need `Debug` on `HybridPrivateKeys`, which deliberately has none: it
+        // holds key material, and ADR-0007 keeps such a value unreachable through `{:?}`.
+        let err = match responder_hybrid_keys(
+            &identity.private_key_bytes(),
+            &signed_stored,
+            &one_time_stored,
+            Some(99),
+            &seed,
+        ) {
+            Ok(_) => panic!("an id this device never published must be refused"),
+            Err(e) => e,
+        };
+
+        assert!(
+            err.contains("99") && err.contains("not held by this device"),
+            "error must name the missing key: {}",
+            err
+        );
+    }
+
+    /// A stored seed that is not 64 bytes is refused rather than padded or truncated.
+    #[test]
+    fn test_a_malformed_ml_kem_seed_is_refused() {
+        assert!(decode_ml_kem_seed("not hex").is_err());
+        assert!(
+            decode_ml_kem_seed(&"ab".repeat(32)).is_err(),
+            "32 bytes is not a 64-byte seed"
+        );
+        assert!(decode_ml_kem_seed(&"ab".repeat(ML_KEM_SEED_LEN)).is_ok());
     }
 
     /// A pre-key published before PR-79 has no stored secret. Restoring must say so, not

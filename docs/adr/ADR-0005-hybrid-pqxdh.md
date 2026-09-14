@@ -58,11 +58,39 @@ persists and serves what it is handed instead of dropping it. PR-38 put `pq` in 
 `default` set, so the code is compiled into the services that depend on it and `PQ-DEFAULT`
 passes.
 
-**What remains is the whole of the client half.** No client populates the fields — the desktop
-hardcodes `pq_prekey: None` and `client-mobile`'s proto is still forked at tag 5 — and nothing
-reads them back, because `derive_sender_shared_secret` is reached from no session-establishment
-path. The implementation is compiled and unreached, which is a better state than uncompiled and
-unreached, and is not the same as met. I-3 is met when PR-40 closes.
+**The client half, and what is left of it.** PR-39a made the desktop generate, persist and
+publish an ML-KEM pre-key, so `pq_prekey: None` is no longer hardcoded on that side. PR-39c gave
+it the *responder*: a prekey message carrying the `0x02` ciphertext flag is now answered through
+`derive_recipient_shared_secret`. What remains is the initiator — PR-39b, which is what first
+makes a desktop *emit* such a frame — and `client-mobile`, whose proto is still forked at tag 5
+(PR-98). I-3 is met when PR-40 closes, not before.
+
+**The KDF has two domains, and the flags bit selects between them.** `x3dh.rs` expands with the
+HKDF info string `X3DH`; `pqxdh.rs` expands with `PQXDH_SharedSecret`. The two are otherwise the
+same function — the same four DH operations in the same order, the same IKM layout — so the info
+string is the only thing separating a classical session from a hybrid one. A responder chooses
+between them on the `0x02` flags bit of the prekey message, which is the whole of the
+negotiation: an initiator sets it exactly when the bundle it fetched carried an ML-KEM pre-key.
+
+That separation is correct, and it is also why the two halves of PR-39 could not land in their
+numbered order. Every desktop has published an ML-KEM pre-key since PR-39a, so an initiator-first
+PR-39b would have driven every desktop-to-desktop handshake into the hybrid domain while every
+responder still answered in the classical one — two sides deriving different secrets, visible
+only as an AEAD tag rejection, with `just test-two-client-messaging` wired into no workflow to
+catch it. That is the PR-97/PR-105 break repeated knowingly rather than by accident. **PR-39c was
+therefore landed before PR-39b.** A responder that can answer a hybrid handshake before any
+initiator emits one breaks nothing, and the reordering costs a step number and no interop window.
+The general rule this is an instance of: when a protocol change splits into a reader and a
+writer, the reader ships first.
+
+**A half pair is now rejected where it is read, not only where it is stored.**
+`verify_hybrid_bundle` checked the ML-KEM signature under `if let (Some, Some)` with no `else`,
+so a bundle carrying an encapsulation key with its signature stripped returned `Ok(())` and was
+indistinguishable from a classical one. `auth-service` already refused that shape on the way into
+the store, but a bundle can reach a client from somewhere other than `GetKeyBundle`, so the check
+had to exist on both sides; it is exhaustive as of PR-39c, with the property test SRS rule 4a
+asks for. Stripping a field is cheaper than breaking either primitive, which is precisely why the
+degraded path must not exist.
 
 **The ciphertext now has somewhere to ride.** "Every wire structure carrying key material must
 have room for an ML-KEM key" was true of `common.KeyBundle` after PR-36, but the *handshake* has
@@ -98,8 +126,8 @@ the honest record is that green meant nothing here. What now holds the two ends 
 known-answer vectors: Rust emits them, Dart asserts them, and the strict-parser cases are ported
 on both sides because a lenient parser satisfies every vector and is still wrong.
 
-Nothing populates the field yet. PR-97 made the format *capable*; PR-39 (desktop) and PR-98
-(mobile) are what put a ciphertext in it.
+Nothing emits the field yet. PR-97 made the format *capable*, PR-39c made the desktop able to
+*read* one; PR-39b (desktop) and PR-98 (mobile) are what put a ciphertext in it.
 
 **PR-38's real finding was about the build, not the flag.** A `cargo test --workspace` build
 already enabled `pq`, because `crypto-ffi` declares `default = ["full"] = ["pq"]` and Cargo
