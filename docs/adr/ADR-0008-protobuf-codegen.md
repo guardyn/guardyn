@@ -2,7 +2,7 @@
 id: adr-0008
 type: adr
 status: accepted
-owns: [backend/proto/, client-desktop/src-tauri/src/proto/]
+owns: [backend/proto/]
 read_when: [changing a proto, touching generated code]
 tokens: 454
 supersedes: []
@@ -12,13 +12,21 @@ supersedes: []
 
 ## Status
 
-`accepted`, and **implemented across the backend** by PR-23. All six backend services now
-compile into `OUT_DIR`; `backend/crates/*/src/generated/` is deleted — 13 files, 12,114 lines.
+`accepted`, and **fully implemented**. PR-23 moved all six backend services into `OUT_DIR`,
+deleting `backend/crates/*/src/generated/` — 13 files, 12,114 lines. PR-56 did the same for
+`client-desktop/src-tauri/src/proto/` — 8 files, 7,645 lines. No generated Rust is committed
+anywhere in the repository.
 
-`client-desktop/src-tauri/src/proto/` (8 files, ~7,600 lines) is the **one remaining
-exception**, untouched here because it is a separate build with its own toolchain and folding
-it in would have made a mechanical backend change into a cross-stack one. It needs its own
-step.
+**The delay had a measurable cost, and it is the argument for this ADR.** The desktop copy was
+left out of PR-23 because it is a separate build with its own toolchain. By the time PR-56
+picked it up the copy predated PR-36, so it lacked `KeyBundle.ml_kem_public`, while
+`commands/auth.rs:96` had come to write that field: the tracked tree no longer compiled
+against itself. `build.rs` wrote into the tree and declared `rerun-if-changed` on the proto
+directory, so a **cold** checkout regenerated the copy, went green, and left two tracked files
+dirty — whereas a **warm-cache** build skipped `build.rs` and failed on the stale copy with
+E0560. CI has no cargo cache for this crate and was therefore structurally unable to see it.
+Committed build output does not merely risk drift; it converts drift into a build break that
+only some machines observe.
 
 ## Context
 
@@ -52,8 +60,8 @@ already pinned in `flake.nix`.
 Deleting the committed copies is a large, single-purpose, trivially revertable change; CI
 must prove regeneration before the deletion lands.
 
-**The plan names only the backend copy.** The `client-desktop` copy is a third location and
-belongs in the same step.
+**The plan named only the backend copy.** The `client-desktop` copy was a third location;
+PR-23 took the backend, PR-56 the desktop.
 
 ## Alternatives rejected
 

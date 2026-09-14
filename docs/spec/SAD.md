@@ -163,6 +163,5 @@ store in the body, so a probe can distinguish "service down" from "dependency do
 | No `call-service` Deployment in `infra/k8s/base/apps/` | call-service runs under Compose but is not deployable to Kubernetes | PR-44 |
 | Envoy routes only 3 of 6 services | media, calls and notifications are unreachable from a browser client | PR-44 |
 | `notification-service` and `call-service` have no `handlers/` directory | they break the one-handler-per-file rule | PR-35 |
-| Generated protobuf is committed in two places — `backend/crates/*/src/generated/` (13 files) and `client-desktop/src-tauri/src/proto/` (8 files) — while `messaging-service` uses `include_proto!` | three codegen strategies coexist | PR-23 |
 | `RateLimiter` is process-local | rate limits multiply by replica count | PR-41 |
 | `infra/k8s/base/envoy/ingress.yaml` hardcodes `envoy.guardyn.local` | violates the `${DOMAIN}` rule | unowned |
