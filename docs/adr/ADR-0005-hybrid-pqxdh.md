@@ -163,8 +163,43 @@ against the code compiling, not against it agreeing: the identity-key conversion
 missing on both sides, so `test_classical_key_exchange` and `test_hybrid_key_exchange` had
 never passed. Being unreachable end to end is what kept that invisible.
 
-Repair is owned by PR-36 (proto fields — **landed**) through PR-40 (fuzz, proptest, bench).
-Until the rest land, **do not describe the product as post-quantum protected.**
+Repair is owned by PR-36 (proto fields — **landed**) through PR-40a (fuzz and proptest —
+**landed**). PR-40b extends `bench_pqxdh` past key generation to the agreement itself; it was
+split out of PR-40 before opening, per AGENTS.md §2.3, because the two together came to 456
+changed lines over 10 files.
+
+**Desktop to desktop is hybrid; the product as a whole is not yet.** `client-mobile` still
+publishes no ML-KEM material and negotiates classical X3DH — its proto is forked at tag 5 and
+routing it through the hybrid path is [#262](https://github.com/guardyn/guardyn/issues/262)
+(PR-98). So a desktop talking to a phone gets a classical session, correctly and by design, and
+`I-3` stays `met: false` in [`roadmap.yaml`](../roadmap/roadmap.yaml) until that lands.
+**Do not describe the product as post-quantum protected on the strength of this ADR alone** —
+name the endpoints.
+
+## What PR-40a pins, and one thing it deliberately does not fix
+
+Five properties now cover the agreement itself; before PR-40a the only post-quantum properties
+checked bundle *shape*, never whether the two sides actually agree.
+
+`a_responder_that_skips_the_pq_half_diverges` is the one worth reading. Both halves of
+`derive_recipient_shared_secret`'s `if let (Some, Some) … else { None }` are covered — a
+decapsulation key with no ciphertext, and a ciphertext with no decapsulation key. Only the
+second had a test before.
+
+**The assertion is `assert_ne`, not `is_err`, and that is the finding rather than an oversight.**
+A responder that skips the post-quantum half still agrees on the classical halves, so the
+function returns `Ok` with a secret that is merely *different*; the mismatch surfaces later as an
+AEAD tag rejection rather than as an error at the point of the mistake. It is not exploitable
+today — the desktop caller pre-filters on `pq_ciphertext.is_some()` before it can reach that
+branch — but the safety lives in the caller and the function is `pub`. PR-40a pins the behaviour
+rather than changing it: a known failure is not licence to patch it, and making the function
+fail closed is a wire-visible behaviour change that belongs in its own step.
+
+The same `assert_ne` shape appears in
+`a_tampered_pq_ciphertext_does_not_yield_the_sender_secret` for an unrelated reason: ML-KEM-768
+is unauthenticated and uses **implicit rejection**, so a tampered ciphertext of the right length
+decapsulates successfully to an unrelated secret. A test asserting `is_err` there would assert
+the opposite of how the primitive is specified to behave.
 
 ## Alternatives rejected
 

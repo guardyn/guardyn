@@ -80,6 +80,7 @@ jobs:
           - ratchet_message
           - sealed_sender_envelope
           - x3dh_prekey_message
+          - pqxdh_decapsulate
     steps:
       - name: Checkout
         uses: actions/checkout@v4

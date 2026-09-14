@@ -208,8 +208,21 @@ just fuzz padme_unpad 300          # fuzz one parser for 300 seconds
 just fuzz ratchet_message          # 60 seconds by default
 ```
 
-Four targets, one per parser reachable from attacker-controlled bytes:
-`padme_unpad`, `ratchet_message`, `sealed_sender_envelope`, `x3dh_prekey_message`.
+Five targets, one per parser reachable from attacker-controlled bytes:
+`padme_unpad`, `ratchet_message`, `sealed_sender_envelope`, `x3dh_prekey_message`,
+`pqxdh_decapsulate`.
+
+**`pqxdh_decapsulate` splices the fuzzer's bytes over a genuine ML-KEM ciphertext rather than
+passing them straight through, and that is not an accident.** Decapsulation takes exactly 1088
+bytes; random mutation from an empty corpus essentially never produces that length, so every
+input died at the length check and the primitive was never reached. Measured: 43 000 runs held
+coverage flat at 613 edges. Splicing keeps the length correct and takes it to 951 edges at
+roughly half the exec/s, which is decapsulation actually running. It then stays flat, because
+ML-KEM-768 is constant-time and has no input-dependent branches left to discover — for this
+primitive a flat curve after the first second is the correct shape, not a stalled run.
+
+The target still passes the raw bytes through as well, so the length gate itself keeps its
+coverage.
 
 `fuzz.yml` runs the **build** on every crypto pull request and the **run** on a nightly
 schedule. The split is deliberate: compiling catches the way fuzz targets usually rot — a parser

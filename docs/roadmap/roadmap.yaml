@@ -30,7 +30,7 @@ project_sync_enabled: true
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
   - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS"}
-  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40]}
+  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
 # `status` is the gate's own state, recorded here rather than inferred from its step.
@@ -198,7 +198,19 @@ steps:
   - {id: PR-39b, issue: 292, phase: 4, type: feat, status: done, title: "client-desktop negotiates hybrid PQXDH as initiator"}
   - {id: PR-39c, issue: 293, phase: 4, type: feat, status: done, title: "client-desktop completes hybrid PQXDH as responder"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
-  - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
+  # Split before opening, per AGENTS.md 2.3: fuzz, proptest and bench together came to 456
+  # changed lines over 10 files, past both limits. The bench is the half that AGENTS.md 8 does
+  # not require - it asks for property tests and fuzz targets on every parser reachable from
+  # attacker-controlled bytes, and says nothing about benchmarks - so it is the half that moves.
+  # #51 is retitled to match its narrowed scope with `gh issue edit`, the one hand-edit the
+  # issue-sync skill sanctions, because roadmap-sync does not reconcile titles. Same shape as
+  # PR-39a/b/c, which kept the parent issue on the first sub-step.
+  - {id: PR-40a, issue: 51, phase: 4, type: security, status: done, title: "Add fuzz and proptest coverage for the hybrid PQ path"}
+  # bench_pqxdh measures key generation only, which happens once per device registration.
+  # Encapsulation and decapsulation happen once per session and are the ML-KEM cost a user can
+  # feel; benchmarking both classical and hybrid over the same path is what makes the delta the
+  # post-quantum price rather than two unrelated numbers.
+  - {id: PR-40b, issue: 327, phase: 4, type: chore, status: todo, title: "Extend bench_pqxdh to the hybrid agreement"}
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
   - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
   - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}

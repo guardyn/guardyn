@@ -24,8 +24,15 @@ use proptest::prelude::*;
 use crate::double_ratchet::DoubleRatchet;
 use crate::padding::{next_padme_length, pad_message, unpad_message};
 #[cfg(feature = "pq")]
-use crate::pqxdh::{generate_hybrid_key_bundle, verify_hybrid_bundle};
+use crate::pqxdh::{
+    derive_recipient_shared_secret, derive_sender_shared_secret, generate_hybrid_key_bundle,
+    verify_hybrid_bundle, HybridPrivateKeys, MLKEM_CIPHERTEXT_SIZE,
+};
 use crate::x3dh::{IdentityKeyPair, SignedPreKey, X3DHPrekeyMessage};
+#[cfg(feature = "pq")]
+use ed25519_dalek::SigningKey;
+#[cfg(feature = "pq")]
+use x25519_dalek::StaticSecret as X25519Secret;
 
 /// Messages up to 4 KiB. `pad_message` accepts 16 MiB, but generating those makes
 /// the suite slow without exercising a different branch: the size classes that
@@ -397,5 +404,188 @@ proptest! {
         bundle.pq_prekey.as_mut().expect("pq prekey")[index] ^= flip;
 
         prop_assert!(verify_hybrid_bundle(&bundle).is_err());
+    }
+}
+
+// ------------------------------------------------------- PQXDH hybrid agreement
+
+/// One initiator run against `bundle`, returning what the responder needs to answer.
+///
+/// `additional_data` is the initiator's wire output: the 32-byte ephemeral public key followed
+/// by the ML-KEM ciphertext. Splitting it here keeps every property below reading the same way
+/// the responder does.
+#[cfg(feature = "pq")]
+fn initiate(bundle: &crate::pqxdh::HybridKeyBundle) -> (SigningKey, [u8; 32], [u8; 32], Vec<u8>) {
+    let mut rng = rand::thread_rng();
+    let sender_identity = SigningKey::generate(&mut rng);
+    let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
+
+    let (secret, additional_data) = derive_sender_shared_secret(
+        &sender_identity.to_bytes(),
+        &sender_ephemeral.to_bytes(),
+        bundle,
+    )
+    .expect("sender derivation");
+
+    let ephemeral_public: [u8; 32] = additional_data[..32]
+        .try_into()
+        .expect("an X25519 public key is 32 bytes");
+
+    (
+        sender_identity,
+        *secret.as_bytes(),
+        ephemeral_public,
+        additional_data[32..].to_vec(),
+    )
+}
+
+#[cfg(feature = "pq")]
+proptest! {
+    // As above: each case mints a fresh ML-KEM-768 keypair, so the default 256 cases buy time
+    // rather than coverage.
+    #![proptest_config(ProptestConfig::with_cases(32))]
+
+    /// Initiator and responder reach the same hybrid secret.
+    ///
+    /// This is I-3 stated as a property, and it is the one the whole hybrid path exists to make
+    /// true. `tests/integration_tests.rs` pins a single fixed case; varying the one-time pre-key
+    /// is what distinguishes "the happy path works" from "the agreement is correct", because the
+    /// optional fourth DH changes the HKDF input on both sides and a mismatch there would pass
+    /// any single-shape test.
+    #[test]
+    fn hybrid_agreement_is_symmetric(with_one_time_prekey in any::<bool>()) {
+        let (bundle, private_keys) =
+            generate_hybrid_key_bundle(with_one_time_prekey, true).expect("bundle generation");
+
+        let (sender_identity, sender_secret, ephemeral_public, ciphertext) = initiate(&bundle);
+
+        let recipient_secret = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            &ephemeral_public,
+            Some(&ciphertext),
+        )
+        .expect("recipient derivation");
+
+        prop_assert_eq!(&sender_secret, recipient_secret.as_bytes());
+    }
+
+    /// A responder that skips the post-quantum half does **not** land on the initiator's secret.
+    ///
+    /// Both halves of the skip are covered, and only one of them had a test before:
+    /// `pqxdh::tests::from_parts_without_the_decapsulation_key_diverges` pins *ciphertext
+    /// present, decapsulation key absent*. The mirror - key present, ciphertext absent - reaches
+    /// the same `else { None }` at `pqxdh.rs:490` and had nothing pinning it at all.
+    ///
+    /// The assertion is `ne`, not `is_err`. That is the finding, not an oversight: the classical
+    /// halves still agree, so the function returns `Ok` with a secret that is merely *different*,
+    /// and the mismatch surfaces only later as an AEAD tag rejection. Pinning it is what stops a
+    /// future caller quietly acquiring a classical secret from a hybrid API - the safety today
+    /// lives in the caller, which pre-filters before it ever reaches this branch.
+    #[test]
+    fn a_responder_that_skips_the_pq_half_diverges(
+        with_one_time_prekey in any::<bool>(),
+        drop_the_key in any::<bool>(),
+    ) {
+        let (bundle, private_keys) =
+            generate_hybrid_key_bundle(with_one_time_prekey, true).expect("bundle generation");
+
+        let (sender_identity, sender_secret, ephemeral_public, ciphertext) = initiate(&bundle);
+
+        let (responder_keys, offered) = if drop_the_key {
+            let stripped = HybridPrivateKeys::from_parts(
+                *private_keys.identity_key(),
+                *private_keys.signed_prekey(),
+                private_keys.one_time_prekey().copied(),
+                None,
+            );
+            (stripped, Some(ciphertext.as_slice()))
+        } else {
+            (private_keys, None)
+        };
+
+        let recipient_secret = derive_recipient_shared_secret(
+            &responder_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            &ephemeral_public,
+            offered,
+        )
+        .expect("recipient derivation still succeeds - that is the point");
+
+        prop_assert_ne!(&sender_secret, recipient_secret.as_bytes());
+    }
+
+    /// Flipping any bit of the ML-KEM ciphertext costs the responder the shared secret.
+    ///
+    /// Again `ne` rather than `is_err`, and for a different reason than above: ML-KEM-768 is
+    /// unauthenticated and uses *implicit rejection*, so a tampered ciphertext of the right
+    /// length decapsulates successfully to an unrelated secret. A test asserting `is_err` here
+    /// would be asserting the opposite of how the primitive is specified to behave.
+    #[test]
+    fn a_tampered_pq_ciphertext_does_not_yield_the_sender_secret(
+        index in 0usize..MLKEM_CIPHERTEXT_SIZE,
+        flip in 1u8..=255,
+    ) {
+        let (bundle, private_keys) =
+            generate_hybrid_key_bundle(true, true).expect("bundle generation");
+
+        let (sender_identity, sender_secret, ephemeral_public, mut ciphertext) = initiate(&bundle);
+        prop_assert_eq!(ciphertext.len(), MLKEM_CIPHERTEXT_SIZE);
+
+        ciphertext[index] ^= flip;
+
+        let recipient_secret = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            &ephemeral_public,
+            Some(&ciphertext),
+        )
+        .expect("implicit rejection means this succeeds");
+
+        prop_assert_ne!(&sender_secret, recipient_secret.as_bytes());
+    }
+
+    /// A ciphertext of the wrong length is refused, at any length.
+    ///
+    /// The truncation and extension cases both matter: `try_into` on a slice is exact, so this
+    /// pins that nothing upstream pads or trims a short frame into an acceptable one.
+    #[test]
+    fn a_wrong_length_pq_ciphertext_is_refused(
+        ciphertext in prop::collection::vec(any::<u8>(), 0..2200)
+            .prop_filter("must not be the valid length", |c| c.len() != MLKEM_CIPHERTEXT_SIZE),
+    ) {
+        let (bundle, private_keys) =
+            generate_hybrid_key_bundle(true, true).expect("bundle generation");
+        let (sender_identity, _sender_secret, ephemeral_public, _) = initiate(&bundle);
+
+        let result = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            &ephemeral_public,
+            Some(&ciphertext),
+        );
+
+        prop_assert!(result.is_err());
+    }
+
+    /// The responder returns on arbitrary ciphertext bytes rather than panicking.
+    ///
+    /// The in-process mirror of the `pqxdh_decapsulate` fuzz target, kept because `cargo test`
+    /// runs on every pull request while `fuzz-run` is nightly. It says nothing about the result:
+    /// both acceptance and rejection are correct here.
+    #[test]
+    fn the_responder_never_panics_on_arbitrary_ciphertext(
+        ciphertext in prop::collection::vec(any::<u8>(), 0..2200),
+    ) {
+        let (bundle, private_keys) =
+            generate_hybrid_key_bundle(true, true).expect("bundle generation");
+        let (sender_identity, _sender_secret, ephemeral_public, _) = initiate(&bundle);
+
+        let _ = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            &ephemeral_public,
+            Some(&ciphertext),
+        );
     }
 }
