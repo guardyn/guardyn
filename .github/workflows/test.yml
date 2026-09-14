@@ -38,7 +38,7 @@ jobs:
         uses: azure/setup-kubectl@v5
 
       - name: Install Just
-        uses: extractions/setup-just@v2
+        uses: extractions/setup-just@v4
 
       - name: Start cluster
         run: |
