@@ -114,6 +114,38 @@ describe('Crypto API IPC contract', () => {
     );
   });
 
+  it('carries the ML-KEM pre-key and its signature in both directions', async () => {
+    // This is the seam where a hybrid bundle would become a half pair. Both directions map
+    // field by field, so a field left out of either one is silently dropped - and the Rust
+    // side then refuses the bundle outright rather than downgrading it (SRS rule 4a), which
+    // turns a one-line omission here into a peer nobody can start a session with.
+    mockInvoke.mockResolvedValue({
+      identity_key: 'aa',
+      signed_prekey: 'bb',
+      prekey_signature: 'cc',
+      pq_prekey: 'ee',
+      pq_prekey_signature: 'ff',
+      device_id: 'bob-phone',
+    });
+
+    const bundle = await getKeyBundleForPeer('bob');
+    expect(bundle.pqPrekey).toBe('ee');
+    expect(bundle.pqPrekeySignature).toBe('ff');
+
+    mockInvoke.mockResolvedValue({ shared_secret: '00', ephemeral_key: '11' });
+    await performX3DH(bundle, 'bob', 'bob-phone');
+
+    expect(mockInvoke).toHaveBeenLastCalledWith(
+      'perform_x3dh',
+      expect.objectContaining({
+        recipientBundle: expect.objectContaining({
+          pq_prekey: 'ee',
+          pq_prekey_signature: 'ff',
+        }),
+      })
+    );
+  });
+
   it('reads the device off the flattened key bundle', async () => {
     // `PeerKeyBundle` flattens `device_id` alongside the bundle fields rather than nesting it,
     // which is what let the Rust side start returning it without changing this call site.

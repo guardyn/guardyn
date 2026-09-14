@@ -299,6 +299,14 @@ pub struct KeyBundle {
     pub one_time_prekey: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pq_prekey: Option<String>,
+    /// Ed25519 signature over the raw `pq_prekey` bytes, by the same identity key that signs
+    /// the signed pre-key.
+    ///
+    /// Carried separately rather than folded into `pq_prekey` because the two are independent
+    /// wire fields (`common.KeyBundle` tags 6 and 7) and SRS rule 4a turns on being able to
+    /// tell "both absent" from "one missing". Joining them would erase that distinction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pq_prekey_signature: Option<String>,
 }
 
 /// A peer's published key bundle together with the device that served it.
@@ -654,6 +662,7 @@ pub async fn generate_key_bundle(include_pq: bool) -> Result<KeyBundle, String> 
             prekey_signature: hex::encode(&bundle.signed_prekey_signature.0),
             one_time_prekey: bundle.one_time_prekey.map(|k| hex::encode(&k)),
             pq_prekey: None, // PQ prekey from separate field if available
+            pq_prekey_signature: None,
         }),
         Err(e) => Err(format!("Failed to generate key bundle: {}", e)),
     }
@@ -882,7 +891,58 @@ fn key_bundle_from_proto(bundle: &crate::proto::common::KeyBundle) -> Result<Key
         // Index 0 by convention; see the note above. `GetKeyBundle` returns the whole pool and
         // consumes nothing (#246), so this is also the only key any initiator is ever served.
         one_time_prekey: bundle.one_time_pre_keys.first().map(hex::encode),
-        pq_prekey: None,
+        // Passed through exactly as served, including a half pair. `auth-service` refuses to
+        // store one and serves whatever it holds verbatim, but a bundle can reach this client
+        // from somewhere other than `GetKeyBundle`, so repairing or dropping one here would
+        // hide the very shape SRS rule 4a says to reject in whole. `perform_x3dh` rejects it.
+        pq_prekey: bundle.ml_kem_public.as_ref().map(hex::encode),
+        pq_prekey_signature: bundle.ml_kem_public_signature.as_ref().map(hex::encode),
+    })
+}
+
+/// Decode one hex field of a peer bundle into a fixed-size key.
+fn peer_key<const N: usize>(hex_value: &str, field: &str) -> Result<[u8; N], String> {
+    let bytes = hex::decode(hex_value)
+        .map_err(|e| format!("Invalid {} hex in peer bundle: {}", field, e))?;
+    let len = bytes.len();
+    bytes
+        .try_into()
+        .map_err(|_| format!("Peer bundle {} is {} bytes, expected {}", field, len, N))
+}
+
+/// Build the hybrid form of a peer's bundle, for the post-quantum branch of the initiator.
+///
+/// Constructed whenever **either** ML-KEM field is present, including when only one is. That is
+/// deliberate: `verify_hybrid_bundle` rejects a half pair in whole, and routing such a bundle
+/// down the classical branch instead would be exactly the silent downgrade SRS rule 4a exists to
+/// forbid - an attacker who can strip one field would get a classical session for free, which is
+/// far cheaper than breaking either primitive.
+fn hybrid_peer_bundle(
+    bundle: &KeyBundle,
+) -> Result<guardyn_crypto::pqxdh::HybridKeyBundle, String> {
+    Ok(guardyn_crypto::pqxdh::HybridKeyBundle {
+        identity_key: peer_key(&bundle.identity_key, "identity key")?,
+        signed_prekey: peer_key(&bundle.signed_prekey, "signed pre-key")?,
+        signed_prekey_signature: guardyn_crypto::pqxdh::SignatureBytes(peer_key(
+            &bundle.prekey_signature,
+            "signed pre-key signature",
+        )?),
+        one_time_prekey: bundle
+            .one_time_prekey
+            .as_deref()
+            .map(|k| peer_key(k, "one-time pre-key"))
+            .transpose()?,
+        pq_prekey: bundle
+            .pq_prekey
+            .as_deref()
+            .map(|k| hex::decode(k).map_err(|e| format!("Invalid ML-KEM pre-key hex: {}", e)))
+            .transpose()?,
+        pq_prekey_signature: bundle
+            .pq_prekey_signature
+            .as_deref()
+            .map(|sig| peer_key(sig, "ML-KEM pre-key signature"))
+            .transpose()?
+            .map(guardyn_crypto::pqxdh::SignatureBytes),
     })
 }
 
@@ -938,21 +998,78 @@ pub async fn perform_x3dh(
         one_time_pre_keys: one_time_prekeys,
     };
 
-    // Perform X3DH key agreement using guardyn-crypto
     let use_one_time_key = recipient_bundle.one_time_prekey.is_some();
-    let (shared_secret, ephemeral_public) = guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
-        &identity_keypair,
-        &peer_bundle,
-        use_one_time_key,
-    ).map_err(|e| format!("X3DH key agreement failed: {}", e))?;
+
+    // Either ML-KEM field makes this a hybrid handshake. The two derivations are separate KDF
+    // domains over the same DH inputs - `X3DH` against `PQXDH_SharedSecret` - and the responder
+    // picks between them on the `0x02` flags bit set below. See SRS rule 4b.
+    let is_hybrid =
+        recipient_bundle.pq_prekey.is_some() || recipient_bundle.pq_prekey_signature.is_some();
+
+    let (shared_secret, ephemeral_public, pq_ciphertext) = if is_hybrid {
+        let hybrid = hybrid_peer_bundle(&recipient_bundle)?;
+
+        // Verifies the signed pre-key and the ML-KEM pair against one identity key. The
+        // classical branch gets the same guarantee from `initiate_key_agreement`, which
+        // verifies the signed pre-key itself; neither ever downgrades to an unsigned exchange.
+        guardyn_crypto::pqxdh::verify_hybrid_bundle(&hybrid)
+            .map_err(|e| format!("Peer key bundle failed verification: {}", e))?;
+
+        // The hybrid derivation takes the ephemeral secret rather than minting one, so unlike
+        // the classical branch this generates it here.
+        let ephemeral_secret = guardyn_crypto::StaticSecret::random_from_rng(rand::rngs::OsRng);
+        let ephemeral_public = guardyn_crypto::X25519PublicKey::from(&ephemeral_secret);
+        let identity_secret: [u8; 32] = identity_keypair
+            .private_key_bytes()
+            .try_into()
+            .map_err(|_| "Stored identity secret is not 32 bytes".to_string())?;
+
+        let (secret, additional_data) = guardyn_crypto::pqxdh::derive_sender_shared_secret(
+            &identity_secret,
+            &ephemeral_secret.to_bytes(),
+            &hybrid,
+        )
+        .map_err(|e| format!("Hybrid PQXDH key agreement failed: {}", e))?;
+
+        // `additional_data` is `ephemeral_public(32) || ciphertext`, and only the ciphertext
+        // travels: the ephemeral key is already at offset 33 of the prekey message, and two
+        // copies of one value are two things that can disagree.
+        let ciphertext = additional_data
+            .get(32..)
+            .filter(|ct| !ct.is_empty())
+            .ok_or_else(|| {
+                "Hybrid key agreement produced no ML-KEM ciphertext for a bundle that carries \
+                 an ML-KEM pre-key"
+                    .to_string()
+            })?
+            .to_vec();
+
+        (
+            secret.as_bytes().to_vec(),
+            ephemeral_public,
+            Some(ciphertext),
+        )
+    } else {
+        let (secret, ephemeral_public) =
+            guardyn_crypto::x3dh::X3DHProtocol::initiate_key_agreement(
+                &identity_keypair,
+                &peer_bundle,
+                use_one_time_key,
+            )
+            .map_err(|e| format!("X3DH key agreement failed: {}", e))?;
+        (secret, ephemeral_public, None)
+    };
 
     // Park what the peer will need to answer. It rides the first message of this session.
     let used_prekey_id = if use_one_time_key { Some(0) } else { None };
-    let prekey_message = guardyn_crypto::x3dh::X3DHPrekeyMessage::new(
+    let mut prekey_message = guardyn_crypto::x3dh::X3DHPrekeyMessage::new(
         identity_keypair.public_bytes(),
         ephemeral_public.as_bytes().to_vec(),
         used_prekey_id,
     );
+    if let Some(ciphertext) = pq_ciphertext {
+        prekey_message = prekey_message.with_pq_ciphertext(ciphertext);
+    }
     PENDING_PREKEY
         .lock()
         .map_err(|e| e.to_string())?
@@ -2186,6 +2303,7 @@ mod tests {
                 prekey_signature: "cc".to_string(),
                 one_time_prekey: Some("dd".to_string()),
                 pq_prekey: None,
+                pq_prekey_signature: None,
             },
             device_id: "bob-phone".to_string(),
         };
@@ -2844,6 +2962,153 @@ mod tests {
         assert_eq!(decrypted, b"first message");
     }
 
+    /// The hex form of a peer bundle, as `key_bundle_from_proto` would hand it to the initiator.
+    fn peer_bundle_hex(
+        hybrid: &guardyn_crypto::pqxdh::HybridKeyBundle,
+        with_pq: bool,
+    ) -> KeyBundle {
+        KeyBundle {
+            identity_key: hex::encode(hybrid.identity_key),
+            signed_prekey: hex::encode(hybrid.signed_prekey),
+            prekey_signature: hex::encode(hybrid.signed_prekey_signature.0),
+            one_time_prekey: hybrid.one_time_prekey.map(hex::encode),
+            pq_prekey: if with_pq {
+                hybrid.pq_prekey.as_ref().map(hex::encode)
+            } else {
+                None
+            },
+            pq_prekey_signature: if with_pq {
+                hybrid
+                    .pq_prekey_signature
+                    .as_ref()
+                    .map(|s| hex::encode(s.0))
+            } else {
+                None
+            },
+        }
+    }
+
+    /// The initiator's hybrid derivation is the one PR-39c answers.
+    ///
+    /// `perform_x3dh` is a Tauri command over global state, so the agreement is asserted through
+    /// the two pure pieces it composes - `hybrid_peer_bundle` and `responder_hybrid_keys` - which
+    /// is what actually has to agree. A fixed vector would not catch the failure that matters
+    /// here: every way of getting this wrong still produces *a* secret.
+    #[test]
+    fn test_the_hybrid_initiator_agrees_with_the_hybrid_responder() {
+        let bob_identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let mut bob_seed = [0u8; ML_KEM_SEED_LEN];
+        rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut bob_seed);
+        let (bob_hybrid, bob_signed_stored, bob_one_time_stored) =
+            hybrid_bundle_for(&bob_identity, &bob_seed, 3);
+
+        // Alice rebuilds the bundle from its hex wire form, exactly as the command does.
+        let rebuilt = hybrid_peer_bundle(&peer_bundle_hex(&bob_hybrid, true)).unwrap();
+        guardyn_crypto::pqxdh::verify_hybrid_bundle(&rebuilt).unwrap();
+
+        let alice_identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let alice_ephemeral = guardyn_crypto::StaticSecret::random_from_rng(rand::rngs::OsRng);
+        let alice_identity_secret: [u8; 32] =
+            alice_identity.private_key_bytes().try_into().unwrap();
+        let (alice_secret, additional_data) = guardyn_crypto::pqxdh::derive_sender_shared_secret(
+            &alice_identity_secret,
+            &alice_ephemeral.to_bytes(),
+            &rebuilt,
+        )
+        .unwrap();
+
+        // The ciphertext survives the prekey message round trip that carries it.
+        let message = guardyn_crypto::x3dh::X3DHPrekeyMessage::new(
+            alice_identity.public_bytes(),
+            guardyn_crypto::X25519PublicKey::from(&alice_ephemeral)
+                .as_bytes()
+                .to_vec(),
+            Some(0),
+        )
+        .with_pq_ciphertext(additional_data[32..].to_vec());
+        let decoded =
+            guardyn_crypto::x3dh::X3DHPrekeyMessage::from_base64(&message.to_base64()).unwrap();
+        let ciphertext = decoded.pq_ciphertext.expect("the 0x02 flag must be set");
+
+        let bob_keys = responder_hybrid_keys(
+            &bob_identity.private_key_bytes(),
+            &bob_signed_stored,
+            &bob_one_time_stored,
+            decoded.used_one_time_key_id,
+            &bob_seed,
+        )
+        .unwrap();
+        let bob_secret = guardyn_crypto::pqxdh::derive_recipient_shared_secret(
+            &bob_keys,
+            &decoded.sender_identity_key.clone().try_into().unwrap(),
+            &decoded.ephemeral_key.clone().try_into().unwrap(),
+            Some(&ciphertext),
+        )
+        .unwrap();
+
+        assert_eq!(alice_secret.as_bytes(), bob_secret.as_bytes());
+    }
+
+    /// A peer that publishes no ML-KEM pre-key still gets a classical session.
+    ///
+    /// Classical strength is the floor, not a failure. `client-mobile` is exactly this case: its
+    /// proto is forked at tag 5, so it publishes no ML-KEM material and desktop-to-mobile stays
+    /// classical without anything having to detect it.
+    #[test]
+    fn test_a_classical_peer_bundle_is_not_routed_through_the_hybrid_path() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let seed = [3u8; ML_KEM_SEED_LEN];
+        let (hybrid, _signed, _one_time) = hybrid_bundle_for(&identity, &seed, 1);
+
+        let classical = peer_bundle_hex(&hybrid, false);
+        assert!(classical.pq_prekey.is_none() && classical.pq_prekey_signature.is_none());
+    }
+
+    /// A bundle carrying an ML-KEM pre-key with its signature stripped is refused in whole.
+    ///
+    /// The downgrade is the attack: stripping one field is cheaper than breaking either
+    /// primitive, so this must not quietly become a classical session. `hybrid_peer_bundle` is
+    /// built for either field precisely so `verify_hybrid_bundle` gets to see the half pair.
+    #[test]
+    fn test_a_stripped_ml_kem_signature_is_refused_rather_than_downgraded() {
+        let identity = guardyn_crypto::x3dh::IdentityKeyPair::generate().unwrap();
+        let seed = [5u8; ML_KEM_SEED_LEN];
+        let (hybrid, _signed, _one_time) = hybrid_bundle_for(&identity, &seed, 1);
+
+        let mut stripped = peer_bundle_hex(&hybrid, true);
+        stripped.pq_prekey_signature = None;
+
+        let rebuilt = hybrid_peer_bundle(&stripped).unwrap();
+        assert!(
+            guardyn_crypto::pqxdh::verify_hybrid_bundle(&rebuilt).is_err(),
+            "a half pair must never verify"
+        );
+
+        // And the reverse orphan, which is the shape a dropped field in the IPC layer produces.
+        let mut orphan = peer_bundle_hex(&hybrid, true);
+        orphan.pq_prekey = None;
+        let rebuilt = hybrid_peer_bundle(&orphan).unwrap();
+        assert!(guardyn_crypto::pqxdh::verify_hybrid_bundle(&rebuilt).is_err());
+    }
+
+    /// The peer's ML-KEM material survives `key_bundle_from_proto` instead of being dropped.
+    #[test]
+    fn test_the_peer_ml_kem_material_is_carried_off_the_wire() {
+        let proto = crate::proto::common::KeyBundle {
+            identity_key: vec![1u8; 32],
+            signed_pre_key: vec![2u8; 32],
+            signed_pre_key_signature: vec![3u8; 64],
+            one_time_pre_keys: vec![vec![4u8; 32]],
+            created_at: None,
+            ml_kem_public: Some(vec![5u8; 1184]),
+            ml_kem_public_signature: Some(vec![6u8; 64]),
+        };
+
+        let bundle = key_bundle_from_proto(&proto).unwrap();
+        assert_eq!(bundle.pq_prekey, Some(hex::encode([5u8; 1184])));
+        assert_eq!(bundle.pq_prekey_signature, Some(hex::encode([6u8; 64])));
+    }
+
     /// Assemble the hybrid bundle a peer would fetch for this device, plus its stored records.
     ///
     /// Mirrors what `auth-service` serves: the classical bundle from `build_key_material` with the
@@ -3135,6 +3400,7 @@ mod tests {
             one_time_prekey: bundle.one_time_pre_keys.first()
                 .map(|otk| hex::encode(&otk.public_key)),
             pq_prekey: None,
+            pq_prekey_signature: None,
         };
 
         // Verify encoding is correct
