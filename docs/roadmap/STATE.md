@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1123
+tokens: 1093
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 17 | 35 | `█████░░░░░` |
-| **all** | **106** | **130** | |
+| 4 | 18 | 35 | `█████░░░░░` |
+| **all** | **107** | **130** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 24 of 130
+- **Open steps:** 23 of 130
 
 ## Gates
 
@@ -70,7 +70,6 @@ supersedes: []
 | PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
 | PR-112 | 4 | [#294](https://github.com/guardyn/guardyn/issues/294) | clear_crypto_state leaves ratchets and parked prekeys in memory |
 | PR-113 | 4 | [#295](https://github.com/guardyn/guardyn/issues/295) | Address messages to a specific device and fan out per device |
-| PR-56 | 4 | [#188](https://github.com/guardyn/guardyn/issues/188) | Move client-desktop protobuf generation to OUT_DIR |
 | PR-96 | 4 | [#257](https://github.com/guardyn/guardyn/issues/257) | kube-bootstrap races the cert-manager webhook CA |
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
 | PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |

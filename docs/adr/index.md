@@ -26,7 +26,7 @@ accepted ADR **and** explicit user approval (`AGENTS.md` §5.3).
 | [0005](ADR-0005-hybrid-pqxdh.md) | Hybrid PQXDH (X25519 + ML-KEM-768) | accepted — **target, not met** |
 | [0006](ADR-0006-no-cache-layer.md) | No Dragonfly/Redis cache layer before launch | accepted |
 | [0007](ADR-0007-zero-knowledge-logging.md) | Zero-knowledge logging and mandatory redaction | accepted — **2 known violations** |
-| [0008](ADR-0008-protobuf-codegen.md) | Generated protobuf in `OUT_DIR`, not committed | accepted — **3 strategies coexist** |
+| [0008](ADR-0008-protobuf-codegen.md) | Generated protobuf in `OUT_DIR`, not committed | accepted |
 | [0009](ADR-0009-micro-step-budget.md) | Micro-step PR budget and branch isolation | accepted |
 | [0010](ADR-0010-pure-relay-server.md) | The server is a pure relay; MLS and the ratchet run on the clients | accepted |
 
@@ -35,7 +35,7 @@ number.
 
 ## Decisions that are not yet met
 
-Three ADRs are accepted as the target while the code does something else. This is recorded
+Two ADRs are accepted as the target while the code does something else. This is recorded
 deliberately — the alternative is an ADR set that reads as a description of the system and
 is quietly wrong.
 
@@ -43,4 +43,3 @@ is quietly wrong.
 |---|---|---|
 | 0005 | `pq` feature off by default; **no ML-KEM field in any proto**, so no PQ key can be published | PR-36…PR-40 |
 | 0007 | `rate_limit.rs:241,256` log a raw IP; span fields bypass the redacting formatter | both **unowned** |
-| 0008 | Committed generated protobuf in `backend/crates/*/src/generated/` **and** `client-desktop/src-tauri/src/proto/`, while `messaging-service` uses `include_proto!` | PR-23 |

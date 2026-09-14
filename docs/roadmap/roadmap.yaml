@@ -211,7 +211,13 @@ steps:
   # compiles the stale copy and fails. ADR-0008 already calls this copy "the one remaining
   # exception" that "needs its own step"; this is that step. OUT_DIR also satisfies PROTO-EDIT,
   # which uses --diff-filter=d and so ignores the deletion.
-  - {id: PR-56, issue: 188, phase: 4, type: refactor, status: todo, title: "Move client-desktop protobuf generation to OUT_DIR"}
+  #
+  # Flipped to `done` by the PR that does the work, not by a follow-up. The three most recent
+  # roadmap corrections (#129, #299, #302) were all separate commits cleaning up after a merge,
+  # and twice that gap was long enough for a roadmap.yaml push to reopen a correctly-closed
+  # issue under the bot's name. `Closes #188` and `status: done` landing in one merge commit
+  # leaves roadmap-sync nothing to reconcile. Prefer this shape over a follow-up.
+  - {id: PR-56, issue: 188, phase: 4, type: refactor, status: done, title: "Move client-desktop protobuf generation to OUT_DIR"}
   - {id: PR-57, issue: 180, phase: 3, type: fix, status: done, title: "Make roadmap-sync detect drift and create issues"}
   - {id: PR-58, issue: 189, phase: 3, type: chore, status: done, title: "Reconcile roadmap.yaml after the G3 merge wave"}
   # The ciphertext format break. #105 and #106 were Phase-3 security issues with no step,

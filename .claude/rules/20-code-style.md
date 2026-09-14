@@ -79,10 +79,13 @@ matched.
   The language policy governs prose, comments, identifiers and log strings, not fixtures.
 - **ADR filenames** are `ADR-NNNN-kebab-slug.md`, not `SCREAMING_SNAKE_CASE.md`. The
   sequence number is what makes them sortable and citable.
-- **Generated protobuf** lives in **one** place now: `client-desktop/src-tauri/src/proto/`
-  (8 files). PR-23 deleted `backend/crates/*/src/generated/` — all six backend services
-  compile into `OUT_DIR` per [ADR-0008](../../docs/adr/ADR-0008-protobuf-codegen.md). The
-  desktop copy is excluded from `NAME-RS` and still needs its own step.
+- **Generated protobuf is committed nowhere.** PR-23 deleted
+  `backend/crates/*/src/generated/` and PR-56 deleted `client-desktop/src-tauri/src/proto/`;
+  every crate now compiles into `OUT_DIR` per
+  [ADR-0008](../../docs/adr/ADR-0008-protobuf-codegen.md). The `/(generated|proto)/`
+  exclusion in `NAME-RS` therefore filters nothing today — it is left in place as a guard
+  against reintroduction, not because anything needs it. `PROTO-EDIT` keeps its own
+  `--diff-filter=d` carve-out for the same reason.
 
 ## Rules a grep cannot check
 
