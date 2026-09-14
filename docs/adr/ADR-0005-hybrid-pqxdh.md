@@ -58,12 +58,22 @@ persists and serves what it is handed instead of dropping it. PR-38 put `pq` in 
 `default` set, so the code is compiled into the services that depend on it and `PQ-DEFAULT`
 passes.
 
-**The client half, and what is left of it.** PR-39a made the desktop generate, persist and
-publish an ML-KEM pre-key, so `pq_prekey: None` is no longer hardcoded on that side. PR-39c gave
-it the *responder*: a prekey message carrying the `0x02` ciphertext flag is now answered through
-`derive_recipient_shared_secret`. What remains is the initiator — PR-39b, which is what first
-makes a desktop *emit* such a frame — and `client-mobile`, whose proto is still forked at tag 5
-(PR-98). I-3 is met when PR-40 closes, not before.
+**The client half is complete on the desktop.** PR-39a made it generate, persist and publish an
+ML-KEM pre-key; PR-39c gave it the responder; PR-39b gave it the initiator, so a desktop now
+encapsulates to a peer's `ml_kem_public` and sets the `0x02` flag on the prekey message. Two
+desktops agree a hybrid secret end to end. What remains is `client-mobile`, whose proto is still
+forked at tag 5 (PR-98), and the fuzz and bench coverage of PR-40. **I-3 is met when PR-40
+closes, not here** — an unfuzzed parser on a path reachable from a peer's bundle is not a met
+invariant.
+
+**The bundle crosses the IPC boundary, so the pair can be broken by omission.** The desktop
+initiator receives its peer bundle back from the frontend, which maps it field by field in both
+directions (`src/api/crypto.ts`). `pq_prekey` and `pq_prekey_signature` are therefore two
+independent fields in that mapping, and leaving either out silently produces a half pair. That
+now fails loudly rather than degrading: `hybrid_peer_bundle` is built whenever **either** field
+is present, precisely so `verify_hybrid_bundle` sees the orphan and rejects the bundle in whole.
+Routing a half pair down the classical branch instead would hand an attacker a classical session
+for the price of deleting one field.
 
 **The KDF has two domains, and the flags bit selects between them.** `x3dh.rs` expands with the
 HKDF info string `X3DH`; `pqxdh.rs` expands with `PQXDH_SharedSecret`. The two are otherwise the

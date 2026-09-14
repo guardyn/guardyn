@@ -195,8 +195,8 @@ steps:
   # with its number recorded - roadmap-sync does not reconcile titles, so #318 is retitled to
   # `PR-116 · <title>` with `gh issue edit`, the one hand-edit the skill sanctions.
   - {id: PR-116, issue: 318, phase: 4, type: fix, status: done, title: "Correct the desktop CI target path and fail on a missing bundle"}
-  - {id: PR-39b, issue: 292, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH as initiator"}
-  - {id: PR-39c, issue: 293, phase: 4, type: feat, status: in-progress, title: "client-desktop completes hybrid PQXDH as responder"}
+  - {id: PR-39b, issue: 292, phase: 4, type: feat, status: in-progress, title: "client-desktop negotiates hybrid PQXDH as initiator"}
+  - {id: PR-39c, issue: 293, phase: 4, type: feat, status: done, title: "client-desktop completes hybrid PQXDH as responder"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
   - {id: PR-40, issue: 51, phase: 4, type: security, status: todo, title: "Add fuzz, proptest and bench coverage for the hybrid PQ path"}
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}

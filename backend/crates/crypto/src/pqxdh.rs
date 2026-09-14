@@ -392,7 +392,12 @@ pub fn derive_sender_shared_secret(
             .map_err(|_| CryptoError::InvalidKey("Invalid PQ prekey size".to_string()))?;
         let ek =
             ml_kem::kem::EncapsulationKey::<ml_kem::MlKem768Params>::from_bytes(ek_bytes.into());
-        let (ciphertext, shared_secret) = ek.encapsulate(&mut rand::thread_rng()).unwrap();
+        // Reachable from a peer's published bundle as of PR-39b, so it propagates rather than
+        // panicking: a Tauri command that unwinds takes the session with it and tells the user
+        // nothing. RS-UNWRAP in `.claude/rules/20-code-style.md` is the standing rule.
+        let (ciphertext, shared_secret) = ek
+            .encapsulate(&mut rand::thread_rng())
+            .map_err(|_| CryptoError::Encryption("ML-KEM encapsulation failed".to_string()))?;
         additional_data.extend_from_slice(ciphertext.as_slice());
         Some(shared_secret)
     } else {

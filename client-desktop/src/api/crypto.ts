@@ -42,6 +42,16 @@ export interface KeyBundle {
   oneTimePrekey?: string;
   pqPrekey?: string;
   /**
+   * Ed25519 signature over the raw `pqPrekey` bytes.
+   *
+   * Kept beside the key rather than merged into it because the Rust side must be able to tell
+   * "no post-quantum material" from "one half missing": the second is a stripped field and is
+   * refused outright, while the first is a legitimate classical-only peer. Dropping this in the
+   * IPC layer would turn a hybrid bundle into a half pair, which `perform_x3dh` rejects - loudly,
+   * by design, rather than downgrading the session.
+   */
+  pqPrekeySignature?: string;
+  /**
    * The peer device auth-service answered with, present only on a bundle fetched for a peer.
    *
    * `generateKeyBundle` builds our own bundle locally and has no device to name, which is why
@@ -196,6 +206,7 @@ export async function getKeyBundleForPeer(userId: string): Promise<KeyBundle> {
     prekey_signature: string;
     one_time_prekey?: string;
     pq_prekey?: string;
+    pq_prekey_signature?: string;
     device_id: string;
   }>('get_key_bundle_for_peer', { userId });
   return {
@@ -204,6 +215,7 @@ export async function getKeyBundleForPeer(userId: string): Promise<KeyBundle> {
     prekeySignature: result.prekey_signature,
     oneTimePrekey: result.one_time_prekey,
     pqPrekey: result.pq_prekey,
+    pqPrekeySignature: result.pq_prekey_signature,
     // Flattened alongside the bundle fields by `PeerKeyBundle`, not nested under a key.
     deviceId: result.device_id,
   };
@@ -229,6 +241,7 @@ export async function performX3DH(
       prekey_signature: recipientBundle.prekeySignature,
       one_time_prekey: recipientBundle.oneTimePrekey,
       pq_prekey: recipientBundle.pqPrekey,
+      pq_prekey_signature: recipientBundle.pqPrekeySignature,
     },
     recipientId,
     recipientDeviceId,

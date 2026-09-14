@@ -142,12 +142,10 @@ multi-device delivery is promised to anyone.
 > property test: a bundle verifies **iff** its two ML-KEM fields are present together or absent
 > together.
 >
-> **The desktop can answer a hybrid handshake but not yet start one.** PR-39a publishes an
-> ML-KEM pre-key; PR-39c reads a `0x02` ciphertext back out of the prekey message and completes
-> through `derive_recipient_shared_secret`. The initiator is PR-39b
-> ([#292](https://github.com/guardyn/guardyn/issues/292)) and `client-mobile` is PR-98
-> ([#262](https://github.com/guardyn/guardyn/issues/262)), so **nothing emits a hybrid frame
-> yet**.
+> **The desktop implements rules 4, 4a and 4b end to end.** PR-39a publishes an ML-KEM pre-key,
+> PR-39c answers a `0x02` ciphertext through `derive_recipient_shared_secret`, and PR-39b
+> ([#292](https://github.com/guardyn/guardyn/issues/292)) encapsulates to a peer's
+> `ml_kem_public` and sets the flag. Two desktops now agree a hybrid secret.
 >
 > The responder landed before the initiator deliberately. Every desktop has published an ML-KEM
 > pre-key since PR-39a, so an initiator-first order would have put every desktop-to-desktop
@@ -155,9 +153,13 @@ multi-device delivery is promised to anyone.
 > the `X3DH` one — an interop break visible only as an AEAD tag rejection. When a protocol change
 > splits into a reader and a writer, the reader ships first.
 >
-> Until PR-40 closes, **do not describe the handshake as post-quantum protected** — a device
-> that can publish and decapsulate a post-quantum pre-key is not the same as two devices
-> agreeing a post-quantum secret.
+> **`client-mobile` is unaffected and stays classical.** Its proto is forked at tag 5, so it
+> publishes no ML-KEM material and a desktop initiator takes the classical branch against it
+> without anything having to detect a version. Routing it through the hybrid path is PR-98
+> ([#262](https://github.com/guardyn/guardyn/issues/262)).
+>
+> Until PR-40 closes, **do not describe the handshake as post-quantum protected** — two desktops
+> agreeing a hybrid secret is not the same as the parsers on that path having been fuzzed.
 
 ## Message encryption (Double Ratchet)
 

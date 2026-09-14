@@ -76,6 +76,7 @@ export interface KeyBundle {
   prekey_signature: string;
   one_time_prekey?: string;
   pq_prekey?: string;
+  pq_prekey_signature?: string;
 }
 
 export interface EncryptedMessage {
