@@ -174,7 +174,13 @@ steps:
   #
   # The paths and the warn setting are one step on purpose. Correcting the paths alone restores
   # the artifacts and leaves in place the setting that let their absence read as green, which is
-  # the defect that actually cost two years. #318 was filed before any fix and is adopted here
+  # the defect that actually cost two years.
+  #
+  # A third instance of the same class turned up while verifying the first two: both desktop
+  # workflows named themselves under push.paths but not pull_request.paths, so a PR that only
+  # edited desktop CI never ran desktop CI - the change was exercised only after merge. Folded
+  # in here rather than split out, because a test apparatus that cannot trigger on the fix it
+  # is meant to verify makes the fix unverifiable, and #319 was itself the first casualty. #318 was filed before any fix and is adopted here
   # with its number recorded - roadmap-sync does not reconcile titles, so #318 is retitled to
   # `PR-116 · <title>` with `gh issue edit`, the one hand-edit the skill sanctions.
   - {id: PR-116, issue: 318, phase: 4, type: fix, status: done, title: "Correct the desktop CI target path and fail on a missing bundle"}
