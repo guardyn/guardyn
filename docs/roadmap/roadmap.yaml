@@ -164,6 +164,20 @@ steps:
   # pqxdh.rs:266-276, still present - belongs to PR-39b, which is the first code to verify a
   # peer's bundle. It must land with that step and not be deferred past it.
   - {id: PR-39a, issue: 50, phase: 4, type: feat, status: done, title: "client-desktop generates, persists and publishes its ML-KEM pre-key"}
+  # Jumped ahead of PR-39b: found while reproducing the warm-cache failure for PR-56, and it
+  # blocks the launch half of this phase rather than the post-quantum half. client-desktop is
+  # its own cargo workspace, so the build directory is client-desktop/target - but all nine CI
+  # references name client-desktop/src-tauri/target, which does not exist. The cache half only
+  # costs time; the artifact half means no desktop bundle has ever been uploaded, and
+  # if-no-files-found: warn reported that as success. Four green platform builds on #317
+  # produced zero installers.
+  #
+  # The paths and the warn setting are one step on purpose. Correcting the paths alone restores
+  # the artifacts and leaves in place the setting that let their absence read as green, which is
+  # the defect that actually cost two years. #318 was filed before any fix and is adopted here
+  # with its number recorded - roadmap-sync does not reconcile titles, so #318 is retitled to
+  # `PR-116 · <title>` with `gh issue edit`, the one hand-edit the skill sanctions.
+  - {id: PR-116, issue: 318, phase: 4, type: fix, status: done, title: "Correct the desktop CI target path and fail on a missing bundle"}
   - {id: PR-39b, issue: 292, phase: 4, type: feat, status: todo, title: "client-desktop negotiates hybrid PQXDH as initiator"}
   - {id: PR-39c, issue: 293, phase: 4, type: feat, status: todo, title: "client-desktop completes hybrid PQXDH as responder"}
   - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
