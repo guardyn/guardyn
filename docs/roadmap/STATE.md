@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1062
+tokens: 1095
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 20 | 36 | `██████░░░░` |
-| **all** | **109** | **131** | |
+| 4 | 23 | 40 | `██████░░░░` |
+| **all** | **112** | **135** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 22 of 131
+- **Open steps:** 23 of 135
 
 ## Gates
 
@@ -46,7 +46,7 @@ supersedes: []
 | | | | *rate_limit.rs logs a raw IP; span fields are not redacted* |
 | I-2 | Always-On E2EE | partial | PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c |
 | | | | *no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS* |
-| I-3 | Post-Quantum | false | PR-36, PR-37, PR-38, PR-39, PR-40 |
+| I-3 | Post-Quantum | false | PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b |
 | I-4 | Data Sovereignty | partial | — |
 | | | | *envoy/ingress.yaml hardcodes a domain* |
 
@@ -60,15 +60,16 @@ supersedes: []
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
-| PR-39b | 4 | [#292](https://github.com/guardyn/guardyn/issues/292) | client-desktop negotiates hybrid PQXDH as initiator |
 | PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |
-| PR-40 | 4 | [#51](https://github.com/guardyn/guardyn/issues/51) | Add fuzz, proptest and bench coverage for the hybrid PQ path |
+| PR-40b | 4 | [#327](https://github.com/guardyn/guardyn/issues/327) | Extend bench_pqxdh to the hybrid agreement |
 | PR-41 | 4 | [#52](https://github.com/guardyn/guardyn/issues/52) | Make rate limiting distributed or document the single-replica constraint |
 | PR-42 | 4 | [#53](https://github.com/guardyn/guardyn/issues/53) | Fix the inverted secrets gitignore |
 | PR-43 | 4 | [#54](https://github.com/guardyn/guardyn/issues/54) | Wire the compose observability stack |
 | PR-44 | 4 | [#55](https://github.com/guardyn/guardyn/issues/55) | Deployment parity - call-service k8s Deployment and image digest pins |
 | PR-112 | 4 | [#294](https://github.com/guardyn/guardyn/issues/294) | clear_crypto_state leaves ratchets and parked prekeys in memory |
 | PR-113 | 4 | [#295](https://github.com/guardyn/guardyn/issues/295) | Address messages to a specific device and fan out per device |
+| PR-117 | 4 | [#323](https://github.com/guardyn/guardyn/issues/323) | client-desktop commands/tests.rs is never compiled and cannot compile |
+| PR-118 | 4 | [#324](https://github.com/guardyn/guardyn/issues/324) | Automate the PQ-WIRE predicate in rules-verify |
 | PR-96 | 4 | [#257](https://github.com/guardyn/guardyn/issues/257) | kube-bootstrap races the cert-manager webhook CA |
 | PR-91 | 4 | [#241](https://github.com/guardyn/guardyn/issues/241) | Generate docs/INDEX.md and the tokens: counts |
 | PR-93 | 4 | [#246](https://github.com/guardyn/guardyn/issues/246) | Consume the one-time pre-key that GetKeyBundle serves |

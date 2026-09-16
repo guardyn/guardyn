@@ -68,8 +68,8 @@ jobs:
   fuzz-run:
     name: fuzz-run
     # Only on the schedule and on demand. A pull request gets the build check
-    # above; running four targets for five minutes each would add twenty minutes
-    # to every crypto PR and still find less than one nightly run does.
+    # above; running five targets for five minutes each would add twenty-five
+    # minutes to every crypto PR and still find less than one nightly run does.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
@@ -80,6 +80,7 @@ jobs:
           - ratchet_message
           - sealed_sender_envelope
           - x3dh_prekey_message
+          - pqxdh_decapsulate
     steps:
       - name: Checkout
         uses: actions/checkout@v4

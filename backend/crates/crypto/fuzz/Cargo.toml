@@ -51,3 +51,10 @@ path = "fuzz_targets/x3dh_prekey_message.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "pqxdh_decapsulate"
+path = "fuzz_targets/pqxdh_decapsulate.rs"
+test = false
+doc = false
+bench = false
