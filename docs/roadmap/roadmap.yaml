@@ -30,7 +30,7 @@ project_sync_enabled: true
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
   - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS"}
-  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b]}
+  - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b, PR-120]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
 # `status` is the gate's own state, recorded here rather than inferred from its step.
@@ -259,6 +259,16 @@ steps:
   # step exists because that line and the two above need a pull request to land in, and a
   # reconciliation step is the established shape for that (PR-52, PR-58).
   - {id: PR-119, issue: 325, phase: 4, type: docs, status: done, title: "Reconcile PR-39b and track the tests.rs and PQ-WIRE debt"}
+  # The fourth PR-40 finding, and the one PR-40a pinned rather than fixed: ADR-0005 records that
+  # making derive_recipient_shared_secret fail closed is a wire-visible behaviour change and
+  # belongs in its own step. Its ML-KEM gate is `if let (Some(dk), Some(ct)) ... else { None }`,
+  # so a responder holding no decapsulation key - or answering a frame whose ciphertext was
+  # stripped in relay - returns Ok with a divergent secret. The classical halves still agree, so
+  # the mismatch surfaces later as an AEAD tag rejection: an error at the wrong layer, blamed on
+  # the wrong cause. Stripping a field is cheaper than breaking a primitive, which is rule 4a's
+  # argument for the bundle applied to the handshake. Not exploitable today only because the one
+  # production caller pre-filters, and the function is pub.
+  - {id: PR-120, issue: 329, phase: 4, type: security, status: done, title: "Fail closed when the responder skips the post-quantum half"}
   - {id: PR-45, issue: 60, phase: 1, type: chore, status: done, title: "Untrack the 18.4 MB committed ChromeDriver binary"}
   - {id: PR-46, issue: 132, phase: 3, type: fix, status: done, title: "Adapt to the rdkafka 0.39 Delivery type and vendor libcurl"}
   - {id: PR-47, issue: 137, phase: 3, type: chore, status: done, title: "Record the G2 hotfix steps in roadmap.yaml"}

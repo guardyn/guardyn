@@ -84,6 +84,18 @@ it is recorded here so nobody "fixes" it.
    prekey message, which an initiator sets exactly when the bundle it fetched carried an
    ML-KEM pre-key. That bit is the whole of the negotiation: there is no capability exchange
    and no downgrade to negotiate over.
+4c. **A responder answering in the hybrid domain refuses rather than degrades.** The ML-KEM
+   ciphertext and the decapsulation key that opens it are present together or absent together,
+   exactly as the bundle's two fields are under 4a. A responder handed a ciphertext it has no key
+   for, or asked to answer a `PQXDH_SharedSecret` handshake that carries no ciphertext, **fails**
+   — it does not derive from the classical halves alone. Both would otherwise succeed: the
+   classical halves still agree, so the result is a secret that is merely *different*, and the
+   disagreement surfaces later as an AEAD tag rejection attributed to the wrong cause. Under 4b a
+   classical peer never reaches this path at all, so neither shape is a legitimate exchange:
+   arriving without a ciphertext means the field was stripped in relay, and arriving without a
+   key means the responder lost material it published. This is 4a's argument applied to the
+   handshake — stripping a field is cheaper than breaking a primitive, and what is cheap must not
+   also work.
 
 **Edge cases.** No one-time pre-keys left: proceed with the three-DH variant — never refuse,
 never fall back to an unauthenticated exchange. Bundle from an unknown device: `NOT_FOUND`.
@@ -146,6 +158,15 @@ multi-device delivery is promised to anyone.
 > PR-39c answers a `0x02` ciphertext through `derive_recipient_shared_secret`, and PR-39b
 > ([#292](https://github.com/guardyn/guardyn/issues/292)) encapsulates to a peer's
 > `ml_kem_public` and sets the flag. Two desktops now agree a hybrid secret.
+>
+> **Rule 4c holds as of PR-120 ([#329](https://github.com/guardyn/guardyn/issues/329)).**
+> `derive_recipient_shared_secret` gated decapsulation on `if let (Some, Some) … else { None }`,
+> so both asymmetric shapes fell through to a classical derivation and returned `Ok` with a
+> divergent secret. The gate is now an exhaustive four-arm `match` returning
+> `CryptoError::Protocol`, and it runs before the classical Diffie-Hellman so no DH output is in
+> scope on the error path. It was reachable from no shipped caller when it was fixed — the
+> desktop pre-filters — which is why it was tracked and fixed as its own step rather than patched
+> inside PR-40a.
 >
 > The responder landed before the initiator deliberately. Every desktop has published an ML-KEM
 > pre-key since PR-39a, so an initiator-first order would have put every desktop-to-desktop

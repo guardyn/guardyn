@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1095
+tokens: 1097
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 23 | 40 | `██████░░░░` |
-| **all** | **112** | **135** | |
+| 4 | 24 | 41 | `██████░░░░` |
+| **all** | **113** | **136** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 23 of 135
+- **Open steps:** 23 of 136
 
 ## Gates
 
@@ -46,7 +46,7 @@ supersedes: []
 | | | | *rate_limit.rs logs a raw IP; span fields are not redacted* |
 | I-2 | Always-On E2EE | partial | PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c |
 | | | | *no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS* |
-| I-3 | Post-Quantum | false | PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b |
+| I-3 | Post-Quantum | false | PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b, PR-120 |
 | I-4 | Data Sovereignty | partial | — |
 | | | | *envoy/ingress.yaml hardcodes a domain* |
 

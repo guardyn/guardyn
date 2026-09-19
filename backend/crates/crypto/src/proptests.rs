@@ -470,27 +470,26 @@ proptest! {
         prop_assert_eq!(&sender_secret, recipient_secret.as_bytes());
     }
 
-    /// A responder that skips the post-quantum half does **not** land on the initiator's secret.
+    /// A responder that skips the post-quantum half **refuses**, in either direction.
     ///
-    /// Both halves of the skip are covered, and only one of them had a test before:
-    /// `pqxdh::tests::from_parts_without_the_decapsulation_key_diverges` pins *ciphertext
-    /// present, decapsulation key absent*. The mirror - key present, ciphertext absent - reaches
-    /// the same `else { None }` at `pqxdh.rs:490` and had nothing pinning it at all.
+    /// `drop_the_key` picks which half goes missing: a ciphertext with no decapsulation key to
+    /// open it, or a decapsulation key with no ciphertext to open. Both were `Ok` with a
+    /// divergent secret until PR-120, because the classical halves still agree - so the
+    /// disagreement surfaced only later, as an AEAD tag rejection blamed on the wrong thing.
     ///
-    /// The assertion is `ne`, not `is_err`. That is the finding, not an oversight: the classical
-    /// halves still agree, so the function returns `Ok` with a secret that is merely *different*,
-    /// and the mismatch surfaces only later as an AEAD tag rejection. Pinning it is what stops a
-    /// future caller quietly acquiring a classical secret from a hybrid API - the safety today
-    /// lives in the caller, which pre-filters before it ever reaches this branch.
+    /// The assertion is `is_err`, and the previous `ne` is what the step replaced. Stripping a
+    /// field from a relayed frame costs an attacker nothing; a fallback that answers anyway
+    /// prices the post-quantum downgrade at the cost of a delete. `docs/spec/SRS.md` rule 4c is
+    /// the contract, and it is rule 4a's argument for the bundle applied to the handshake.
     #[test]
-    fn a_responder_that_skips_the_pq_half_diverges(
+    fn a_responder_that_skips_the_pq_half_fails(
         with_one_time_prekey in any::<bool>(),
         drop_the_key in any::<bool>(),
     ) {
         let (bundle, private_keys) =
             generate_hybrid_key_bundle(with_one_time_prekey, true).expect("bundle generation");
 
-        let (sender_identity, sender_secret, ephemeral_public, ciphertext) = initiate(&bundle);
+        let (sender_identity, _sender_secret, ephemeral_public, ciphertext) = initiate(&bundle);
 
         let (responder_keys, offered) = if drop_the_key {
             let stripped = HybridPrivateKeys::from_parts(
@@ -504,15 +503,14 @@ proptest! {
             (private_keys, None)
         };
 
-        let recipient_secret = derive_recipient_shared_secret(
+        let result = derive_recipient_shared_secret(
             &responder_keys,
             &sender_identity.verifying_key().to_bytes(),
             &ephemeral_public,
             offered,
-        )
-        .expect("recipient derivation still succeeds - that is the point");
+        );
 
-        prop_assert_ne!(&sender_secret, recipient_secret.as_bytes());
+        prop_assert!(result.is_err(), "an asymmetric ML-KEM shape must be refused");
     }
 
     /// Flipping any bit of the ML-KEM ciphertext costs the responder the shared secret.

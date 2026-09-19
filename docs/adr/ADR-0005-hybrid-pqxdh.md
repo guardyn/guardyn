@@ -176,28 +176,51 @@ routing it through the hybrid path is [#262](https://github.com/guardyn/guardyn/
 **Do not describe the product as post-quantum protected on the strength of this ADR alone** —
 name the endpoints.
 
-## What PR-40a pins, and one thing it deliberately does not fix
+## What PR-40a pinned, and what PR-120 then fixed
 
-Five properties now cover the agreement itself; before PR-40a the only post-quantum properties
-checked bundle *shape*, never whether the two sides actually agree.
+Five properties cover the agreement itself as of PR-40a; before it, the only post-quantum
+properties checked bundle *shape*, never whether the two sides actually agree.
 
-`a_responder_that_skips_the_pq_half_diverges` is the one worth reading. Both halves of
-`derive_recipient_shared_secret`'s `if let (Some, Some) … else { None }` are covered — a
+`a_responder_that_skips_the_pq_half_diverges` was the one worth reading. Both halves of
+`derive_recipient_shared_secret`'s `if let (Some, Some) … else { None }` were covered — a
 decapsulation key with no ciphertext, and a ciphertext with no decapsulation key. Only the
 second had a test before.
 
-**The assertion is `assert_ne`, not `is_err`, and that is the finding rather than an oversight.**
-A responder that skips the post-quantum half still agrees on the classical halves, so the
-function returns `Ok` with a secret that is merely *different*; the mismatch surfaces later as an
-AEAD tag rejection rather than as an error at the point of the mistake. It is not exploitable
-today — the desktop caller pre-filters on `pq_ciphertext.is_some()` before it can reach that
-branch — but the safety lives in the caller and the function is `pub`. PR-40a pins the behaviour
-rather than changing it: a known failure is not licence to patch it, and making the function
-fail closed is a wire-visible behaviour change that belongs in its own step.
+**Its assertion was `assert_ne`, not `is_err`, and that was the finding rather than an
+oversight.** A responder that skipped the post-quantum half still agreed on the classical halves,
+so the function returned `Ok` with a secret that was merely *different*; the mismatch surfaced
+later as an AEAD tag rejection rather than as an error at the point of the mistake. PR-40a pinned
+that behaviour rather than changing it — a known failure is not licence to patch it, and making
+the function fail closed is a wire-visible behaviour change that belongs in its own step.
 
-The same `assert_ne` shape appears in
-`a_tampered_pq_ciphertext_does_not_yield_the_sender_secret` for an unrelated reason: ML-KEM-768
-is unauthenticated and uses **implicit rejection**, so a tampered ciphertext of the right length
+**PR-120 ([#329](https://github.com/guardyn/guardyn/issues/329)) is that step.** The gate is now
+an exhaustive four-arm `match`, the same shape `verify_hybrid_bundle` uses for the bundle half
+pair, and both asymmetric shapes return `CryptoError::Protocol`. `(None, None)` still derives a
+classical secret: a classical-only responder answering a classical-only initiator is legitimate,
+and classical strength is the floor. The test is renamed
+`a_responder_that_skips_the_pq_half_fails` and asserts `is_err`.
+
+Three details of that step are worth keeping.
+
+**The gate runs before the classical Diffie-Hellman, not in place of the old `else`.** Returning
+from the old position would have dropped `classical_ikm` — four DH outputs — without reaching its
+`zeroize()`. The HKDF input layout is unchanged; only the point of decision moved.
+
+**`Protocol`, not `InvalidKey`.** The wrong-length ciphertext path already returns
+`InvalidKey("Invalid PQ ciphertext")`. Reusing it would collapse *absent* and *malformed* into
+one variant a caller cannot tell apart, which matters precisely because the two want different
+responses: malformed is a bad frame, absent is a downgrade attempt or a lost key.
+
+**It was not exploitable when it was fixed, and that was the argument for fixing it.** The one
+production caller pre-filters on `pq_ciphertext.is_some()`, so no shipped path reached the
+branch. The safety lived entirely in that caller while the function is `pub` in a crate the
+desktop, three backend services and `crypto-ffi` all depend on — and PR-98 adds another caller.
+A guarantee that holds because every caller remembers is not a guarantee.
+
+The `assert_ne` shape survives in
+`a_tampered_pq_ciphertext_does_not_yield_the_sender_secret`, for a reason unrelated to any of the
+above and now easier to mistake for an oversight with its neighbour gone: ML-KEM-768 is
+unauthenticated and uses **implicit rejection**, so a tampered ciphertext of the right length
 decapsulates successfully to an unrelated secret. A test asserting `is_err` there would assert
 the opposite of how the primitive is specified to behave.
 

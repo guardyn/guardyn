@@ -154,7 +154,10 @@ impl HybridPrivateKeys {
     ///
     /// `signed_prekey` and `one_time_prekey` are X25519 secrets. `pq_decapsulation_key` is the
     /// 2400-byte ML-KEM-768 decapsulation key; `None` makes this a classical-only responder,
-    /// which cannot answer a handshake that carries a ciphertext.
+    /// which **cannot** answer a handshake that carries a ciphertext. That is enforced rather
+    /// than merely described: [`derive_recipient_shared_secret`] returns
+    /// [`CryptoError::Protocol`] for the pairing, instead of deriving a classical secret the
+    /// initiator will not match.
     pub fn from_parts(
         identity_key: [u8; 32],
         signed_prekey: [u8; 32],
@@ -434,8 +437,69 @@ pub fn derive_recipient_shared_secret(
     recipient_private_keys: &HybridPrivateKeys,
     sender_identity_key: &[u8; 32],
     sender_ephemeral_key: &[u8; 32],
-    #[allow(unused_variables)] pq_ciphertext: Option<&[u8]>,
+    pq_ciphertext: Option<&[u8]>,
 ) -> Result<HybridSharedSecret> {
+    // The post-quantum gate runs FIRST, before any Diffie-Hellman.
+    //
+    // Two reasons, and the ordering is load-bearing for both. The decapsulation key and the
+    // ciphertext are present together or absent together; the two asymmetric shapes are a
+    // downgrade rather than a fallback, and `docs/spec/SRS.md` rule 4c makes refusing them
+    // mandatory. Deciding that before the classical halves run means no DH secret is in scope on
+    // the error path - an early return from further down would drop `classical_ikm` without
+    // reaching its `zeroize()`. The IKM layout is unchanged: `classical || pq`, in that order.
+    #[cfg(feature = "pq")]
+    let pq_shared = match (&recipient_private_keys.pq_decapsulation_key, pq_ciphertext) {
+        (Some(dk_bytes), Some(ct)) => {
+            use ml_kem::EncodedSizeUser;
+            let dk_arr: &[u8; 2400] = dk_bytes
+                .as_slice()
+                .try_into()
+                .map_err(|_| CryptoError::InvalidKey("Invalid PQ decapsulation key".to_string()))?;
+            let dk =
+                ml_kem::kem::DecapsulationKey::<ml_kem::MlKem768Params>::from_bytes(dk_arr.into());
+            let ct_arr: &[u8; 1088] = ct
+                .try_into()
+                .map_err(|_| CryptoError::InvalidKey("Invalid PQ ciphertext".to_string()))?;
+            let ciphertext = ct_arr.into();
+            let shared_secret = dk
+                .decapsulate(ciphertext)
+                .map_err(|_| CryptoError::Decryption("ML-KEM decapsulation failed".to_string()))?;
+            Some(shared_secret)
+        }
+        // Classical-only responder answering a classical-only initiator. Classical strength is
+        // the floor, so this is the one shape that legitimately skips ML-KEM.
+        (None, None) => None,
+        // A responder holding an ML-KEM key, asked to answer a hybrid handshake that carries no
+        // ciphertext. An initiator sets the prekey message's `0x02` bit exactly when the bundle
+        // it fetched carried an ML-KEM pre-key (rule 4b), so a classical peer never reaches this
+        // function at all - it is routed to `x3dh`. Arriving here without a ciphertext means the
+        // field was stripped in relay.
+        (Some(_), None) => {
+            return Err(CryptoError::Protocol(
+                "refusing a hybrid handshake with no ML-KEM ciphertext".to_string(),
+            ))
+        }
+        // The mirror: a ciphertext this responder cannot open, because it no longer holds the
+        // decapsulation key for the pre-key it published. Deriving anyway would turn a
+        // key-storage fault into a session that silently cannot be read.
+        (None, Some(_)) => {
+            return Err(CryptoError::Protocol(
+                "refusing a hybrid handshake with no ML-KEM decapsulation key".to_string(),
+            ))
+        }
+    };
+
+    // Without `pq` the whole block above is compiled out, so a ciphertext would simply be
+    // ignored and a classical secret returned under a hybrid API - the same fail-open, one
+    // configuration over. Nothing in this repository builds that configuration, and the guard is
+    // what keeps that true by construction rather than by convention.
+    #[cfg(not(feature = "pq"))]
+    if pq_ciphertext.is_some() {
+        return Err(CryptoError::Protocol(
+            "refusing a hybrid handshake: this build has no post-quantum support".to_string(),
+        ));
+    }
+
     // Mirror of the sender: the Ed25519 identity keys on both sides are mapped onto
     // Curve25519 before any Diffie-Hellman.
     let recipient_identity = ed25519_secret_to_x25519(&recipient_private_keys.identity_key);
@@ -467,29 +531,6 @@ pub fn derive_recipient_shared_secret(
     if let Some(ref dh4_result) = dh4 {
         classical_ikm.extend_from_slice(dh4_result.as_bytes());
     }
-
-    // ML-KEM decapsulation (if available)
-    #[cfg(feature = "pq")]
-    let pq_shared = if let (Some(ref dk_bytes), Some(ct)) =
-        (&recipient_private_keys.pq_decapsulation_key, pq_ciphertext)
-    {
-        use ml_kem::EncodedSizeUser;
-        let dk_arr: &[u8; 2400] = dk_bytes
-            .as_slice()
-            .try_into()
-            .map_err(|_| CryptoError::InvalidKey("Invalid PQ decapsulation key".to_string()))?;
-        let dk = ml_kem::kem::DecapsulationKey::<ml_kem::MlKem768Params>::from_bytes(dk_arr.into());
-        let ct_arr: &[u8; 1088] = ct
-            .try_into()
-            .map_err(|_| CryptoError::InvalidKey("Invalid PQ ciphertext".to_string()))?;
-        let ciphertext = ct_arr.into();
-        let shared_secret = dk
-            .decapsulate(ciphertext)
-            .map_err(|_| CryptoError::Decryption("ML-KEM decapsulation failed".to_string()))?;
-        Some(shared_secret)
-    } else {
-        None
-    };
 
     // Derive final shared secret using HKDF
     let mut ikm = classical_ikm;
@@ -732,21 +773,27 @@ mod tests {
         assert_eq!(sender_secret.as_bytes(), recipient_secret.as_bytes());
     }
 
-    /// Without the decapsulation key the rebuilt responder cannot reach the initiator's secret.
+    /// Without the decapsulation key the rebuilt responder refuses outright.
     ///
-    /// It does not error - the classical halves still agree - so the mismatch would surface only
-    /// as an AEAD tag rejection. Pinning it here documents why the responder must treat a
-    /// missing decapsulation key as a hard failure rather than deriving anyway.
+    /// This test used to assert `assert_ne!` on two secrets, because the responder derived one
+    /// anyway: the classical halves still agree, so it returned `Ok` with a value the initiator
+    /// would never match, and the mismatch surfaced later as an AEAD tag rejection. An error
+    /// three layers downstream, attributed to the wrong cause. PR-120 makes the responder fail
+    /// where the material is missing, and this test now pins that.
+    ///
+    /// The shape it covers is a real fault rather than a hypothetical one: a device that
+    /// published an ML-KEM pre-key and no longer holds its secret half. Deriving anyway turns
+    /// that storage fault into a session nobody can read.
     #[cfg(feature = "pq")]
     #[test]
-    fn from_parts_without_the_decapsulation_key_diverges() {
+    fn from_parts_without_the_decapsulation_key_fails() {
         let (recipient_bundle, generated) = generate_hybrid_key_bundle(true, true).unwrap();
 
         let mut rng = rand::thread_rng();
         let sender_identity = SigningKey::generate(&mut rng);
         let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
 
-        let (sender_secret, additional_data) = derive_sender_shared_secret(
+        let (_sender_secret, additional_data) = derive_sender_shared_secret(
             &sender_identity.to_bytes(),
             &sender_ephemeral.to_bytes(),
             &recipient_bundle,
@@ -761,14 +808,89 @@ mod tests {
         );
 
         let sender_ephemeral_public = X25519PublicKey::from(&sender_ephemeral);
-        let recipient_secret = derive_recipient_shared_secret(
+        let result = derive_recipient_shared_secret(
             &classical_only,
             &sender_identity.verifying_key().to_bytes(),
             sender_ephemeral_public.as_bytes(),
             Some(&additional_data[32..]),
-        )
-        .unwrap();
+        );
 
-        assert_ne!(sender_secret.as_bytes(), recipient_secret.as_bytes());
+        // Matched rather than unwrapped with `expect_err`, which would need `HybridSharedSecret:
+        // Debug` - and `ZK-DEBUG` in `.claude/rules/30-zk-logging.md` is the reason this type
+        // does not have one.
+        //
+        // `Protocol`, not `InvalidKey`: the wrong-length ciphertext path already returns
+        // `InvalidKey`, and absent material has to stay distinguishable from malformed material.
+        assert!(
+            matches!(result, Err(CryptoError::Protocol(_))),
+            "a responder with no decapsulation key must refuse a ciphertext with Protocol"
+        );
+    }
+
+    /// A build compiled without `pq` refuses a handshake that carries a ciphertext.
+    ///
+    /// The guard this covers lives under `#[cfg(not(feature = "pq"))]`, where the whole
+    /// decapsulation block is compiled out and the ciphertext would otherwise be ignored - a
+    /// classical secret returned from a hybrid API, which is the same fail-open the rest of this
+    /// step closes, one configuration over.
+    ///
+    /// It runs only under `--no-default-features`, which nothing in this repository builds and
+    /// no CI job exercises today. It is here so the guard is not unreachable code: `pq` is in
+    /// the crate's `default` set as of PR-38, and this is what would catch its removal.
+    ///
+    /// The ciphertext length is written out rather than taken from `MLKEM_CIPHERTEXT_SIZE`,
+    /// which is itself `#[cfg(feature = "pq")]` and so does not exist here. It is not
+    /// load-bearing either way - the guard fires on presence, not on size.
+    #[cfg(not(feature = "pq"))]
+    #[test]
+    fn a_non_pq_build_refuses_a_ciphertext() {
+        let (_bundle, private_keys) = generate_hybrid_key_bundle(true, false).unwrap();
+
+        let mut rng = rand::thread_rng();
+        let sender_identity = SigningKey::generate(&mut rng);
+        let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
+        let sender_ephemeral_public = X25519PublicKey::from(&sender_ephemeral);
+
+        let result = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            sender_ephemeral_public.as_bytes(),
+            Some(&[0u8; 1088]),
+        );
+
+        assert!(
+            matches!(result, Err(CryptoError::Protocol(_))),
+            "a build with no post-quantum support must refuse a ciphertext"
+        );
+    }
+
+    /// The mirror shape: a responder that holds the decapsulation key and is handed no
+    /// ciphertext.
+    ///
+    /// An initiator sets the prekey message's `0x02` bit exactly when the bundle it fetched
+    /// carried an ML-KEM pre-key, so a classical peer is routed to `x3dh` and never arrives
+    /// here. Reaching this function with no ciphertext therefore means the field was stripped in
+    /// relay - which costs an attacker a delete, against the cost of breaking X25519 or ML-KEM.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn a_responder_handed_no_ciphertext_fails() {
+        let (_bundle, private_keys) = generate_hybrid_key_bundle(true, true).unwrap();
+
+        let mut rng = rand::thread_rng();
+        let sender_identity = SigningKey::generate(&mut rng);
+        let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
+        let sender_ephemeral_public = X25519PublicKey::from(&sender_ephemeral);
+
+        let result = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            sender_ephemeral_public.as_bytes(),
+            None,
+        );
+
+        assert!(
+            matches!(result, Err(CryptoError::Protocol(_))),
+            "a hybrid responder must refuse a handshake with no ML-KEM ciphertext"
+        );
     }
 }
