@@ -529,3 +529,16 @@ fuzz target secs="60":
 # signature has not drifted out from under its harness.
 fuzz-build:
     cd backend/crates/crypto && cargo +{{FUZZ_TOOLCHAIN}} fuzz build
+
+# Benchmark the crypto primitives. Pass a criterion filter to run one group,
+# e.g. `just bench PQXDH`; with no argument every group runs.
+#
+# The agreement benches are the point: the classical and hybrid arms go through
+# the same two functions, so the difference between them is the ML-KEM price and
+# not two unrelated numbers. Needs the `pq` feature, which is on by default.
+#
+# No CI job runs these. build.yml already compiles the bench target through
+# `cargo clippy --all-targets`, which is the drift check fuzz-build had to exist
+# for; timings on a shared runner vary by more than the effect being measured.
+bench filter="":
+    cd backend/crates/crypto && cargo bench -- {{filter}}

@@ -30,6 +30,14 @@ project_sync_enabled: true
 invariants:
   - {id: I-1, name: Zero-Knowledge,   met: partial, note: "rate_limit.rs logs a raw IP; span fields are not redacted"}
   - {id: I-2, name: Always-On E2EE,   met: partial, closed_by: [PR-30, PR-31a, PR-31b, PR-32a, PR-32b, PR-32c, PR-75, PR-76, PR-77, PR-78, PR-79, PR-80, PR-80b, PR-81, PR-81b, PR-81c], note: "no switch can disable encryption - E2EE-FLAG passes and rules-verify enforces it - no client path transmits plaintext, and client-desktop one-to-one messaging now runs over the encrypted path. Remaining: mobile groups refuse for want of MLS"}
+  # I-3's closed_by list is complete once PR-40b lands and the invariant is still unmet.
+  # client-mobile publishes no ML-KEM material and negotiates classical X3DH - routing it
+  # through the hybrid path is PR-98 (#262), which is absent from the list below. So a
+  # closed_by that reads as satisfied sits beside met: false, and nothing machine-checks the
+  # two against each other. ADR-0005:171-177 says this correctly; ADR-0005:65-66 ("I-3 is met
+  # when PR-40 closes") and AGENTS.md 1 ("Repaired by PR-36...PR-40") both predate PR-98 and
+  # are wrong. Recorded rather than fixed: adding PR-98 to closed_by is a claim about what
+  # closes an invariant, and that belongs in its own step.
   - {id: I-3, name: Post-Quantum,     met: false,   closed_by: [PR-36, PR-37, PR-38, PR-39, PR-40a, PR-40b, PR-120]}
   - {id: I-4, name: Data Sovereignty, met: partial, note: "envoy/ingress.yaml hardcodes a domain"}
 
@@ -210,7 +218,7 @@ steps:
   # Encapsulation and decapsulation happen once per session and are the ML-KEM cost a user can
   # feel; benchmarking both classical and hybrid over the same path is what makes the delta the
   # post-quantum price rather than two unrelated numbers.
-  - {id: PR-40b, issue: 327, phase: 4, type: chore, status: todo, title: "Extend bench_pqxdh to the hybrid agreement"}
+  - {id: PR-40b, issue: 327, phase: 4, type: chore, status: done, title: "Extend bench_pqxdh to the hybrid agreement"}
   - {id: PR-41, issue: 52, phase: 4, type: refactor, status: todo, title: "Make rate limiting distributed or document the single-replica constraint"}
   - {id: PR-42, issue: 53, phase: 4, type: security, status: todo, title: "Fix the inverted secrets gitignore"}
   - {id: PR-43, issue: 54, phase: 4, type: feat, status: todo, title: "Wire the compose observability stack"}

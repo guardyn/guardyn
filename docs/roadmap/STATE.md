@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1097
+tokens: 1068
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 24 | 41 | `██████░░░░` |
-| **all** | **113** | **136** | |
+| 4 | 25 | 41 | `██████░░░░` |
+| **all** | **114** | **136** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 23 of 136
+- **Open steps:** 22 of 136
 
 ## Gates
 
@@ -61,7 +61,6 @@ supersedes: []
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
 | PR-98 | 4 | [#262](https://github.com/guardyn/guardyn/issues/262) | Export the hybrid key agreement through crypto-ffi and route client-mobile through it |
-| PR-40b | 4 | [#327](https://github.com/guardyn/guardyn/issues/327) | Extend bench_pqxdh to the hybrid agreement |
 | PR-41 | 4 | [#52](https://github.com/guardyn/guardyn/issues/52) | Make rate limiting distributed or document the single-replica constraint |
 | PR-42 | 4 | [#53](https://github.com/guardyn/guardyn/issues/53) | Fix the inverted secrets gitignore |
 | PR-43 | 4 | [#54](https://github.com/guardyn/guardyn/issues/54) | Wire the compose observability stack |
