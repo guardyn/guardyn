@@ -12,7 +12,7 @@ import 'hardware_key_storage.dart';
 /// 3. Software fallback
 class AndroidKeyStoreStorage implements HardwareKeyStorage {
   static const MethodChannel _channel = MethodChannel(
-    'io.guardyn/android_keystore',
+    'co.guardyn/android_keystore',
   );
 
   /// Check if running on Android.
@@ -216,7 +216,7 @@ class AndroidKeyStoreStorage implements HardwareKeyStorage {
 /// Kotlin native code should implement:
 ///
 /// ```kotlin
-/// package io.guardyn.keystore
+/// package co.guardyn.keystore
 ///
 /// import android.os.Build
 /// import android.security.keystore.KeyGenParameterSpec

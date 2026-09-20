@@ -21,7 +21,7 @@ LINUX_DATA_DIR="${HOME}/.local/share/guardyn_client"
 
 # Android emulator data directories (common locations)
 ANDROID_AVD_DIR="${HOME}/.android/avd"
-ANDROID_PACKAGE="io.guardyn.guardyn_client"
+ANDROID_PACKAGE="co.guardyn.guardyn_client"
 
 # Function to clear Linux client data
 clear_linux_data() {
