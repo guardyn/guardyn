@@ -14,7 +14,7 @@ Security contact information for vulnerability disclosure.
 
 ### Contents
 
-- Contact email: security@guardyn.io
+- Contact email: security@guardyn.co
 - Response time: Within 48 hours
 - Preferred languages: English, Ukrainian, Russian
 
@@ -22,7 +22,7 @@ Security contact information for vulnerability disclosure.
 
 If you discover a security vulnerability:
 
-1. **Email us:** security@guardyn.io
+1. **Email us:** security@guardyn.co
 2. **Include:** Detailed description, steps to reproduce, impact assessment
 3. **Wait for response:** We will respond within 48 hours
 

@@ -84,7 +84,7 @@ check yourself before a reviewer does.
 ## Reporting a vulnerability
 
 **Do not open a public issue.** See [`SECURITY.md`](SECURITY.md) — report privately to
-security@guardyn.app.
+security@guardyn.co.
 
 ---
 
