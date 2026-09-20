@@ -1,5 +1,5 @@
 Contact: mailto:security@guardyn.io
-Expires: 2026-11-17T23:59:59.000Z
+Expires: 2027-09-17T23:59:59.000Z
 Preferred-Languages: en, uk, ru
 Canonical: https://guardyn.co/.well-known/security.txt
 
