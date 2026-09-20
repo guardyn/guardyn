@@ -86,11 +86,10 @@ class AppConfig {
     return '$protocol://$websocketHost:$websocketPort/ws?token=$token';
   }
 
-  // For production (with TLS):
-  // static const String authHost = 'auth.guardyn.io';
-  // static const int authPort = 443;
-  // static const String messagingHost = 'messaging.guardyn.io';
-  // static const int messagingPort = 443;
+  // For production, pass the deployment's own hostname in at build time:
+  //   flutter build apk --dart-define=GRPC_HOST=auth.yourdomain.com
+  // authHost reads GRPC_HOST above, so there is no host to hardcode here. Never commit a
+  // real domain - AGENTS.md 6 makes ${DOMAIN} the single source of truth.
 
   // App metadata
   static const String appName = 'Guardyn';

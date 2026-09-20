@@ -40,7 +40,7 @@ spec:
           annotations:
             summary: "Auth Service is down"
             description: "Auth Service has been unavailable for more than 2 minutes. User authentication is impacted."
-            runbook_url: "https://guardyn.io/runbooks/auth-service-down"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#a-service-will-not-start"
 
         - alert: AuthServiceHighRestarts
           expr: |
@@ -67,7 +67,7 @@ spec:
           annotations:
             summary: "Messaging Service is down"
             description: "Messaging Service has been unavailable for more than 2 minutes. Chat functionality is impacted."
-            runbook_url: "https://guardyn.io/runbooks/messaging-service-down"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#a-service-will-not-start"
 
         - alert: MessagingServiceHighRestarts
           expr: |
@@ -201,7 +201,7 @@ spec:
           annotations:
             summary: "TiKV cluster is down"
             description: "TiKV cluster has been unavailable for more than 2 minutes. All data operations are impacted."
-            runbook_url: "https://guardyn.io/runbooks/tikv-down"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#a-store-is-unhealthy"
 
         - alert: TiKVHighLatency
           expr: |
@@ -228,7 +228,7 @@ spec:
           annotations:
             summary: "ScyllaDB cluster is down"
             description: "ScyllaDB cluster has been unavailable for more than 2 minutes. Message history is impacted."
-            runbook_url: "https://guardyn.io/runbooks/scylladb-down"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#a-store-is-unhealthy"
 
         - alert: ScyllaDBHighLatency
           expr: |
@@ -260,7 +260,7 @@ spec:
           annotations:
             summary: "Redpanda is down"
             description: "Redpanda has been unavailable for more than 2 minutes. Real-time messaging is impacted."
-            runbook_url: "https://guardyn.io/runbooks/redpanda-down"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#a-store-is-unhealthy"
 
         - alert: RedpandaHighConsumerLag
           expr: |
@@ -365,7 +365,7 @@ spec:
           annotations:
             summary: "Envoy Proxy is down"
             description: "Envoy Proxy has been unavailable for more than 2 minutes. gRPC-Web clients cannot connect."
-            runbook_url: "https://guardyn.io/runbooks/envoy-down"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#a-service-will-not-start"
 
         - alert: EnvoyHighErrorRate
           expr: |

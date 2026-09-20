@@ -98,7 +98,7 @@ spec:
           annotations:
             summary: "High error rate consuming SLO budget quickly"
             description: "Platform availability is burning through error budget at an unsustainable rate. Current availability: {{ $value | humanizePercentage }}"
-            runbook_url: "https://guardyn.io/runbooks/slo-burn-rate"
+            runbook_url: "https://github.com/guardyn/guardyn/blob/main/docs/ops/RUNBOOK.md#triage"
 
         # Burn Rate Alert - Slow Burn (5% budget in 6 hours)
         - alert: SLOBurnRateSlow
