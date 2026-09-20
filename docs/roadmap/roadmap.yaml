@@ -490,3 +490,12 @@ steps:
   # the known-gaps table in docs/ops/DEPLOYMENT.md. Recorded rather than fixed in passing, because
   # no infra change can currently be validated by rendering prod and that deserves its own step.
   - {id: PR-129, issue: 339, phase: 4, type: fix, status: todo, title: "The prod overlay does not render: base/monitoring has no kustomization.yaml"}
+  # Not part of the domain migration, and deliberately not folded into PR-125: security.txt
+  # expires 2026-11-17, which RFC 9116 2.5.5 makes a hard cliff - a consumer MUST ignore an
+  # expired file - and that date arrives whether or not the contact migration has landed.
+  #
+  # The bump is NOT the old date plus a year. 2027-11-17 would be 423 days out, and the same
+  # section RECOMMENDS the value be less than a year into the future, so a literal +1y on a
+  # stale date moves the file further out of compliance rather than into it. 2027-09-17 is 362
+  # days out and keeps the day-of-month convention.
+  - {id: PR-130, issue: 344, phase: 4, type: security, status: todo, title: "Bump the security.txt Expires date before it lapses"}

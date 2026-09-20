@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1330
+tokens: 1361
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 26 | 50 | `█████░░░░░` |
-| **all** | **115** | **145** | |
+| 4 | 26 | 51 | `█████░░░░░` |
+| **all** | **115** | **146** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 30 of 145
+- **Open steps:** 31 of 146
 
 ## Gates
 
@@ -84,3 +84,4 @@ supersedes: []
 | PR-127 | 4 | [#337](https://github.com/guardyn/guardyn/issues/337) | Retire the legacy guardyn.io security contact |
 | PR-128 | 4 | [#338](https://github.com/guardyn/guardyn/issues/338) | Rename the guardyn.io label keys at the next cluster rebuild |
 | PR-129 | 4 | [#339](https://github.com/guardyn/guardyn/issues/339) | The prod overlay does not render: base/monitoring has no kustomization.yaml |
+| PR-130 | 4 | [#344](https://github.com/guardyn/guardyn/issues/344) | Bump the security.txt Expires date before it lapses |
