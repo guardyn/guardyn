@@ -76,7 +76,7 @@ log_info "Bob (Linux): $BOB_USER"
 log_header "Clearing App Data"
 
 # Get package name
-PACKAGE_NAME="io.guardyn.client"
+PACKAGE_NAME="io.guardyn.guardyn_client"
 
 # Clear Android app data
 log_info "Clearing Android app data..."

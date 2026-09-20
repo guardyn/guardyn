@@ -15,7 +15,7 @@ use thiserror::Error;
 use tracing::{debug, error, info, warn};
 
 /// Service name used in the system keyring
-const SERVICE_NAME: &str = "com.guardyn.desktop";
+const SERVICE_NAME: &str = "io.guardyn.desktop";
 
 /// Key names for different stored secrets
 const KEY_IDENTITY_KEYPAIR: &str = "identity_keypair";
