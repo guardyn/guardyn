@@ -4,7 +4,7 @@ type: ops
 status: accepted
 owns: [infra/scripts/, Justfile]
 read_when: [an incident, a failing service, a store that will not start]
-tokens: 1062
+tokens: 1170
 supersedes: []
 ---
 
@@ -242,6 +242,47 @@ and CI uploads it as an artifact. Reproduce with
 `cargo +nightly-2026-01-31 fuzz run <target> fuzz/artifacts/<target>/crash-<hash>`. Then commit a
 **named regression test** carrying those bytes — `corpus/` and `artifacts/` are gitignored, so a
 crash left there is lost on the next clean checkout.
+
+## Benchmarks
+
+```sh
+just bench                         # every group - padding, X3DH, PQXDH
+just bench PQXDH                   # one criterion filter - the hybrid group
+just bench sender_agreement        # narrower still - both arms of one side
+```
+
+Three groups: `PADMÉ Padding`, `X3DH Key Exchange` and `PQXDH Hybrid Key Exchange`. The last
+carries the post-quantum measurement - two bundle-generation benches, then `sender_agreement_*`
+and `recipient_agreement_*` with a classical and a hybrid arm each. Criterion writes its reports
+under `backend/crates/crypto/target/`, which is gitignored.
+
+**The delta means something only because both arms run the same code.**
+`derive_sender_shared_secret` and `derive_recipient_shared_secret` are not feature-gated, and the
+classical arm differs from the hybrid one solely in whether the recipient bundle carries an
+ML-KEM prekey — same Diffie-Hellmans, same HKDF, same `info` string, and neither function
+verifies a signature. Subtracting one arm from the other leaves the ML-KEM half and nothing else:
+encapsulation for the sender, decapsulation for the recipient, each including the key decode that
+feeds it. Two benches written against two different code paths would have measured the difference
+between the paths instead.
+
+**The classical arm uses a classical bundle, not a hybrid bundle with the ciphertext withheld.**
+Since PR-120 the responder gate is an exhaustive four-arm match and a decapsulation key with no
+ciphertext returns `Err(Protocol)`. A benchmark written the other way measures an error return,
+not an agreement.
+
+**No CI job runs these, deliberately.** `build.yml` already compiles the bench target through
+`cargo clippy --all-targets`, which is the drift check `fuzz-build` needed a whole workflow to
+get — fuzz needs one because its crate sits outside the workspace on a pinned nightly, while a
+criterion bench on stable inside the crate gets it for free. Timings stay out because a shared
+runner varies by more than the effect being measured, and a regression gate built on that noise
+is one nobody acts on.
+
+**A benchmark is not a security control, and these numbers are desktop-to-desktop.** The hybrid
+arm measures what two clients that both publish ML-KEM material pay. `client-mobile` publishes
+none and negotiates classical X3DH (PR-98,
+[#262](https://github.com/guardyn/guardyn/issues/262)), so the hybrid figure describes a path a
+phone does not yet take. The recorded numbers and the machine that produced them are in
+[ADR-0005](../adr/ADR-0005-hybrid-pqxdh.md) — do not read them as a product-wide cost.
 
 ## Roadmap and board sync
 

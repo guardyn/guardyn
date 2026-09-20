@@ -4,7 +4,7 @@ type: adr
 status: accepted
 owns: [backend/crates/crypto/src/pqxdh.rs, backend/proto/common.proto]
 read_when: [touching crypto, changing key bundles, enabling the pq feature]
-tokens: 509
+tokens: 600
 supersedes: []
 ---
 
@@ -164,9 +164,9 @@ missing on both sides, so `test_classical_key_exchange` and `test_hybrid_key_exc
 never passed. Being unreachable end to end is what kept that invisible.
 
 Repair is owned by PR-36 (proto fields — **landed**) through PR-40a (fuzz and proptest —
-**landed**). PR-40b extends `bench_pqxdh` past key generation to the agreement itself; it was
-split out of PR-40 before opening, per AGENTS.md §2.3, because the two together came to 456
-changed lines over 10 files.
+**landed**). PR-40b extended `bench_pqxdh` past key generation to the agreement itself
+(**landed** — the measurements are below); it was split out of PR-40 before opening, per
+AGENTS.md §2.3, because the two together came to 456 changed lines over 10 files.
 
 **Desktop to desktop is hybrid; the product as a whole is not yet.** `client-mobile` still
 publishes no ML-KEM material and negotiates classical X3DH — its proto is forked at tag 5 and
@@ -223,6 +223,57 @@ above and now easier to mistake for an oversight with its neighbour gone: ML-KEM
 unauthenticated and uses **implicit rejection**, so a tampered ciphertext of the right length
 decapsulates successfully to an unrelated secret. A test asserting `is_err` there would assert
 the opposite of how the primitive is specified to behave.
+
+## What PR-40b measured
+
+`bench_pqxdh` stopped at key generation until PR-40b. Key generation happens once per device
+registration; encapsulation and decapsulation happen once per session, and that is the cost a
+user can feel. Criterion medians, 95% confidence interval in brackets:
+
+| | classical | hybrid | delta |
+|---|---|---|---|
+| `sender_agreement` | 201.45 µs [198.21, 204.96] | 276.24 µs [270.50, 282.13] | **+74.79 µs**, ×1.37 |
+| `recipient_agreement` | 182.34 µs [179.53, 185.53] | 235.90 µs [231.78, 240.29] | **+53.56 µs**, ×1.29 |
+| one handshake, both sides | 383.79 µs | 512.14 µs | **+128.35 µs**, ×1.33 |
+| `generate_*_bundle` | 51.80 µs [51.19, 52.45] | 130.97 µs [126.89, 134.58] | **+79.17 µs**, ×2.53 |
+
+Measured on an Intel Core i9-11900H (8 cores / 16 threads, 4.9 GHz max), 30 GiB RAM, Ubuntu
+24.04.4, kernel 7.0.0-31, `rustc 1.98.1 (48a229cea 2026-09-01)`, criterion 0.5, `bench` profile,
+100 samples per benchmark. One machine, one run, CPU unpinned and frequency scaling left on. The
+intervals do not overlap between arms, so the deltas are real rather than noise — but treat the
+absolute figures as this machine's, not as a specification.
+
+**The delta is the ML-KEM half and nothing else, which is what makes it subtractable.** Both arms
+call the same `derive_sender_shared_secret` and `derive_recipient_shared_secret`: neither is
+feature-gated, neither verifies a signature, and the classical arm differs only in that its
+bundle carries no ML-KEM pre-key. What survives the subtraction is encapsulation on one side and
+decapsulation on the other, each including the decode of the key that feeds it — 1184 bytes for
+the encapsulation key, 2400 for the decapsulation key. Benchmarking `x3dh.rs` against `pqxdh.rs`
+instead would have measured the gap between two implementations and called it the cost of
+post-quantum cryptography.
+
+**This is a per-session cost, not a per-message one, and the ratios are the wrong number to carry
+away.** 128 µs is paid once, when two devices establish a session, and never again for the
+messages that follow — the double ratchet does not touch ML-KEM. A device opening ten
+conversations spends about 1.3 ms in total on the post-quantum half.
+
+**Key generation carries the largest ratio and matters least.** ×2.53 is the biggest number on
+the table, and it is paid once per device registration, behind an account signup that already
+costs a user more than 79 µs. It is recorded because omitting it would invite someone to
+re-measure it later and believe they had found something.
+
+**What the figures exclude.** Bundle generation is outside the agreement rows: keys are minted
+once, outside the timing loop, because ML-KEM-768 key generation costs more than a single
+encapsulation and would otherwise dominate the measurement. The ephemeral keypair is excluded for
+a different reason — a real handshake mints a fresh one, but that cost falls identically on both
+arms, so including it would shrink the ratio without making either figure more honest. Network,
+storage and relay costs are not modelled at all, and in a deployment they dominate every number
+above.
+
+**Nothing regression-gates these.** `build.yml` compiles the bench target through
+`cargo clippy --all-targets`, so it cannot rot silently, but no CI job runs it: a shared runner
+varies by more than 128 µs. Re-measuring is a deliberate act — `just bench PQXDH`, recording the
+machine alongside the result, as above. See [`RUNBOOK.md`](../ops/RUNBOOK.md).
 
 ## Alternatives rejected
 
