@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1264
+tokens: 1231
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 33 | 55 | `██████░░░░` |
-| **all** | **122** | **150** | |
+| 4 | 34 | 55 | `██████░░░░` |
+| **all** | **123** | **150** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 28 of 150
+- **Open steps:** 27 of 150
 
 ## Gates
 
@@ -60,7 +60,6 @@ supersedes: []
 | PR-82 | 3 | [#211](https://github.com/guardyn/guardyn/issues/211) | Add an FFI-backed mobile CI job |
 | PR-83 | 3 | [#268](https://github.com/guardyn/guardyn/issues/268) | Clear the 314 flutter analyze info diagnostics |
 | PR-89 | 3 | [#235](https://github.com/guardyn/guardyn/issues/235) | group_chat_page_test renders a replica of the page, not the page |
-| PR-98c | 4 | [#354](https://github.com/guardyn/guardyn/issues/354) | client-mobile publishes its ML-KEM pre-key on tags 6 and 7 |
 | PR-98d | 4 | [#355](https://github.com/guardyn/guardyn/issues/355) | client-mobile negotiates hybrid PQXDH as initiator |
 | PR-98e | 4 | [#356](https://github.com/guardyn/guardyn/issues/356) | Record what actually closes I-3 and correct the documents that predate PR-98 |
 | PR-41 | 4 | [#52](https://github.com/guardyn/guardyn/issues/52) | Make rate limiting distributed or document the single-replica constraint |

@@ -235,7 +235,23 @@ steps:
   # integration_test/ and runs on a device. CI covers the branch and the refusals. Recorded
   # here because a green mobile job does not mean the hybrid responder was exercised.
   - {id: PR-98b, issue: 353, phase: 4, type: feat, status: done, title: "client-mobile persists an ML-KEM seed and completes hybrid PQXDH as responder"}
-  - {id: PR-98c, issue: 354, phase: 4, type: feat, status: todo, title: "client-mobile publishes its ML-KEM pre-key on tags 6 and 7"}
+  # `NativeCryptoConfig.enablePostQuantum` flips to true here rather than in PR-98d. It gates
+  # `isPostQuantumAvailable`, which gates publication, so leaving it false would have shipped a
+  # step whose own title is untrue - and left a flag reading "post-quantum disabled" on a client
+  # that publishes ML-KEM keys, which is the misleading-kill-switch shape 00-invariants.md
+  # spends a paragraph on. A build without the native `pq` feature still reports
+  # postQuantumAvailable=false and stays classical, so the flag is not a substitute for capability.
+  #
+  # Rotation is NOT covered and cannot be: `UploadPreKeys` carries only one-time pre-keys
+  # (auth.proto:252-255) and login stores a bundle only for an unknown device (login.rs:83).
+  # Register and first-login-on-a-new-device are the only write paths for ml_kem_public, so an
+  # existing phone cannot re-publish or rotate one. Filed as #362, not folded in here.
+  #
+  # The device half of the tests is deliberately absent. The PQ cases in
+  # integration_test/crypto/rust_ffi_test.dart are configured with enablePostQuantum: false and
+  # have therefore been skipping themselves since they were written - adding one more to that
+  # file would have added a test that cannot run. Filed as #363.
+  - {id: PR-98c, issue: 354, phase: 4, type: feat, status: done, title: "client-mobile publishes its ML-KEM pre-key on tags 6 and 7"}
   - {id: PR-98d, issue: 355, phase: 4, type: feat, status: todo, title: "client-mobile negotiates hybrid PQXDH as initiator"}
   # Not folded into PR-98d. Adding a step to I-3's `closed_by` is a claim that the invariant is
   # met, and the comment on I-3 above already records that AGENTS.md 1 and ADR-0005:65-66 both

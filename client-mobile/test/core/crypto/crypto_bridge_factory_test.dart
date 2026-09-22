@@ -95,15 +95,19 @@ void main() {
       expect(config.preferNative, isTrue);
       expect(
         config.enablePostQuantum,
-        isFalse,
-        reason: 'PQ disabled by default until fully tested',
+        isTrue,
+        reason: 'PR-98c publishes ML-KEM pre-keys, so PQ is on by default. A build '
+            'without the native `pq` feature still reports postQuantumAvailable=false '
+            'and stays classical.',
       );
     });
 
-    test('withPostQuantum enables PQ', () {
-      const config = NativeCryptoConfig(enablePostQuantum: true);
+    test('post-quantum can still be turned off explicitly', () {
+      // Not a supported configuration - it gives up the post-quantum half of I-3 - but the
+      // flag has to remain honest for diagnosing a native build.
+      const config = NativeCryptoConfig(enablePostQuantum: false);
 
-      expect(config.enablePostQuantum, isTrue);
+      expect(config.enablePostQuantum, isFalse);
     });
 
     test('config is immutable', () {

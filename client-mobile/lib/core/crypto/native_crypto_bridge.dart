@@ -33,6 +33,12 @@ class NativeCryptoConfig {
   final bool preferNative;
 
   /// Whether to enable post-quantum key exchange
+  ///
+  /// On by default since PR-98c. It gates [CryptoBridge.isPostQuantumAvailable], which in turn
+  /// gates whether this device publishes an ML-KEM pre-key on `KeyBundle` tags 6 and 7. Turning
+  /// it off does not disable encryption - the classical X3DH exchange still runs - but it does
+  /// give up the post-quantum half of I-3, so it exists for diagnosing a native build, not as a
+  /// supported configuration.
   final bool enablePostQuantum;
 
   /// Whether to enable PADMÉ padding
@@ -43,7 +49,11 @@ class NativeCryptoConfig {
 
   const NativeCryptoConfig({
     this.preferNative = true,
-    this.enablePostQuantum = false, // Disabled until ML-KEM is fully tested
+    // The responder has been able to answer a hybrid handshake since PR-98b, so publishing is
+    // no longer ahead of the ability to complete what it invites. `postQuantumAvailable` from
+    // the native status still has to agree: a build without the `pq` feature stays classical
+    // whatever this says.
+    this.enablePostQuantum = true,
     this.enablePadme = true,
     this.enableHardwareAcceleration = true,
   });
