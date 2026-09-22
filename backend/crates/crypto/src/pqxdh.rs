@@ -37,6 +37,19 @@ pub const MLKEM_CIPHERTEXT_SIZE: usize = 1088;
 #[cfg(feature = "pq")]
 pub const MLKEM_SHARED_SECRET_SIZE: usize = 32;
 
+/// Bytes in the `(d || z)` seed an ML-KEM-768 keypair is regenerated from.
+///
+/// FIPS 203 defines key generation as `ML-KEM.KeyGen_internal(d, z)` over this seed, so storing
+/// the seed and regenerating on demand is the specified compact private-key form rather than a
+/// trick to save space. It happens to also be the only form that fits everywhere: a
+/// decapsulation key is 2400 bytes, 4800 hex-encoded, against a 2560-byte Windows credential.
+#[cfg(feature = "pq")]
+pub const MLKEM_SEED_SIZE: usize = 64;
+
+/// ML-KEM-768 decapsulation key size (2400 bytes)
+#[cfg(feature = "pq")]
+pub const MLKEM_DECAPSULATION_KEY_SIZE: usize = 2400;
+
 /// Signature bytes wrapper for serde support of [u8; 64]
 #[derive(Clone)]
 pub struct SignatureBytes(pub [u8; 64]);
@@ -282,6 +295,41 @@ pub fn generate_hybrid_key_bundle(
     };
 
     Ok((bundle, private_keys))
+}
+
+/// Regenerate the ML-KEM-768 keypair a seed stands for.
+///
+/// Returns `(decapsulation_key, encapsulation_key)` as raw bytes - 2400 and 1184 respectively.
+/// The first is what [`HybridPrivateKeys::from_parts`] takes; the second is what a device
+/// publishes as `pq_prekey`.
+///
+/// Deterministic by construction: one seed always yields the same pair. That is what lets a
+/// device persist 64 bytes and rebuild, for every session it answers, the responder state it
+/// would otherwise have to store in full.
+///
+/// **This belongs in the crate rather than in each client.** A second implementation is a place
+/// where the two can disagree, and a disagreement means a device cannot decapsulate ciphertexts
+/// addressed to the key it published - which ML-KEM's implicit rejection turns into a
+/// pseudorandom secret rather than an error, surfacing much later as an AEAD tag rejection with
+/// both ends looking healthy.
+#[cfg(feature = "pq")]
+pub fn ml_kem_keys_from_seed(seed: &[u8; MLKEM_SEED_SIZE]) -> Result<(Vec<u8>, Vec<u8>)> {
+    let (d, z) = seed.split_at(MLKEM_SEED_SIZE / 2);
+
+    // Both halves are 32 bytes by construction; `split_at` on a fixed-size array cannot yield
+    // anything else. They are checked rather than unwrapped all the same - `RS-UNWRAP` in
+    // `.claude/rules/20-code-style.md` is a ratchet frozen at its measured count, and an
+    // infallible `expect` is indistinguishable from a fallible one to the check that holds it.
+    let d = d
+        .try_into()
+        .map_err(|_| CryptoError::InvalidKey("ML-KEM seed d half is not 32 bytes".to_string()))?;
+    let z = z
+        .try_into()
+        .map_err(|_| CryptoError::InvalidKey("ML-KEM seed z half is not 32 bytes".to_string()))?;
+
+    let (dk, ek) = MlKem768::generate_deterministic(d, z);
+
+    Ok((dk.as_bytes().to_vec(), ek.as_bytes().to_vec()))
 }
 
 /// Verify a hybrid key bundle's signatures.
@@ -892,5 +940,129 @@ mod tests {
             matches!(result, Err(CryptoError::Protocol(_))),
             "a hybrid responder must refuse a handshake with no ML-KEM ciphertext"
         );
+    }
+
+    /// One seed, one keypair - the property the whole persist-a-seed design rests on.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn ml_kem_keys_from_seed_is_deterministic() {
+        let mut seed = [0u8; MLKEM_SEED_SIZE];
+        rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut seed);
+
+        let (dk_a, ek_a) = ml_kem_keys_from_seed(&seed).unwrap();
+        let (dk_b, ek_b) = ml_kem_keys_from_seed(&seed).unwrap();
+
+        assert_eq!(dk_a, dk_b);
+        assert_eq!(ek_a, ek_b);
+    }
+
+    #[cfg(feature = "pq")]
+    #[test]
+    fn ml_kem_keys_from_seed_returns_the_specified_sizes() {
+        let seed = [7u8; MLKEM_SEED_SIZE];
+        let (dk, ek) = ml_kem_keys_from_seed(&seed).unwrap();
+
+        assert_eq!(dk.len(), MLKEM_DECAPSULATION_KEY_SIZE);
+        assert_eq!(ek.len(), MLKEM_PUBLIC_KEY_SIZE);
+    }
+
+    /// Distinct seeds must not collide. A weak derivation that ignored half the seed would still
+    /// pass the determinism test above, so this is the half that catches it.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn different_seeds_give_different_keys() {
+        let (_, ek_a) = ml_kem_keys_from_seed(&[1u8; MLKEM_SEED_SIZE]).unwrap();
+        let (_, ek_b) = ml_kem_keys_from_seed(&[2u8; MLKEM_SEED_SIZE]).unwrap();
+        assert_ne!(ek_a, ek_b);
+
+        // The `z` half is the implicit-rejection secret and never reaches the encapsulation key,
+        // so two seeds differing only in `z` share an `ek` and differ in `dk`. Asserting the
+        // wrong one here would pin a property ML-KEM does not have.
+        let mut seed_c = [3u8; MLKEM_SEED_SIZE];
+        let mut seed_d = seed_c;
+        seed_d[MLKEM_SEED_SIZE - 1] ^= 0xff;
+        let (dk_c, _) = ml_kem_keys_from_seed(&seed_c).unwrap();
+        let (dk_d, _) = ml_kem_keys_from_seed(&seed_d).unwrap();
+        assert_ne!(dk_c, dk_d);
+
+        seed_c[0] ^= 0xff;
+        let (_, ek_c) = ml_kem_keys_from_seed(&seed_c).unwrap();
+        assert_ne!(ek_a, ek_c);
+    }
+
+    /// The end-to-end shape a mobile responder will use: publish an encapsulation key derived
+    /// from a seed, then answer a handshake by regenerating the decapsulation key from the same
+    /// seed rather than having stored it.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn a_bundle_published_from_a_seed_answers_its_own_handshake() {
+        use ed25519_dalek::Signer;
+
+        let mut rng = rand::thread_rng();
+
+        // The responder's long-term material, as a device would hold it.
+        let identity = SigningKey::generate(&mut rng);
+        let signed_prekey = X25519Secret::random_from_rng(&mut rng);
+        let signed_prekey_public = X25519PublicKey::from(&signed_prekey);
+
+        let mut seed = [0u8; MLKEM_SEED_SIZE];
+        rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut seed);
+        let (decapsulation_key, encapsulation_key) = ml_kem_keys_from_seed(&seed).unwrap();
+
+        // The bundle it publishes. Both ML-KEM fields are signed by the same identity key that
+        // signs the signed pre-key, which is what `verify_hybrid_bundle` checks.
+        let bundle = HybridKeyBundle {
+            identity_key: identity.verifying_key().to_bytes(),
+            signed_prekey: *signed_prekey_public.as_bytes(),
+            signed_prekey_signature: SignatureBytes(
+                identity.sign(signed_prekey_public.as_bytes()).to_bytes(),
+            ),
+            one_time_prekey: None,
+            pq_prekey: Some(encapsulation_key),
+            pq_prekey_signature: Some(SignatureBytes(
+                identity.sign(&decapsulation_key[..0]).to_bytes(),
+            )),
+        };
+        assert!(
+            verify_hybrid_bundle(&bundle).is_err(),
+            "a mis-signed PQ pre-key must be refused"
+        );
+
+        // Sign the encapsulation key properly and try again.
+        let encapsulation_key = bundle.pq_prekey.clone().unwrap();
+        let bundle = HybridKeyBundle {
+            pq_prekey_signature: Some(SignatureBytes(identity.sign(&encapsulation_key).to_bytes())),
+            ..bundle
+        };
+        verify_hybrid_bundle(&bundle).unwrap();
+
+        // An initiator encapsulates to it.
+        let sender_identity = SigningKey::generate(&mut rng);
+        let sender_ephemeral = X25519Secret::random_from_rng(&mut rng);
+        let (sender_secret, additional_data) = derive_sender_shared_secret(
+            &sender_identity.to_bytes(),
+            &sender_ephemeral.to_bytes(),
+            &bundle,
+        )
+        .unwrap();
+
+        // The responder rebuilds its private half from the seed, having stored 64 bytes.
+        let (regenerated_dk, _) = ml_kem_keys_from_seed(&seed).unwrap();
+        let private_keys = HybridPrivateKeys::from_parts(
+            identity.to_bytes(),
+            signed_prekey.to_bytes(),
+            None,
+            Some(regenerated_dk),
+        );
+
+        let recipient_secret = derive_recipient_shared_secret(
+            &private_keys,
+            &sender_identity.verifying_key().to_bytes(),
+            X25519PublicKey::from(&sender_ephemeral).as_bytes(),
+            Some(&additional_data[32..]),
+        )
+        .unwrap();
+
+        assert_eq!(sender_secret.as_bytes(), recipient_secret.as_bytes());
     }
 }

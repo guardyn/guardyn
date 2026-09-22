@@ -205,7 +205,33 @@ steps:
   - {id: PR-116, issue: 318, phase: 4, type: fix, status: done, title: "Correct the desktop CI target path and fail on a missing bundle"}
   - {id: PR-39b, issue: 292, phase: 4, type: feat, status: done, title: "client-desktop negotiates hybrid PQXDH as initiator"}
   - {id: PR-39c, issue: 293, phase: 4, type: feat, status: done, title: "client-desktop completes hybrid PQXDH as responder"}
-  - {id: PR-98, issue: 262, phase: 4, type: feat, status: todo, title: "Export the hybrid key agreement through crypto-ffi and route client-mobile through it"}
+  # Sliced while scoping it, before the branch was opened. PR-98 as written is "export the
+  # agreement through crypto-ffi AND route client-mobile through it" - Rust FFI, regenerated
+  # bindings, seed persistence, the forked proto and two protocol directions. That is four steps
+  # wearing one issue number, and PR-97/PR-105 already recorded what happens when a protocol
+  # change ships as one lockstep pair: an interop break no CI job can see, because
+  # `just test-two-client-messaging` needs two physical devices and is wired into no workflow.
+  #
+  # The order is forced, and it is the reader before the writer - the rule that put PR-39c ahead
+  # of PR-39b. Every desktop has published an ML-KEM pre-key since PR-39a and every desktop
+  # initiator has encapsulated to one since PR-39b, so the moment a phone publishes tags 6 and 7
+  # it starts receiving hybrid prekey messages. PR-98b must be able to *answer* one before PR-98c
+  # publishes anything; inverting those two drives every desktop-to-mobile session into a
+  # PQXDH_SharedSecret/X3DH domain mismatch, visible only as an AEAD tag rejection with both ends
+  # looking healthy. PR-98d is last because a mobile initiator breaks nothing already working.
+  #
+  # PR-98a keeps #262 and the rest take new issues, matching PR-39a/b/c and PR-40a/b. #262 is
+  # retitled to its narrowed scope by hand - roadmap-sync does not reconcile titles, and that is
+  # the one hand-edit the issue-sync skill sanctions.
+  - {id: PR-98a, issue: 262, phase: 4, type: feat, status: done, title: "Export the hybrid key agreement through crypto-ffi"}
+  - {id: PR-98b, issue: 353, phase: 4, type: feat, status: todo, title: "client-mobile persists an ML-KEM seed and completes hybrid PQXDH as responder"}
+  - {id: PR-98c, issue: 354, phase: 4, type: feat, status: todo, title: "client-mobile publishes its ML-KEM pre-key on tags 6 and 7"}
+  - {id: PR-98d, issue: 355, phase: 4, type: feat, status: todo, title: "client-mobile negotiates hybrid PQXDH as initiator"}
+  # Not folded into PR-98d. Adding a step to I-3's `closed_by` is a claim that the invariant is
+  # met, and the comment on I-3 above already records that AGENTS.md 1 and ADR-0005:65-66 both
+  # predate PR-98 and say the wrong thing. Correcting an invariant's own bookkeeping is its own
+  # step, taken once the code it describes is in place rather than alongside it.
+  - {id: PR-98e, issue: 356, phase: 4, type: docs, status: todo, title: "Record what actually closes I-3 and correct the documents that predate PR-98"}
   # Split before opening, per AGENTS.md 2.3: fuzz, proptest and bench together came to 456
   # changed lines over 10 files, past both limits. The bench is the half that AGENTS.md 8 does
   # not require - it asks for property tests and fuzz targets on every parser reachable from

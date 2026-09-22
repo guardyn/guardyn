@@ -48,6 +48,20 @@ This crate provides FFI bindings that allow Flutter applications to use Guardyn'
 
 - `crypto_x25519_dh()` - Diffie-Hellman key agreement
 
+### Hybrid PQXDH Key Agreement
+
+- `crypto_derive_sender_shared_secret()` - agree a hybrid secret as the initiator. Mints the
+  ephemeral keypair internally and returns the shared secret, the ephemeral public key and the
+  ML-KEM ciphertext, so no ephemeral secret crosses the boundary.
+- `crypto_derive_recipient_shared_secret()` - agree a hybrid secret as the responder.
+- `crypto_verify_hybrid_bundle()` - check a peer's bundle. A bundle carrying one of the two
+  ML-KEM fields without the other is refused in whole, never degraded to a classical exchange.
+- `crypto_ml_kem_public_from_seed()` - the encapsulation key a stored seed stands for.
+
+The ML-KEM **decapsulation key never crosses into Dart.** A device persists the 64-byte FIPS 203
+`(d || z)` seed and passes that; the 2400-byte key it expands to is derived, used and dropped
+inside Rust. See [ADR-0005](../../../docs/adr/ADR-0005-hybrid-pqxdh.md).
+
 ### Symmetric Encryption
 
 - `crypto_encrypt_aes_gcm()` / `crypto_decrypt_aes_gcm()` - AES-256-GCM

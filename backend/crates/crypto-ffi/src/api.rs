@@ -463,6 +463,306 @@ pub fn crypto_constant_time_eq(a: Vec<u8>, b: Vec<u8>) -> bool {
 }
 
 // ============================================================================
+// Hybrid PQXDH Key Agreement
+// ============================================================================
+
+/// A peer's published key bundle, as fetched from `auth-service`.
+///
+/// Every field here is public material - this is what a peer advertises. `pq_prekey` and
+/// `pq_prekey_signature` are `common.KeyBundle` tags 6 and 7, and they are carried as two
+/// independent `Option`s **on purpose**: a bundle holding one without the other must be
+/// rejected in whole rather than degraded to a classical exchange, and coupling them here
+/// would make the orphan unrepresentable and therefore silently discarded instead.
+#[frb(dart_metadata = ("freezed"))]
+#[derive(Debug, Clone)]
+pub struct HybridPeerBundle {
+    /// Ed25519 identity public key (32 bytes)
+    pub identity_key: Vec<u8>,
+    /// X25519 signed pre-key (32 bytes)
+    pub signed_prekey: Vec<u8>,
+    /// Ed25519 signature over `signed_prekey` (64 bytes)
+    pub signed_prekey_signature: Vec<u8>,
+    /// X25519 one-time pre-key (32 bytes), when the peer had one to serve
+    pub one_time_prekey: Option<Vec<u8>>,
+    /// ML-KEM-768 encapsulation key (1184 bytes) - `common.KeyBundle` tag 6
+    pub pq_prekey: Option<Vec<u8>>,
+    /// Ed25519 signature over `pq_prekey` (64 bytes) - `common.KeyBundle` tag 7
+    pub pq_prekey_signature: Option<Vec<u8>>,
+}
+
+/// What an initiator holds after agreeing a hybrid secret.
+///
+/// Deliberately **not** `freezed`. Freezed generates a `toString()` that interpolates every
+/// field, and `shared_secret` is key material - `.claude/rules/30-zk-logging.md` forbids it
+/// reaching a log, a span or stdout, and a Dart `toString()` reaches all three. Plain
+/// flutter_rust_bridge renders `Instance of 'HybridSenderAgreement'` instead. See #348 for the
+/// three existing types that already have this problem.
+#[derive(Clone)]
+pub struct HybridSenderAgreement {
+    /// The 32-byte shared secret. Feed it straight to the Double Ratchet; do not log it.
+    pub shared_secret: Vec<u8>,
+    /// The initiator's ephemeral X25519 public key (32 bytes), for the prekey message.
+    pub ephemeral_public: Vec<u8>,
+    /// ML-KEM-768 ciphertext (1088 bytes), present exactly when the peer published an ML-KEM
+    /// pre-key. Its presence is what sets the prekey message's `0x02` flag.
+    pub pq_ciphertext: Option<Vec<u8>>,
+}
+
+/// Decode a fixed-width key field, naming the field when it is the wrong length.
+///
+/// No `unwrap`/`expect`: `RS-UNWRAP` in `.claude/rules/20-code-style.md` is a ratchet frozen at
+/// its measured count, and every one of these lengths is attacker-influenced anyway - the bytes
+/// arrive from a peer's bundle or a relayed prekey message.
+#[cfg(feature = "pq")]
+fn fixed_key<const N: usize>(bytes: &[u8], field: &str) -> Result<[u8; N], String> {
+    bytes
+        .try_into()
+        .map_err(|_| format!("{} must be {} bytes, got {}", field, N, bytes.len()))
+}
+
+#[cfg(feature = "pq")]
+impl HybridPeerBundle {
+    /// Map onto the crate's bundle type, preserving a half pair rather than dropping it.
+    fn to_pqxdh(&self) -> Result<guardyn_crypto::pqxdh::HybridKeyBundle, String> {
+        use guardyn_crypto::pqxdh::{HybridKeyBundle as Bundle, SignatureBytes};
+
+        Ok(Bundle {
+            identity_key: fixed_key(&self.identity_key, "identity key")?,
+            signed_prekey: fixed_key(&self.signed_prekey, "signed pre-key")?,
+            signed_prekey_signature: SignatureBytes(fixed_key(
+                &self.signed_prekey_signature,
+                "signed pre-key signature",
+            )?),
+            one_time_prekey: self
+                .one_time_prekey
+                .as_deref()
+                .map(|k| fixed_key(k, "one-time pre-key"))
+                .transpose()?,
+            pq_prekey: self.pq_prekey.clone(),
+            pq_prekey_signature: self
+                .pq_prekey_signature
+                .as_deref()
+                .map(|s| fixed_key(s, "ML-KEM pre-key signature").map(SignatureBytes))
+                .transpose()?,
+        })
+    }
+}
+
+/// Error returned by every hybrid entry point in a build compiled without `pq`.
+#[cfg(not(feature = "pq"))]
+const NO_PQ: &str = "refusing a hybrid handshake: this build has no post-quantum support";
+
+/// Derive the ML-KEM-768 encapsulation key a stored seed stands for.
+///
+/// The counterpart to `ml_kem_seed` in [`crypto_derive_recipient_shared_secret`]: that function
+/// answers handshakes addressed to this key, and this is how a device learns which key that is
+/// without storing the 2400-byte decapsulation key it shares a seed with.
+///
+/// Returns the 1184-byte encapsulation key. The decapsulation key is derived, used and dropped
+/// inside Rust and never crosses this boundary.
+#[frb(sync)]
+pub fn crypto_ml_kem_public_from_seed(seed: Vec<u8>) -> Result<Vec<u8>, String> {
+    #[cfg(feature = "pq")]
+    {
+        use guardyn_crypto::pqxdh;
+
+        let seed: [u8; pqxdh::MLKEM_SEED_SIZE] = fixed_key(&seed, "ML-KEM seed")?;
+        pqxdh::ml_kem_keys_from_seed(&seed)
+            .map(|(_dk, ek)| ek)
+            .map_err(|e| e.to_string())
+    }
+
+    #[cfg(not(feature = "pq"))]
+    {
+        let _ = seed;
+        Err(NO_PQ.to_string())
+    }
+}
+
+/// Verify a peer's key bundle before using it.
+///
+/// Both pre-keys are signed by the same Ed25519 identity key. The signed pre-key is mandatory;
+/// the ML-KEM pre-key is optional, but its two fields are present together or absent together,
+/// and a bundle carrying one half is rejected **in whole**. Stripping one field is cheaper for
+/// an attacker than breaking either primitive, so a silent fallback to the classical exchange is
+/// the attack rather than a convenience.
+///
+/// `crypto_derive_sender_shared_secret` calls this itself; it is exported separately so a
+/// freshly-fetched bundle can be checked at the point it arrives.
+#[frb(sync)]
+pub fn crypto_verify_hybrid_bundle(bundle: HybridPeerBundle) -> Result<(), String> {
+    #[cfg(feature = "pq")]
+    {
+        let bundle = bundle.to_pqxdh()?;
+        guardyn_crypto::pqxdh::verify_hybrid_bundle(&bundle).map_err(|e| e.to_string())
+    }
+
+    #[cfg(not(feature = "pq"))]
+    {
+        let _ = bundle;
+        Err(NO_PQ.to_string())
+    }
+}
+
+/// Agree a hybrid shared secret as the initiator.
+///
+/// Performs the four X3DH Diffie-Hellman operations and, when the peer published an ML-KEM
+/// pre-key, an ML-KEM-768 encapsulation, mixing both into one HKDF with the `PQXDH_SharedSecret`
+/// info string. A classical peer yields `pq_ciphertext: None` and the classical arm.
+///
+/// # What this does *not* take
+///
+/// The ephemeral keypair is minted here rather than passed in, so no ephemeral secret ever
+/// crosses into Dart. Its public half comes back in [`HybridSenderAgreement::ephemeral_public`],
+/// which is the only part a prekey message needs.
+///
+/// The peer's bundle is verified before any key agreement runs, and that is deliberate:
+/// `derive_sender_shared_secret` is `pub` and does not verify, so every caller has had to
+/// remember. A guarantee that holds because every caller remembers is not a guarantee.
+///
+/// # Arguments
+/// - `sender_identity_seed`: the initiator's 32-byte **Ed25519 seed**. Not its X25519 form -
+///   the conversion happens inside, and pre-converting silently derives a different secret.
+/// - `recipient_bundle`: the peer's published bundle.
+#[frb(sync)]
+pub fn crypto_derive_sender_shared_secret(
+    sender_identity_seed: Vec<u8>,
+    recipient_bundle: HybridPeerBundle,
+) -> Result<HybridSenderAgreement, String> {
+    #[cfg(feature = "pq")]
+    {
+        use guardyn_crypto::{pqxdh, StaticSecret, X25519PublicKey};
+
+        let identity_seed: [u8; 32] = fixed_key(&sender_identity_seed, "sender identity seed")?;
+        let bundle = recipient_bundle.to_pqxdh()?;
+        pqxdh::verify_hybrid_bundle(&bundle)
+            .map_err(|e| format!("Peer key bundle failed verification: {}", e))?;
+
+        let ephemeral = StaticSecret::random_from_rng(rand::rngs::OsRng);
+        let ephemeral_public = X25519PublicKey::from(&ephemeral);
+
+        let (secret, additional_data) =
+            pqxdh::derive_sender_shared_secret(&identity_seed, &ephemeral.to_bytes(), &bundle)
+                .map_err(|e| e.to_string())?;
+
+        // `additional_data` is `ephemeral_public(32) || ciphertext`, and the ephemeral already
+        // travels in its own field of the prekey message. Splitting here rather than in each
+        // caller is the point: the same `[32..]` arithmetic is currently open-coded in the
+        // desktop client, the crate's tests and the benchmark.
+        let pq_ciphertext = additional_data
+            .get(32..)
+            .filter(|ct| !ct.is_empty())
+            .map(<[u8]>::to_vec);
+
+        Ok(HybridSenderAgreement {
+            shared_secret: secret.as_bytes().to_vec(),
+            ephemeral_public: ephemeral_public.as_bytes().to_vec(),
+            pq_ciphertext,
+        })
+    }
+
+    #[cfg(not(feature = "pq"))]
+    {
+        let _ = (sender_identity_seed, recipient_bundle);
+        Err(NO_PQ.to_string())
+    }
+}
+
+/// Agree a hybrid shared secret as the responder.
+///
+/// Mirrors [`crypto_derive_sender_shared_secret`]: the same four Diffie-Hellman operations from
+/// the other side, plus ML-KEM decapsulation when the initiator sent a ciphertext.
+///
+/// Fails closed on either asymmetric shape - a ciphertext this device cannot open, or a device
+/// holding an ML-KEM key asked to answer a handshake that carries none. Neither degrades to a
+/// classical secret, because a silent degrade surfaces only as an AEAD tag rejection later, with
+/// both ends looking healthy.
+///
+/// # Why a seed and not a decapsulation key
+///
+/// `ml_kem_seed` is the 64-byte FIPS 203 `(d || z)` seed, and the 2400-byte decapsulation key it
+/// expands to never crosses this boundary. The seed is the specified compact private-key form,
+/// it is what the desktop client already persists, and it is 64 bytes rather than 4800 hex
+/// characters against a 2560-byte credential cap.
+///
+/// Pass `None` only for a genuinely classical session. A responder must **never** substitute a
+/// freshly-minted seed for a missing one: ML-KEM uses implicit rejection, so the wrong
+/// decapsulation key yields a pseudorandom secret rather than an error.
+///
+/// # Arguments
+/// - `identity_seed`: this device's 32-byte **Ed25519 seed**.
+/// - `signed_prekey_secret`: the X25519 secret for the signed pre-key the initiator used.
+/// - `one_time_prekey_secret`: the X25519 secret for the one-time pre-key named by the prekey
+///   message, or `None` when it named none.
+/// - `ml_kem_seed`: this device's 64-byte ML-KEM seed, or `None` for a classical session.
+/// - `sender_identity_key` / `sender_ephemeral_key`: 32 bytes each, from the prekey message.
+/// - `pq_ciphertext`: the 1088-byte ML-KEM ciphertext, present exactly when the prekey message
+///   carried the `0x02` flag.
+#[frb(sync)]
+pub fn crypto_derive_recipient_shared_secret(
+    identity_seed: Vec<u8>,
+    signed_prekey_secret: Vec<u8>,
+    one_time_prekey_secret: Option<Vec<u8>>,
+    ml_kem_seed: Option<Vec<u8>>,
+    sender_identity_key: Vec<u8>,
+    sender_ephemeral_key: Vec<u8>,
+    pq_ciphertext: Option<Vec<u8>>,
+) -> Result<Vec<u8>, String> {
+    #[cfg(feature = "pq")]
+    {
+        use guardyn_crypto::pqxdh;
+
+        let identity: [u8; 32] = fixed_key(&identity_seed, "identity seed")?;
+        let signed_prekey: [u8; 32] = fixed_key(&signed_prekey_secret, "signed pre-key secret")?;
+        let one_time_prekey = one_time_prekey_secret
+            .as_deref()
+            .map(|k| fixed_key(k, "one-time pre-key secret"))
+            .transpose()?;
+
+        let decapsulation_key = ml_kem_seed
+            .as_deref()
+            .map(|s| {
+                let seed: [u8; pqxdh::MLKEM_SEED_SIZE] = fixed_key(s, "ML-KEM seed")?;
+                pqxdh::ml_kem_keys_from_seed(&seed)
+                    .map(|(dk, _ek)| dk)
+                    .map_err(|e| e.to_string())
+            })
+            .transpose()?;
+
+        let private_keys = pqxdh::HybridPrivateKeys::from_parts(
+            identity,
+            signed_prekey,
+            one_time_prekey,
+            decapsulation_key,
+        );
+
+        let secret = pqxdh::derive_recipient_shared_secret(
+            &private_keys,
+            &fixed_key(&sender_identity_key, "sender identity key")?,
+            &fixed_key(&sender_ephemeral_key, "sender ephemeral key")?,
+            pq_ciphertext.as_deref(),
+        )
+        .map_err(|e| e.to_string())?;
+
+        Ok(secret.as_bytes().to_vec())
+    }
+
+    #[cfg(not(feature = "pq"))]
+    {
+        let _ = (
+            identity_seed,
+            signed_prekey_secret,
+            one_time_prekey_secret,
+            ml_kem_seed,
+            sender_identity_key,
+            sender_ephemeral_key,
+            pq_ciphertext,
+        );
+        Err(NO_PQ.to_string())
+    }
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -565,5 +865,209 @@ mod tests {
 
         assert!(crypto_constant_time_eq(a.clone(), b));
         assert!(!crypto_constant_time_eq(a, c));
+    }
+
+    // ------------------------------------------------------------------
+    // Hybrid PQXDH
+    // ------------------------------------------------------------------
+
+    /// A responder as PR-98b will build one: an Ed25519 identity, an X25519 signed pre-key and a
+    /// 64-byte ML-KEM seed, with the published bundle derived from them.
+    #[cfg(feature = "pq")]
+    struct Responder {
+        identity_seed: Vec<u8>,
+        signed_prekey_secret: Vec<u8>,
+        ml_kem_seed: Vec<u8>,
+        bundle: HybridPeerBundle,
+    }
+
+    #[cfg(feature = "pq")]
+    fn responder(with_pq: bool) -> Responder {
+        let identity_seed = crypto_random_bytes(32);
+        let identity = crypto_generate_ed25519_keypair_from_seed(identity_seed.clone()).unwrap();
+        let signed_prekey = crypto_generate_x25519_keypair();
+
+        let ml_kem_seed = crypto_random_bytes(64);
+        let (pq_prekey, pq_prekey_signature) = if with_pq {
+            let public = crypto_ml_kem_public_from_seed(ml_kem_seed.clone()).unwrap();
+            let signature =
+                crypto_sign_ed25519(identity.private_key.clone(), public.clone()).unwrap();
+            (Some(public), Some(signature))
+        } else {
+            (None, None)
+        };
+
+        Responder {
+            bundle: HybridPeerBundle {
+                identity_key: identity.public_key.clone(),
+                signed_prekey: signed_prekey.public_key.clone(),
+                signed_prekey_signature: crypto_sign_ed25519(
+                    identity.private_key,
+                    signed_prekey.public_key.clone(),
+                )
+                .unwrap(),
+                one_time_prekey: None,
+                pq_prekey,
+                pq_prekey_signature,
+            },
+            identity_seed,
+            signed_prekey_secret: signed_prekey.private_key,
+            ml_kem_seed,
+        }
+    }
+
+    /// The whole point of the step: both sides reach the same secret without either the ML-KEM
+    /// decapsulation key or an ephemeral secret ever crossing the boundary.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn hybrid_agreement_round_trips_through_the_ffi_surface() {
+        let bob = responder(true);
+        let alice_identity_seed = crypto_random_bytes(32);
+        let alice = crypto_generate_ed25519_keypair_from_seed(alice_identity_seed.clone()).unwrap();
+
+        let agreement =
+            crypto_derive_sender_shared_secret(alice_identity_seed, bob.bundle.clone()).unwrap();
+
+        assert_eq!(agreement.shared_secret.len(), 32);
+        assert_eq!(agreement.ephemeral_public.len(), 32);
+        assert_eq!(
+            agreement.pq_ciphertext.as_ref().map(Vec::len),
+            Some(1088),
+            "a peer with an ML-KEM pre-key must yield a ciphertext"
+        );
+
+        let recipient_secret = crypto_derive_recipient_shared_secret(
+            bob.identity_seed,
+            bob.signed_prekey_secret,
+            None,
+            Some(bob.ml_kem_seed),
+            alice.public_key,
+            agreement.ephemeral_public,
+            agreement.pq_ciphertext,
+        )
+        .unwrap();
+
+        assert_eq!(agreement.shared_secret, recipient_secret);
+    }
+
+    /// A classical peer takes the classical arm and emits no ciphertext, so the caller has
+    /// nothing to set the prekey message's `0x02` flag from.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn a_classical_bundle_yields_no_ciphertext() {
+        let bob = responder(false);
+        let alice_identity_seed = crypto_random_bytes(32);
+        let alice = crypto_generate_ed25519_keypair_from_seed(alice_identity_seed.clone()).unwrap();
+
+        let agreement =
+            crypto_derive_sender_shared_secret(alice_identity_seed, bob.bundle.clone()).unwrap();
+        assert!(agreement.pq_ciphertext.is_none());
+
+        let recipient_secret = crypto_derive_recipient_shared_secret(
+            bob.identity_seed,
+            bob.signed_prekey_secret,
+            None,
+            None,
+            alice.public_key,
+            agreement.ephemeral_public,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(agreement.shared_secret, recipient_secret);
+    }
+
+    /// Stripping one of the two ML-KEM fields is cheaper than breaking either primitive, so the
+    /// bundle must be refused in whole rather than degraded to the classical exchange.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn a_half_pair_bundle_is_refused_in_whole() {
+        for strip_signature in [true, false] {
+            let bob = responder(true);
+            let mut bundle = bob.bundle.clone();
+            if strip_signature {
+                bundle.pq_prekey_signature = None;
+            } else {
+                bundle.pq_prekey = None;
+            }
+
+            assert!(
+                crypto_verify_hybrid_bundle(bundle.clone()).is_err(),
+                "a half pair must not verify (signature stripped: {})",
+                strip_signature
+            );
+            assert!(
+                crypto_derive_sender_shared_secret(crypto_random_bytes(32), bundle).is_err(),
+                "the sender path must not agree on a half pair (signature stripped: {})",
+                strip_signature
+            );
+        }
+    }
+
+    /// A responder handed a ciphertext it holds no seed for must fail rather than derive a
+    /// classical secret: ML-KEM's implicit rejection means the mistake would otherwise surface
+    /// only as an AEAD tag rejection, with both ends looking healthy.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn a_responder_without_its_seed_fails_closed() {
+        let bob = responder(true);
+        let alice_identity_seed = crypto_random_bytes(32);
+        let alice = crypto_generate_ed25519_keypair_from_seed(alice_identity_seed.clone()).unwrap();
+        let agreement =
+            crypto_derive_sender_shared_secret(alice_identity_seed, bob.bundle.clone()).unwrap();
+
+        // Ciphertext present, seed withheld.
+        assert!(crypto_derive_recipient_shared_secret(
+            bob.identity_seed.clone(),
+            bob.signed_prekey_secret.clone(),
+            None,
+            None,
+            alice.public_key.clone(),
+            agreement.ephemeral_public.clone(),
+            agreement.pq_ciphertext.clone(),
+        )
+        .is_err());
+
+        // The mirror: seed present, ciphertext stripped in relay.
+        assert!(crypto_derive_recipient_shared_secret(
+            bob.identity_seed,
+            bob.signed_prekey_secret,
+            None,
+            Some(bob.ml_kem_seed),
+            alice.public_key,
+            agreement.ephemeral_public,
+            None,
+        )
+        .is_err());
+    }
+
+    /// A wrong-length field is rejected and the error names it, because these bytes arrive from a
+    /// peer's bundle or a relayed prekey message and a caller has to be able to say which.
+    #[cfg(feature = "pq")]
+    #[test]
+    fn a_wrong_length_field_is_refused_and_named() {
+        let bob = responder(true);
+
+        let mut bundle = bob.bundle.clone();
+        bundle.identity_key.truncate(31);
+        let err = crypto_verify_hybrid_bundle(bundle).unwrap_err();
+        assert!(err.contains("identity key"), "unhelpful error: {}", err);
+
+        let err = crypto_ml_kem_public_from_seed(vec![0u8; 63]).unwrap_err();
+        assert!(err.contains("ML-KEM seed"), "unhelpful error: {}", err);
+
+        let mut ciphertext = vec![0u8; 1087];
+        ciphertext[0] = 1;
+        let err = crypto_derive_recipient_shared_secret(
+            bob.identity_seed,
+            bob.signed_prekey_secret,
+            None,
+            Some(bob.ml_kem_seed),
+            bob.bundle.identity_key.clone(),
+            vec![0u8; 32],
+            Some(ciphertext),
+        )
+        .unwrap_err();
+        assert!(err.contains("ciphertext"), "unhelpful error: {}", err);
     }
 }
