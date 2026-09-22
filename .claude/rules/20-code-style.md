@@ -20,7 +20,7 @@ predicate you cannot argue with.
 
 | ID | Predicate | Today | Enforcement |
 |---|---|---|---|
-| `RS-UNWRAP` | No `unwrap()` / `expect()` in non-test Rust | FAIL — 48 sites | ratchet at 48 |
+| `RS-UNWRAP` | No `unwrap()` / `expect()` in non-test Rust | FAIL — 28 sites | ratchet at 28 |
 | `RS-UNSAFE` | No `unsafe` outside an FFI crate | PASS | hard fail |
 | `RS-FMT` | `cargo fmt` is clean | PASS | `build.yml` |
 | `RS-CLIPPY` | `cargo clippy -- -D warnings` is clean | PASS | `build.yml`, real since PR-17 |
@@ -44,9 +44,18 @@ ceiling — the budget is edited down in the same PR that removes a site.
 A warning nobody has to act on is how `continue-on-error` made CI decorative before PR-17.
 A ratchet cannot be scrolled past.
 
+**A ratchet must only count debt somebody can pay down.** `RS-UNWRAP` used to scan the two
+`frb_generated.rs` files, which `just ffi-generate` writes and which nobody may hand-edit. They
+held 21 of the 49 sites it reported, and the count moved whenever the bindings were regenerated:
+flutter_rust_bridge 2.13.0 emits two more `unwrap`s than 2.11.1 did, so the FFI repair in #350
+turned the ratchet red by running a code generator. Excluding them dropped the budget from 47 to
+**28** — nineteen sites of the frozen debt were never anyone's to fix. The budget only ever
+moves down, so this is the shape the rule intends; what it is not is a licence to exclude a file
+because its count is inconvenient.
+
 ```sh
 echo "RS-UNWRAP";  git ls-files 'backend/crates/*/src/*.rs' 'backend/crates/*/src/**/*.rs' \
-                     | grep -v '/generated/' | while read -r f; do
+                     | grep -v '/generated/' | grep -v 'frb_generated\.rs' | while read -r f; do
                          sed '/#\[cfg(test)\]/,$d' "$f" \
                            | grep -nE '\.(unwrap|expect)\(' | sed "s|^|$f:|"
                        done

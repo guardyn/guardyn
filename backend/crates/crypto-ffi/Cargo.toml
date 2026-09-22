@@ -9,6 +9,17 @@ description = "Flutter Rust Bridge bindings for guardyn-crypto"
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(frb_expand)'] }
 
+[lints.clippy]
+# `frb_generated.rs` carries its own `#![allow(...)]` list, and flutter_rust_bridge 2.13.0's
+# does not include this lint: the `frb_generated_boilerplate_io!` expansion takes raw pointers
+# in public functions, which is what an FFI boundary is. Seven sites trip it, and `build.yml`
+# runs `clippy -- -D warnings`.
+#
+# Set here rather than hand-edited into the generated file, which the next `just ffi-generate`
+# would overwrite. `RS-UNSAFE` in `.claude/rules/20-code-style.md` already exempts this crate
+# from the unsafe rule for the same reason.
+not_unsafe_ptr_arg_deref = "allow"
+
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
 name = "guardyn_crypto_ffi"
@@ -23,7 +34,7 @@ pq = ["guardyn-crypto/pq"]
 guardyn-crypto = { path = "../crypto", features = ["ffi"] }
 
 # Flutter Rust Bridge for automatic Dart bindings generation
-flutter_rust_bridge = "=2.11.1"
+flutter_rust_bridge = "=2.13.0"
 
 # Async runtime
 tokio = { version = "1", features = ["rt", "sync"] }
