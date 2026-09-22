@@ -12,27 +12,68 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
+import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/crypto/native/rust_crypto_bridge.dart';
 import 'package:guardyn_client/core/crypto/native_crypto_bridge.dart';
 import 'package:guardyn_client/generated/rust/api.dart' as rust_api;
 import 'package:integration_test/integration_test.dart';
 
+/// Fails rather than skips when the build has no post-quantum support.
+///
+/// The three cases below used to open with `if (!bridge.isPostQuantumAvailable) { print(...);
+/// return; }`, and every one of them took that branch on every run - so they reported as
+/// passing while asserting nothing, from the day they were written until #363. A PQ case that
+/// quietly returns is indistinguishable from one that passed, which is the whole defect. If
+/// this build genuinely has no `pq` feature, that is worth a red run and a rebuild.
+void _requirePostQuantum(NativeRustCryptoBridge bridge) {
+  expect(
+    bridge.isPostQuantumAvailable,
+    isTrue,
+    reason: 'this build has no post-quantum support - rebuild the native library with '
+        '--features full (backend/crates/crypto-ffi/build-mobile.sh)',
+  );
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  group('NativeRustCryptoBridge Integration Tests', () {
-    late NativeRustCryptoBridge bridge;
+  // One bridge, initialised exactly once, through the path the application itself uses.
+  //
+  // Each group used to build its own NativeRustCryptoBridge and initialise it. The second call
+  // reached `GuardynCrypto.init()`, which throws `Should not initialize flutter_rust_bridge
+  // twice` - and `NativeRustCryptoBridge.initialize` catches that internally, leaving
+  // `_pqAvailable` at its `false` default. The group's own try/catch never fired, because
+  // nothing was ever rethrown. That is what disabled every post-quantum assertion in this file
+  // (#363); the `enablePostQuantum: false` that used to sit here would have been a second,
+  // independent cause once the first was fixed.
+  //
+  // Going through CryptoPrimitives rather than constructing the bridge directly means
+  // CryptoService works too, so the publishing path can be exercised as the app runs it.
+  late NativeRustCryptoBridge bridge;
 
-    setUpAll(() async {
-      bridge = NativeRustCryptoBridge();
-      await bridge.initialize(
-        const NativeCryptoConfig(
-          preferNative: true,
-          enablePostQuantum: false,
-          enablePadme: true,
-        ),
-      );
-    });
+  setUpAll(() async {
+    const config = NativeCryptoConfig(
+      preferNative: true,
+      enablePostQuantum: true,
+      enablePadme: true,
+    );
+
+    // The bridge is constructed directly and initialised first, because
+    // `CryptoBridgeFactory` probes for the library by *calling* it
+    // (`NativeRustCryptoBridge.checkNativeAvailable` -> `cryptoStatus()`), which cannot
+    // succeed until flutter_rust_bridge is up. The probe also caches its answer, so a
+    // premature call would pin "unavailable" for the rest of the process.
+    bridge = NativeRustCryptoBridge();
+    await bridge.initialize(config);
+
+    // Then the facade, so CryptoService works and the publishing path can be exercised as the
+    // application runs it. This is only safe because `initialize` now treats the
+    // flutter_rust_bridge init as a one-shot rather than discovering it by exception.
+    await CryptoPrimitives.initialize(config);
+  });
+
+  group('NativeRustCryptoBridge Integration Tests', () {
 
     testWidgets('Native crypto is available', (tester) async {
       expect(
@@ -387,45 +428,12 @@ void main() {
   });
 
   group('Post-Quantum (PQXDH) Tests', () {
-    // Reuse the bridge from previous group to avoid double initialization
-    late NativeRustCryptoBridge bridge;
-
-    setUpAll(() async {
-      bridge = NativeRustCryptoBridge();
-      // Try to initialize, but ignore if already initialized
-      try {
-        await bridge.initialize(
-          const NativeCryptoConfig(
-            preferNative: true,
-            enablePostQuantum: true,
-            enablePadme: true,
-          ),
-        );
-      } catch (e) {
-        // Ignore double initialization error - FRB can only init once
-        print('Note: PQ bridge initialization skipped (already initialized)');
-      }
+    testWidgets('Post-quantum support is compiled in', (tester) async {
+      _requirePostQuantum(bridge);
     });
 
-    testWidgets('Check PQ availability', (tester) async {
-      // Note: PQ may not be available depending on build configuration
-      final pqAvailable = bridge.isPostQuantumAvailable;
-
-      if (pqAvailable) {
-        expect(pqAvailable, isTrue);
-        print('✅ Post-quantum cryptography is available');
-      } else {
-        print(
-          '⚠️ Post-quantum cryptography is not available (feature disabled)',
-        );
-      }
-    });
-
-    testWidgets('Generate hybrid key bundle (if PQ available)', (tester) async {
-      if (!bridge.isPostQuantumAvailable) {
-        print('Skipping PQ test - not available');
-        return;
-      }
+    testWidgets('Generate hybrid key bundle', (tester) async {
+      _requirePostQuantum(bridge);
 
       final bundle = await bridge.generateHybridKeyBundle();
 
@@ -446,10 +454,7 @@ void main() {
     testWidgets('hybrid PQXDH initiator and responder agree a shared secret', (
       tester,
     ) async {
-      if (!bridge.isPostQuantumAvailable) {
-        print('Skipping PQ test - not available');
-        return;
-      }
+      _requirePostQuantum(bridge);
 
       // Bob's published bundle, built the way auth-service would serve it.
       final bobIdentity = rust_api.cryptoGenerateEd25519Keypair();
@@ -515,10 +520,7 @@ void main() {
     testWidgets('a responder holding no seed refuses the handshake', (
       tester,
     ) async {
-      if (!bridge.isPostQuantumAvailable) {
-        print('Skipping PQ test - not available');
-        return;
-      }
+      _requirePostQuantum(bridge);
 
       final identity = rust_api.cryptoGenerateEd25519Keypair();
       final signedPrekey = rust_api.cryptoGenerateX25519Keypair();
@@ -538,6 +540,59 @@ void main() {
         ),
         throwsA(anything),
       );
+    });
+
+    // The assertion PR-98c could not make. `flutter test` runs on DartCryptoBridge, which has
+    // no ML-KEM, so CI can only check that the publisher refuses and degrades correctly - never
+    // that the key it publishes is one a peer will actually accept. This runs the production
+    // path: CryptoService reads the seed it persisted and signs with the identity key it holds,
+    // exactly as `_generateX3DHKeyBundle` does before an upload.
+    testWidgets('the published ML-KEM pre-key is one a peer accepts', (
+      tester,
+    ) async {
+      _requirePostQuantum(bridge);
+
+      final service = CryptoService();
+      // A previous run's identity and seed would let this pass on stale state.
+      await service.clearAll();
+      await service.initialize();
+      await service.initializeX3DH(oneTimePreKeyCount: 1);
+
+      final published = await service.mlKemPreKeyForPublication();
+      expect(
+        published,
+        isNotNull,
+        reason: 'a post-quantum-capable device must publish tags 6 and 7',
+      );
+      expect(published!.publicKey.length, equals(1184));
+      expect(published.signature.length, equals(64));
+
+      final keyBundle = service.exportKeyBundles().first;
+      final peerView = rust_api.HybridPeerBundle(
+        identityKey: keyBundle.identityKey,
+        signedPrekey: keyBundle.signedPreKey,
+        signedPrekeySignature: keyBundle.signedPreKeySignature,
+        pqPrekey: published.publicKey,
+        pqPrekeySignature: published.signature,
+      );
+
+      // The crate's own verifier - the exact check a peer runs before encapsulating. It
+      // rejects the bundle if tag 7 was signed by anything other than the identity key on
+      // tag 1, which is a mistake a client otherwise makes silently.
+      rust_api.cryptoVerifyHybridBundle(bundle: peerView);
+
+      // And the published key has to be usable, not merely well-signed: an initiator
+      // encapsulating to it must get a ciphertext back.
+      final initiatorIdentity = rust_api.cryptoGenerateEd25519Keypair();
+      final agreement = rust_api.cryptoDeriveSenderSharedSecret(
+        senderIdentitySeed: initiatorIdentity.privateKey,
+        recipientBundle: peerView,
+      );
+      expect(agreement.sharedSecret.length, equals(32));
+      expect(agreement.pqCiphertext, isNotNull);
+      expect(agreement.pqCiphertext!.length, equals(1088));
+
+      await service.clearAll();
     });
   });
 }
