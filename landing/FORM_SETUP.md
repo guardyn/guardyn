@@ -179,11 +179,11 @@
          body: JSON.stringify({
            personalizations: [
              {
-               to: [{ email: "admin@guardyn.io" }],
+               to: [{ email: "admin@guardyn.co" }],
                subject: "New Beta Signup",
              },
            ],
-           from: { email: "noreply@guardyn.app" },
+           from: { email: "noreply@guardyn.co" },
            content: [
              {
                type: "text/plain",

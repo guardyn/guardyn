@@ -6,7 +6,7 @@ Guardyn takes security seriously. We appreciate responsible disclosure of vulner
 
 ## Reporting a Vulnerability
 
-**Please report security issues to:** <security@guardyn.app>
+**Please report security issues to:** <security@guardyn.co>
 
 **DO NOT** open public GitHub issues for security vulnerabilities.
 
@@ -119,8 +119,8 @@ _No vulnerabilities reported yet - be the first!_
 
 ## Contact
 
-- **Security Email**: <security@guardyn.app>
-- **General Contact**: <hello@guardyn.app>
+- **Security Email**: <security@guardyn.co>
+- **General Contact**: <hello@guardyn.co>
 - **Project Repository**: [github.com/guardyn/guardyn](https://github.com/guardyn/guardyn)
 
 ## Additional Resources

@@ -379,6 +379,6 @@ guard is in place and says so.
 
 ## Escalation
 
-Security issues go to security@guardyn.app and **never** into a public issue
+Security issues go to security@guardyn.co and **never** into a public issue
 ([`SECURITY.md`](../../SECURITY.md)). Anything touching an invariant in `AGENTS.md` §1 is a
 security issue by definition.

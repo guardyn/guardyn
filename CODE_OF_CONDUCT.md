@@ -40,7 +40,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at:
 
-**<conduct@guardyn.app>**
+**<conduct@guardyn.co>**
 
 All complaints will be reviewed and investigated promptly and fairly.
 
@@ -78,7 +78,7 @@ Community leaders will follow these Community Impact Guidelines in determining t
 
 Given Guardyn's focus on security and privacy, we have additional expectations:
 
-- **Responsible Disclosure**: Security vulnerabilities must be reported privately to <security@guardyn.app> (see [SECURITY.md](SECURITY.md))
+- **Responsible Disclosure**: Security vulnerabilities must be reported privately to <security@guardyn.co> (see [SECURITY.md](SECURITY.md))
 - **No Public Exploit Sharing**: Do not publicly share exploits or vulnerabilities before they are patched
 - **Respect Privacy**: Do not attempt to access, intercept, or analyze communications of other users without explicit permission
 - **Audit Ethics**: Security research and auditing must follow responsible disclosure principles
@@ -117,9 +117,9 @@ For answers to common questions about this code of conduct, see the FAQ at [http
 
 **Contact Information:**
 
-- **Code of Conduct Violations**: <conduct@guardyn.app>
-- **Security Issues**: <security@guardyn.app>
-- **General Questions**: <hello@guardyn.app>
+- **Code of Conduct Violations**: <conduct@guardyn.co>
+- **Security Issues**: <security@guardyn.co>
+- **General Questions**: <hello@guardyn.co>
 - **Repository**: <https://github.com/guardyn/guardyn>
 
 ## Last Updated

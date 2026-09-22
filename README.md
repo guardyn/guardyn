@@ -297,8 +297,8 @@ your own branch before a reviewer sees it.
 
 - **Website:** [guardyn.co](https://guardyn.co)
 - **GitHub:** [github.com/guardyn/guardyn](https://github.com/guardyn/guardyn)
-- **Security:** security@guardyn.app (vulnerabilities only)
-- **General:** hello@guardyn.app
+- **Security:** security@guardyn.co (vulnerabilities only)
+- **General:** hello@guardyn.co
 
 ---
 

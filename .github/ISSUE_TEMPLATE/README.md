@@ -80,7 +80,7 @@ Use this template if you have questions about contributing to Guardyn.
 
 **DO NOT** use GitHub issues for security vulnerabilities!
 
-Instead, please email: **<security@guardyn.app>**
+Instead, please email: **<security@guardyn.co>**
 
 See our [Security Policy](../../SECURITY.md) for details on responsible disclosure.
 
@@ -89,7 +89,7 @@ See our [Security Policy](../../SECURITY.md) for details on responsible disclosu
 For general questions not covered by the templates above:
 
 - Start a [GitHub Discussion](https://github.com/guardyn/guardyn/discussions)
-- Email: <hello@guardyn.app>
+- Email: <hello@guardyn.co>
 - Check the [Documentation](../../docs/)
 
 ## Before Creating an Issue

@@ -83,4 +83,4 @@ Remove sensitive information before sharing!
 - [ ] I have searched existing issues to avoid duplicates
 - [ ] I have included all relevant information above
 - [ ] I have removed any sensitive data from logs/screenshots
-- [ ] This is NOT a security vulnerability (use <security@guardyn.app> for security issues)
+- [ ] This is NOT a security vulnerability (use <security@guardyn.co> for security issues)

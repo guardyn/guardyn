@@ -2,10 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: 🔒 Security Vulnerability Report
     url: https://github.com/guardyn/guardyn/blob/main/SECURITY.md
-    about: Please report security vulnerabilities privately to security@guardyn.app (DO NOT open public issues)
+    about: Please report security vulnerabilities privately to security@guardyn.co (DO NOT open public issues)
   - name: 💬 General Questions
     url: https://github.com/guardyn/guardyn/discussions
-    about: For general questions about Guardyn, start a discussion or contact hello@guardyn.app
+    about: For general questions about Guardyn, start a discussion or contact hello@guardyn.co
   - name: 📖 Documentation
     url: https://github.com/guardyn/guardyn/tree/main/docs
     about: Check our comprehensive documentation for guides and technical details

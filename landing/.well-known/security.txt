@@ -1,3 +1,4 @@
+Contact: mailto:security@guardyn.co
 Contact: mailto:security@guardyn.io
 Expires: 2027-09-17T23:59:59.000Z
 Preferred-Languages: en, uk, ru
@@ -6,7 +7,11 @@ Canonical: https://guardyn.co/.well-known/security.txt
 # Guardyn Security Contact Information
 #
 # If you believe you have found a security vulnerability in Guardyn,
-# please report it to us at: security@guardyn.io
+# please report it to us at: security@guardyn.co
+#
+# security@guardyn.io is listed second and still delivers. It is the address this
+# file carried before the move to guardyn.co, so reports already in flight are not
+# lost. It will be withdrawn once the overlap has run its course.
 #
 # Please do NOT file a public issue on GitHub.
 #

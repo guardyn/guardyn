@@ -241,7 +241,7 @@ fn test_key_zeroization() {
 
 Found a vulnerability? Report it responsibly:
 
-1. **Email**: security@guardyn.io (PGP key in SECURITY.md)
+1. **Email**: security@guardyn.co (PGP key in SECURITY.md)
 2. **DO NOT** create public GitHub issues for security vulnerabilities
 3. Allow 90 days for fix before public disclosure
 
