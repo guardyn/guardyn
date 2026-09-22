@@ -14,6 +14,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/native/rust_crypto_bridge.dart';
 import 'package:guardyn_client/core/crypto/native_crypto_bridge.dart';
+import 'package:guardyn_client/generated/rust/api.dart' as rust_api;
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -434,6 +435,108 @@ void main() {
         bundle.mlKemPublicKey.length,
         greaterThan(0),
         reason: 'ML-KEM public key should be generated',
+      );
+    });
+
+    // The assertion `flutter test` cannot make. The unit suite runs on DartCryptoBridge, which
+    // has no ML-KEM at all, so everything it can check about the hybrid responder stops at the
+    // FFI boundary. This is the one that proves the two halves agree - and agreeing is the
+    // whole point, since a responder answering in the wrong KDF domain still returns 32
+    // perfectly well-formed bytes.
+    testWidgets('hybrid PQXDH initiator and responder agree a shared secret', (
+      tester,
+    ) async {
+      if (!bridge.isPostQuantumAvailable) {
+        print('Skipping PQ test - not available');
+        return;
+      }
+
+      // Bob's published bundle, built the way auth-service would serve it.
+      final bobIdentity = rust_api.cryptoGenerateEd25519Keypair();
+      final bobSignedPrekey = rust_api.cryptoGenerateX25519Keypair();
+      final bobMlKemSeed = rust_api.cryptoRandomBytes(length: 64);
+      final bobMlKemPublic = rust_api.cryptoMlKemPublicFromSeed(
+        seed: bobMlKemSeed,
+      );
+
+      expect(bobMlKemSeed.length, equals(64));
+      expect(bobMlKemPublic.length, equals(1184));
+
+      // Both pre-keys are signed by the same identity, and the ML-KEM signature is over the
+      // raw encapsulation-key bytes - no domain separator, no length prefix.
+      final bobBundle = rust_api.HybridPeerBundle(
+        identityKey: bobIdentity.publicKey,
+        signedPrekey: bobSignedPrekey.publicKey,
+        signedPrekeySignature: rust_api.cryptoSignEd25519(
+          privateKey: bobIdentity.privateKey,
+          message: bobSignedPrekey.publicKey,
+        ),
+        pqPrekey: bobMlKemPublic,
+        pqPrekeySignature: rust_api.cryptoSignEd25519(
+          privateKey: bobIdentity.privateKey,
+          message: bobMlKemPublic,
+        ),
+      );
+
+      // Alice initiates. The ciphertext she gets back is what rides in the prekey message's
+      // 0x02 field.
+      final aliceIdentity = rust_api.cryptoGenerateEd25519Keypair();
+      final agreement = rust_api.cryptoDeriveSenderSharedSecret(
+        senderIdentitySeed: aliceIdentity.privateKey,
+        recipientBundle: bobBundle,
+      );
+
+      expect(agreement.sharedSecret.length, equals(32));
+      expect(agreement.ephemeralPublic.length, equals(32));
+      expect(agreement.pqCiphertext, isNotNull);
+      expect(agreement.pqCiphertext!.length, equals(1088));
+
+      // Bob answers from the 64 bytes he persisted - the 2400-byte decapsulation key is
+      // rebuilt inside Rust and never crosses the boundary.
+      final bobSecret = rust_api.cryptoDeriveRecipientSharedSecret(
+        identitySeed: bobIdentity.privateKey,
+        signedPrekeySecret: bobSignedPrekey.privateKey,
+        mlKemSeed: bobMlKemSeed,
+        senderIdentityKey: aliceIdentity.publicKey,
+        senderEphemeralKey: agreement.ephemeralPublic,
+        pqCiphertext: agreement.pqCiphertext,
+      );
+
+      expect(
+        rust_api.cryptoConstantTimeEq(a: bobSecret, b: agreement.sharedSecret),
+        isTrue,
+        reason:
+            'The responder must derive the initiator\'s secret. A mismatch here is the '
+            'PQXDH_SharedSecret/X3DH domain split, and it would surface in production only '
+            'as an AEAD tag rejection with both ends looking healthy.',
+      );
+    });
+
+    testWidgets('a responder holding no seed refuses the handshake', (
+      tester,
+    ) async {
+      if (!bridge.isPostQuantumAvailable) {
+        print('Skipping PQ test - not available');
+        return;
+      }
+
+      final identity = rust_api.cryptoGenerateEd25519Keypair();
+      final signedPrekey = rust_api.cryptoGenerateX25519Keypair();
+      final sender = rust_api.cryptoGenerateEd25519Keypair();
+      final ephemeral = rust_api.cryptoGenerateX25519Keypair();
+
+      // Fails closed rather than deriving from the classical halves alone. Both would
+      // otherwise succeed - the classical DHs still agree - and the result would be a secret
+      // that is merely different.
+      expect(
+        () => rust_api.cryptoDeriveRecipientSharedSecret(
+          identitySeed: identity.privateKey,
+          signedPrekeySecret: signedPrekey.privateKey,
+          senderIdentityKey: sender.publicKey,
+          senderEphemeralKey: ephemeral.publicKey,
+          pqCiphertext: Uint8List.fromList(List<int>.filled(1088, 0xcd)),
+        ),
+        throwsA(anything),
       );
     });
   });

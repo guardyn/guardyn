@@ -620,12 +620,16 @@ class MessageRepositoryImpl implements MessageRepository {
         'Parsed prekey message: identityKey=${prekeyMessage.senderIdentityKey.length} bytes, ephemeralKey=${prekeyMessage.ephemeralKey.length} bytes',
       );
 
+      // The ciphertext is forwarded, not dropped: its presence is what selects the hybrid KDF
+      // domain. Parsing it and then answering classically derives a secret the initiator never
+      // matches, visible only as an AEAD tag rejection with both ends looking healthy.
       await cryptoService.createSessionAsResponder(
         senderUserId: senderUserId,
         senderDeviceId: senderDeviceId,
         remoteIdentityKey: prekeyMessage.senderIdentityKey,
         remoteEphemeralKey: prekeyMessage.ephemeralKey,
         usedOneTimePreKeyId: prekeyMessage.usedOneTimePreKeyId,
+        pqCiphertext: prekeyMessage.pqCiphertext,
       );
       _logger.i('Responder session created successfully for $senderUserId');
     } catch (e) {

@@ -174,10 +174,32 @@ multi-device delivery is promised to anyone.
 > the `X3DH` one — an interop break visible only as an AEAD tag rejection. When a protocol change
 > splits into a reader and a writer, the reader ships first.
 >
-> **`client-mobile` is unaffected and stays classical.** Its proto is forked at tag 5, so it
-> publishes no ML-KEM material and a desktop initiator takes the classical branch against it
-> without anything having to detect a version. Routing it through the hybrid path is PR-98
-> ([#262](https://github.com/guardyn/guardyn/issues/262)).
+> **`client-mobile` publishes no ML-KEM material, and still will not after PR-98b.** Its proto
+> is forked at tag 5, so a desktop initiator takes the classical branch against it without
+> anything having to detect a version. Publishing tags 6 and 7 is PR-98c
+> ([#354](https://github.com/guardyn/guardyn/issues/354)); the mobile initiator is PR-98d
+> ([#355](https://github.com/guardyn/guardyn/issues/355)).
+>
+> **It can nonetheless answer one, as of PR-98b
+> ([#353](https://github.com/guardyn/guardyn/issues/353)).** `createSessionAsResponder` selects
+> the domain on the prekey message's `0x02` flag exactly as the desktop does, forwarding the
+> ciphertext to `crypto_derive_recipient_shared_secret` rather than parsing it and dropping it,
+> and it holds a persisted 64-byte ML-KEM seed to answer with. Rule 4c is enforced by the crate
+> rather than re-implemented in Dart: a ciphertext reaching a device with no seed is a
+> `ProtocolException`, never a classical derivation.
+>
+> This is the reader-before-writer order above, applied a second time. The moment a phone
+> publishes tags 6 and 7 it starts *receiving* hybrid prekey messages from every desktop
+> initiator, so it has to be able to answer one first; inverting PR-98b and PR-98c would put
+> every desktop-to-mobile session in the wrong KDF domain. Shipping the reader alone breaks
+> nothing, because nothing yet sends a phone a ciphertext.
+>
+> **The mobile half of rule 4c is not covered by a CI-executed round trip.** `flutter test`
+> runs the whole suite on `DartCryptoBridge`, which has no ML-KEM at all, so the decapsulation
+> is asserted in `integration_test/crypto/rust_ffi_test.dart` on a device instead. What CI does
+> assert is the branch and the refusals; what proves the two clients interoperate is still only
+> `just test-two-client-messaging`, which needs two physical devices and is wired into no
+> workflow.
 >
 > Until PR-40 closes, **do not describe the handshake as post-quantum protected** — two desktops
 > agreeing a hybrid secret is not the same as the parsers on that path having been fuzzed.
