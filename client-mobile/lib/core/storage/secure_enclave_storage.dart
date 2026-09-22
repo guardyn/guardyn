@@ -10,7 +10,7 @@ import 'hardware_key_storage.dart';
 /// For Ed25519 keys, falls back to Keychain with secure access control.
 class SecureEnclaveStorage implements HardwareKeyStorage {
   static const MethodChannel _channel = MethodChannel(
-    'io.guardyn/secure_enclave',
+    'co.guardyn/secure_enclave',
   );
 
   // Key types
@@ -168,7 +168,7 @@ class SecureEnclaveStorage implements HardwareKeyStorage {
 /// @objc class SecureEnclavePlugin: NSObject, FlutterPlugin {
 ///     static func register(with registrar: FlutterPluginRegistrar) {
 ///         let channel = FlutterMethodChannel(
-///             name: "io.guardyn/secure_enclave",
+///             name: "co.guardyn/secure_enclave",
 ///             binaryMessenger: registrar.messenger()
 ///         )
 ///         let instance = SecureEnclavePlugin()

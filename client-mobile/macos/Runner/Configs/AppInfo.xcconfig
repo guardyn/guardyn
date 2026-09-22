@@ -8,7 +8,7 @@
 PRODUCT_NAME = guardyn_client
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = io.guardyn.guardynClient
+PRODUCT_BUNDLE_IDENTIFIER = co.guardyn.guardynClient
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 io.guardyn. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 co.guardyn. All rights reserved.

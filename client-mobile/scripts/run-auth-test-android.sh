@@ -154,7 +154,7 @@ log_success "Native libraries: OK"
 
 log_info "Clearing app data for clean test..."
 
-PACKAGE_NAME="io.guardyn.guardyn_client"
+PACKAGE_NAME="co.guardyn.guardyn_client"
 
 # Try to clear app data
 if adb -s "$ANDROID_DEVICE" shell pm clear "$PACKAGE_NAME" 2>/dev/null; then

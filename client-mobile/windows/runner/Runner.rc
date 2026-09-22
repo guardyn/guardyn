@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "io.guardyn" "\0"
+            VALUE "CompanyName", "co.guardyn" "\0"
             VALUE "FileDescription", "guardyn_client" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "guardyn_client" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 io.guardyn. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 co.guardyn. All rights reserved." "\0"
             VALUE "OriginalFilename", "guardyn_client.exe" "\0"
             VALUE "ProductName", "guardyn_client" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
