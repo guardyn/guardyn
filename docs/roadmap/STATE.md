@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1068
+tokens: 1361
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 25 | 41 | `██████░░░░` |
-| **all** | **114** | **136** | |
+| 4 | 26 | 51 | `█████░░░░░` |
+| **all** | **115** | **146** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 22 of 136
+- **Open steps:** 31 of 146
 
 ## Gates
 
@@ -76,3 +76,12 @@ supersedes: []
 | PR-99 | 4 | [#263](https://github.com/guardyn/guardyn/issues/263) | One-time pre-key ids break at TiKV lexicographic index >= 10 |
 | PR-100 | 4 | [#264](https://github.com/guardyn/guardyn/issues/264) | Add known-answer vectors for the sealed sender wire format |
 | PR-102 | 4 | [#272](https://github.com/guardyn/guardyn/issues/272) | MLS key packages are stored under a hardcoded device_id of default |
+| PR-122 | 4 | [#332](https://github.com/guardyn/guardyn/issues/332) | Correct the three broken client package identifiers |
+| PR-123 | 4 | [#333](https://github.com/guardyn/guardyn/issues/333) | Move the client bundle identifiers to co.guardyn |
+| PR-124 | 4 | [#334](https://github.com/guardyn/guardyn/issues/334) | Remove the hardcoded guardyn.io URLs from manifests and mobile config |
+| PR-125 | 4 | [#335](https://github.com/guardyn/guardyn/issues/335) | Unify the security contact addresses on guardyn.co |
+| PR-126 | 4 | [#336](https://github.com/guardyn/guardyn/issues/336) | Publish the guardyn.co PGP keys and add the Encryption field |
+| PR-127 | 4 | [#337](https://github.com/guardyn/guardyn/issues/337) | Retire the legacy guardyn.io security contact |
+| PR-128 | 4 | [#338](https://github.com/guardyn/guardyn/issues/338) | Rename the guardyn.io label keys at the next cluster rebuild |
+| PR-129 | 4 | [#339](https://github.com/guardyn/guardyn/issues/339) | The prod overlay does not render: base/monitoring has no kustomization.yaml |
+| PR-130 | 4 | [#344](https://github.com/guardyn/guardyn/issues/344) | Bump the security.txt Expires date before it lapses |

@@ -424,3 +424,78 @@ steps:
   # does not reconcile titles, so #188's is corrected with `gh issue edit` - the one hand-edit the
   # skill sanctions. Its state, milestone and board card are left to the sync.
   - {id: PR-115, issue: 301, phase: 4, type: docs, status: done, title: "Re-scope PR-56 to the OUT_DIR migration and mark PR-39a done"}
+  # Domain consolidation. Four domains were up for renewal; an audit of the tree, git history,
+  # live DNS and live HTTP found guardyn.org already dead (no A, no MX, zero references, purged
+  # in PR-01) and the other three each carrying load for a different reason. The owner elected to
+  # keep guardyn.co alone. Recording the steps before any of them opens, as PR-101 and PR-111 did.
+  #
+  # The apps are not published to any store, so the bundle identifiers can still change. That is
+  # the whole reason PR-123 is scheduled now rather than later: applicationId and
+  # PRODUCT_BUNDLE_IDENTIFIER are one-way doors once a build ships, and io.guardyn.* would
+  # otherwise permanently encode a domain the project no longer owns.
+  - {id: PR-121, issue: 331, phase: 4, type: docs, status: done, title: "Record the guardyn.co domain consolidation in roadmap.yaml"}
+  # Three identifiers that are wrong today, independent of any migration: two scripts name
+  # packages that do not exist, so `just clear-client-data` clears nothing and
+  # `just test-two-client-messaging` is broken, and the desktop keyring service name does not
+  # match the Tauri bundle id. It lands before PR-123 because clear-client-data is the documented
+  # recovery for the local state PR-123 orphans, and a broken escape hatch is no escape hatch.
+  - {id: PR-122, issue: 332, phase: 4, type: fix, status: todo, title: "Correct the three broken client package identifiers"}
+  - {id: PR-123, issue: 333, phase: 4, type: chore, status: todo, title: "Move the client bundle identifiers to co.guardyn"}
+  # AGENTS.md 6 violations rather than cosmetics. The runbook URLs are re-pointed at the RUNBOOK
+  # in this repository, not at guardyn.co/runbooks/ - that path does not exist on the new site
+  # either, and moving a dead link is not fixing it.
+  - {id: PR-124, issue: 334, phase: 4, type: fix, status: todo, title: "Remove the hardcoded guardyn.io URLs from manifests and mobile config"}
+  # Gated on the guardyn.co mailboxes accepting mail, verified by a round-trip test message and
+  # not by the DNS records looking right.
+  #
+  # The repository advertises THREE reporting addresses today - SECURITY.md says security@
+  # guardyn.app, .well-known/security.txt says security@guardyn.io, privacy.html agrees with the
+  # latter. Two researchers reading two files reach two different mailboxes. That split is a live
+  # defect independent of the migration, and it is why this step is one PR and not three: the
+  # defect being fixed is the split, so splitting the fix recreates it.
+  #
+  # security.txt gains the new address ADDITIVELY. RFC 9116 Contact: is repeatable in descending
+  # priority, so both mailboxes stay live through the overlap and a report cannot land nowhere.
+  # PR-127 removes the legacy line once the overlap has expired.
+  - {id: PR-125, issue: 335, phase: 4, type: security, status: todo, title: "Unify the security contact addresses on guardyn.co"}
+  # Gated on new keys existing with @guardyn.co UIDs, published to keys.openpgp.org. Deliberately
+  # NOT coupled to PR-125: an unencrypted report to a working mailbox is a minor confidentiality
+  # downgrade, while an encrypted report to a bounced mailbox is a lost report. Ship the address
+  # when the mailbox works, the key when the key exists.
+  - {id: PR-126, issue: 336, phase: 4, type: security, status: todo, title: "Publish the guardyn.co PGP keys and add the Encryption field"}
+  # Deliberately scheduled at least 90 days after PR-125 merges. Recorded now so the overlap is
+  # something that ends on purpose rather than something everyone forgets.
+  - {id: PR-127, issue: 337, phase: 4, type: security, status: todo, title: "Retire the legacy guardyn.io security contact"}
+  # Deferred out of the migration on purpose, and this is the record of why. A Kubernetes label
+  # key prefix is a DNS-subdomain-SHAPED namespace token: kubernetes validates its syntax, never
+  # resolves it, and never checks ownership. Only kubernetes.io/ and k8s.io/ are reserved. So
+  # guardyn.io/stage keeps working forever on a cluster whose operator has never heard of the
+  # domain, and renaming it buys nothing.
+  #
+  # It is also not free. `kustomize build` confirms base/apps/*, base/minio and base/scylladb
+  # carry the label only on the pod template - a plain apply - but base/envoy/kustomization.yaml
+  # and base/tikv/kustomization.yaml use the legacy commonLabels:, which implies
+  # includeSelectors: true and renders the label into the IMMUTABLE matchLabels of the envoy
+  # Deployment and both TiKV StatefulSets. Renaming means delete-and-recreate of the TiKV control
+  # plane - the metadata and auth store - for a string nothing reads.
+  #
+  # And it would silently disarm a health gate: fix-cluster-after-restart.sh:141 waits on
+  # `-l guardyn.io/stage=poc`, which against pods still carrying the old label matches nothing,
+  # and `|| log_warn` swallows the error. Tie this to the next teardown + kube-create, where the
+  # objects are recreated anyway and the rename costs nothing.
+  - {id: PR-128, issue: 338, phase: 4, type: chore, status: todo, title: "Rename the guardyn.io label keys at the next cluster rebuild"}
+  # Found while trying to verify PR-124 by rendering the overlay. `kustomize build
+  # infra/k8s/overlays/prod` does not build at all: base/monitoring is listed under resources: but
+  # contains no kustomization.yaml. Pre-existing, unrelated to the domain work, and absent from
+  # the known-gaps table in docs/ops/DEPLOYMENT.md. Recorded rather than fixed in passing, because
+  # no infra change can currently be validated by rendering prod and that deserves its own step.
+  - {id: PR-129, issue: 339, phase: 4, type: fix, status: todo, title: "The prod overlay does not render: base/monitoring has no kustomization.yaml"}
+  # Not part of the domain migration, and deliberately not folded into PR-125: security.txt
+  # expires 2026-11-17, which RFC 9116 2.5.5 makes a hard cliff - a consumer MUST ignore an
+  # expired file - and that date arrives whether or not the contact migration has landed.
+  #
+  # The bump is NOT the old date plus a year. 2027-11-17 would be 423 days out, and the same
+  # section RECOMMENDS the value be less than a year into the future, so a literal +1y on a
+  # stale date moves the file further out of compliance rather than into it. 2027-09-17 is 362
+  # days out and keeps the day-of-month convention.
+  - {id: PR-130, issue: 344, phase: 4, type: security, status: todo, title: "Bump the security.txt Expires date before it lapses"}
