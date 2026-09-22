@@ -224,7 +224,17 @@ steps:
   # retitled to its narrowed scope by hand - roadmap-sync does not reconcile titles, and that is
   # the one hand-edit the issue-sync skill sanctions.
   - {id: PR-98a, issue: 262, phase: 4, type: feat, status: done, title: "Export the hybrid key agreement through crypto-ffi"}
-  - {id: PR-98b, issue: 353, phase: 4, type: feat, status: todo, title: "client-mobile persists an ML-KEM seed and completes hybrid PQXDH as responder"}
+  # Mirrors the desktop's shape rather than the brief's: the seed lives under its own
+  # flutter_secure_storage key, as client-desktop's KEY_ML_KEM_SEED does, and the hybrid branch
+  # sits in CryptoService.createSessionAsResponder, leaving x3dh.dart's completeKeyAgreement
+  # untouched. Threading a seed through the X3DHProtocol constructor and KeyBundleResult's
+  # isolate boundary would have bought nothing and put key material in one more place.
+  #
+  # The decapsulation round trip is NOT covered by CI and cannot be: `flutter test` runs the
+  # whole suite on DartCryptoBridge, which has no ML-KEM, so the round trip lives in
+  # integration_test/ and runs on a device. CI covers the branch and the refusals. Recorded
+  # here because a green mobile job does not mean the hybrid responder was exercised.
+  - {id: PR-98b, issue: 353, phase: 4, type: feat, status: done, title: "client-mobile persists an ML-KEM seed and completes hybrid PQXDH as responder"}
   - {id: PR-98c, issue: 354, phase: 4, type: feat, status: todo, title: "client-mobile publishes its ML-KEM pre-key on tags 6 and 7"}
   - {id: PR-98d, issue: 355, phase: 4, type: feat, status: todo, title: "client-mobile negotiates hybrid PQXDH as initiator"}
   # Not folded into PR-98d. Adding a step to I-3's `closed_by` is a claim that the invariant is
