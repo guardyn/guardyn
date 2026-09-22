@@ -114,7 +114,7 @@ Bash, git and awk only, so the job needs no toolchain and finishes in seconds. `
 `cargo clippy` stay in `build.yml`, where a Rust toolchain already exists.
 
 **Two predicates are ratcheted rather than enforced.** `RS-UNWRAP` (28 sites) and `NAME-SH`
-(5 files) fail today and are owned by later work, so each carries a budget equal to its
+(4 files) fail today and are owned by later work, so each carries a budget equal to its
 measured count: the build fails when the number **grows**, and every fix lowers the ceiling.
 
 If `rules-verify` fails on a ratchet you did not mean to touch, you added a site. If it tells
