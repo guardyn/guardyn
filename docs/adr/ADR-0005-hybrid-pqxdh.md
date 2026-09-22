@@ -170,8 +170,8 @@ AGENTS.md §2.3, because the two together came to 456 changed lines over 10 file
 
 **Desktop to desktop is hybrid; the product as a whole is not yet.** `client-mobile` still
 publishes no ML-KEM material and negotiates classical X3DH — its proto is forked at tag 5 and
-routing it through the hybrid path is [#262](https://github.com/guardyn/guardyn/issues/262)
-(PR-98). So a desktop talking to a phone gets a classical session, correctly and by design, and
+routing it through the hybrid path is [#262](https://github.com/guardyn/guardyn/issues/262),
+sliced into PR-98a through PR-98d so the responder ships before the publisher. So a desktop talking to a phone gets a classical session, correctly and by design, and
 `I-3` stays `met: false` in [`roadmap.yaml`](../roadmap/roadmap.yaml) until that lands.
 **Do not describe the product as post-quantum protected on the strength of this ADR alone** —
 name the endpoints.
@@ -274,6 +274,52 @@ above.
 `cargo clippy --all-targets`, so it cannot rot silently, but no CI job runs it: a shared runner
 varies by more than 128 µs. Re-measuring is a deliberate act — `just bench PQXDH`, recording the
 machine alongside the result, as above. See [`RUNBOOK.md`](../ops/RUNBOOK.md).
+
+## What crosses the FFI boundary, and what does not
+
+`client-mobile` reaches this crate through `guardyn-crypto-ffi`, which until PR-98a exported key
+*generation* and no key *agreement*: a phone could obtain an ML-KEM keypair and do nothing with
+it. PR-98a adds `crypto_derive_sender_shared_secret`, `crypto_derive_recipient_shared_secret`,
+`crypto_verify_hybrid_bundle` and `crypto_ml_kem_public_from_seed`. Four decisions about that
+surface are worth recording, because in each the obvious wrapper would have been the wrong one.
+
+**The ML-KEM decapsulation key never crosses into Dart.** The responder entry point takes the
+64-byte FIPS 203 `(d || z)` seed and expands it inside Rust; the 2400-byte key is derived, used
+and dropped without ever being representable on the Dart side. The seed is the specified compact
+private-key form rather than a space-saving trick, and it is what `client-desktop` already
+persists — `SecureStorage` stores 64 bytes because a decapsulation key is 4800 hex characters
+against a 2560-byte Windows credential.
+
+**That derivation moved into this crate, and the reason is not tidiness.** `client-desktop` had
+its own `ml_kem_keypair_from_seed` because `guardyn-crypto` could not offer one: the backend
+workspace declared `ml-kem` without the `deterministic` feature, so
+`KemCore::generate_deterministic` was not in scope at all, while the desktop workspace enabled
+it. Two implementations of FIPS 203 `ML-KEM.KeyGen_internal` is a place where the two can
+disagree, and a disagreement means a device cannot decapsulate ciphertexts addressed to the key
+it published. ML-KEM's implicit rejection turns that into a pseudorandom shared secret rather
+than an error, so it would surface only as an AEAD tag rejection, with both ends looking healthy.
+`pqxdh::ml_kem_keys_from_seed` is now the one implementation; the desktop adopting it in place of
+its copy is a separate step.
+
+**The sender path verifies the peer bundle itself.** The section above notes that
+`derive_sender_shared_secret` is `pub`, does not verify, and that the safety has lived in each
+caller remembering to call `verify_hybrid_bundle` first — "and PR-98 adds another caller". Rather
+than add a fourth caller that remembers, the FFI entry point verifies before it agrees.
+`crypto_verify_hybrid_bundle` stays exported so a bundle can also be checked where it is fetched,
+but skipping it can no longer cost anything.
+
+**The initiator's ephemeral keypair is minted inside Rust.** The desktop passes one in because it
+needs the public half for the prekey message; the FFI function returns that public half instead,
+so no ephemeral secret is representable in Dart. The same return value splits `additional_data`
+into its ephemeral and ciphertext halves, retiring the `[32..]` offset arithmetic currently
+open-coded in the desktop client, this crate's tests and the benchmark.
+
+One thing the boundary does **not** get right, and it predates this step: the generated Dart
+types that carry secrets are `freezed`, and freezed writes a `toString()` interpolating every
+field, so `KeyPair`, `EncryptedData` and the older `HybridKeyBundle` print private keys and
+ciphertext. That is [#348](https://github.com/guardyn/guardyn/issues/348). The types added here
+avoid it — `HybridSenderAgreement` carries a shared secret and is deliberately not `freezed` —
+but avoiding it one type at a time is not a fix.
 
 ## Alternatives rejected
 

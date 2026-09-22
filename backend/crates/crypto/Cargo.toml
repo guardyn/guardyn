@@ -55,7 +55,11 @@ zeroize = { version = "1.8", features = ["derive"] }
 subtle = "2.5"  # Constant-time operations
 
 # Post-quantum cryptography (ML-KEM / Kyber)
-ml-kem = { version = "0.2", optional = true }
+# `deterministic` is what exposes `KemCore::generate_deterministic`, i.e. FIPS 203
+# `ML-KEM.KeyGen_internal(d, z)`. Without it a keypair cannot be regenerated from its seed, which
+# is why `client-desktop` carried its own copy of that derivation against its own `ml-kem`
+# dependency. See `ml_kem_keys_from_seed` in `src/pqxdh.rs`.
+ml-kem = { version = "0.2", optional = true, features = ["deterministic"] }
 base64 = "0.22.1"
 
 [dev-dependencies]
