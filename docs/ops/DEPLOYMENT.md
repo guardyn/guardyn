@@ -110,6 +110,14 @@ because Envoy is the ingress path.
 derives from it: `auth.${DOMAIN}`, `api.${DOMAIN}`, `ws.${DOMAIN}`, `media.${DOMAIN}`,
 `app.${DOMAIN}`. Deployment must work with `.local`, `.test` and real domains alike.
 
+That rule has a second edge which is easy to miss: a URL in an **annotation** is still a
+hardcoded domain. The `runbook_url` fields in `infra/k8s/base/monitoring/alerting-rules.yaml`
+and `infra/k8s/overlays/prod/slo-rules.yaml` pointed at a project-owned host that served no
+such path, so every one of them was a 404 waiting for an on-call engineer at 3am. They now
+point at anchors in [`RUNBOOK.md`](RUNBOOK.md) in this repository, which is both domain-free
+and the place the procedure actually lives. An operator's runbook link should resolve without
+depending on who owns which domain this year.
+
 ## Secrets
 
 SOPS with age, configured in `.sops.yaml`. Only `*.enc.yaml` is committed; `age-key.txt`
