@@ -174,13 +174,24 @@ multi-device delivery is promised to anyone.
 > the `X3DH` one — an interop break visible only as an AEAD tag rejection. When a protocol change
 > splits into a reader and a writer, the reader ships first.
 >
-> **`client-mobile` publishes no ML-KEM material, and still will not after PR-98b.** Its proto
-> is forked at tag 5, so a desktop initiator takes the classical branch against it without
-> anything having to detect a version. Publishing tags 6 and 7 is PR-98c
-> ([#354](https://github.com/guardyn/guardyn/issues/354)); the mobile initiator is PR-98d
-> ([#355](https://github.com/guardyn/guardyn/issues/355)).
+> **`client-mobile` publishes tags 6 and 7 as of PR-98c
+> ([#354](https://github.com/guardyn/guardyn/issues/354)).** Its proto is no longer forked —
+> `client-mobile/proto/common.proto` is now byte-identical to `backend/proto/common.proto` — and
+> `mlKemPreKeyForPublication` derives the encapsulation key from the same persisted seed the
+> responder decapsulates with, signing it with the identity key that signs the signed pre-key.
+> The two fields are produced as one value and set in one branch: `auth-service` refuses a
+> bundle carrying one without the other and discards the whole bundle on that refusal while
+> still reporting success, so a half pair would leave an account holding no key material at all.
+> A device with no native `pq` build publishes tags 1–5 only and a peer takes the classical
+> branch, which is the honest outcome rather than a degraded one.
 >
-> **It can nonetheless answer one, as of PR-98b
+> **Only register and first login on a new device publish it.** `UploadPreKeys` carries one-time
+> pre-keys alone and `Login` stores a bundle only for a device the server does not know, so an
+> existing phone has no way to rotate or re-publish an ML-KEM pre-key
+> ([#362](https://github.com/guardyn/guardyn/issues/362)). The mobile initiator is
+> PR-98d ([#355](https://github.com/guardyn/guardyn/issues/355)).
+>
+> **It has been able to answer one since PR-98b
 > ([#353](https://github.com/guardyn/guardyn/issues/353)).** `createSessionAsResponder` selects
 > the domain on the prekey message's `0x02` flag exactly as the desktop does, forwarding the
 > ciphertext to `crypto_derive_recipient_shared_secret` rather than parsing it and dropping it,

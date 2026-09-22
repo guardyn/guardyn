@@ -211,6 +211,11 @@ class AuthRemoteDatasource {
 
   /// Generate real X3DH KeyBundle for registration/login
   /// Uses CryptoService to create cryptographically secure keys
+  ///
+  /// Carries the hybrid ML-KEM pre-key on tags 6 and 7 when this device has one. Both
+  /// `register` and `login` build their bundle here, which is every path that publishes key
+  /// material - `UploadPreKeys` carries one-time pre-keys only and cannot rotate an ML-KEM
+  /// pre-key (#354 scope note).
   /// 
   /// OPTIMIZED: Uses isolate-based async generation for instant login.
   /// Only 1 key is generated initially - more keys are added in background.
@@ -225,14 +230,19 @@ class AuthRemoteDatasource {
       oneTimePreKeyCount: 1, // Minimal for fast startup
     );
 
+    // Null on a device with no post-quantum capability, which publishes a classical bundle.
+    // Fetched before the bundle is built so the pair is one value at the point it is used.
+    final mlKemPreKey = await cryptoService.mlKemPreKeyForPublication();
+
     stopwatch.stop();
     logger.i(
       'Generated X3DH key bundle in ${stopwatch.elapsedMilliseconds}ms '
-      'with ${keyBundle.oneTimePreKey != null ? 1 : 0} one-time pre-key',
+      'with ${keyBundle.oneTimePreKey != null ? 1 : 0} one-time pre-key, '
+      '${mlKemPreKey != null ? 'hybrid' : 'classical'}',
     );
 
     final now = DateTime.now();
-    return common.KeyBundle()
+    final bundle = common.KeyBundle()
       ..identityKey = keyBundle.identityKey
       ..signedPreKey = keyBundle.signedPreKey
       ..signedPreKeySignature = keyBundle.signedPreKeySignature
@@ -242,6 +252,18 @@ class AuthRemoteDatasource {
       ..createdAt = (common.Timestamp()
         ..seconds = Int64(now.millisecondsSinceEpoch ~/ 1000)
         ..nanos = (now.millisecondsSinceEpoch % 1000) * 1000000);
+
+    // Tags 6 and 7, set together or not at all. The server refuses a bundle carrying one
+    // without the other and discards the whole bundle on that refusal - while still returning
+    // success - so a half pair would leave the account with no key material at all, classical
+    // included. Destructuring the one value in one branch is what keeps that unreachable.
+    if (mlKemPreKey != null) {
+      bundle
+        ..mlKemPublic = mlKemPreKey.publicKey
+        ..mlKemPublicSignature = mlKemPreKey.signature;
+    }
+
+    return bundle;
   }
 
   /// Update user profile (avatar, display name, bio)

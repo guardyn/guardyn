@@ -8,7 +8,7 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: non_constant_identifier_names
 
 import 'dart:core' as $core;
 
@@ -215,6 +215,8 @@ class KeyBundle extends $pb.GeneratedMessage {
     $core.List<$core.int>? signedPreKeySignature,
     $core.Iterable<$core.List<$core.int>>? oneTimePreKeys,
     Timestamp? createdAt,
+    $core.List<$core.int>? mlKemPublic,
+    $core.List<$core.int>? mlKemPublicSignature,
   }) {
     final result = create();
     if (identityKey != null) result.identityKey = identityKey;
@@ -223,6 +225,9 @@ class KeyBundle extends $pb.GeneratedMessage {
       result.signedPreKeySignature = signedPreKeySignature;
     if (oneTimePreKeys != null) result.oneTimePreKeys.addAll(oneTimePreKeys);
     if (createdAt != null) result.createdAt = createdAt;
+    if (mlKemPublic != null) result.mlKemPublic = mlKemPublic;
+    if (mlKemPublicSignature != null)
+      result.mlKemPublicSignature = mlKemPublicSignature;
     return result;
   }
 
@@ -249,6 +254,10 @@ class KeyBundle extends $pb.GeneratedMessage {
         4, _omitFieldNames ? '' : 'oneTimePreKeys', $pb.PbFieldType.PY)
     ..aOM<Timestamp>(5, _omitFieldNames ? '' : 'createdAt',
         subBuilder: Timestamp.create)
+    ..a<$core.List<$core.int>>(
+        6, _omitFieldNames ? '' : 'mlKemPublic', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        7, _omitFieldNames ? '' : 'mlKemPublicSignature', $pb.PbFieldType.OY)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -310,6 +319,42 @@ class KeyBundle extends $pb.GeneratedMessage {
   void clearCreatedAt() => $_clearField(5);
   @$pb.TagNumber(5)
   Timestamp ensureCreatedAt() => $_ensure(4);
+
+  /// Hybrid PQXDH (I-3). Added by PR-36. Tags 6-7 are additive: a v1.0.1 client that
+  /// predates them skips both as unknown fields and is unaffected.
+  ///
+  /// Present as a pair or not at all. An ml_kem_public without its signature is an
+  /// unauthenticated encapsulation key: a peer that encapsulates to a substituted one
+  /// gets a post-quantum half the attacker knows, while the exchange still looks
+  /// healthy. A bundle carrying one without the other is rejected entirely - never
+  /// degraded to the classical-only exchange, which is a downgrade an active attacker
+  /// can force by stripping a single field.
+  ///
+  /// The signature is Ed25519 over the raw encapsulation-key bytes - no domain
+  /// separator, no length prefix - matching how the key is signed in
+  /// crypto/src/pqxdh.rs, and verified there by verify_hybrid_bundle against the same
+  /// identity key that signs the signed pre-key.
+  ///
+  /// `optional` rather than a zero-length bytes so "not published" and "published
+  /// empty" stay distinct: prost elides empty bytes on encode, which would collapse
+  /// them into the same value.
+  @$pb.TagNumber(6)
+  $core.List<$core.int> get mlKemPublic => $_getN(5);
+  @$pb.TagNumber(6)
+  set mlKemPublic($core.List<$core.int> value) => $_setBytes(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasMlKemPublic() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearMlKemPublic() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.List<$core.int> get mlKemPublicSignature => $_getN(6);
+  @$pb.TagNumber(7)
+  set mlKemPublicSignature($core.List<$core.int> value) => $_setBytes(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMlKemPublicSignature() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMlKemPublicSignature() => $_clearField(7);
 }
 
 /// Generic error response

@@ -54,6 +54,13 @@ class CryptoService {
   /// Bytes in an ML-KEM seed, per FIPS 203. Mirrors `pqxdh::MLKEM_SEED_SIZE`.
   static const _mlKemSeedLength = 64;
 
+  /// Bytes in an ML-KEM-768 encapsulation key, per FIPS 203.
+  ///
+  /// Checked rather than assumed: the length is the one property of the published key this
+  /// side can verify cheaply, and a short read here would be signed and published as though it
+  /// were a key.
+  static const _mlKemPublicLength = 1184;
+
   final FlutterSecureStorage _storage;
   X3DHProtocol? _x3dh;
   final Map<String, DoubleRatchet> _sessions = {};
@@ -649,6 +656,62 @@ class CryptoService {
     print('🔐 CryptoService.clearAllSessions: deleted $count sessions');
   }
 
+  /// The ML-KEM pre-key this device publishes on `KeyBundle` tags 6 and 7.
+  ///
+  /// Returns `null` when there is nothing to publish - a build with no native crypto, no `pq`
+  /// feature, or a device that has not generated a seed yet. A caller that gets `null` sends a
+  /// classical bundle; a peer then reads the absent tags and takes the classical branch, which
+  /// is the honest outcome rather than a degraded one.
+  ///
+  /// **The pair is produced together or not at all.** `auth-service` refuses a bundle carrying
+  /// one field without the other, and that refusal discards the *whole* bundle while
+  /// registration still reports success - so a half pair leaves the account holding no key
+  /// material at all, classical included. Returning a single object rather than two nullable
+  /// fields is what makes that state unrepresentable at the call site.
+  ///
+  /// The signature is recomputed on each call rather than stored. Ed25519 is deterministic, so
+  /// a stored signature would be a third thing that can fall out of step with the seed and the
+  /// identity key; re-signing 1184 bytes is cheaper than reasoning about that. `client-desktop`
+  /// made the same choice in `ml_kem_prekey_for_publication`.
+  ///
+  /// Failures degrade to `null` deliberately. A device that cannot produce a post-quantum
+  /// pre-key must still be able to register, and this is the one place where falling back to
+  /// the classical bundle is correct - the peer learns the truth from the absent tags rather
+  /// than from an encapsulation key nobody can decapsulate to.
+  Future<MlKemPreKey?> mlKemPreKeyForPublication() async {
+    if (!CryptoPrimitives.isPostQuantumAvailable) {
+      return null;
+    }
+
+    final x3dh = _x3dh;
+    if (x3dh == null) {
+      return null;
+    }
+
+    try {
+      // Read-only on purpose: [_storedMlKemSeed] refuses to mint. Publishing a key derived
+      // from a seed minted here would race the responder, which reads the stored one.
+      final seed = await _storedMlKemSeed();
+      final publicKey = rust_api.cryptoMlKemPublicFromSeed(seed: seed);
+      if (publicKey.length != _mlKemPublicLength) {
+        throw InvalidKeyException(
+          'ML-KEM encapsulation key is ${publicKey.length} bytes, '
+          'expected $_mlKemPublicLength',
+        );
+      }
+
+      // Ed25519 over the raw encapsulation-key bytes - no domain separator, no length prefix -
+      // matching `pqxdh::verify_hybrid_bundle`, and signed by the same identity key that signs
+      // the signed pre-key.
+      final signature = await x3dh.identityKey.sign(publicKey);
+      return MlKemPreKey(publicKey: publicKey, signature: signature);
+    } catch (e) {
+      // I-1: the reason, never the material. No seed, key or signature reaches this line.
+      debugPrint('🔐 Publishing a classical-only key bundle: $e');
+      return null;
+    }
+  }
+
   /// Clear all crypto state (logout)
   Future<void> clearAll() async {
     _x3dh = null;
@@ -830,4 +893,23 @@ class CryptoService {
     final json = jsonEncode(ratchet.serialize());
     await _storage.write(key: '$_sessionPrefix$sessionId', value: json);
   }
+}
+
+/// A device's ML-KEM-768 pre-key and the identity-key signature over it.
+///
+/// The two travel together because `KeyBundle` tags 6 and 7 are valid only as a pair: an
+/// encapsulation key without its signature is an *unauthenticated* one, and a peer that
+/// encapsulates to a substituted key derives a post-quantum half the attacker already knows
+/// while the handshake still looks healthy. Both `pqxdh::verify_hybrid_bundle` and
+/// `auth-service`'s store reject a half pair outright rather than degrading to the classical
+/// exchange, because that degradation is a downgrade an active attacker forces by stripping a
+/// single field.
+class MlKemPreKey {
+  /// ML-KEM-768 encapsulation key, 1184 bytes. `KeyBundle.ml_kem_public`, tag 6.
+  final Uint8List publicKey;
+
+  /// Ed25519 signature over [publicKey], 64 bytes. `KeyBundle.ml_kem_public_signature`, tag 7.
+  final Uint8List signature;
+
+  const MlKemPreKey({required this.publicKey, required this.signature});
 }

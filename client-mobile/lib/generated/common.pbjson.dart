@@ -8,8 +8,7 @@
 // ignore_for_file: constant_identifier_names
 // ignore_for_file: curly_braces_in_flow_control_structures
 // ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
-// ignore_for_file: unused_import
+// ignore_for_file: non_constant_identifier_names, unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -77,6 +76,28 @@ const KeyBundle$json = {
       '6': '.guardyn.common.Timestamp',
       '10': 'createdAt'
     },
+    {
+      '1': 'ml_kem_public',
+      '3': 6,
+      '4': 1,
+      '5': 12,
+      '9': 0,
+      '10': 'mlKemPublic',
+      '17': true
+    },
+    {
+      '1': 'ml_kem_public_signature',
+      '3': 7,
+      '4': 1,
+      '5': 12,
+      '9': 1,
+      '10': 'mlKemPublicSignature',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_ml_kem_public'},
+    {'1': '_ml_kem_public_signature'},
   ],
 };
 
@@ -86,7 +107,10 @@ final $typed_data.Uint8List keyBundleDescriptor = $convert.base64Decode(
     'RfcHJlX2tleRgCIAEoDFIMc2lnbmVkUHJlS2V5EjcKGHNpZ25lZF9wcmVfa2V5X3NpZ25hdHVy'
     'ZRgDIAEoDFIVc2lnbmVkUHJlS2V5U2lnbmF0dXJlEikKEW9uZV90aW1lX3ByZV9rZXlzGAQgAy'
     'gMUg5vbmVUaW1lUHJlS2V5cxI4CgpjcmVhdGVkX2F0GAUgASgLMhkuZ3VhcmR5bi5jb21tb24u'
-    'VGltZXN0YW1wUgljcmVhdGVkQXQ=');
+    'VGltZXN0YW1wUgljcmVhdGVkQXQSJwoNbWxfa2VtX3B1YmxpYxgGIAEoDEgAUgttbEtlbVB1Ym'
+    'xpY4gBARI6ChdtbF9rZW1fcHVibGljX3NpZ25hdHVyZRgHIAEoDEgBUhRtbEtlbVB1YmxpY1Np'
+    'Z25hdHVyZYgBAUIQCg5fbWxfa2VtX3B1YmxpY0IaChhfbWxfa2VtX3B1YmxpY19zaWduYXR1cm'
+    'U=');
 
 @$core.Deprecated('Use errorResponseDescriptor instead')
 const ErrorResponse$json = {

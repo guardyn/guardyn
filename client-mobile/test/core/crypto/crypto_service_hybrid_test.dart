@@ -1,5 +1,11 @@
-/// Proves that the responder selects its KDF domain on the prekey message's `0x02` flag, and
-/// that it refuses rather than degrades when it cannot answer in the domain it was asked for.
+/// Proves both halves of hybrid PQXDH as `CryptoService` implements them: the responder
+/// selects its KDF domain on the prekey message's `0x02` flag and refuses rather than degrades
+/// when it cannot answer in the domain it was asked for, and the publisher emits an ML-KEM
+/// pre-key and its signature together or emits neither.
+///
+/// They share a file because they share a seed. The key the publisher advertises must be the
+/// one the responder decapsulates with, and the cheapest way to keep that true is to let both
+/// sets of assertions run against the same storage fake.
 ///
 /// The decapsulation itself cannot be asserted here. `flutter test` runs the whole suite on
 /// [DartCryptoBridge] - there is no FFI in a headless VM - and ML-KEM has no Dart
@@ -22,6 +28,7 @@ import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:guardyn_client/core/crypto/crypto_exceptions.dart';
+import 'package:guardyn_client/core/crypto/crypto_primitives.dart';
 import 'package:guardyn_client/core/crypto/crypto_service.dart';
 import 'package:guardyn_client/core/crypto/x3dh.dart';
 import 'package:mocktail/mocktail.dart';
@@ -36,6 +43,12 @@ const _mlKemSeedLength = 64;
 
 /// Bytes in an ML-KEM-768 ciphertext, per FIPS 203.
 const _mlKemCiphertextLength = 1088;
+
+/// Bytes in an ML-KEM-768 encapsulation key, per FIPS 203.
+const _mlKemPublicLength = 1184;
+
+/// Bytes in an Ed25519 signature.
+const _signatureLength = 64;
 
 /// An in-memory stand-in for the platform keystore.
 class _FakeSecureStorage extends Mock implements FlutterSecureStorage {
@@ -274,6 +287,93 @@ void main() {
       // A seed outliving its identity would let a re-registered device answer handshakes
       // addressed to the encapsulation key the previous one published.
       expect(bobStorage.store.containsKey(_mlKemSeedKey), isFalse);
+    });
+  });
+
+  cryptoGroup('CryptoService as hybrid PQXDH publisher', () {
+    late CryptoService service;
+    late _FakeSecureStorage storage;
+
+    setUp(() async {
+      storage = _FakeSecureStorage();
+      service = CryptoService(storage: storage);
+      await service.initialize();
+      await service.initializeX3DH(oneTimePreKeyCount: 1);
+    });
+
+    cryptoTest('publishes nothing on a device with no post-quantum capability', () async {
+      // The path every CI run takes, and the one every classical peer depends on. A null here
+      // is what makes the caller send tags 1-5 only, which is a bundle the server accepts.
+      expect(
+        CryptoPrimitives.isPostQuantumAvailable,
+        isFalse,
+        reason: 'DartCryptoBridge has no ML-KEM; the suite runs on it',
+      );
+
+      expect(await service.mlKemPreKeyForPublication(), isNull);
+    });
+
+    cryptoTest('never mints a seed', () async {
+      // Publishing must read the seed the responder already answers with. Minting one here
+      // would advertise an encapsulation key whose decapsulation key the responder does not
+      // hold, and ML-KEM's implicit rejection means that surfaces only as an AEAD tag
+      // rejection later, with both ends looking healthy.
+      expect(storage.store.containsKey(_mlKemSeedKey), isFalse);
+
+      await service.mlKemPreKeyForPublication();
+
+      expect(
+        storage.store.containsKey(_mlKemSeedKey),
+        isFalse,
+        reason: 'the publisher reads the seed, it does not create one',
+      );
+    });
+
+    cryptoTest('degrades to classical rather than throwing with no seed stored', () async {
+      storage.store.remove(_mlKemSeedKey);
+
+      // _storedMlKemSeed throws by design. Letting that escape would take registration down
+      // with it on every device that has no seed yet.
+      await expectLater(service.mlKemPreKeyForPublication(), completion(isNull));
+    });
+
+    cryptoTest('degrades to classical rather than throwing on a malformed seed', () async {
+      storage.store[_mlKemSeedKey] = 'this is not base64';
+      await expectLater(service.mlKemPreKeyForPublication(), completion(isNull));
+
+      storage.store[_mlKemSeedKey] = base64Encode(Uint8List(_mlKemSeedLength - 1));
+      await expectLater(service.mlKemPreKeyForPublication(), completion(isNull));
+    });
+
+    ffiOnlyCryptoTest('derives a signed encapsulation key from the stored seed', () async {
+      final preKey = await service.mlKemPreKeyForPublication();
+
+      expect(preKey, isNotNull);
+      expect(preKey!.publicKey.length, _mlKemPublicLength);
+      expect(preKey.signature.length, _signatureLength);
+
+      // Tag 7 must verify under the same identity key that signs the signed pre-key, because
+      // that is the single key `pqxdh::verify_hybrid_bundle` checks both signatures against.
+      final bundle = service.exportKeyBundles().first;
+      expect(
+        await IdentityKeyPair.verify(
+          preKey.publicKey,
+          preKey.signature,
+          bundle.identityKey,
+        ),
+        isTrue,
+        reason: 'a peer rejects the whole bundle if this does not verify',
+      );
+    });
+
+    ffiOnlyCryptoTest('names the same key on every call', () async {
+      // Login republishes the bundle. If the key moved between publications the server would
+      // advertise one the responder can no longer decapsulate to.
+      final first = await service.mlKemPreKeyForPublication();
+      final second = await service.mlKemPreKeyForPublication();
+
+      expect(first, isNotNull);
+      expect(second!.publicKey, equals(first!.publicKey));
     });
   });
 }
