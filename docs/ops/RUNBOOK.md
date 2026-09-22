@@ -113,13 +113,21 @@ likely to break them.
 Bash, git and awk only, so the job needs no toolchain and finishes in seconds. `cargo fmt` and
 `cargo clippy` stay in `build.yml`, where a Rust toolchain already exists.
 
-**Two predicates are ratcheted rather than enforced.** `RS-UNWRAP` (47 sites) and `NAME-SH`
+**Two predicates are ratcheted rather than enforced.** `RS-UNWRAP` (28 sites) and `NAME-SH`
 (5 files) fail today and are owned by later work, so each carries a budget equal to its
 measured count: the build fails when the number **grows**, and every fix lowers the ceiling.
 
 If `rules-verify` fails on a ratchet you did not mean to touch, you added a site. If it tells
 you the count is *down*, lower the budget in the same PR - the number is a claim about the
 repository, and a stale one is worse than none.
+
+**`RS-UNWRAP` does not scan the two `frb_generated.rs` files.** They are written by
+`just ffi-generate`, hand-editing them is forbidden, and they held 21 of the 49 sites the scan
+used to report. Counting them meant the ratchet moved whenever the bindings were regenerated -
+flutter_rust_bridge 2.13.0 emits two more `unwrap`s than 2.11.1 - so running a code generator
+could fail the build with no change to any hand-written line. The exclusion dropped the budget
+from 47 to 28. If you regenerate the bindings and `RS-UNWRAP` moves, the exclusion has been
+lost; it has not found real debt.
 
 **If `PQ-DEFAULT` fails**, someone has taken `pq` out of `guardyn-crypto`'s `default` feature
 set, and every service built from `cargo build --release -p <service>` will ship with no

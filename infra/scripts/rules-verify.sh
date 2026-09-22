@@ -49,7 +49,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 BASE="${RULES_VERIFY_BASE:-origin/main}"
 
 # Frozen debt. These may only ever be lowered. Lower them in the same PR that removes a site.
-RS_UNWRAP_BUDGET=47
+RS_UNWRAP_BUDGET=28
 NAME_SH_BUDGET=5
 
 failures=0
@@ -79,8 +79,16 @@ ratchet() {
 check_rs_unwrap() {
   local hits
   # Everything from the first #[cfg(test)] onward is test code, where unwrap is idiomatic.
+  #
+  # `frb_generated.rs` is excluded for the same reason as `/generated/`: it is machine-written
+  # by `just ffi-generate` and hand-editing it is forbidden, so its unwraps are not debt anyone
+  # can pay down. Counting them made the ratchet move whenever the bindings were regenerated -
+  # flutter_rust_bridge 2.13.0 emits two more than 2.11.1 did - which is a build failure caused
+  # by running a code generator, not by anyone writing code. The two files hold 21 of the 49
+  # sites the scan used to report; the budget drops from 47 to 28 accordingly.
   hits="$(git ls-files 'backend/crates/*/src/*.rs' 'backend/crates/*/src/**/*.rs' \
     | grep -v '/generated/' \
+    | grep -v 'frb_generated\.rs' \
     | while IFS= read -r f; do
         sed '/#\[cfg(test)\]/,$d' "$f" | grep -nE '\.(unwrap|expect)\(' | sed "s|^|$f:|"
       done)"
