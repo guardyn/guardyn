@@ -551,3 +551,26 @@ steps:
   # stale date moves the file further out of compliance rather than into it. 2027-09-17 is 362
   # days out and keeps the day-of-month convention.
   - {id: PR-130, issue: 344, phase: 4, type: security, status: done, title: "Bump the security.txt Expires date before it lapses"}
+
+  # Landing page redesign. Five steps merged between #374 and #382 without being recorded
+  # here: the branches carried real issue numbers, the YAML carried nothing, and the next
+  # attempt was named for an issue (#383) that did not exist. PR-131 to PR-135 record what
+  # merged. PR-136 onward is the sibling-page migration those steps deferred - sponsor,
+  # privacy, terms, coming-soon and crypto are still Tailwind Play CDN pages rendering dark.
+  #
+  # The AGENTS.md 2.3 line budget is waived for PR-137 to PR-140 by explicit user decision on
+  # 2026-09-23. A page rewrite is atomic: dropping the Tailwind script while any utility class
+  # remains ships an unstyled page, so a compliant split would put a broken page on guardyn.co.
+  # Each of those PR bodies states its real size instead of hiding it.
+  - {id: PR-131, issue: 373, phase: 4, type: feat, status: done, title: "Strip the dark-only decoration from the landing page"}
+  - {id: PR-132, issue: 375, phase: 4, type: feat, status: done, title: "Move the landing palette to css/theme.css and flip the page to the light theme"}
+  - {id: PR-133, issue: 377, phase: 4, type: feat, status: done, title: "Collapse the landing nav on phones and give cards their surface treatment"}
+  - {id: PR-134, issue: 379, phase: 4, type: feat, status: done, title: "Move the beta form, Project Status and footer off inline styles"}
+  - {id: PR-135, issue: 381, phase: 4, type: feat, status: done, title: "Add the skip link, focus outline and reduced-motion guard; drop the legacy aliases"}
+  - {id: PR-136, issue: null, phase: 4, type: refactor, status: in-progress, title: "Extract the landing component layer into css/layout.css"}
+  - {id: PR-137, issue: null, phase: 4, type: refactor, status: todo, title: "Migrate sponsor.html to the light theme"}
+  - {id: PR-138, issue: null, phase: 4, type: refactor, status: todo, title: "Migrate privacy.html and terms.html to the light theme"}
+  - {id: PR-139, issue: null, phase: 4, type: refactor, status: todo, title: "Retire or retheme coming-soon.html"}
+  - {id: PR-140, issue: null, phase: 4, type: refactor, status: todo, title: "Migrate crypto.html to the light theme"}
+  - {id: PR-141, issue: null, phase: 4, type: refactor, status: todo, title: "Migrate .well-known/pgp.html to the light theme"}
+  - {id: PR-142, issue: null, phase: 4, type: security, status: todo, title: "Drop Tailwind and Google Fonts from the landing CSP once no page loads them"}

@@ -4,8 +4,10 @@
 
 ### Change Colors
 
-Every colour is a CSS custom property in `css/theme.css`; `index.html` carries no literal hex
-value of its own. Change a token there and every page that links the stylesheet follows.
+Every colour is a CSS custom property in `css/theme.css`; the component rules that consume them
+- nav, cards, buttons, footer, grid, skip link - are in `css/layout.css`. No page carries a
+`<style>` block or a literal hex value of its own. Change a token in `theme.css` and every page
+that links it follows.
 
 | Token | Value | Used for |
 |---|---|---|
