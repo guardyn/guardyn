@@ -117,6 +117,7 @@ Update links in `index.html`:
 landing/
 ├── index.html          # Main landing page
 ├── css/theme.css       # Design tokens: colours, radii, shadows, font stack, mesh background
+├── css/layout.css      # Component layer: nav, cards, buttons, footer, grid, skip link, breakpoint
 ├── _headers           # Security headers (Cloudflare)
 ├── _redirects         # URL redirects (www → non-www)
 ├── robots.txt         # SEO crawling instructions

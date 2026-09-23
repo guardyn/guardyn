@@ -123,7 +123,7 @@ Defined once as CSS custom properties in `css/theme.css` (see `CUSTOMIZATION.md`
 ### Performance
 - **First Contentful Paint**: < 1.5s
 - **Time to Interactive**: < 3s
-- **Total Size**: ~50KB (HTML + inline styles)
+- **Total Size**: ~50KB (HTML + `css/theme.css` + `css/layout.css`)
 - **Images**: External (not bundled)
 
 ## 🚀 Deployment Options
