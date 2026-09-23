@@ -89,9 +89,21 @@
             color: var(--color-text-on-primary);
         }
 
+        .nav-toggle {
+            display: none;
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            color: var(--color-text);
+            cursor: pointer;
+        }
+
         /* Hero Section */
         .hero {
-            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -104,6 +116,17 @@
             width: 160px;
             height: 160px;
             margin: 0 auto 2rem;
+        }
+
+        .hero-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-card);
+            padding: 3rem 2rem;
+        }
+
+        .hero-card .stats-grid {
+            margin-bottom: 0;
         }
 
         .hero-logo {
@@ -138,7 +161,7 @@
         /* Buttons */
         .btn {
             padding: 1rem 2rem;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
             text-decoration: none;
             transition: all 0.3s ease;
@@ -190,8 +213,9 @@
         .stat-card {
             background: var(--surface);
             padding: 2rem;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-card);
             text-align: center;
             transition: all 0.3s ease;
         }
@@ -243,8 +267,8 @@
             padding-bottom: 56.25%; /* 16:9 aspect ratio */
             height: 0;
             overflow: hidden;
-            border-radius: 12px;
-            box-shadow: var(--shadow-card-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
             border: 2px solid var(--color-border);
             transition: all 0.3s ease;
         }
@@ -293,9 +317,9 @@
         .app-screenshot-wrapper {
             position: relative;
             display: inline-block;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             overflow: hidden;
-            box-shadow: var(--shadow-card-lg);
+            box-shadow: var(--shadow-card);
             border: 2px solid var(--color-border);
             transition: all 0.3s ease;
             max-width: 100%;
@@ -328,8 +352,9 @@
             gap: 0.5rem;
             padding: 0.5rem 1rem;
             background: var(--surface);
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-card);
             color: var(--text-muted);
             font-size: 0.9rem;
             transition: all 0.3s ease;
@@ -348,6 +373,10 @@
         /* Features Section */
         .section {
             padding: 6rem 0;
+        }
+
+        .section--band {
+            background: var(--color-surface-muted);
         }
 
         .section-title {
@@ -376,8 +405,9 @@
         .feature {
             background: var(--surface);
             padding: 2rem;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-card);
             transition: all 0.3s ease;
         }
 
@@ -428,8 +458,9 @@
         .tech-badge {
             background: var(--surface);
             padding: 0.75rem 1.5rem;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-card);
             transition: all 0.3s ease;
             font-weight: 500;
             cursor: help;
@@ -467,7 +498,7 @@
         .tech-modal-content {
             background: var(--color-surface);
             border: 2px solid var(--color-border);
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             max-width: 600px;
             width: 100%;
             padding: 30px;
@@ -541,7 +572,7 @@
             background: var(--color-primary-soft);
             border-left: 4px solid var(--primary);
             padding: 15px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             margin-top: 20px;
         }
 
@@ -571,7 +602,7 @@
             background: var(--color-primary-soft);
             color: var(--primary);
             padding: 5px 12px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             font-size: 12px;
             font-weight: 500;
         }
@@ -669,7 +700,15 @@
             }
 
             .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .stat-card {
+                padding: 1.25rem 0.75rem;
+            }
+
+            .stat-value {
+                font-size: 1.75rem;
             }
 
             .tech-modal-content {
@@ -679,6 +718,45 @@
 
             .tech-modal-title {
                 font-size: 22px;
+            }
+
+            .nav-toggle {
+                display: inline-flex;
+            }
+
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0;
+                padding: 0.5rem;
+                background: var(--color-surface);
+                border-bottom: 1px solid var(--color-border);
+                box-shadow: var(--shadow-card);
+            }
+
+            .nav-links.open {
+                display: flex;
+            }
+
+            .nav-links a {
+                display: block;
+                padding: 0.75rem 1rem;
+                border-radius: var(--radius-sm);
+            }
+
+            .nav-links .btn-primary {
+                display: flex;
+                justify-content: center;
+                margin-top: 0.25rem;
+            }
+
+            .hero-card {
+                padding: 2rem 1rem;
             }
         }
     </style>
@@ -692,7 +770,10 @@
                     <img src="/media/logo.svg" alt="Guardyn Logo">
                     <span class="logo-text">Guardyn</span>
                 </a>
-                <ul class="nav-links">
+                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </button>
+                <ul class="nav-links" id="nav-links">
                     <li><a href="#features">Features</a></li>
                     <li><a href="#tech">Technology</a></li>
                     <li><a href="#architecture">Architecture</a></li>
@@ -706,6 +787,7 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
+            <div class="hero-card">
             <!-- Logo -->
             <img src="/media/logo.svg" alt="" class="hero-logo-img" width="160" height="160">
 
@@ -756,6 +838,7 @@
                     <div class="stat-value">Zero</div>
                     <div class="stat-label">Metadata Collection</div>
                 </div>
+            </div>
             </div>
         </div>
     </section>
@@ -982,7 +1065,7 @@
     </section>
 
     <!-- Technology Stack Section -->
-    <section id="tech" class="section" style="background: var(--surface);">
+    <section id="tech" class="section section--band">
         <div class="container">
             <h2 class="section-title"><span class="gradient-text">Technology</span> Stack</h2>
             <p class="section-subtitle">
@@ -1080,7 +1163,7 @@
         <!-- Tech Info Modal -->
         <div id="techModal" class="tech-modal">
             <div class="tech-modal-content">
-                <button class="tech-modal-close" onclick="closeTechModal()">&times;</button>
+                <button class="tech-modal-close" type="button" aria-label="Close" onclick="closeTechModal()">&times;</button>
                 <div class="tech-modal-category" id="modalCategory"></div>
                 <h3 class="tech-modal-title" id="modalTitle"></h3>
                 <p class="tech-modal-description" id="modalDescription"></p>
@@ -1157,7 +1240,7 @@
     </section>
 
     <!-- Beta Sign Up Section -->
-    <section id="beta" class="section" style="background: var(--surface);">
+    <section id="beta" class="section section--band">
         <div class="container">
             <div style="max-width: 700px; margin: 0 auto; background: var(--color-surface); padding: 3rem; border-radius: 16px; border: 1px solid var(--color-border); box-shadow: var(--shadow-card);">
                 <h2 class="section-title">Join the Privacy Rebellion</h2>
@@ -1894,6 +1977,28 @@
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     closeTechModal();
+                }
+            });
+
+            // Mobile navigation: the toggle owns the open state and mirrors it onto aria-expanded.
+            const navToggle = document.querySelector('.nav-toggle');
+            const navLinks = document.getElementById('nav-links');
+            function setMenu(open) {
+                navLinks.classList.toggle('open', open);
+                navToggle.setAttribute('aria-expanded', String(open));
+                navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+            }
+            navToggle.addEventListener('click', function() {
+                setMenu(!navLinks.classList.contains('open'));
+            });
+            navLinks.addEventListener('click', function(e) {
+                if (e.target.closest('a')) {
+                    setMenu(false);
+                }
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    setMenu(false);
                 }
             });
         });
