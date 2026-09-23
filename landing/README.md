@@ -116,6 +116,7 @@ Update links in `index.html`:
 ```
 landing/
 ├── index.html          # Main landing page
+├── css/theme.css       # Design tokens: colours, radii, shadows, font stack, mesh background
 ├── _headers           # Security headers (Cloudflare)
 ├── _redirects         # URL redirects (www → non-www)
 ├── robots.txt         # SEO crawling instructions

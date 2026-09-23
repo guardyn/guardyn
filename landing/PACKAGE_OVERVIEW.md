@@ -88,20 +88,21 @@ scripts/
 
 ### Visual Elements
 - ✅ Glassmorphism UI (backdrop blur)
-- ✅ Gradient text and buttons
+- ✅ Light mesh background with white cards
 - ✅ Smooth animations (fade-in)
 - ✅ Hover effects on cards
 - ✅ Responsive navigation
 - ✅ Mobile hamburger menu
 
 ### Colors Used
-- Primary: Blue (#3b82f6 → #2563eb)
-- Accent: Purple (#8b5cf6)
-- Background: Dark gray (#0f172a, #1e293b)
-- Text: White with various opacities
+Defined once as CSS custom properties in `css/theme.css` (see `CUSTOMIZATION.md`):
+- Primary: Trust green (`#53B446` fills, `#3D6B4A` for green text)
+- Background: Mesh gradient of mint `#CDE8D2`, sky `#AECDF4` and violet `#E8D5F0`
+- Surfaces: White cards (`#FFFFFF`) with `#E5E7EB` borders
+- Text: `#1F2937` primary, `#6B7280` secondary, `#9CA3AF` placeholders
 
 ### Typography
-- Font: Inter (Google Fonts)
+- Font: the `--font-sans` token; Inter or Roboto when installed, otherwise the platform sans-serif. No web font request.
 - Weights: 300, 400, 600, 700, 800
 - Responsive sizes: 4xl → 8xl (mobile → desktop)
 

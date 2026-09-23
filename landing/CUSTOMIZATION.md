@@ -4,29 +4,21 @@
 
 ### Change Colors
 
-Edit `index.html` in the `<style>` section:
+Every colour is a CSS custom property in `css/theme.css`; `index.html` carries no literal hex
+value of its own. Change a token there and every page that links the stylesheet follows.
 
-```css
-/* Primary gradient colors */
-.gradient-text {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    /* Change to your brand colors, e.g.: */
-    /* background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%); */
-}
+| Token | Value | Used for |
+|---|---|---|
+| `--color-primary` | `#53B446` | Button fills, borders, focus rings |
+| `--color-primary-strong` | `#3D6B4A` | Green text and icons (6.18:1 on white) |
+| `--color-text` | `#1F2937` | Headings and body copy, and the text on primary buttons |
+| `--color-text-secondary` | `#6B7280` | Secondary copy (4.83:1 on white) |
+| `--color-text-placeholder` | `#9CA3AF` | Placeholders and captions only |
+| `--color-surface` | `#FFFFFF` | Cards and bands |
+| `--color-border` | `#E5E7EB` | Inputs and card borders |
 
-/* Button colors */
-.btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    /* Customize button gradient */
-}
-
-/* Background overlay */
-.hero-bg {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
-                url('../media/bg.png');
-    /* Adjust opacity: change 0.95 to make background more/less visible */
-}
-```
+Keep the contrast notes at the top of `theme.css` true when you change a value. White text on
+`#53B446` fails WCAG AA at 2.63:1, which is why primary buttons carry dark text.
 
 ### Update Text Content
 
@@ -58,35 +50,30 @@ Recommended logo sizes:
 
 ### Change Background
 
-Replace `../media/bg.png` with your background image.
+The background is a three-corner mesh gradient drawn by `body::before` in `css/theme.css`:
 
-**Recommended specs:**
-- Size: 1920x1080px or larger
-- Format: PNG or WebP
-- File size: < 500KB (optimized)
+| Token | Value | Corner |
+|---|---|---|
+| `--color-mesh-mint` | `#CDE8D2` | top-right |
+| `--color-mesh-sky` | `#AECDF4` | bottom-left |
+| `--color-mesh-violet` | `#E8D5F0` | bottom-right |
+| `--color-bg-base` | `#F7F9FB` | base fill |
+
+`index.html` uses no background image; `media/bg.webp` is only referenced by the sub-pages.
 
 ### Update Fonts
 
-Current font: **Inter** from Google Fonts
+The font stack is the `--font-sans` token in `css/theme.css`:
 
-To change:
-
-```html
-<!-- Line ~37: Replace font -->
-<link href="https://fonts.googleapis.com/css2?family=YourFont:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-<style>
-* {
-    font-family: 'YourFont', sans-serif;
-}
-</style>
+```css
+--font-sans: Inter, Roboto, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 ```
 
-Popular alternatives:
-- `Poppins` - Modern and clean
-- `Roboto` - Material Design
-- `Montserrat` - Geometric sans-serif
-- `Space Grotesk` - Tech-focused
+No web font is requested. Visitors with Inter or Roboto installed see it; everyone else gets
+their platform's sans-serif, and no request leaves the page for a font. To use another face,
+self-host it under `landing/fonts/` with an `@font-face` rule in `theme.css` and put its name
+first in the token. Do not add a Google Fonts link: it sends every visitor's address to a
+third party.
 
 ## 📝 Content Sections
 

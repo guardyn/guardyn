@@ -1,0 +1,94 @@
+/*
+ * Guardyn landing page design tokens.
+ *
+ * The single place every colour, radius, shadow and font of the landing site is defined.
+ * Pages consume the tokens through var(); no page carries a literal hex value of its own.
+ * Values follow the client application UI (light, airy, trust green).
+ *
+ * Contrast notes (WCAG 2.1 AA, computed):
+ *   #1F2937 on #53B446 = 5.58:1  -> primary buttons carry dark text; white on that green is 2.63:1.
+ *   #3D6B4A on #FFFFFF = 6.18:1  -> green text and icons use the logo's dark green, not #53B446 (2.63:1).
+ *   #6B7280 on #FFFFFF = 4.83:1  -> readable secondary copy; #9CA3AF (2.54:1) is for placeholders only.
+ */
+
+:root {
+    /* Typography: Inter or Roboto when installed, otherwise the platform sans. No web font request. */
+    --font-sans: Inter, Roboto, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
+    /* Background mesh */
+    --color-bg-base: #F7F9FB;
+    --color-mesh-mint: #CDE8D2;
+    --color-mesh-sky: #AECDF4;
+    --color-mesh-violet: #E8D5F0;
+
+    /* Surfaces */
+    --color-surface: #FFFFFF;
+    --color-surface-muted: #F9FAFB;
+    --color-surface-glass: rgba(255, 255, 255, 0.85);
+    --color-overlay: rgba(31, 41, 55, 0.45);
+
+    /* Brand */
+    --color-primary: #53B446;
+    --color-primary-strong: #3D6B4A;
+    --color-primary-soft: rgba(83, 180, 70, 0.12);
+
+    /* Text */
+    --color-text: #1F2937;
+    --color-text-secondary: #6B7280;
+    --color-text-placeholder: #9CA3AF;
+    --color-text-on-primary: #1F2937;
+
+    /* Borders */
+    --color-border: #E5E7EB;
+    --color-border-strong: #D1D5DB;
+
+    /* Shape */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    /* Elevation */
+    --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.05);
+    --shadow-card-lg: 0 24px 48px rgba(0, 0, 0, 0.08);
+    --shadow-focus: 0 0 0 3px var(--color-primary-soft);
+
+    --transition-base: 0.2s ease;
+
+    /* Legacy aliases. index.html still references the original variable names; each maps onto a
+       token above so the palette changes in one place. Removed once every var() call is renamed. */
+    --primary: var(--color-primary-strong);
+    --primary-dark: var(--color-primary-strong);
+    --secondary: var(--color-primary-strong);
+    --accent: var(--color-primary-strong);
+    --background: var(--color-bg-base);
+    --surface: var(--color-surface);
+    --text: var(--color-text);
+    --text-muted: var(--color-text-secondary);
+}
+
+html {
+    background: var(--color-bg-base);
+}
+
+body {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* Mesh gradient: mint top-right, sky bottom-left, violet bottom-right. Drawn on a fixed
+   pseudo-element so it stays put while the page scrolls and never stretches with page height. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 60% 55% at 100% 0%, var(--color-mesh-mint) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 55% at 0% 100%, var(--color-mesh-sky) 0%, transparent 70%),
+        radial-gradient(ellipse 55% 50% at 100% 100%, var(--color-mesh-violet) 0%, transparent 70%),
+        var(--color-bg-base);
+}
