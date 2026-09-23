@@ -1,0 +1,144 @@
+/*
+ * Sponsor page rules: only what sponsor.html needs beyond theme.css and layout.css - the hero
+ * heading, the tier cards, the transparency panel and the FAQ stack. Linked third. A rule moves
+ * to layout.css once a second page uses it.
+ */
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+}
+
+.cta:last-child {
+    margin-bottom: 0;
+}
+
+/* A heading with no subtitle under it needs its own gap before the content. */
+.section-title + .features,
+.section-title + .stats-grid,
+.section-title + .panel,
+.section-title + .faq {
+    margin-top: 3rem;
+}
+
+/* Four prose cards read better two-up than three-plus-one. min() keeps phones at one column. */
+.features--wide {
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+}
+
+/* Four status cards: auto-fit would leave a fifth empty column at desktop width. */
+.stats-grid--four {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Tiers */
+.tier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.tier-grid + .tier-grid {
+    margin-top: 2rem;
+}
+
+.tier {
+    display: flex;
+    flex-direction: column;
+}
+
+.tier--featured {
+    border: 2px solid var(--color-primary);
+}
+
+.tier-price {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--color-primary-strong);
+    margin-bottom: 1.5rem;
+}
+
+.tier-price span {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+}
+
+.tier-benefits {
+    list-style: none;
+    margin-bottom: 2rem;
+}
+
+.tier-benefits li {
+    position: relative;
+    padding-left: 1.75rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Decorative check, drawn as a mask so it takes the token colour and announces nothing. */
+.tier-benefits li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.25em;
+    width: 1.1em;
+    height: 1.1em;
+    background-color: var(--color-primary-strong);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 13l4 4L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 13l4 4L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.tier-cta {
+    margin-top: auto;
+    justify-content: center;
+}
+
+/* Transparency panel: a surface without the card hover lift. */
+.panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 2rem;
+}
+
+.panel-text {
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+}
+
+.panel-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.panel .stats-grid {
+    margin-bottom: 0;
+}
+
+.panel a,
+.feature-text a {
+    color: var(--color-primary-strong);
+}
+
+/* FAQ: one column of cards, reading width. */
+.faq {
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2.25rem;
+    }
+
+    .stats-grid--four {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
