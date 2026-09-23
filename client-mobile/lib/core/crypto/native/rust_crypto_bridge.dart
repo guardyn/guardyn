@@ -36,6 +36,22 @@ class NativeRustCryptoBridge implements CryptoBridge {
   /// Track if we've already checked native availability
   static bool? _nativeLibraryAvailable;
 
+  /// Whether `GuardynCrypto.init()` has run in this process.
+  ///
+  /// flutter_rust_bridge permits exactly one initialisation and throws
+  /// `StateError('Should not initialize flutter_rust_bridge twice')` on the second. That is a
+  /// property of the runtime rather than a failure, but [initialize] used to discover it by
+  /// exception - and its own `catch` then concluded the *native library was unavailable*,
+  /// leaving [isNativeAvailable] and [isPostQuantumAvailable] false on a device where both
+  /// were true.
+  ///
+  /// That is what silently disabled every post-quantum assertion in
+  /// `integration_test/crypto/rust_ffi_test.dart` (#363): a second bridge instance reported no
+  /// native crypto, the tests' own guards skipped on that, and the run went green having
+  /// asserted nothing. Tracking the one-shot explicitly makes a second instance initialise
+  /// correctly instead of mislabelling a working library as missing.
+  static bool _frbInitialized = false;
+
   /// Check if native library is available for current platform
   ///
   /// This performs a one-time check by attempting to call the Rust FFI.
@@ -92,8 +108,11 @@ class NativeRustCryptoBridge implements CryptoBridge {
     }
 
     try {
-      // Initialize flutter_rust_bridge runtime
-      await GuardynCrypto.init();
+      // Initialize flutter_rust_bridge runtime - once per process, see [_frbInitialized].
+      if (!_frbInitialized) {
+        await GuardynCrypto.init();
+        _frbInitialized = true;
+      }
 
       // Initialize native crypto library
       rust_api.cryptoInit();
