@@ -8,375 +8,305 @@
 
     <title>Terms of Service - Guardyn</title>
 
-    <link rel="icon" type="image/png" href="/media/logo.svg">
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
-
-        * {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .hero-bg {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
-                        url('/media/bg.webp');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-
-        .content-section {
-            scroll-margin-top: 100px;
-        }
-    </style>
+    <link rel="icon" type="image/webp" href="/media/logo.svg">
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/legal.css">
 </head>
-<body class="bg-gray-900 text-white">
+<body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <!-- Navigation -->
-    <nav class="fixed w-full z-50 bg-gray-900/80 backdrop-blur-lg border-b border-white/10">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <a href="index.html" class="flex items-center space-x-3">
-                    <img src="/media/logo.svg" alt="Guardyn Logo" class="h-10 w-10">
-                    <span class="text-2xl font-bold">Guardyn</span>
+    <nav>
+        <div class="container">
+            <div class="nav-container">
+                <a href="/" class="logo-link">
+                    <img src="/media/logo.svg" alt="Guardyn Logo">
+                    <span class="logo-text">Guardyn</span>
                 </a>
-                <div class="flex space-x-6 items-center">
-                    <a href="index.html" class="hover:text-blue-400 transition">Home</a>
-                    <a href="privacy.html" class="hover:text-blue-400 transition">Privacy Policy</a>
-                </div>
+                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </button>
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="sponsor.html">Sponsor</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html" aria-current="page">Terms</a></li>
+                    <li><a href="/#beta" class="btn btn-primary">Join Beta</a></li>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero-bg pt-32 pb-16">
-        <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-5xl md:text-6xl font-bold mb-4">Terms of Service</h1>
-                <p class="text-xl text-gray-300">Last Updated: October 21, 2025</p>
+    <main id="main" tabindex="-1">
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-card">
+                <h1 class="hero-title">Terms of Service</h1>
+                <p class="description">Last Updated: October 21, 2025</p>
             </div>
         </div>
     </section>
 
     <!-- Content -->
-    <section class="py-16 bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto">
+    <section class="section section--band">
+        <div class="container">
+            <div class="legal">
                 <!-- Introduction -->
-                <div class="mb-12 p-6 bg-blue-900/20 border border-blue-500/30 rounded-xl">
-                    <p class="text-lg leading-relaxed">
-                        Welcome to Guardyn. By accessing or using our secure messaging service, you agree to be bound by these Terms of Service.
-                        Please read them carefully. If you do not agree to these terms, please do not use Guardyn.
-                    </p>
+                <div class="callout callout--lead">
+                    <div class="callout-icon" aria-hidden="true">📜</div>
+                    <div>
+                        <p>
+                            Welcome to Guardyn. By accessing or using our secure messaging service, you agree to be bound by these Terms of Service.
+                            Please read them carefully. If you do not agree to these terms, please do not use Guardyn.
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Table of Contents -->
-                <div class="mb-12 p-6 bg-white/5 rounded-xl">
-                    <h2 class="text-2xl font-bold mb-4">Table of Contents</h2>
-                    <ol class="space-y-2 list-decimal list-inside text-gray-300">
-                        <li><a href="#acceptance" class="hover:text-blue-400">Acceptance of Terms</a></li>
-                        <li><a href="#description" class="hover:text-blue-400">Service Description</a></li>
-                        <li><a href="#registration" class="hover:text-blue-400">User Registration</a></li>
-                        <li><a href="#privacy" class="hover:text-blue-400">Privacy and Security</a></li>
-                        <li><a href="#conduct" class="hover:text-blue-400">User Conduct</a></li>
-                        <li><a href="#content" class="hover:text-blue-400">User Content</a></li>
-                        <li><a href="#intellectual" class="hover:text-blue-400">Intellectual Property</a></li>
-                        <li><a href="#termination" class="hover:text-blue-400">Termination</a></li>
-                        <li><a href="#disclaimers" class="hover:text-blue-400">Disclaimers</a></li>
-                        <li><a href="#limitation" class="hover:text-blue-400">Limitation of Liability</a></li>
-                        <li><a href="#indemnification" class="hover:text-blue-400">Indemnification</a></li>
-                        <li><a href="#changes" class="hover:text-blue-400">Changes to Terms</a></li>
-                        <li><a href="#contact" class="hover:text-blue-400">Contact Information</a></li>
+                <div class="panel legal-toc" role="navigation" aria-labelledby="toc-title">
+                    <h2 id="toc-title" class="panel-title">Table of Contents</h2>
+                    <ol>
+                        <li><a href="#acceptance">Acceptance of Terms</a></li>
+                        <li><a href="#description">Service Description</a></li>
+                        <li><a href="#registration">User Registration</a></li>
+                        <li><a href="#privacy">Privacy and Security</a></li>
+                        <li><a href="#conduct">User Conduct</a></li>
+                        <li><a href="#content">User Content</a></li>
+                        <li><a href="#intellectual">Intellectual Property</a></li>
+                        <li><a href="#termination">Termination</a></li>
+                        <li><a href="#disclaimers">Disclaimers</a></li>
+                        <li><a href="#limitation">Limitation of Liability</a></li>
+                        <li><a href="#indemnification">Indemnification</a></li>
+                        <li><a href="#changes">Changes to Terms</a></li>
+                        <li><a href="#contact">Contact Information</a></li>
                     </ol>
                 </div>
 
                 <!-- 1. Acceptance of Terms -->
-                <div id="acceptance" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">1. Acceptance of Terms</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            By creating an account or using Guardyn, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These terms constitute a legally binding agreement between you and Guardyn.
-                        </p>
-                        <p class="text-gray-300 leading-relaxed">
-                            You must be at least 13 years old to use Guardyn. If you are under 18, you must have permission from a parent or legal guardian.
-                        </p>
-                    </div>
-                </div>
+                <section id="acceptance" class="legal-section">
+                    <h2>1. Acceptance of Terms</h2>
+                    <p>
+                        By creating an account or using Guardyn, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These terms constitute a legally binding agreement between you and Guardyn.
+                    </p>
+                    <p>
+                        You must be at least 13 years old to use Guardyn. If you are under 18, you must have permission from a parent or legal guardian.
+                    </p>
+                </section>
 
                 <!-- 2. Service Description -->
-                <div id="description" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">2. Service Description</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            Guardyn is a privacy-focused end-to-end encrypted messaging platform. The service includes:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>1-on-1 messaging with end-to-end encryption (X3DH + Double Ratchet)</li>
-                            <li>Group chat with OpenMLS encryption (up to 1000 members)</li>
-                            <li>Media sharing (photos, videos, files up to 10GB)</li>
-                            <li>Voice and video calls with SFrame E2EE</li>
-                            <li>Live broadcasting with E2EE streams</li>
-                            <li>Self-hosted deployment options (Community Edition)</li>
-                            <li>Enterprise features (LDAP, SAML, compliance tools - Enterprise Edition)</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            Guardyn is currently in <strong>MVP/PoC phase</strong>. Features may change, and service availability is not guaranteed during development.
-                        </p>
-                    </div>
-                </div>
+                <section id="description" class="legal-section">
+                    <h2>2. Service Description</h2>
+                    <p>Guardyn is a privacy-focused end-to-end encrypted messaging platform. The service includes:</p>
+                    <ul>
+                        <li>1-on-1 messaging with end-to-end encryption (X3DH + Double Ratchet)</li>
+                        <li>Group chat with OpenMLS encryption (up to 1000 members)</li>
+                        <li>Media sharing (photos, videos, files up to 10GB)</li>
+                        <li>Voice and video calls with SFrame E2EE</li>
+                        <li>Live broadcasting with E2EE streams</li>
+                        <li>Self-hosted deployment options (Community Edition)</li>
+                        <li>Enterprise features (LDAP, SAML, compliance tools - Enterprise Edition)</li>
+                    </ul>
+                    <p>
+                        Guardyn is currently in <strong>MVP/PoC phase</strong>. Features may change, and service availability is not guaranteed during development.
+                    </p>
+                </section>
 
                 <!-- 3. User Registration -->
-                <div id="registration" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">3. User Registration</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            To use Guardyn, you must create an account by providing:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Valid email address or phone number</li>
-                            <li>Username (must be unique)</li>
-                            <li>Strong password</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            You are responsible for:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Maintaining the confidentiality of your account credentials</li>
-                            <li>All activities that occur under your account</li>
-                            <li>Notifying us immediately of any unauthorized access</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            You may not create multiple accounts or use automated means to create accounts.
-                        </p>
-                    </div>
-                </div>
+                <section id="registration" class="legal-section">
+                    <h2>3. User Registration</h2>
+                    <p>To use Guardyn, you must create an account by providing:</p>
+                    <ul>
+                        <li>Valid email address or phone number</li>
+                        <li>Username (must be unique)</li>
+                        <li>Strong password</li>
+                    </ul>
+                    <p>You are responsible for:</p>
+                    <ul>
+                        <li>Maintaining the confidentiality of your account credentials</li>
+                        <li>All activities that occur under your account</li>
+                        <li>Notifying us immediately of any unauthorized access</li>
+                    </ul>
+                    <p>You may not create multiple accounts or use automated means to create accounts.</p>
+                </section>
 
                 <!-- 4. Privacy and Security -->
-                <div id="privacy" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">4. Privacy and Security</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            Guardyn implements end-to-end encryption for all messages and media. This means:
+                <section id="privacy" class="legal-section">
+                    <h2>4. Privacy and Security</h2>
+                    <p>Guardyn implements end-to-end encryption for all messages and media. This means:</p>
+                    <ul>
+                        <li>Only you and your intended recipients can read your messages</li>
+                        <li>Guardyn cannot access the content of your encrypted messages</li>
+                        <li>Your encryption keys are stored only on your devices</li>
+                    </ul>
+                    <p>
+                        For detailed information about data collection and processing, please read our
+                        <a href="privacy.html">Privacy Policy</a>.
+                    </p>
+                    <div class="callout">
+                        <p>
+                            <strong>Security Notice:</strong> While we use industry-standard encryption, no method of transmission over the internet is 100% secure.
+                            You use Guardyn at your own risk.
                         </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Only you and your intended recipients can read your messages</li>
-                            <li>Guardyn cannot access the content of your encrypted messages</li>
-                            <li>Your encryption keys are stored only on your devices</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            For detailed information about data collection and processing, please read our
-                            <a href="privacy.html" class="text-blue-400 hover:text-blue-300 underline">Privacy Policy</a>.
-                        </p>
-                        <div class="mt-4 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-                            <p class="text-yellow-300">
-                                <strong>Security Notice:</strong> While we use industry-standard encryption, no method of transmission over the internet is 100% secure.
-                                You use Guardyn at your own risk.
-                            </p>
-                        </div>
                     </div>
-                </div>
+                </section>
 
                 <!-- 5. User Conduct -->
-                <div id="conduct" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">5. User Conduct</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            You agree NOT to use Guardyn to:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Violate any applicable laws or regulations</li>
-                            <li>Harass, threaten, or harm others</li>
-                            <li>Distribute spam or unsolicited messages</li>
-                            <li>Share malware, viruses, or malicious code</li>
-                            <li>Impersonate others or misrepresent your identity</li>
-                            <li>Infringe on intellectual property rights</li>
-                            <li>Attempt to gain unauthorized access to our systems</li>
-                            <li>Interfere with or disrupt the service</li>
-                            <li>Use automated scripts or bots without permission</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            Violation of these rules may result in immediate account termination.
-                        </p>
-                    </div>
-                </div>
+                <section id="conduct" class="legal-section">
+                    <h2>5. User Conduct</h2>
+                    <p>You agree NOT to use Guardyn to:</p>
+                    <ul>
+                        <li>Violate any applicable laws or regulations</li>
+                        <li>Harass, threaten, or harm others</li>
+                        <li>Distribute spam or unsolicited messages</li>
+                        <li>Share malware, viruses, or malicious code</li>
+                        <li>Impersonate others or misrepresent your identity</li>
+                        <li>Infringe on intellectual property rights</li>
+                        <li>Attempt to gain unauthorized access to our systems</li>
+                        <li>Interfere with or disrupt the service</li>
+                        <li>Use automated scripts or bots without permission</li>
+                    </ul>
+                    <p>Violation of these rules may result in immediate account termination.</p>
+                </section>
 
                 <!-- 6. User Content -->
-                <div id="content" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">6. User Content</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            You retain ownership of all content you create and share through Guardyn. By using our service, you grant us:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>A license to store and transmit your encrypted content</li>
-                            <li>The right to back up your data for service reliability</li>
-                            <li>Permission to use anonymized, aggregated data for service improvement</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            You are responsible for the content you share. Guardyn cannot monitor encrypted content, but we will respond to valid legal requests
-                            and may take action based on metadata or reported violations.
-                        </p>
-                    </div>
-                </div>
+                <section id="content" class="legal-section">
+                    <h2>6. User Content</h2>
+                    <p>You retain ownership of all content you create and share through Guardyn. By using our service, you grant us:</p>
+                    <ul>
+                        <li>A license to store and transmit your encrypted content</li>
+                        <li>The right to back up your data for service reliability</li>
+                        <li>Permission to use anonymized, aggregated data for service improvement</li>
+                    </ul>
+                    <p>
+                        You are responsible for the content you share. Guardyn cannot monitor encrypted content, but we will respond to valid legal requests
+                        and may take action based on metadata or reported violations.
+                    </p>
+                </section>
 
                 <!-- 7. Intellectual Property -->
-                <div id="intellectual" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">7. Intellectual Property</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            Guardyn uses a dual licensing model:
-                        </p>
+                <section id="intellectual" class="legal-section">
+                    <h2>7. Intellectual Property</h2>
+                    <p>Guardyn uses a dual licensing model:</p>
 
-                        <div class="p-6 bg-blue-900/20 border border-blue-500/30 rounded-xl mb-4">
-                            <h4 class="font-bold mb-2 text-blue-400">Community Edition (Apache-2.0)</h4>
-                            <p class="text-gray-300 mb-2">Fully open source and free forever:</p>
-                            <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                                <li>Client applications (iOS, Android, Desktop, Web)</li>
-                                <li>Server core (auth, messaging, presence, media services)</li>
-                                <li>Cryptographic libraries (X3DH, Double Ratchet, OpenMLS)</li>
-                                <li>Infrastructure configs (Kubernetes, Terraform)</li>
-                                <li>CI/CD pipelines (GitHub Actions, reproducible builds)</li>
-                            </ul>
-                        </div>
+                    <div class="panel">
+                        <h4>Community Edition (Apache-2.0)</h4>
+                        <p>Fully open source and free forever:</p>
+                        <ul>
+                            <li>Client applications (iOS, Android, Desktop, Web)</li>
+                            <li>Server core (auth, messaging, presence, media services)</li>
+                            <li>Cryptographic libraries (X3DH, Double Ratchet, OpenMLS)</li>
+                            <li>Infrastructure configs (Kubernetes, Terraform)</li>
+                            <li>CI/CD pipelines (GitHub Actions, reproducible builds)</li>
+                        </ul>
+                    </div>
 
-                        <div class="p-6 bg-purple-900/20 border border-purple-500/30 rounded-xl mb-4">
-                            <h4 class="font-bold mb-2 text-purple-400">Enterprise Edition (BSL 1.1 → Apache-2.0 in 4 years)</h4>
-                            <p class="text-gray-300 mb-2">Advanced enterprise features:</p>
-                            <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                                <li>LDAP/SAML integration</li>
-                                <li>Admin console (web-based management)</li>
-                                <li>Compliance tools (audit logs, e-discovery)</li>
-                                <li>Advanced analytics (usage metrics, dashboards)</li>
-                                <li>Policy-based retention (GDPR, HIPAA compliance)</li>
-                                <li>HSM integration (FIPS 140-2 Level 3)</li>
-                            </ul>
-                            <p class="text-gray-300 mt-3">
-                                <strong>License:</strong> Business Source License 1.1<br>
-                                <strong>Change Date:</strong> 4 years from release<br>
-                                <strong>Change License:</strong> Apache-2.0<br>
-                                <strong>Additional Use Grant:</strong> Free for up to 100 users
-                            </p>
-                        </div>
-
-                        <p class="text-gray-300 leading-relaxed">
-                            The Guardyn name, logo, and branding are trademarks and may not be used without permission.
-                        </p>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            Source code: <a href="https://github.com/guardyn/guardyn" class="text-blue-400 hover:text-blue-300 underline">github.com/guardyn/guardyn</a>
+                    <div class="panel">
+                        <h4>Enterprise Edition (BSL 1.1 → Apache-2.0 in 4 years)</h4>
+                        <p>Advanced enterprise features:</p>
+                        <ul>
+                            <li>LDAP/SAML integration</li>
+                            <li>Admin console (web-based management)</li>
+                            <li>Compliance tools (audit logs, e-discovery)</li>
+                            <li>Advanced analytics (usage metrics, dashboards)</li>
+                            <li>Policy-based retention (GDPR, HIPAA compliance)</li>
+                            <li>HSM integration (FIPS 140-2 Level 3)</li>
+                        </ul>
+                        <p>
+                            <strong>License:</strong> Business Source License 1.1<br>
+                            <strong>Change Date:</strong> 4 years from release<br>
+                            <strong>Change License:</strong> Apache-2.0<br>
+                            <strong>Additional Use Grant:</strong> Free for up to 100 users
                         </p>
                     </div>
-                </div>
+
+                    <p>The Guardyn name, logo, and branding are trademarks and may not be used without permission.</p>
+                    <p>Source code: <a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">github.com/guardyn/guardyn</a></p>
+                </section>
 
                 <!-- 8. Termination -->
-                <div id="termination" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">8. Termination</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            You may delete your account at any time through the app settings. Upon deletion:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Your account will be permanently removed</li>
-                            <li>Your messages will be deleted from our servers</li>
-                            <li>Some metadata may be retained for legal compliance</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            We reserve the right to terminate or suspend your account if you violate these terms, without prior notice.
-                        </p>
-                    </div>
-                </div>
+                <section id="termination" class="legal-section">
+                    <h2>8. Termination</h2>
+                    <p>You may delete your account at any time through the app settings. Upon deletion:</p>
+                    <ul>
+                        <li>Your account will be permanently removed</li>
+                        <li>Your messages will be deleted from our servers</li>
+                        <li>Some metadata may be retained for legal compliance</li>
+                    </ul>
+                    <p>We reserve the right to terminate or suspend your account if you violate these terms, without prior notice.</p>
+                </section>
 
                 <!-- 9. Disclaimers -->
-                <div id="disclaimers" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">9. Disclaimers</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <div class="p-6 bg-red-900/20 border border-red-500/30 rounded-xl">
-                            <p class="text-gray-300 leading-relaxed mb-4">
-                                <strong>GUARDYN IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND.</strong>
-                            </p>
-                            <p class="text-gray-300 leading-relaxed mb-4">
-                                We do not guarantee that:
-                            </p>
-                            <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                                <li>The service will be uninterrupted or error-free</li>
-                                <li>Defects will be corrected</li>
-                                <li>The service is free from viruses or harmful components</li>
-                                <li>Messages will be delivered successfully</li>
-                            </ul>
-                            <p class="text-gray-300 leading-relaxed mt-4">
-                                Beta software may contain bugs. Use at your own risk.
-                            </p>
-                        </div>
+                <section id="disclaimers" class="legal-section">
+                    <h2>9. Disclaimers</h2>
+                    <div class="callout">
+                        <p><strong>GUARDYN IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND.</strong></p>
+                        <p>We do not guarantee that:</p>
+                        <ul>
+                            <li>The service will be uninterrupted or error-free</li>
+                            <li>Defects will be corrected</li>
+                            <li>The service is free from viruses or harmful components</li>
+                            <li>Messages will be delivered successfully</li>
+                        </ul>
+                        <p>Beta software may contain bugs. Use at your own risk.</p>
                     </div>
-                </div>
+                </section>
 
                 <!-- 10. Limitation of Liability -->
-                <div id="limitation" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">10. Limitation of Liability</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            To the maximum extent permitted by law, Guardyn and its developers shall not be liable for:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4">
-                            <li>Indirect, incidental, or consequential damages</li>
-                            <li>Loss of data, profits, or business opportunities</li>
-                            <li>Service interruptions or data breaches</li>
-                            <li>Actions of other users</li>
-                        </ul>
-                        <p class="text-gray-300 leading-relaxed mt-4">
-                            Our total liability shall not exceed $100 USD or the amount you paid us (whichever is less).
-                        </p>
-                    </div>
-                </div>
+                <section id="limitation" class="legal-section">
+                    <h2>10. Limitation of Liability</h2>
+                    <p>To the maximum extent permitted by law, Guardyn and its developers shall not be liable for:</p>
+                    <ul>
+                        <li>Indirect, incidental, or consequential damages</li>
+                        <li>Loss of data, profits, or business opportunities</li>
+                        <li>Service interruptions or data breaches</li>
+                        <li>Actions of other users</li>
+                    </ul>
+                    <p>Our total liability shall not exceed $100 USD or the amount you paid us (whichever is less).</p>
+                </section>
 
                 <!-- 11. Indemnification -->
-                <div id="indemnification" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">11. Indemnification</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed">
-                            You agree to indemnify and hold harmless Guardyn and its developers from any claims, damages, or expenses arising from:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-300 space-y-2 ml-4 mt-4">
-                            <li>Your use of the service</li>
-                            <li>Violation of these terms</li>
-                            <li>Infringement of third-party rights</li>
-                            <li>Your content shared through Guardyn</li>
-                        </ul>
-                    </div>
-                </div>
+                <section id="indemnification" class="legal-section">
+                    <h2>11. Indemnification</h2>
+                    <p>You agree to indemnify and hold harmless Guardyn and its developers from any claims, damages, or expenses arising from:</p>
+                    <ul>
+                        <li>Your use of the service</li>
+                        <li>Violation of these terms</li>
+                        <li>Infringement of third-party rights</li>
+                        <li>Your content shared through Guardyn</li>
+                    </ul>
+                </section>
 
                 <!-- 12. Changes to Terms -->
-                <div id="changes" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">12. Changes to Terms</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            We may update these Terms of Service from time to time. Changes will be posted on this page with an updated "Last Updated" date.
-                        </p>
-                        <p class="text-gray-300 leading-relaxed">
-                            Continued use of Guardyn after changes constitutes acceptance of the new terms. If you disagree with changes,
-                            please stop using the service and delete your account.
-                        </p>
-                    </div>
-                </div>
+                <section id="changes" class="legal-section">
+                    <h2>12. Changes to Terms</h2>
+                    <p>
+                        We may update these Terms of Service from time to time. Changes will be posted on this page with an updated "Last Updated" date.
+                    </p>
+                    <p>
+                        Continued use of Guardyn after changes constitutes acceptance of the new terms. If you disagree with changes,
+                        please stop using the service and delete your account.
+                    </p>
+                </section>
 
                 <!-- 13. Contact Information -->
-                <div id="contact" class="content-section mb-12">
-                    <h2 class="text-3xl font-bold mb-4">13. Contact Information</h2>
-                    <div class="prose prose-invert max-w-none">
-                        <p class="text-gray-300 leading-relaxed mb-4">
-                            If you have questions about these Terms of Service, please contact us:
-                        </p>
-                        <ul class="list-none text-gray-300 space-y-2">
-                            <li><strong>Email:</strong> <a href="mailto:hello@guardyn.co" class="text-blue-400 hover:text-blue-300">hello@guardyn.co</a></li>
-                            <li><strong>GitHub:</strong> <a href="https://github.com/guardyn/guardyn/issues" class="text-blue-400 hover:text-blue-300">github.com/guardyn/guardyn/issues</a></li>
-                            <li><strong>Website:</strong> <a href="https://guardyn.co" class="text-blue-400 hover:text-blue-300">guardyn.co</a></li>
+                <section id="contact" class="legal-section">
+                    <h2>13. Contact Information</h2>
+                    <p>If you have questions about these Terms of Service, please contact us:</p>
+                    <div class="panel">
+                        <ul>
+                            <li><strong>Email:</strong> <a href="mailto:hello@guardyn.co">hello@guardyn.co</a></li>
+                            <li><strong>GitHub:</strong> <a href="https://github.com/guardyn/guardyn/issues" target="_blank" rel="noopener noreferrer">github.com/guardyn/guardyn/issues</a></li>
+                            <li><strong>Website:</strong> <a href="https://guardyn.co">guardyn.co</a></li>
                         </ul>
                     </div>
-                </div>
+                </section>
 
                 <!-- Governing Law -->
-                <div class="mt-12 p-6 bg-white/5 rounded-xl">
-                    <h3 class="text-xl font-bold mb-4">Governing Law</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                <div class="panel legal-closing">
+                    <h3 class="panel-title">Governing Law</h3>
+                    <p class="panel-text">
                         These Terms of Service shall be governed by and construed in accordance with applicable laws.
                         Any disputes shall be resolved through binding arbitration or in courts of competent jurisdiction.
                     </p>
@@ -385,56 +315,108 @@
         </div>
     </section>
 
+    </main>
+
     <!-- Footer -->
-    <footer class="bg-gray-950 py-12 border-t border-white/10">
-        <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto">
-                <div class="grid md:grid-cols-3 gap-8 mb-8">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <img src="/media/logo.svg" alt="Guardyn" class="h-8 w-8">
-                            <span class="text-xl font-bold">Guardyn</span>
-                        </div>
-                        <p class="text-gray-400 text-sm">
-                            Privacy-first secure messaging for everyone.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h4 class="font-bold mb-4">Legal</h4>
-                        <ul class="space-y-2 text-gray-400 text-sm">
-                            <li><a href="terms.html" class="hover:text-white transition">Terms of Service</a></li>
-                            <li><a href="privacy.html" class="hover:text-white transition">Privacy Policy</a></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 class="font-bold mb-4">Connect</h4>
-                        <ul class="space-y-2 text-gray-400 text-sm">
-                            <li><a href="https://github.com/guardyn" target="_blank" class="hover:text-white transition">GitHub</a></li>
-                            <li><a href="https://linkedin.com/company/guardyn" target="_blank" class="hover:text-white transition">LinkedIn</a></li>
-                            <li><a href="mailto:hello@guardyn.co" class="hover:text-white transition">Contact</a></li>
-                        </ul>
-                    </div>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/#features">Features</a></li>
+                        <li><a href="/#tech">Technology</a></li>
+                        <li><a href="/#architecture">Architecture</a></li>
+                        <li><a href="/#beta">Beta Program</a></li>
+                    </ul>
                 </div>
 
-                <div class="pt-8 border-t border-white/10 text-center text-gray-400 text-sm">
-                    <p>&copy; 2025 Guardyn. Community Edition: Apache-2.0 | Enterprise Edition: BSL 1.1</p>
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/IMPLEMENTATION_PLAN.md" target="_blank" rel="noopener noreferrer">Implementation Plan</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/infra_poc.md" target="_blank" rel="noopener noreferrer">Infrastructure Guide</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/mvp_discovery.md" target="_blank" rel="noopener noreferrer">MVP Discovery</a></li>
+                    </ul>
                 </div>
+
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/issues" target="_blank" rel="noopener noreferrer">Issue Tracker</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                        <li><a href="https://x.com/guardyn_io" target="_blank" rel="noopener noreferrer">Twitter/X</a></li>
+                        <li><a href="mailto:hello@guardyn.co">Contact</a></li>
+                        <li><a href="/.well-known/pgp.html">🔐 PGP Key</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer">GitHub Sponsors</a></li>
+                        <li><a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer">Open Collective</a></li>
+                        <li><a href="crypto.html">Crypto Donations</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025-2026 Guardyn Team. Built with 🔐 by privacy advocates, for privacy advocates.</p>
+                <p>
+                    <a href="privacy.html">Privacy Policy</a> •
+                    <a href="terms.html">Terms of Service</a> •
+                    Community Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a> |
+                    Enterprise Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE-ENTERPRISE" target="_blank" rel="noopener noreferrer">BSL 1.1</a>
+                </p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        // Smooth scrolling for the table of contents. The skip link is left to the browser, which
+        // moves focus onto main; the handler would only scroll.
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        document.querySelectorAll('a[href^="#"]:not(.skip-link)').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    target.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
                 }
             });
+        });
+
+        // Mobile navigation: the toggle owns the open state and mirrors it onto aria-expanded.
+        const navToggle = document.querySelector('.nav-toggle');
+        const navLinks = document.getElementById('nav-links');
+        function setMenu(open) {
+            navLinks.classList.toggle('open', open);
+            navToggle.setAttribute('aria-expanded', String(open));
+            navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        }
+        navToggle.addEventListener('click', function () {
+            setMenu(!navLinks.classList.contains('open'));
+        });
+        navLinks.addEventListener('click', function (e) {
+            if (e.target.closest('a')) {
+                setMenu(false);
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                setMenu(false);
+            }
         });
     </script>
 </body>

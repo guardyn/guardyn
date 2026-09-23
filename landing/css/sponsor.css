@@ -1,15 +1,8 @@
 /*
- * Sponsor page rules: only what sponsor.html needs beyond theme.css and layout.css - the hero
- * heading, the tier cards, the transparency panel and the FAQ stack. Linked third. A rule moves
- * to layout.css once a second page uses it.
+ * Sponsor page rules: only what sponsor.html needs beyond theme.css and layout.css - the tier
+ * cards, the FAQ stack and two grid modifiers. Linked third. A rule moves to layout.css once a
+ * second page uses it; .hero-title and .panel already went that way in PR-138.
  */
-
-.hero-title {
-    font-size: 3rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 1.5rem;
-}
 
 .cta:last-child {
     margin-bottom: 0;
@@ -95,36 +88,6 @@
     justify-content: center;
 }
 
-/* Transparency panel: a surface without the card hover lift. */
-.panel {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    padding: 2rem;
-}
-
-.panel-text {
-    color: var(--color-text-secondary);
-    line-height: 1.8;
-    margin-bottom: 1.5rem;
-}
-
-.panel-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-}
-
-.panel .stats-grid {
-    margin-bottom: 0;
-}
-
-.panel a,
-.feature-text a {
-    color: var(--color-primary-strong);
-}
-
 /* FAQ: one column of cards, reading width. */
 .faq {
     max-width: 800px;
@@ -134,10 +97,6 @@
 }
 
 @media (max-width: 768px) {
-    .hero-title {
-        font-size: 2.25rem;
-    }
-
     .stats-grid--four {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

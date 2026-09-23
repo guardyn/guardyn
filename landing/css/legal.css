@@ -1,0 +1,183 @@
+/*
+ * Legal page rules: the reading column, table of contents, numbered sections and callouts that
+ * privacy.html and terms.html share beyond theme.css and layout.css. Linked third. A rule moves
+ * to layout.css once a page outside the pair needs it.
+ */
+
+.legal {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.legal a {
+    color: var(--color-primary-strong);
+}
+
+/* Table of contents: a panel with the list in two columns while there is room. */
+.legal-toc {
+    margin-bottom: 3rem;
+}
+
+.legal-toc ol {
+    columns: 2;
+    column-gap: 2rem;
+    padding-left: 1.5rem;
+    color: var(--color-text-secondary);
+}
+
+.legal-toc li {
+    margin-bottom: 0.5rem;
+    break-inside: avoid;
+}
+
+.legal-toc a {
+    text-decoration: none;
+}
+
+.legal-toc a:hover {
+    text-decoration: underline;
+}
+
+/* Numbered sections. scroll-margin keeps the heading clear of the sticky nav on anchor jumps. */
+.legal-section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 6rem;
+}
+
+.legal-section h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+
+.legal-section h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 1.5rem 0 0.75rem;
+}
+
+.legal-section h4 {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.legal-section p,
+.legal-section ul,
+.legal-section ol {
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+.legal-section ul,
+.legal-section ol {
+    padding-left: 1.5rem;
+}
+
+.legal-section li {
+    margin-bottom: 0.5rem;
+}
+
+.legal-section strong {
+    color: var(--color-text);
+}
+
+.legal-section .panel {
+    margin-bottom: 1.5rem;
+}
+
+.legal-section .panel > :first-child,
+.callout > :first-child {
+    margin-top: 0;
+}
+
+.legal-section > :last-child,
+.legal-section .panel > :last-child,
+.callout > :last-child {
+    margin-bottom: 0;
+}
+
+/* Callout: one accent for the notices the dark page tinted five different colours. */
+.callout {
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    background: var(--color-primary-soft);
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-primary-strong);
+    border-radius: var(--radius-md);
+}
+
+.callout h3,
+.callout h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+}
+
+.callout p,
+.callout ul,
+.callout li {
+    color: var(--color-text);
+}
+
+/* The page-opening callout carries an icon beside its text. */
+.callout--lead {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 3rem;
+}
+
+.callout-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+/* Small side-by-side panels (the security measures). */
+.legal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.legal-grid .panel {
+    padding: 1.25rem;
+    margin-bottom: 0;
+}
+
+.legal-grid ul {
+    font-size: 0.95rem;
+    margin-bottom: 0;
+}
+
+/* Closing panel: the privacy summary's centred stat cards, or the terms' governing-law prose. */
+.legal-summary,
+.legal-closing {
+    margin-top: 3rem;
+}
+
+.legal-summary .panel-title {
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .legal-toc ol {
+        columns: 1;
+    }
+
+    .callout--lead {
+        flex-direction: column;
+    }
+
+    /* Same tightening layout.css gives .hero-card: a 2rem inset inside a 320px column is too much. */
+    .legal-section .panel,
+    .legal-summary,
+    .legal-closing {
+        padding: 1.5rem 1.25rem;
+    }
+
+    .callout {
+        padding: 1rem 1.25rem;
+    }
+}

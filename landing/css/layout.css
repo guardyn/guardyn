@@ -1,8 +1,9 @@
 /*
  * Guardyn landing page component layer.
  *
- * Every rule here was moved verbatim from the <style> block index.html carried until PR-136.
- * It consumes the tokens in theme.css and defines no colour of its own. Link order on every
+ * The rules index.html carried in its <style> block until PR-136, plus the ones later pages
+ * promoted once a second page needed them. It consumes the tokens in theme.css and defines no
+ * colour of its own. Link order on every
  * page is theme.css, then this file, then an optional per-page sheet. A class belongs here
  * once two pages use it; until then it stays in the page that needs it.
  */
@@ -146,6 +147,15 @@ nav {
     color: var(--color-text);
     margin-bottom: 1rem;
     letter-spacing: -0.02em;
+}
+
+/* Sibling pages: a sentence-length h1 where index.html shows the wordmark. */
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
 }
 
 .tagline {
@@ -445,6 +455,40 @@ nav {
     font-size: 1rem;
     color: var(--color-text-secondary);
     line-height: 1.6;
+}
+
+/* A plain surface without the card hover lift: the transparency panel, the legal TOC, callouts. */
+/* Transparency panel: a surface without the card hover lift. */
+.panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 2rem;
+}
+
+
+.panel-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+
+.panel-text {
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+}
+
+.panel .stats-grid {
+    margin-bottom: 0;
+}
+
+
+.panel a,
+.feature-text a {
+    color: var(--color-primary-strong);
 }
 
 /* Tech Stack */
@@ -816,6 +860,10 @@ footer {
 @media (max-width: 768px) {
     .hero-logo {
         font-size: 3rem;
+    }
+
+    .hero-title {
+        font-size: 2.25rem;
     }
 
     .section-title {
