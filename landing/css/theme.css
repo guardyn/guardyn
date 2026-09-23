@@ -54,17 +54,6 @@
     --shadow-focus: 0 0 0 3px var(--color-primary-soft);
 
     --transition-base: 0.2s ease;
-
-    /* Legacy aliases. index.html still references the original variable names; each maps onto a
-       token above so the palette changes in one place. Removed once every var() call is renamed. */
-    --primary: var(--color-primary-strong);
-    --primary-dark: var(--color-primary-strong);
-    --secondary: var(--color-primary-strong);
-    --accent: var(--color-primary-strong);
-    --background: var(--color-bg-base);
-    --surface: var(--color-surface);
-    --text: var(--color-text);
-    --text-muted: var(--color-text-secondary);
 }
 
 html {
@@ -91,4 +80,22 @@ body::before {
         radial-gradient(ellipse 60% 55% at 0% 100%, var(--color-mesh-sky) 0%, transparent 70%),
         radial-gradient(ellipse 55% 50% at 100% 100%, var(--color-mesh-violet) 0%, transparent 70%),
         var(--color-bg-base);
+}
+
+/* Motion: collapse animations and transitions for visitors who asked for less of it. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Keyboard focus: one visible outline everywhere, in the dark brand green (6.18:1 on white). */
+:focus-visible {
+    outline: 2px solid var(--color-primary-strong);
+    outline-offset: 2px;
 }
