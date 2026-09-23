@@ -125,7 +125,8 @@
             padding: 3rem 2rem;
         }
 
-        .hero-card .stats-grid {
+        .hero-card .stats-grid,
+        .traction .stats-grid {
             margin-bottom: 0;
         }
 
@@ -160,6 +161,7 @@
 
         /* Buttons */
         .btn {
+            font-family: inherit;
             padding: 1rem 2rem;
             border-radius: var(--radius-sm);
             font-weight: 600;
@@ -681,10 +683,133 @@
             min-width: 24px;
         }
 
+        /* Beta signup */
+        .beta-card {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 3rem;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+        }
+
+        .beta-form {
+            margin-top: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            font: inherit;
+            color: var(--color-text);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            transition: border-color var(--transition-base), box-shadow var(--transition-base);
+        }
+
+        .form-input::placeholder {
+            color: var(--color-text-placeholder);
+        }
+
+        .form-input:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            border-color: var(--color-primary);
+            box-shadow: var(--shadow-focus);
+        }
+
+        .form-textarea {
+            resize: vertical;
+        }
+
+        .form-submit {
+            width: 100%;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .form-note {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+        }
+
+        .beta-social {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+        }
+
+        .beta-social p {
+            margin-bottom: 1rem;
+            color: var(--color-text-secondary);
+        }
+
+        .beta-social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .beta-social-links a {
+            color: var(--color-text-secondary);
+            transition: color var(--transition-base);
+        }
+
+        .beta-social-links a:hover {
+            color: var(--color-primary-strong);
+        }
+
+        /* Project status */
+        .traction {
+            padding: 4rem 0;
+            background: var(--color-surface-glass);
+        }
+
+        .traction .section-subtitle {
+            margin-bottom: 3rem;
+            color: var(--color-primary-strong);
+        }
+
+        .stat-card--highlight {
+            border-color: var(--color-primary);
+        }
+
+        .stat-value--small {
+            font-size: 1.8rem;
+        }
+
+        .section-hint {
+            font-size: 0.9rem;
+            color: var(--color-primary-strong);
+        }
+
+        .footer-bottom p + p {
+            margin-top: 0.5rem;
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .hero-logo {
                 font-size: 3rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
             }
 
             .tagline {
@@ -757,6 +882,10 @@
 
             .hero-card {
                 padding: 2rem 1rem;
+            }
+
+            .beta-card {
+                padding: 2rem 1.25rem;
             }
         }
     </style>
@@ -1070,7 +1199,7 @@
             <h2 class="section-title"><span class="gradient-text">Technology</span> Stack</h2>
             <p class="section-subtitle">
                 Modern, battle-tested technologies for maximum security and performance<br>
-                <small style="color: var(--accent); font-size: 0.9rem;">💡 Click on any technology to learn more</small>
+                <small class="section-hint">💡 Click on any technology to learn more</small>
             </p>
 
             <div class="tech-category">
@@ -1242,53 +1371,53 @@
     <!-- Beta Sign Up Section -->
     <section id="beta" class="section section--band">
         <div class="container">
-            <div style="max-width: 700px; margin: 0 auto; background: var(--color-surface); padding: 3rem; border-radius: 16px; border: 1px solid var(--color-border); box-shadow: var(--shadow-card);">
+            <div class="beta-card">
                 <h2 class="section-title">Join the Privacy Rebellion</h2>
                 <p class="section-subtitle">
                     Be among the first to try Guardyn. Get early access and help shape
                     the future of secure communication.
                 </p>
 
-                <form action="https://formspree.io/f/xoevwqkn" method="POST" style="margin-top: 2rem;">
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Your Email:</label>
+                <form action="https://formspree.io/f/xoevwqkn" method="POST" class="beta-form">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Your Email:</label>
                         <input
                             type="email"
                             id="email"
                             name="email"
                             placeholder="your@email.com"
                             required
-                            style="width: 100%; padding: 1rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--color-border); color: var(--text); font-size: 1rem;">
+                            class="form-input">
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="message" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Your Message (Optional):</label>
+                    <div class="form-group">
+                        <label for="message" class="form-label">Your Message (Optional):</label>
                         <textarea
                             id="message"
                             name="message"
                             rows="4"
                             placeholder="Tell us about your use case or what features interest you most..."
-                            style="width: 100%; padding: 1rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--color-border); color: var(--text); font-size: 1rem; resize: vertical;"></textarea>
+                            class="form-input form-textarea"></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; justify-content: center;">
+                    <button type="submit" class="btn btn-primary form-submit">
                         🚀 Sign Up for Beta Access
                     </button>
 
-                    <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+                    <p class="form-note">
                         We respect your privacy. Your email will only be used for beta updates.
                     </p>
                 </form>
 
-                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--color-border); text-align: center;">
-                    <p style="color: var(--text-muted); margin-bottom: 1rem;">Or follow development on:</p>
-                    <div style="display: flex; justify-content: center; gap: 1.5rem;">
-                        <a href="https://github.com/guardyn/guardyn" target="_blank" style="color: var(--text-muted); transition: color 0.3s ease;">
+                <div class="beta-social">
+                    <p>Or follow development on:</p>
+                    <div class="beta-social-links">
+                        <a href="https://github.com/guardyn/guardyn" target="_blank" aria-label="Guardyn on GitHub">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                             </svg>
                         </a>
-                        <a href="https://x.com/guardyn_io" target="_blank" style="color: var(--text-muted); transition: color 0.3s ease;">
+                        <a href="https://x.com/guardyn_io" target="_blank" aria-label="Guardyn on X">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
                             </svg>
@@ -1300,34 +1429,34 @@
     </section>
 
     <!-- Project Status Section -->
-    <section class="traction" style="padding: 4rem 0; background: var(--color-surface-glass);">
+    <section class="traction">
         <div class="container">
-            <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 1rem; color: var(--color-text);">Project Status</h2>
-            <p style="text-align: center; color: var(--accent); font-size: 1.2rem; margin-bottom: 3rem;">🎉 v1.0.1 Production Ready — January 2026</p>
-            <div class="stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; text-align: center;">
-                <div class="stat" style="padding: 2rem; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-primary);">
-                    <h3 style="font-size: 2.5rem; color: var(--accent); margin-bottom: 0.5rem;">v1.0.1</h3>
-                    <p style="color: var(--text-muted); font-size: 1rem;">Current Release</p>
+            <h2 class="section-title">Project Status</h2>
+            <p class="section-subtitle">🎉 v1.0.1 Production Ready — January 2026</p>
+            <div class="stats-grid">
+                <div class="stat-card stat-card--highlight">
+                    <div class="stat-value">v1.0.1</div>
+                    <div class="stat-label">Current Release</div>
                 </div>
-                <div class="stat" style="padding: 2rem; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-border);">
-                    <h3 style="font-size: 2.5rem; color: var(--accent); margin-bottom: 0.5rem;">57</h3>
-                    <p style="color: var(--text-muted); font-size: 1rem;">Issues Resolved</p>
+                <div class="stat-card">
+                    <div class="stat-value">57</div>
+                    <div class="stat-label">Issues Resolved</div>
                 </div>
-                <div class="stat" style="padding: 2rem; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-border);">
-                    <h3 style="font-size: 2.5rem; color: var(--accent); margin-bottom: 0.5rem;">228h</h3>
-                    <p style="color: var(--text-muted); font-size: 1rem;">Development Time</p>
+                <div class="stat-card">
+                    <div class="stat-value">228h</div>
+                    <div class="stat-label">Development Time</div>
                 </div>
-                <div class="stat" style="padding: 2rem; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-border);">
-                    <h3 style="font-size: 2.5rem; color: var(--accent); margin-bottom: 0.5rem;">8/8</h3>
-                    <p style="color: var(--text-muted); font-size: 1rem;">E2E Tests Passing</p>
+                <div class="stat-card">
+                    <div class="stat-value">8/8</div>
+                    <div class="stat-label">E2E Tests Passing</div>
                 </div>
-                <div class="stat" style="padding: 2rem; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-border);">
-                    <h3 style="font-size: 2.5rem; color: var(--primary); margin-bottom: 0.5rem;">Q1 2026</h3>
-                    <p style="color: var(--text-muted); font-size: 1rem;">Public Beta</p>
+                <div class="stat-card">
+                    <div class="stat-value">Q1 2026</div>
+                    <div class="stat-label">Public Beta</div>
                 </div>
-                <div class="stat" style="padding: 2rem; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-border);">
-                    <h3 style="font-size: 1.8rem; color: var(--secondary); margin-bottom: 0.5rem;">Apache 2.0</h3>
-                    <p style="color: var(--text-muted); font-size: 1rem;">Open Source</p>
+                <div class="stat-card">
+                    <div class="stat-value stat-value--small">Apache 2.0</div>
+                    <div class="stat-label">Open Source</div>
                 </div>
             </div>
         </div>
@@ -1388,7 +1517,7 @@
 
             <div class="footer-bottom">
                 <p>&copy; 2025-2026 Guardyn Team. Built with 🔐 by privacy advocates, for privacy advocates.</p>
-                <p style="margin-top: 0.5rem;">
+                <p>
                     <a href="privacy.html">Privacy Policy</a> •
                     <a href="terms.html">Terms of Service</a> •
                     Community Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank">Apache-2.0</a> |
