@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1355
+tokens: 1413
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 39 | 67 | `██████░░░░` |
-| **all** | **128** | **162** | |
+| 4 | 40 | 67 | `██████░░░░` |
+| **all** | **129** | **162** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 34 of 162
+- **Open steps:** 33 of 162
 
 ## Gates
 
@@ -81,10 +81,9 @@ supersedes: []
 | PR-127 | 4 | [#337](https://github.com/guardyn/guardyn/issues/337) | Retire the legacy guardyn.io security contact |
 | PR-128 | 4 | [#338](https://github.com/guardyn/guardyn/issues/338) | Rename the guardyn.io label keys at the next cluster rebuild |
 | PR-129 | 4 | [#339](https://github.com/guardyn/guardyn/issues/339) | The prod overlay does not render: base/monitoring has no kustomization.yaml |
-| PR-136 | 4 | — | Extract the landing component layer into css/layout.css |
-| PR-137 | 4 | — | Migrate sponsor.html to the light theme |
-| PR-138 | 4 | — | Migrate privacy.html and terms.html to the light theme |
-| PR-139 | 4 | — | Retire or retheme coming-soon.html |
-| PR-140 | 4 | — | Migrate crypto.html to the light theme |
-| PR-141 | 4 | — | Migrate .well-known/pgp.html to the light theme |
-| PR-142 | 4 | — | Drop Tailwind and Google Fonts from the landing CSP once no page loads them |
+| PR-137 | 4 | [#384](https://github.com/guardyn/guardyn/issues/384) | Migrate sponsor.html to the light theme |
+| PR-138 | 4 | [#385](https://github.com/guardyn/guardyn/issues/385) | Migrate privacy.html and terms.html to the light theme |
+| PR-139 | 4 | [#386](https://github.com/guardyn/guardyn/issues/386) | Retire or retheme coming-soon.html |
+| PR-140 | 4 | [#387](https://github.com/guardyn/guardyn/issues/387) | Migrate crypto.html to the light theme |
+| PR-141 | 4 | [#388](https://github.com/guardyn/guardyn/issues/388) | Migrate .well-known/pgp.html to the light theme |
+| PR-142 | 4 | [#389](https://github.com/guardyn/guardyn/issues/389) | Drop Tailwind and Google Fonts from the landing CSP once no page loads them |
