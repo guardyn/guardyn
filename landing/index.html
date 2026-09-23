@@ -23,6 +23,26 @@
             box-sizing: border-box;
         }
 
+        /* Skip link: first focusable element, visible only while focused */
+        .skip-link {
+            position: absolute;
+            top: -100px;
+            left: 1rem;
+            z-index: 200;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--color-primary-strong);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-card);
+        }
+
+        .skip-link:focus {
+            top: 1rem;
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -53,7 +73,7 @@
             align-items: center;
             gap: 0.75rem;
             text-decoration: none;
-            color: var(--text);
+            color: var(--color-text);
         }
 
         .logo-link img {
@@ -75,13 +95,13 @@
         }
 
         .nav-links a {
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             text-decoration: none;
             transition: color 0.3s ease;
         }
 
         .nav-links a:hover {
-            color: var(--primary);
+            color: var(--color-primary-strong);
         }
 
         .nav-links .btn-primary,
@@ -140,14 +160,14 @@
 
         .tagline {
             font-size: 1.5rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             margin-bottom: 1rem;
             font-weight: 300;
         }
 
         .description {
             font-size: 1.2rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             margin-bottom: 3rem;
             line-height: 1.8;
             max-width: 800px;
@@ -187,8 +207,8 @@
 
         .btn-secondary {
             background: transparent;
-            color: var(--text);
-            border: 2px solid var(--primary);
+            color: var(--color-text);
+            border: 2px solid var(--color-primary-strong);
         }
 
         .btn-secondary:hover {
@@ -213,7 +233,7 @@
         }
 
         .stat-card {
-            background: var(--surface);
+            background: var(--color-surface);
             padding: 2rem;
             border-radius: var(--radius-lg);
             border: 1px solid var(--color-border);
@@ -224,7 +244,7 @@
 
         .stat-card:hover {
             transform: translateY(-5px);
-            border-color: var(--primary);
+            border-color: var(--color-primary-strong);
             box-shadow: var(--shadow-card-lg);
         }
 
@@ -236,7 +256,7 @@
 
         .stat-label {
             font-size: 0.9rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             margin-top: 0.5rem;
         }
 
@@ -260,7 +280,7 @@
 
         .video-subtitle {
             font-size: 1.1rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             margin-bottom: 2rem;
         }
 
@@ -277,7 +297,7 @@
 
         .video-wrapper:hover {
             box-shadow: var(--shadow-card-lg);
-            border-color: var(--primary);
+            border-color: var(--color-primary-strong);
             transform: translateY(-5px);
         }
 
@@ -309,7 +329,7 @@
 
         .app-screenshot-subtitle {
             font-size: 1.1rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             margin-bottom: 2.5rem;
             max-width: 600px;
             margin-left: auto;
@@ -329,7 +349,7 @@
 
         .app-screenshot-wrapper:hover {
             box-shadow: var(--shadow-card-lg);
-            border-color: var(--primary);
+            border-color: var(--color-primary-strong);
             transform: translateY(-5px);
         }
 
@@ -353,18 +373,18 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
-            background: var(--surface);
+            background: var(--color-surface);
             border-radius: var(--radius-md);
             border: 1px solid var(--color-border);
             box-shadow: var(--shadow-card);
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             font-size: 0.9rem;
             transition: all 0.3s ease;
         }
 
         .platform-badge:hover {
-            border-color: var(--primary);
-            color: var(--text);
+            border-color: var(--color-primary-strong);
+            color: var(--color-text);
         }
 
         .platform-badge svg {
@@ -390,7 +410,7 @@
 
         .section-subtitle {
             font-size: 1.2rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             text-align: center;
             margin-bottom: 4rem;
             max-width: 700px;
@@ -405,7 +425,7 @@
         }
 
         .feature {
-            background: var(--surface);
+            background: var(--color-surface);
             padding: 2rem;
             border-radius: var(--radius-lg);
             border: 1px solid var(--color-border);
@@ -415,7 +435,7 @@
 
         .feature:hover {
             transform: translateY(-5px);
-            border-color: var(--primary);
+            border-color: var(--color-primary-strong);
             box-shadow: var(--shadow-card-lg);
         }
 
@@ -428,12 +448,12 @@
             font-weight: 700;
             font-size: 1.3rem;
             margin-bottom: 0.75rem;
-            color: var(--text);
+            color: var(--color-text);
         }
 
         .feature-text {
             font-size: 1rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             line-height: 1.6;
         }
 
@@ -447,7 +467,7 @@
             font-weight: 700;
             text-align: center;
             margin-bottom: 1.5rem;
-            color: var(--primary);
+            color: var(--color-primary-strong);
         }
 
         .tech-badges {
@@ -458,7 +478,7 @@
         }
 
         .tech-badge {
-            background: var(--surface);
+            background: var(--color-surface);
             padding: 0.75rem 1.5rem;
             border-radius: var(--radius-md);
             border: 1px solid var(--color-border);
@@ -472,7 +492,7 @@
         .tech-badge:hover {
             background: var(--color-primary-soft);
             transform: scale(1.05);
-            border-color: var(--primary);
+            border-color: var(--color-primary-strong);
         }
 
         /* Tech Info Modal */
@@ -531,7 +551,7 @@
             right: 15px;
             background: var(--color-surface-muted);
             border: none;
-            color: var(--text);
+            color: var(--color-text);
             font-size: 24px;
             width: 40px;
             height: 40px;
@@ -558,21 +578,21 @@
 
         .tech-modal-category {
             font-size: 14px;
-            color: var(--accent);
+            color: var(--color-primary-strong);
             margin-bottom: 20px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .tech-modal-description {
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             line-height: 1.8;
             margin-bottom: 20px;
         }
 
         .tech-modal-example {
             background: var(--color-primary-soft);
-            border-left: 4px solid var(--primary);
+            border-left: 4px solid var(--color-primary-strong);
             padding: 15px;
             border-radius: var(--radius-sm);
             margin-top: 20px;
@@ -580,7 +600,7 @@
 
         .tech-modal-example-title {
             font-weight: 600;
-            color: var(--primary);
+            color: var(--color-primary-strong);
             margin-bottom: 8px;
             display: flex;
             align-items: center;
@@ -588,7 +608,7 @@
         }
 
         .tech-modal-example-text {
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             font-size: 14px;
             line-height: 1.6;
         }
@@ -602,7 +622,7 @@
 
         .tech-modal-tag {
             background: var(--color-primary-soft);
-            color: var(--primary);
+            color: var(--color-primary-strong);
             padding: 5px 12px;
             border-radius: var(--radius-md);
             font-size: 12px;
@@ -611,7 +631,7 @@
 
         /* Footer */
         footer {
-            background: var(--surface);
+            background: var(--color-surface);
             border-top: 1px solid var(--color-border);
             padding: 3rem 0 2rem;
             margin-top: 6rem;
@@ -634,7 +654,7 @@
         }
 
         .footer-section a {
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             text-decoration: none;
             transition: color 0.3s ease;
             display: block;
@@ -642,19 +662,19 @@
         }
 
         .footer-section a:hover {
-            color: var(--primary);
+            color: var(--color-primary-strong);
         }
 
         .footer-bottom {
             text-align: center;
             padding-top: 2rem;
             border-top: 1px solid var(--color-border);
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             font-size: 0.9rem;
         }
 
         .footer-bottom a {
-            color: var(--primary);
+            color: var(--color-primary-strong);
             text-decoration: none;
         }
 
@@ -673,7 +693,7 @@
             align-items: center;
             gap: 0.75rem;
             margin-bottom: 0.8rem;
-            color: var(--text-muted);
+            color: var(--color-text-secondary);
             font-size: 0.95rem;
             line-height: 1.4;
         }
@@ -891,6 +911,7 @@
     </style>
 </head>
 <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <!-- Navigation -->
     <nav>
         <div class="container">
@@ -912,6 +933,8 @@
             </div>
         </div>
     </nav>
+
+    <main id="main" tabindex="-1">
 
     <!-- Hero Section -->
     <section class="hero">
@@ -1461,6 +1484,7 @@
             </div>
         </div>
     </section>
+    </main>
 
     <!-- Footer -->
     <footer>
@@ -1529,12 +1553,13 @@
 
     <script>
         // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        document.querySelectorAll('a[href^="#"]:not(.skip-link)').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    target.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
                 }
             });
         });
