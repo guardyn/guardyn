@@ -224,6 +224,10 @@ nav {
     margin-bottom: 3rem;
 }
 
+.cta:last-child {
+    margin-bottom: 0;
+}
+
 /* Stats Grid */
 .stats-grid {
     display: grid;
@@ -416,6 +420,14 @@ nav {
     max-width: 700px;
     margin-left: auto;
     margin-right: auto;
+}
+
+/* A heading with no subtitle under it needs its own gap before the content. */
+.section-title + .features,
+.section-title + .stats-grid,
+.section-title + .panel,
+.section-title + .faq {
+    margin-top: 3rem;
 }
 
 .features {

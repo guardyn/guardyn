@@ -12,8 +12,10 @@
  */
 
 :root {
-    /* Typography: Inter or Roboto when installed, otherwise the platform sans. No web font request. */
+    /* Typography: Inter or Roboto when installed, otherwise the platform sans. No web font request.
+       The monospace stack is for wallet addresses and key blocks: the platform's own, no request. */
     --font-sans: Inter, Roboto, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
     /* Background mesh */
     --color-bg-base: #F7F9FB;

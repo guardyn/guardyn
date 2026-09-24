@@ -1,20 +1,9 @@
 /*
  * Sponsor page rules: only what sponsor.html needs beyond theme.css and layout.css - the tier
  * cards, the FAQ stack and two grid modifiers. Linked third. A rule moves to layout.css once a
- * second page uses it; .hero-title and .panel already went that way in PR-138.
+ * second page uses it; .hero-title and .panel went that way in PR-138, the heading gap and the
+ * closing .cta margin in PR-140.
  */
-
-.cta:last-child {
-    margin-bottom: 0;
-}
-
-/* A heading with no subtitle under it needs its own gap before the content. */
-.section-title + .features,
-.section-title + .stats-grid,
-.section-title + .panel,
-.section-title + .faq {
-    margin-top: 3rem;
-}
 
 /* Four prose cards read better two-up than three-plus-one. min() keeps phones at one column. */
 .features--wide {
