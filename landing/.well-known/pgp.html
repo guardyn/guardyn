@@ -3,95 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guardyn PGP Public Key</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 0 20px;
-            line-height: 1.6;
-            color: #333;
-        }
-        h1 {
-            color: #2563eb;
-            border-bottom: 2px solid #2563eb;
-            padding-bottom: 10px;
-        }
-        .key-info {
-            background: #f8fafc;
-            border-left: 4px solid #2563eb;
-            padding: 15px;
-            margin: 20px 0;
-        }
-        .key-block {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.4;
-        }
-        .button {
-            display: inline-block;
-            background: #2563eb;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 10px 10px 10px 0;
-        }
-        .button:hover {
-            background: #1d4ed8;
-        }
-        code {
-            background: #f1f5f9;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-        }
-    </style>
+    <meta name="description" content="Guardyn security team PGP public key: fingerprint, download and import instructions for encrypted vulnerability reports.">
+    <meta name="robots" content="index, follow">
+
+    <title>PGP Public Key - Guardyn</title>
+
+    <link rel="icon" type="image/webp" href="/media/logo.svg">
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/pgp.css">
 </head>
 <body>
-    <h1>🔐 Guardyn PGP Public Key</h1>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <!-- Navigation. Every href on this page is rooted: it is served from /.well-known/, where the
+         relative links the other pages carry would resolve into this directory. -->
+    <nav>
+        <div class="container">
+            <div class="nav-container">
+                <a href="/" class="logo-link">
+                    <img src="/media/logo.svg" alt="Guardyn Logo">
+                    <span class="logo-text">Guardyn</span>
+                </a>
+                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </button>
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/sponsor.html">Sponsor</a></li>
+                    <li><a href="/crypto.html">₿ Crypto</a></li>
+                    <li><a href="/privacy.html">Privacy</a></li>
+                    <li><a href="/terms.html">Terms</a></li>
+                    <li><a href="/#beta" class="btn btn-primary">Join Beta</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-    <p>Use this PGP key to send encrypted communications to the Guardyn security team.</p>
+    <main id="main" tabindex="-1">
 
-    <div class="key-info">
-        <h2>Key Information</h2>
-        <ul>
-            <li><strong>Email:</strong> security@guardyn.io</li>
-            <li><strong>Fingerprint:</strong> <code>72E2 35E0 C28B 3042 6434 1BF6 AC2A E8F7 04CE 083A</code></li>
-            <li><strong>Key ID:</strong> <code>04CE083A</code></li>
-            <li><strong>Algorithm:</strong> RSA 4096-bit</li>
-            <li><strong>Created:</strong> 2025-11-17</li>
-            <li><strong>Expires:</strong> 2027-11-17</li>
-        </ul>
-    </div>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-card">
+                <h1 class="hero-title">🔐 Guardyn <span class="gradient-text">PGP Public Key</span></h1>
+                <p class="description">Use this PGP key to send encrypted communications to the Guardyn security team.</p>
+                <div class="cta">
+                    <a href="/.well-known/pgp-key.txt" class="btn btn-primary" download>📥 Download PGP Key</a>
+                    <a href="https://keys.openpgp.org/search?q=security@guardyn.io" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Verify on keys.openpgp.org</a>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <h2>📥 Download Key</h2>
-    <a href="pgp-key.txt" class="button" download>Download PGP Key</a>
-    <a href="https://keys.openpgp.org/search?q=security@guardyn.io" class="button" target="_blank">Verify on keys.openpgp.org</a>
+    <!-- Key -->
+    <section class="section section--band">
+        <div class="container">
+            <div class="pgp">
+                <div class="panel">
+                    <h2 class="panel-title">Key Information</h2>
+                    <dl class="key-facts">
+                        <dt>Email</dt>
+                        <dd>security@guardyn.io</dd>
+                        <dt>Fingerprint</dt>
+                        <dd><code>72E2 35E0 C28B 3042 6434 1BF6 AC2A E8F7 04CE 083A</code></dd>
+                        <dt>Key ID</dt>
+                        <dd><code>04CE083A</code></dd>
+                        <dt>Algorithm</dt>
+                        <dd>RSA 4096-bit</dd>
+                        <dt>Created</dt>
+                        <dd>2025-11-17</dd>
+                        <dt>Expires</dt>
+                        <dd>2027-11-17</dd>
+                    </dl>
+                </div>
 
-    <h2>🔧 How to Import</h2>
-    <p>Import this key using GPG:</p>
-    <pre><code>curl https://guardyn.co/.well-known/pgp-key.txt | gpg --import</code></pre>
+                <div class="panel">
+                    <h2 class="panel-title">🔧 How to Import</h2>
+                    <p>Import this key using GPG:</p>
+                    <pre><code>curl https://guardyn.co/.well-known/pgp-key.txt | gpg --import</code></pre>
+                    <p>Or download and import manually:</p>
+                    <pre><code>gpg --import pgp-key.txt</code></pre>
+                    <p>Verify the fingerprint:</p>
+                    <pre><code>gpg --fingerprint security@guardyn.io</code></pre>
+                </div>
 
-    <p>Or download and import manually:</p>
-    <pre><code>gpg --import pgp-key.txt</code></pre>
+                <div class="panel">
+                    <h2 class="panel-title">📧 Send Encrypted Message</h2>
+                    <p>Encrypt a message to Guardyn security team:</p>
+                    <pre><code>gpg --encrypt --armor --recipient security@guardyn.io message.txt</code></pre>
+                </div>
 
-    <p>Verify the fingerprint:</p>
-    <pre><code>gpg --fingerprint security@guardyn.io</code></pre>
-
-    <h2>📧 Send Encrypted Message</h2>
-    <p>Encrypt a message to Guardyn security team:</p>
-    <pre><code>gpg --encrypt --armor --recipient security@guardyn.io message.txt</code></pre>
-
-    <h2>🔑 Public Key</h2>
-    <div class="key-block">
------BEGIN PGP PUBLIC KEY BLOCK-----
+                <div class="panel">
+                    <h2 class="panel-title">🔑 Public Key</h2>
+                    <pre class="key-block"><code>-----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGkayHIBEADFzcainv6J2dDatjrMLAorIWRfbPgrofPFdhqWua66auG+qRsb
 fUFFY9h2SiXJx5vpSaoCGXbW5r7Y7p8e4xotkdxXU4oNuTw8qeJqLMt+QO19UtUa
@@ -119,17 +123,102 @@ l4re1gHFlwRCQaG27ZaRyjHO/gXZbh2tcMneAaizsaLlKJhXImAgAcQ9tbh0URHB
 JXeYQYsm+l6vk1LkdwLBp4Kad5EnDehsVQ8QLLcLONKF2n0TNmqJ9lkHoWbomsYX
 dsEoNEApDl7m1tHQxZ+t2hgjWekSdKQ=
 =Meee
------END PGP PUBLIC KEY BLOCK-----
-    </div>
+-----END PGP PUBLIC KEY BLOCK-----</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <hr style="margin: 40px 0;">
+    </main>
 
-    <p style="text-align: center; color: #64748b;">
-        <small>
-            Guardyn Security Team |
-            <a href="https://guardyn.co">guardyn.co</a> |
-            <a href="https://github.com/guardyn">GitHub</a>
-        </small>
-    </p>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/#features">Features</a></li>
+                        <li><a href="/#tech">Technology</a></li>
+                        <li><a href="/#architecture">Architecture</a></li>
+                        <li><a href="/#beta">Beta Program</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/IMPLEMENTATION_PLAN.md" target="_blank" rel="noopener noreferrer">Implementation Plan</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/infra_poc.md" target="_blank" rel="noopener noreferrer">Infrastructure Guide</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/mvp_discovery.md" target="_blank" rel="noopener noreferrer">MVP Discovery</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/issues" target="_blank" rel="noopener noreferrer">Issue Tracker</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                        <li><a href="https://x.com/guardyn_io" target="_blank" rel="noopener noreferrer">Twitter/X</a></li>
+                        <li><a href="mailto:hello@guardyn.co">Contact</a></li>
+                        <li><a href="/.well-known/pgp.html">🔐 PGP Key</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer">GitHub Sponsors</a></li>
+                        <li><a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer">Open Collective</a></li>
+                        <li><a href="/crypto.html">Crypto Donations</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025-2026 Guardyn Team. Built with 🔐 by privacy advocates, for privacy advocates.</p>
+                <p>
+                    <a href="/privacy.html">Privacy Policy</a> •
+                    <a href="/terms.html">Terms of Service</a> •
+                    Community Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a> |
+                    Enterprise Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE-ENTERPRISE" target="_blank" rel="noopener noreferrer">BSL 1.1</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile navigation: the toggle owns the open state and mirrors it onto aria-expanded.
+        // No smooth-scroll handler: the skip link is the page's only in-page anchor.
+        const navToggle = document.querySelector('.nav-toggle');
+        const navLinks = document.getElementById('nav-links');
+        function setMenu(open) {
+            navLinks.classList.toggle('open', open);
+            navToggle.setAttribute('aria-expanded', String(open));
+            navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        }
+        navToggle.addEventListener('click', function () {
+            setMenu(!navLinks.classList.contains('open'));
+        });
+        navLinks.addEventListener('click', function (e) {
+            if (e.target.closest('a')) {
+                setMenu(false);
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                setMenu(false);
+            }
+        });
+    </script>
 </body>
 </html>
