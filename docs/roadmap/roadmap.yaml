@@ -572,7 +572,7 @@ steps:
   - {id: PR-138, issue: 385, phase: 4, type: refactor, status: done, title: "Migrate privacy.html and terms.html to the light theme"}
   - {id: PR-139, issue: 386, phase: 4, type: refactor, status: done, title: "Retire or retheme coming-soon.html"}
   - {id: PR-140, issue: 387, phase: 4, type: refactor, status: done, title: "Migrate crypto.html to the light theme"}
-  - {id: PR-141, issue: 388, phase: 4, type: refactor, status: todo, title: "Migrate .well-known/pgp.html to the light theme"}
+  - {id: PR-141, issue: 388, phase: 4, type: refactor, status: done, title: "Migrate .well-known/pgp.html to the light theme"}
   - {id: PR-142, issue: 389, phase: 4, type: security, status: todo, title: "Drop Tailwind and Google Fonts from the landing CSP once no page loads them"}
   # Found while rebuilding sponsor.html: every target="_blank" on index.html was bare. Current
   # browsers imply noopener there, so the tabnabbing half is already closed for most visitors;
