@@ -321,9 +321,10 @@
     text-align: center;
 }
 
+/* The enlarged code. The width lives here, not in the asset: the SVGs carry a viewBox only. */
 .qr-modal-image {
-    width: 100%;
-    max-width: 400px;
+    width: 400px;
+    max-width: 100%;
     height: auto;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);

@@ -580,3 +580,10 @@ steps:
   # GitHub and X in the Referer header. privacy, terms and pgp carry five more between them and
   # get theirs when their migration steps rebuild them.
   - {id: PR-143, issue: 393, phase: 4, type: fix, status: done, title: "Add rel=noopener noreferrer to the external links on index.html"}
+  # Found while rebuilding crypto.html (PR-140): every QR code on the page was fetched from
+  # api.qrserver.com, so each visit told a third party the visitor's IP address and, through
+  # the Referer header, that they were on the donation page. The wallet addresses are public;
+  # the visitor is the leak. The codes are static, so they are committed as SVG files and the
+  # page makes no request off-origin at all - which is also what lets PR-142 drop `https:`
+  # from img-src.
+  - {id: PR-144, issue: 397, phase: 4, type: security, status: done, title: "Generate the crypto QR codes locally instead of via api.qrserver.com"}
