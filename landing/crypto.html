@@ -260,6 +260,8 @@
         // ===== CRYPTOCURRENCY CONFIGURATION =====
         // Add or update wallet details here. One card style serves every coin; a `memo` gives
         // the card a second QR code and copy button, and `warning` emphasises the `info` line.
+        // The QR codes are static files: /media/crypto/qr/<id>.svg, and <id>-memo.svg for a memo.
+        // When an address changes, regenerate its file (landing/README.md, "Crypto QR codes").
         const cryptocurrencies = [
             {
                 id: 'btc',
@@ -383,24 +385,23 @@
             }
         ];
 
-        const QR_THUMB = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=';
-        const QR_LARGE = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=';
+        const QR_DIR = '/media/crypto/qr/';
 
         // One QR thumbnail. `kind` is undefined for a single-address card, 'Address' or 'Memo'
         // when the card carries both; it selects the caption, the modal title and its subtitle.
-        function qrThumb(crypto, value, kind) {
+        function qrThumb(crypto, kind) {
             const title = kind ? crypto.name + ' - ' + kind : crypto.name;
             const alt = kind ? crypto.name + ' ' + kind + ' QR Code' : crypto.name + ' QR Code';
             const caption = kind === 'Memo' ? 'Memo (Destination Tag)' : kind;
-            const encoded = encodeURIComponent(value);
+            const src = QR_DIR + crypto.id + (kind === 'Memo' ? '-memo' : '') + '.svg';
             return `
                 <div class="qr-block">
                     ${caption ? `<p class="qr-label">${caption}</p>` : ''}
                     <button type="button" class="qr-container qr-thumb"
                             data-qr-title="${title}" data-qr-symbol="${crypto.symbol}"
-                            data-qr-data="${encoded}" data-qr-label="${kind || ''}"
+                            data-qr-src="${src}" data-qr-label="${kind || ''}"
                             aria-label="Enlarge ${alt}" title="Click to enlarge QR code">
-                        <img src="${QR_THUMB}${encoded}" alt="${alt}">
+                        <img src="${src}" alt="${alt}">
                     </button>
                 </div>`;
         }
@@ -418,8 +419,8 @@
                 : '';
             const hasMemo = Boolean(crypto.memo);
             const qr = hasMemo
-                ? qrThumb(crypto, crypto.address, 'Address') + qrThumb(crypto, crypto.memo, 'Memo')
-                : qrThumb(crypto, crypto.address);
+                ? qrThumb(crypto, 'Address') + qrThumb(crypto, 'Memo')
+                : qrThumb(crypto);
             const details = addressBlock('Address:', crypto.address, 'Copy Address')
                 + (hasMemo ? addressBlock('Memo (Destination Tag):', crypto.memo, 'Copy Memo') : '');
             return `
@@ -447,7 +448,7 @@
         walletsContainer.addEventListener('click', function (e) {
             const thumb = e.target.closest('.qr-thumb');
             if (thumb) {
-                openQRModal(thumb.dataset.qrTitle, thumb.dataset.qrSymbol, thumb.dataset.qrData, thumb.dataset.qrLabel, thumb);
+                openQRModal(thumb.dataset.qrTitle, thumb.dataset.qrSymbol, thumb.dataset.qrSrc, thumb.dataset.qrLabel, thumb);
                 return;
             }
             const copy = e.target.closest('.copy-btn');
@@ -482,7 +483,7 @@
         const qrModalClose = qrModal.querySelector('.qr-modal-close');
         let qrModalOpener = null;
 
-        function openQRModal(name, symbol, encodedData, label, opener) {
+        function openQRModal(name, symbol, src, label, opener) {
             const title = document.getElementById('modal-title');
             const subtitle = document.getElementById('modal-subtitle');
             const image = document.getElementById('modal-qr-image');
@@ -497,7 +498,7 @@
                 subtitle.textContent = 'Scan this QR code with your crypto wallet';
             }
 
-            image.src = QR_LARGE + encodedData;
+            image.src = src;
             image.alt = name + ' QR Code';
 
             qrModalOpener = opener || document.activeElement;

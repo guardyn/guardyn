@@ -133,6 +133,22 @@ Landing page uses assets from `../media/`:
 - `bg.png` - Background image
 - `logo_and_bg.png` - Combined asset
 
+### Crypto QR codes
+
+`crypto.html` shows one QR code per wallet address, served from `media/crypto/qr/<id>.svg`,
+where `<id>` is the entry's `id` in the page's `cryptocurrencies` array (the XRP memo is
+`xrp-memo.svg`). They are static files, generated once and committed, so the page makes no
+request off-origin. They used to come from `api.qrserver.com`, which told a third party each
+visitor's IP address and, through the `Referer` header, that they were on the donation page.
+
+When an address changes, regenerate its file and commit it in the same PR as the page edit.
+The output is deterministic, so a regenerated file diffs clean when nothing changed:
+
+```sh
+pip install segno
+python3 -c "import segno; segno.make('<address>', error='m', micro=False).save('landing/media/crypto/qr/<id>.svg', scale=4, dark='black', light=None, svgclass=None, lineclass=None, omitsize=True)"
+```
+
 ## 🔒 Security Features
 
 - CSP headers configured
