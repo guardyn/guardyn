@@ -1,0 +1,370 @@
+/*
+ * Crypto page rules: only what crypto.html needs beyond theme.css and layout.css - the hero
+ * trust list, the Binance Pay panel, the wallet cards the script renders, the security notice
+ * and the QR modal. Linked third. A rule moves to layout.css once a second page uses it.
+ *
+ * One card style serves every coin. The dark page gave each of the fourteen its own accent
+ * colour through class names carried in the script's data; the light system has one accent.
+ */
+
+/* Hero: the four check-marked claims under the description. */
+.trust-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem 1.5rem;
+    list-style: none;
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+}
+
+.trust-list li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.trust-list svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: var(--color-primary-strong);
+}
+
+/* Binance Pay: the QR beside the numbered steps, stacked on phones. */
+.pay-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: center;
+}
+
+.pay-grid .qr-container {
+    justify-self: center;
+}
+
+.pay-grid .qr-container img {
+    width: 256px;
+    max-width: 100%;
+    height: auto;
+}
+
+.steps {
+    list-style: none;
+    counter-reset: step;
+    margin-bottom: 1.5rem;
+}
+
+.steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.steps strong {
+    color: var(--color-text);
+}
+
+/* The step number: dark text on the brand green (5.58:1), as on the primary button. */
+.steps li::before {
+    counter-increment: step;
+    content: counter(step);
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
+    font-weight: 700;
+}
+
+.pay-id .wallet-address {
+    margin-bottom: 0;
+}
+
+/* Wallet cards, rendered by the script into #crypto-wallets-container. */
+.wallet-list {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.crypto-card-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.crypto-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-strong);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.crypto-card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.crypto-card-meta {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.crypto-info {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+/* The XRP memo warning: emphasis in the text colour, not a red the system does not have. */
+.crypto-info--warning {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.crypto-card-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.crypto-card-details {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.qr-label {
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.qr-block .qr-label {
+    text-align: center;
+}
+
+/* A QR code on its own white surface; as a button it opens the enlarged view. */
+.qr-container {
+    display: inline-block;
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+
+.qr-container img {
+    display: block;
+}
+
+.qr-thumb {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: transform var(--transition-base), border-color var(--transition-base);
+}
+
+.qr-thumb:hover {
+    transform: scale(1.05);
+    border-color: var(--color-primary-strong);
+}
+
+.qr-thumb img {
+    width: 120px;
+    height: 120px;
+}
+
+.wallet-address {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    word-break: break-all;
+    color: var(--color-text);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+.copy-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+}
+
+.copy-btn + .qr-label {
+    margin-top: 1rem;
+}
+
+.copy-btn--done {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary);
+}
+
+/* Four short cards: auto-fit would fall three-plus-one at desktop width. */
+.features--four {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Security notice: a panel whose title carries the shield. */
+.notice .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.notice svg {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--color-primary-strong);
+}
+
+.notice p {
+    margin-bottom: 0.75rem;
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+}
+
+.notice p:last-child {
+    margin-bottom: 0;
+}
+
+.notice strong {
+    color: var(--color-text);
+}
+
+/* QR modal: the same overlay and surface as the tech modal on the home page. fadeIn comes
+   from layout.css. */
+.qr-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    padding: 20px;
+    background: var(--color-overlay);
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.3s ease;
+}
+
+.qr-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 90vw;
+    max-height: 90vh;
+    padding: 2.5rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card-lg);
+    animation: scaleIn 0.3s ease;
+}
+
+.qr-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.qr-modal-close:hover {
+    background: var(--color-border);
+    transform: rotate(90deg);
+}
+
+.qr-modal-title {
+    margin-bottom: 0.5rem;
+    padding: 0 2.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.qr-modal-subtitle {
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.qr-modal-image {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 1024px) {
+    .features--four {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .qr-modal-image {
+        max-width: 350px;
+    }
+}
+
+@media (max-width: 768px) {
+    .features--four,
+    .pay-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .qr-modal-content {
+        padding: 2rem 1.25rem;
+    }
+
+    .qr-modal-title {
+        font-size: 1.25rem;
+    }
+
+    .qr-modal-image {
+        max-width: 280px;
+    }
+}

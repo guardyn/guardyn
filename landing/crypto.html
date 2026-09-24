@@ -15,348 +15,89 @@
     <title>Crypto Donations - Support Guardyn with Cryptocurrency</title>
 
     <link rel="icon" type="image/webp" href="/media/logo.svg">
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
-
-        * {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .hero-bg {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%),
-                        url('/media/bg.webp');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .crypto-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(51, 65, 85, 0.8) 100%);
-        }
-
-        .crypto-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(245, 158, 11, 0.3);
-        }
-
-        .pulse-glow {
-            animation: pulse-glow 4s ease-in-out infinite;
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% {
-                box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
-            }
-            50% {
-                box-shadow: 0 0 40px rgba(245, 158, 11, 0.8);
-            }
-        }
-
-        .wallet-address {
-            word-break: break-all;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            background: rgba(15, 23, 42, 0.8);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(245, 158, 11, 0.2);
-        }
-
-        .copy-btn {
-            transition: all 0.2s ease;
-        }
-
-        .copy-btn:hover {
-            background: rgba(245, 158, 11, 0.2);
-        }
-
-        .qr-container {
-            background: white;
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .currency-selector {
-            max-height: 300px;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(245, 158, 11, 0.5) rgba(30, 41, 59, 0.5);
-        }
-
-        .currency-selector::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .currency-selector::-webkit-scrollbar-track {
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 4px;
-        }
-
-        .currency-selector::-webkit-scrollbar-thumb {
-            background: rgba(245, 158, 11, 0.5);
-            border-radius: 4px;
-        }
-
-        .currency-option {
-            transition: background 0.2s ease;
-        }
-
-        .currency-option:hover {
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        .amount-btn {
-            transition: all 0.2s ease;
-        }
-
-        .amount-btn:hover {
-            background: rgba(245, 158, 11, 0.2);
-            transform: scale(1.05);
-        }
-
-        .amount-btn.active {
-            background: rgba(245, 158, 11, 0.3);
-            border-color: #f59e0b;
-        }
-
-        /* Modal styles */
-        .qr-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 9999;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
-            animation: fadeIn 0.3s ease;
-        }
-
-        .qr-modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .qr-modal-content {
-            position: relative;
-            background: white;
-            border-radius: 24px;
-            padding: 40px;
-            max-width: 90vw;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            animation: scaleIn 0.3s ease;
-            box-shadow: 0 25px 50px rgba(245, 158, 11, 0.5);
-        }
-
-        .qr-modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.1);
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: #1f2937;
-            transition: all 0.2s ease;
-        }
-
-        .qr-modal-close:hover {
-            background: rgba(245, 158, 11, 0.2);
-            transform: rotate(90deg);
-        }
-
-        .qr-modal-image {
-            width: 100%;
-            max-width: 400px;
-            height: auto;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .qr-modal-title {
-            color: #1f2937;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .qr-modal-subtitle {
-            color: #6b7280;
-            font-size: 14px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes scaleIn {
-            from {
-                transform: scale(0.9);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        /* Mobile responsive */
-        @media (max-width: 640px) {
-            .qr-modal-content {
-                padding: 30px 20px;
-            }
-            .qr-modal-image {
-                max-width: 280px;
-            }
-            .qr-modal-title {
-                font-size: 20px;
-            }
-        }
-
-        /* Tablet responsive */
-        @media (min-width: 641px) and (max-width: 1024px) {
-            .qr-modal-image {
-                max-width: 350px;
-            }
-        }
-
-        .qr-clickable {
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .qr-clickable:hover {
-            transform: scale(1.05);
-        }
-    </style>
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/crypto.css">
 </head>
-<body class="bg-gray-900 text-white">
+<body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <!-- Navigation -->
-    <nav class="fixed w-full z-50 bg-gray-900/80 backdrop-blur-lg border-b border-white/10">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <a href="index.html" class="flex items-center space-x-3">
-                    <img src="/media/logo.svg" alt="Guardyn Logo" class="h-10 w-10">
-                    <span class="text-2xl font-bold">Guardyn</span>
+    <nav>
+        <div class="container">
+            <div class="nav-container">
+                <a href="/" class="logo-link">
+                    <img src="/media/logo.svg" alt="Guardyn Logo">
+                    <span class="logo-text">Guardyn</span>
                 </a>
-                <div class="flex space-x-6 items-center">
-                    <a href="index.html" class="hover:text-orange-400 transition">Home</a>
-                    <a href="sponsor.html" class="hover:text-orange-400 transition">Sponsor</a>
-                    <a href="privacy.html" class="hover:text-orange-400 transition">Privacy</a>
-                    <a href="terms.html" class="hover:text-orange-400 transition">Terms</a>
-                </div>
+                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </button>
+                <ul class="nav-links" id="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="sponsor.html">Sponsor</a></li>
+                    <li><a href="crypto.html" aria-current="page">₿ Crypto</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                    <li><a href="terms.html">Terms</a></li>
+                    <li><a href="/#beta" class="btn btn-primary">Join Beta</a></li>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero-bg pt-32 pb-16">
-        <div class="container mx-auto px-4">
-            <div class="max-w-5xl mx-auto text-center">
-                <h1 class="text-5xl md:text-6xl font-bold mb-6">
-                    ₿ Support with <span class="gradient-text">Cryptocurrency</span>
-                </h1>
-                <p class="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
+    <main id="main" tabindex="-1">
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-card">
+                <h1 class="hero-title">₿ Support with <span class="gradient-text">Cryptocurrency</span></h1>
+                <p class="description">
                     Fast, anonymous, and secure crypto donations.<br>
                     Support privacy-first development with your preferred cryptocurrency.
                 </p>
-                <div class="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <ul class="trust-list">
+                    <li>
+                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                         No KYC Required
-                    </span>
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                         Instant Processing
-                    </span>
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                         Low Fees
-                    </span>
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                         50+ Coins Supported
-                    </span>
-                </div>
+                    </li>
+                </ul>
             </div>
         </div>
     </section>
 
-    <!-- Binance Pay Section -->
-    <section class="py-16 bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto">
-                <div class="text-center mb-12">
-                    <h2 class="text-4xl font-bold mb-4">💳 Quick Donation via Binance Pay</h2>
-                    <p class="text-xl text-gray-300">Scan QR code with Binance app - Select any cryptocurrency and amount</p>
-                </div>
-
-                <div class="bg-gradient-to-br from-yellow-900/20 to-orange-900/20 p-8 rounded-2xl border border-orange-500/30">
-                    <div class="grid md:grid-cols-2 gap-8 items-center">
-                        <!-- QR Code -->
-                        <div class="flex justify-center">
-                            <div class="qr-container">
-                                <img src="/media/crypto/binance.jpeg" alt="Binance Pay QR Code" class="w-64 h-64 mx-auto">
-                            </div>
-                        </div>
-
-                        <!-- Instructions -->
-                        <div class="space-y-6">
-                            <h3 class="text-2xl font-bold mb-4">How to donate:</h3>
-                            <div class="space-y-4">
-                                <div class="flex items-start">
-                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">1</div>
-                                    <p class="text-gray-300">Open <strong>Binance</strong> app on your phone</p>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">2</div>
-                                    <p class="text-gray-300">Go to <strong>Pay</strong> section and tap <strong>Scan</strong></p>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">3</div>
-                                    <p class="text-gray-300">Scan the QR code above</p>
-                                </div>
-                                <div class="flex items-start">
-                                    <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-4 flex-shrink-0">4</div>
-                                    <p class="text-gray-300">Select <strong>cryptocurrency</strong> and <strong>amount</strong>, then confirm</p>
-                                </div>
-                            </div>
-
-                            <div class="bg-gray-800 p-4 rounded-lg border border-orange-500/20 mt-6">
-                                <p class="text-sm text-gray-400 mb-2">Binance Pay ID:</p>
-                                <p class="font-bold text-orange-400">guardyn</p>
-                            </div>
+    <!-- Binance Pay -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">💳 Quick Donation via Binance Pay</h2>
+            <p class="section-subtitle">Scan QR code with Binance app - Select any cryptocurrency and amount</p>
+            <div class="panel">
+                <div class="pay-grid">
+                    <div class="qr-container">
+                        <img src="/media/crypto/binance.jpeg" alt="Binance Pay QR Code">
+                    </div>
+                    <div>
+                        <h3 class="panel-title">How to donate:</h3>
+                        <ol class="steps">
+                            <li><p>Open <strong>Binance</strong> app on your phone</p></li>
+                            <li><p>Go to <strong>Pay</strong> section and tap <strong>Scan</strong></p></li>
+                            <li><p>Scan the QR code above</p></li>
+                            <li><p>Select <strong>cryptocurrency</strong> and <strong>amount</strong>, then confirm</p></li>
+                        </ol>
+                        <div class="pay-id">
+                            <p class="qr-label">Binance Pay ID:</p>
+                            <div class="wallet-address">guardyn</div>
                         </div>
                     </div>
                 </div>
@@ -364,167 +105,168 @@
         </div>
     </section>
 
-    <!-- Popular Cryptocurrencies Section -->
-    <section class="py-16 bg-gray-800/50">
-        <div class="container mx-auto px-4">
-            <div class="max-w-6xl mx-auto">
-                <div class="text-center mb-12">
-                    <h2 class="text-4xl font-bold mb-4">🪙 Popular Cryptocurrencies</h2>
-                    <p class="text-xl text-gray-300">Send directly to our wallet addresses</p>
-                </div>
-
-                <div id="crypto-wallets-container" class="space-y-6">
-                    <!-- Cryptocurrency cards will be generated here by JavaScript -->
-                </div>
+    <!-- Popular Cryptocurrencies -->
+    <section id="wallets" class="section section--band">
+        <div class="container">
+            <h2 class="section-title">🪙 Popular Cryptocurrencies</h2>
+            <p class="section-subtitle">Send directly to our wallet addresses</p>
+            <div id="crypto-wallets-container" class="wallet-list">
+                <!-- Cryptocurrency cards are rendered here by the script below -->
             </div>
         </div>
     </section>
 
-    <!-- Why Crypto Section -->
-    <section class="py-16 bg-gray-800/50">
-        <div class="container mx-auto px-4">
-            <div class="max-w-5xl mx-auto">
-                <h2 class="text-4xl font-bold mb-12 text-center">🔐 Why Donate with Crypto?</h2>
-                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
-                        <div class="text-4xl mb-4">🕵️</div>
-                        <h3 class="text-xl font-bold mb-2">Privacy First</h3>
-                        <p class="text-gray-300 text-sm">No personal information required. Support us anonymously.</p>
-                    </div>
-                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
-                        <div class="text-4xl mb-4">⚡</div>
-                        <h3 class="text-xl font-bold mb-2">Instant</h3>
-                        <p class="text-gray-300 text-sm">Transactions process in minutes, not days like bank transfers.</p>
-                    </div>
-                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
-                        <div class="text-4xl mb-4">🌍</div>
-                        <h3 class="text-xl font-bold mb-2">Global</h3>
-                        <p class="text-gray-300 text-sm">Works anywhere in the world. No currency conversion hassles.</p>
-                    </div>
-                    <div class="bg-gray-800 p-6 rounded-xl border border-orange-500/20">
-                        <div class="text-4xl mb-4">💸</div>
-                        <h3 class="text-xl font-bold mb-2">Low Fees</h3>
-                        <p class="text-gray-300 text-sm">Much lower fees than traditional payment processors.</p>
-                    </div>
+    <!-- Why Crypto -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">🔐 Why Donate with Crypto?</h2>
+            <div class="features features--four">
+                <div class="feature">
+                    <div class="feature-icon">🕵️</div>
+                    <h3 class="feature-title">Privacy First</h3>
+                    <p class="feature-text">No personal information required. Support us anonymously.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Instant</h3>
+                    <p class="feature-text">Transactions process in minutes, not days like bank transfers.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🌍</div>
+                    <h3 class="feature-title">Global</h3>
+                    <p class="feature-text">Works anywhere in the world. No currency conversion hassles.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">💸</div>
+                    <h3 class="feature-title">Low Fees</h3>
+                    <p class="feature-text">Much lower fees than traditional payment processors.</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Security Notice -->
-    <section class="py-16 bg-gray-900">
-        <div class="container mx-auto px-4">
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-gradient-to-br from-blue-900/30 to-purple-900/30 p-8 rounded-2xl border border-blue-500/30">
-                    <h3 class="text-2xl font-bold mb-4 flex items-center">
-                        <svg class="w-8 h-8 mr-3 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                        </svg>
-                        Security Notice
-                    </h3>
-                    <div class="space-y-3 text-gray-300">
-                        <p>✅ <strong>Always verify addresses:</strong> Double-check wallet addresses before sending. Crypto transactions are irreversible.</p>
-                        <p>✅ <strong>Network compatibility:</strong> Make sure you're sending on the correct network (ERC-20, TRC-20, BSC, etc.)</p>
-                        <p>✅ <strong>Test with small amount:</strong> For large donations, consider sending a small test transaction first.</p>
-                        <p>✅ <strong>Official addresses only:</strong> These addresses are listed on <a href="https://guardyn.co/crypto" class="text-orange-400 hover:underline">guardyn.co/crypto</a> and <a href="https://github.com/guardyn" class="text-orange-400 hover:underline">GitHub</a>.</p>
-                    </div>
-                </div>
+    <section class="section section--band">
+        <div class="container">
+            <div class="panel notice">
+                <h2 class="panel-title">
+                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    Security Notice
+                </h2>
+                <p>✅ <strong>Always verify addresses:</strong> Double-check wallet addresses before sending. Crypto transactions are irreversible.</p>
+                <p>✅ <strong>Network compatibility:</strong> Make sure you're sending on the correct network (ERC-20, TRC-20, BSC, etc.)</p>
+                <p>✅ <strong>Test with small amount:</strong> For large donations, consider sending a small test transaction first.</p>
+                <p>✅ <strong>Official addresses only:</strong> These addresses are listed on <a href="https://guardyn.co/crypto">guardyn.co/crypto</a> and <a href="https://github.com/guardyn">GitHub</a>.</p>
             </div>
         </div>
     </section>
 
-    <!-- Thank You Section -->
-    <section class="py-16 bg-gray-800/50">
-        <div class="container mx-auto px-4">
-            <div class="max-w-3xl mx-auto text-center">
-                <h2 class="text-4xl font-bold mb-6">❤️ Thank You for Your Support!</h2>
-                <p class="text-xl text-gray-300 mb-8">
-                    Your cryptocurrency donations directly fund the development of privacy-first secure communications.<br>
-                    Every contribution helps us build a safer digital future.
-                </p>
-                <div class="flex flex-wrap justify-center gap-4">
-                    <a href="sponsor.html" class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition">
-                        💜 Other Ways to Support
-                    </a>
-                    <a href="index.html" class="inline-flex items-center px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition">
-                        🏠 Back to Home
-                    </a>
-                </div>
+    <!-- Thank You -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">❤️ Thank You for Your Support!</h2>
+            <p class="section-subtitle">
+                Your cryptocurrency donations directly fund the development of privacy-first secure communications.<br>
+                Every contribution helps us build a safer digital future.
+            </p>
+            <div class="cta">
+                <a href="sponsor.html" class="btn btn-primary">💜 Other Ways to Support</a>
+                <a href="/" class="btn btn-secondary">🏠 Back to Home</a>
             </div>
         </div>
     </section>
+
+    </main>
 
     <!-- QR Code Modal -->
-    <div id="qr-modal" class="qr-modal" onclick="closeQRModal(event)">
-        <div class="qr-modal-content" onclick="event.stopPropagation()">
-            <button class="qr-modal-close" onclick="closeQRModal()" aria-label="Close modal">
-                ×
-            </button>
+    <div id="qr-modal" class="qr-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-subtitle">
+        <div class="qr-modal-content">
+            <button class="qr-modal-close" type="button" aria-label="Close">&times;</button>
             <h3 id="modal-title" class="qr-modal-title"></h3>
             <p id="modal-subtitle" class="qr-modal-subtitle"></p>
-            <img id="modal-qr-image" class="qr-modal-image" src="" alt="QR Code">
+            <img id="modal-qr-image" class="qr-modal-image" alt="QR Code">
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 border-t border-white/10 py-12">
-        <div class="container mx-auto px-4">
-            <div class="max-w-6xl mx-auto">
-                <div class="grid md:grid-cols-4 gap-8 mb-8">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <img src="/media/logo.svg" alt="Guardyn Logo" class="h-8 w-8">
-                            <span class="text-xl font-bold">Guardyn</span>
-                        </div>
-                        <p class="text-gray-400 text-sm">Privacy-first secure communication platform.</p>
-                    </div>
-                    <div>
-                        <h4 class="font-bold mb-4">Product</h4>
-                        <ul class="space-y-2 text-gray-400">
-                            <li><a href="index.html#features" class="hover:text-orange-400 transition">Features</a></li>
-                            <li><a href="index.html#security" class="hover:text-orange-400 transition">Security</a></li>
-                            <li><a href="index.html#roadmap" class="hover:text-orange-400 transition">Roadmap</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="font-bold mb-4">Support</h4>
-                        <ul class="space-y-2 text-gray-400">
-                            <li><a href="sponsor.html" class="hover:text-orange-400 transition">Sponsor</a></li>
-                            <li><a href="crypto.html" class="hover:text-orange-400 transition text-orange-400">Crypto Donations</a></li>
-                            <li><a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer" class="hover:text-orange-400 transition">Open Collective</a></li>
-                            <li><a href="mailto:hello@guardyn.co" class="hover:text-orange-400 transition">Contact</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="font-bold mb-4">Legal</h4>
-                        <ul class="space-y-2 text-gray-400">
-                            <li><a href="privacy.html" class="hover:text-orange-400 transition">Privacy Policy</a></li>
-                            <li><a href="terms.html" class="hover:text-orange-400 transition">Terms of Service</a></li>
-                            <li><a href="mailto:security@guardyn.co" class="hover:text-orange-400 transition">Security</a></li>
-                        </ul>
-                    </div>
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/#features">Features</a></li>
+                        <li><a href="/#tech">Technology</a></li>
+                        <li><a href="/#architecture">Architecture</a></li>
+                        <li><a href="/#beta">Beta Program</a></li>
+                    </ul>
                 </div>
-                <div class="text-center text-gray-400 pt-8 border-t border-white/10">
-                    <p>© 2025 Guardyn. Open source under Apache 2.0 license. Built with ❤️ for privacy.</p>
+
+                <div class="footer-section">
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/IMPLEMENTATION_PLAN.md" target="_blank" rel="noopener noreferrer">Implementation Plan</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/infra_poc.md" target="_blank" rel="noopener noreferrer">Infrastructure Guide</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/docs/mvp_discovery.md" target="_blank" rel="noopener noreferrer">MVP Discovery</a></li>
+                    </ul>
                 </div>
+
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+                        <li><a href="https://github.com/guardyn/guardyn/issues" target="_blank" rel="noopener noreferrer">Issue Tracker</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://github.com/guardyn/guardyn" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                        <li><a href="https://x.com/guardyn_io" target="_blank" rel="noopener noreferrer">Twitter/X</a></li>
+                        <li><a href="mailto:hello@guardyn.co">Contact</a></li>
+                        <li><a href="/.well-known/pgp.html">🔐 PGP Key</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="https://github.com/sponsors/guardyn" target="_blank" rel="noopener noreferrer">GitHub Sponsors</a></li>
+                        <li><a href="https://opencollective.com/guardyn" target="_blank" rel="noopener noreferrer">Open Collective</a></li>
+                        <li><a href="crypto.html">Crypto Donations</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025-2026 Guardyn Team. Built with 🔐 by privacy advocates, for privacy advocates.</p>
+                <p>
+                    <a href="privacy.html">Privacy Policy</a> •
+                    <a href="terms.html">Terms of Service</a> •
+                    Community Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a> |
+                    Enterprise Edition: <a href="https://github.com/guardyn/guardyn/blob/main/LICENSE-ENTERPRISE" target="_blank" rel="noopener noreferrer">BSL 1.1</a>
+                </p>
             </div>
         </div>
     </footer>
 
-    <!-- Cryptocurrency Wallets Configuration & Copy Script -->
     <script>
         // ===== CRYPTOCURRENCY CONFIGURATION =====
-        // Add or update cryptocurrency details here
+        // Add or update wallet details here. One card style serves every coin; a `memo` gives
+        // the card a second QR code and copy button, and `warning` emphasises the `info` line.
         const cryptocurrencies = [
             {
                 id: 'btc',
                 name: 'Bitcoin',
                 symbol: 'BTC',
                 icon: '₿',
-                iconBg: 'bg-orange-500',
                 network: 'Bitcoin Network',
-                textColor: 'text-orange-400',
-                hoverColor: 'hover:bg-orange-500/20',
                 address: '1H5TwT1qarvaE6fhxUr2GCk9XvBoeRmiKm',
                 info: '✓ Supports all BTC address formats (1, 3, bc1p, bc1q)'
             },
@@ -533,10 +275,7 @@
                 name: 'Ethereum',
                 symbol: 'ETH',
                 icon: '⟠',
-                iconBg: 'bg-blue-500',
                 network: 'ERC-20 Network',
-                textColor: 'text-blue-400',
-                hoverColor: 'hover:bg-blue-500/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700',
                 info: '✓ Please do not send validator rewards to your Binance deposit address, as they will not be credited and funds may be lost.'
             },
@@ -545,10 +284,7 @@
                 name: 'Tether USD',
                 symbol: 'USDT',
                 icon: '₮',
-                iconBg: 'bg-green-500',
                 network: 'ERC-20 Network (Ethereum)',
-                textColor: 'text-green-400',
-                hoverColor: 'hover:bg-green-500/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
             },
             {
@@ -556,10 +292,7 @@
                 name: 'Tether USD',
                 symbol: 'USDT',
                 icon: '₮',
-                iconBg: 'bg-red-500',
                 network: 'TRC-20 Network (Tron)',
-                textColor: 'text-red-400',
-                hoverColor: 'hover:bg-red-500/20',
                 address: 'TJAJjkTrhst448yqM5jXGpC3SWxQFMAVeZ'
             },
             {
@@ -567,10 +300,7 @@
                 name: 'BNB',
                 symbol: 'BNB',
                 icon: '◈',
-                iconBg: 'bg-yellow-500',
                 network: 'BSC Network (Binance Smart Chain)',
-                textColor: 'text-yellow-400',
-                hoverColor: 'hover:bg-yellow-500/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
             },
             {
@@ -578,10 +308,7 @@
                 name: 'USD Coin',
                 symbol: 'USDC',
                 icon: '$',
-                iconBg: 'bg-blue-400',
                 network: 'ERC-20 Network (Ethereum)',
-                textColor: 'text-blue-400',
-                hoverColor: 'hover:bg-blue-500/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
             },
             {
@@ -589,10 +316,7 @@
                 name: 'Litecoin',
                 symbol: 'LTC',
                 icon: 'Ł',
-                iconBg: 'bg-gray-400',
                 network: 'Litecoin Network',
-                textColor: 'text-gray-400',
-                hoverColor: 'hover:bg-gray-500/20',
                 address: 'LNqCyXS5Vx2LCnrA7WQc3VyTSuWBfsyGxJ',
                 info: '✓ Please note that confidential deposits via the MWEB function are not supported and will result in deposits being lost.'
             },
@@ -601,10 +325,7 @@
                 name: 'Dogecoin',
                 symbol: 'DOGE',
                 icon: 'Ð',
-                iconBg: 'bg-yellow-600',
                 network: 'Dogecoin Network',
-                textColor: 'text-yellow-400',
-                hoverColor: 'hover:bg-yellow-600/20',
                 address: 'DMzZH6p96Lo2b46wxwCFZHSDQ1F275uQ2i'
             },
             {
@@ -612,10 +333,7 @@
                 name: 'Solana',
                 symbol: 'SOL',
                 icon: '◎',
-                iconBg: 'bg-purple-500',
                 network: 'Solana Network',
-                textColor: 'text-purple-400',
-                hoverColor: 'hover:bg-purple-500/20',
                 address: '4xYGeDjMTTEwKy3XABS8gvfyPrddsyjFP6mXdqtPo1YD',
                 info: '✓ Please note that SOL addresses are case sensitive.'
             },
@@ -624,10 +342,7 @@
                 name: 'Cardano',
                 symbol: 'ADA',
                 icon: '₳',
-                iconBg: 'bg-blue-600',
                 network: 'Cardano Network',
-                textColor: 'text-blue-400',
-                hoverColor: 'hover:bg-blue-600/20',
                 address: 'addr1vyach749e2hgejng5hl2qym49hq98e5unw3xmarcdzq8mkskw0389'
             },
             {
@@ -635,10 +350,7 @@
                 name: 'Polkadot',
                 symbol: 'DOT',
                 icon: '●',
-                iconBg: 'bg-pink-500',
                 network: 'Polkadot Network',
-                textColor: 'text-pink-400',
-                hoverColor: 'hover:bg-pink-500/20',
                 address: '14W6Zw4t5N2NhgFhehrg6MM4EjW5vvPn7hEGzKapP9Ws1oVn'
             },
             {
@@ -646,10 +358,7 @@
                 name: 'Avalanche',
                 symbol: 'AVAX',
                 icon: '▲',
-                iconBg: 'bg-red-500',
                 network: 'Avalanche C-Chain',
-                textColor: 'text-red-400',
-                hoverColor: 'hover:bg-red-500/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700',
                 info: '✓ Please note that this deposit address supports C-Chain deposits. For X-Chain deposits, please use the AVAX network.'
             },
@@ -658,10 +367,7 @@
                 name: 'Polygon',
                 symbol: 'MATIC',
                 icon: '⬡',
-                iconBg: 'bg-purple-600',
                 network: 'BSC (BEP20) Network',
-                textColor: 'text-purple-400',
-                hoverColor: 'hover:bg-purple-600/20',
                 address: '0x7935005daf5fc99d0547413d3fe75e8d54b7b700'
             },
             {
@@ -669,161 +375,120 @@
                 name: 'Ripple',
                 symbol: 'XRP',
                 icon: '✕',
-                iconBg: 'bg-gray-500',
                 network: 'XRP Ledger',
-                textColor: 'text-gray-400',
-                hoverColor: 'hover:bg-gray-500/20',
                 address: 'rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV',
                 memo: '481757971',
-                info: '⚠️ Both Address and Memo are required, or you will lose your coins. Incorrect MEMOs may result in fund loss.'
+                info: '⚠️ Both Address and Memo are required, or you will lose your coins. Incorrect MEMOs may result in fund loss.',
+                warning: true
             }
         ];
 
-        // Generate cryptocurrency card HTML
-        function generateCryptoCard(crypto) {
-            const infoHTML = crypto.info ?
-                `<p class="text-xs ${crypto.id === 'xrp' ? 'text-red-400' : 'text-gray-500'} mt-1">${crypto.info}</p>` : '';
+        const QR_THUMB = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=';
+        const QR_LARGE = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=';
 
-            // Special handling for XRP with memo (destination tag)
-            if (crypto.id === 'xrp' && crypto.memo) {
-                return `
-                    <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="w-12 h-12 ${crypto.iconBg} rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                                ${crypto.icon}
-                            </div>
-                            <div>
-                                <h3 class="text-xl font-bold">${crypto.name}</h3>
-                                <p class="text-sm text-gray-400">${crypto.symbol} • ${crypto.network}</p>
-                                ${infoHTML}
-                            </div>
-                        </div>
-                        <div class="flex flex-col md:flex-row gap-6 items-start">
-                            <!-- Address QR Code -->
-                            <div class="flex-shrink-0">
-                                <p class="text-xs text-gray-400 mb-2 text-center">Address</p>
-                                <div class="qr-container qr-clickable" 
-                                     onclick="openQRModal('${crypto.name} - Address', '${crypto.symbol}', '${encodeURIComponent(crypto.address)}', 'Address')"
-                                     title="Click to enlarge QR code">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(crypto.address)}" 
-                                         alt="${crypto.name} Address QR Code" 
-                                         class="w-[120px] h-[120px]">
-                                </div>
-                            </div>
-                            <!-- Memo QR Code -->
-                            <div class="flex-shrink-0">
-                                <p class="text-xs text-gray-400 mb-2 text-center">Memo (Destination Tag)</p>
-                                <div class="qr-container qr-clickable" 
-                                     onclick="openQRModal('${crypto.name} - Memo', '${crypto.symbol}', '${encodeURIComponent(crypto.memo)}', 'Memo')"
-                                     title="Click to enlarge QR code">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(crypto.memo)}" 
-                                         alt="${crypto.name} Memo QR Code" 
-                                         class="w-[120px] h-[120px]">
-                                </div>
-                            </div>
-                            <!-- Address & Memo Details -->
-                            <div class="flex-1 w-full">
-                                <p class="text-xs text-gray-400 mb-2">Address:</p>
-                                <div class="wallet-address ${crypto.textColor} mb-3">
-                                    ${crypto.address}
-                                </div>
-                                <button onclick="copyToClipboard('${crypto.address}', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 ${crypto.hoverColor} rounded-lg text-sm font-semibold transition mb-4">
-                                    📋 Copy Address
-                                </button>
-                                
-                                <p class="text-xs text-gray-400 mb-2">Memo (Destination Tag):</p>
-                                <div class="wallet-address ${crypto.textColor} mb-3">
-                                    ${crypto.memo}
-                                </div>
-                                <button onclick="copyToClipboard('${crypto.memo}', this)"
-                                        class="copy-btn w-full py-2 px-4 bg-gray-700 ${crypto.hoverColor} rounded-lg text-sm font-semibold transition">
-                                    📋 Copy Memo
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Standard cryptocurrency card (non-XRP)
+        // One QR thumbnail. `kind` is undefined for a single-address card, 'Address' or 'Memo'
+        // when the card carries both; it selects the caption, the modal title and its subtitle.
+        function qrThumb(crypto, value, kind) {
+            const title = kind ? crypto.name + ' - ' + kind : crypto.name;
+            const alt = kind ? crypto.name + ' ' + kind + ' QR Code' : crypto.name + ' QR Code';
+            const caption = kind === 'Memo' ? 'Memo (Destination Tag)' : kind;
+            const encoded = encodeURIComponent(value);
             return `
-                <div class="crypto-card p-6 rounded-xl border border-gray-700">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 ${crypto.iconBg} rounded-full flex items-center justify-center text-2xl flex-shrink-0">
-                            ${crypto.icon}
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold">${crypto.name}</h3>
-                            <p class="text-sm text-gray-400">${crypto.symbol} • ${crypto.network}</p>
-                            ${infoHTML}
-                        </div>
-                    </div>
-                    <div class="flex flex-col md:flex-row gap-6 items-start">
-                        <!-- QR Code -->
-                        <div class="qr-container flex-shrink-0 qr-clickable" 
-                             onclick="openQRModal('${crypto.name}', '${crypto.symbol}', '${encodeURIComponent(crypto.address)}')"
-                             title="Click to enlarge QR code">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(crypto.address)}" 
-                                 alt="${crypto.name} QR Code" 
-                                 class="w-[120px] h-[120px]">
-                        </div>
-                        <!-- Address -->
-                        <div class="flex-1 w-full">
-                            <p class="text-xs text-gray-400 mb-2">Address:</p>
-                            <div class="wallet-address ${crypto.textColor} mb-3 ${crypto.id === 'xmr' ? 'text-xs' : ''}">
-                                ${crypto.address}
-                            </div>
-                            <button onclick="copyToClipboard('${crypto.address}', this)"
-                                    class="copy-btn w-full py-2 px-4 bg-gray-700 ${crypto.hoverColor} rounded-lg text-sm font-semibold transition">
-                                📋 Copy Address
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
+                <div class="qr-block">
+                    ${caption ? `<p class="qr-label">${caption}</p>` : ''}
+                    <button type="button" class="qr-container qr-thumb"
+                            data-qr-title="${title}" data-qr-symbol="${crypto.symbol}"
+                            data-qr-data="${encoded}" data-qr-label="${kind || ''}"
+                            aria-label="Enlarge ${alt}" title="Click to enlarge QR code">
+                        <img src="${QR_THUMB}${encoded}" alt="${alt}">
+                    </button>
+                </div>`;
         }
 
-        // Initialize wallets on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const container = document.getElementById('crypto-wallets-container');
-            if (container) {
-                // Generate all cryptocurrency cards
-                const cardsHTML = cryptocurrencies.map(crypto => generateCryptoCard(crypto)).join('');
-                container.innerHTML = cardsHTML;
+        function addressBlock(label, value, buttonText) {
+            return `
+                <p class="qr-label">${label}</p>
+                <div class="wallet-address">${value}</div>
+                <button type="button" class="btn btn-secondary copy-btn" data-copy="${value}">📋 ${buttonText}</button>`;
+        }
+
+        function generateCryptoCard(crypto) {
+            const info = crypto.info
+                ? `<p class="crypto-info${crypto.warning ? ' crypto-info--warning' : ''}">${crypto.info}</p>`
+                : '';
+            const hasMemo = Boolean(crypto.memo);
+            const qr = hasMemo
+                ? qrThumb(crypto, crypto.address, 'Address') + qrThumb(crypto, crypto.memo, 'Memo')
+                : qrThumb(crypto, crypto.address);
+            const details = addressBlock('Address:', crypto.address, 'Copy Address')
+                + (hasMemo ? addressBlock('Memo (Destination Tag):', crypto.memo, 'Copy Memo') : '');
+            return `
+                <article class="feature">
+                    <div class="crypto-card-head">
+                        <span class="crypto-icon" aria-hidden="true">${crypto.icon}</span>
+                        <div>
+                            <h3 class="crypto-card-title">${crypto.name}</h3>
+                            <p class="crypto-card-meta">${crypto.symbol} • ${crypto.network}</p>
+                            ${info}
+                        </div>
+                    </div>
+                    <div class="crypto-card-body">
+                        ${qr}
+                        <div class="crypto-card-details">
+                            ${details}
+                        </div>
+                    </div>
+                </article>`;
+        }
+
+        // Render the wallets, then let one listener serve every card's buttons.
+        const walletsContainer = document.getElementById('crypto-wallets-container');
+        walletsContainer.innerHTML = cryptocurrencies.map(generateCryptoCard).join('');
+        walletsContainer.addEventListener('click', function (e) {
+            const thumb = e.target.closest('.qr-thumb');
+            if (thumb) {
+                openQRModal(thumb.dataset.qrTitle, thumb.dataset.qrSymbol, thumb.dataset.qrData, thumb.dataset.qrLabel, thumb);
+                return;
+            }
+            const copy = e.target.closest('.copy-btn');
+            if (copy) {
+                copyToClipboard(copy.dataset.copy, copy);
             }
         });
 
-        // Copy to clipboard function
+        // Copy to clipboard: the button reports the outcome for two seconds, then reads as before.
         function copyToClipboard(text, button) {
-            navigator.clipboard.writeText(text).then(function() {
-                const originalText = button.innerHTML;
-                button.innerHTML = '✅ Copied!';
-                button.classList.add('bg-green-600');
-
-                setTimeout(function() {
-                    button.innerHTML = originalText;
-                    button.classList.remove('bg-green-600');
+            const originalText = button.textContent;
+            const restore = function () {
+                setTimeout(function () {
+                    button.textContent = originalText;
+                    button.classList.remove('copy-btn--done');
                 }, 2000);
-            }, function(err) {
+            };
+            const write = navigator.clipboard
+                ? navigator.clipboard.writeText(text)
+                : Promise.reject(new Error('Clipboard API unavailable'));
+            write.then(function () {
+                button.textContent = '✅ Copied!';
+                button.classList.add('copy-btn--done');
+            }, function (err) {
                 console.error('Could not copy text: ', err);
-                button.innerHTML = '❌ Failed';
-                setTimeout(function() {
-                    button.innerHTML = '📋 Copy Address';
-                }, 2000);
-            });
+                button.textContent = '❌ Failed';
+            }).then(restore);
         }
 
-        // Open QR modal
-        function openQRModal(name, symbol, encodedAddress, label) {
-            const modal = document.getElementById('qr-modal');
+        // QR modal. Focus moves to the close button on open and back to the opener on close.
+        const qrModal = document.getElementById('qr-modal');
+        const qrModalClose = qrModal.querySelector('.qr-modal-close');
+        let qrModalOpener = null;
+
+        function openQRModal(name, symbol, encodedData, label, opener) {
             const title = document.getElementById('modal-title');
             const subtitle = document.getElementById('modal-subtitle');
             const image = document.getElementById('modal-qr-image');
 
             title.textContent = name + ' (' + symbol + ')';
 
-            // Custom subtitle for XRP memo
             if (label === 'Memo') {
                 subtitle.textContent = 'Scan this QR code for the Destination Tag (MEMO)';
             } else if (label === 'Address') {
@@ -832,27 +497,57 @@
                 subtitle.textContent = 'Scan this QR code with your crypto wallet';
             }
 
-            image.src = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodedAddress;
+            image.src = QR_LARGE + encodedData;
             image.alt = name + ' QR Code';
 
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden'; // Prevent scrolling
+            qrModalOpener = opener || document.activeElement;
+            qrModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling behind the dialog
+            qrModalClose.focus();
         }
 
-        // Close QR modal
-        function closeQRModal(event) {
-            // Only close if clicking outside content or on close button
-            if (!event || event.target.id === 'qr-modal' || event.target.classList.contains('qr-modal-close')) {
-                const modal = document.getElementById('qr-modal');
-                modal.classList.remove('active');
-                document.body.style.overflow = ''; // Restore scrolling
+        // Returns whether a dialog was open, so Escape can fall through to the menu.
+        function closeQRModal() {
+            if (!qrModal.classList.contains('active')) {
+                return false;
             }
+            qrModal.classList.remove('active');
+            document.body.style.overflow = ''; // Restore scrolling
+            if (qrModalOpener && typeof qrModalOpener.focus === 'function') {
+                qrModalOpener.focus();
+            }
+            qrModalOpener = null;
+            return true;
         }
 
-        // Close modal on Escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
+        // Close on the backdrop or the close button, never on the content.
+        qrModal.addEventListener('click', function (e) {
+            if (e.target === qrModal || e.target.closest('.qr-modal-close')) {
                 closeQRModal();
+            }
+        });
+
+        // Mobile navigation: the toggle owns the open state and mirrors it onto aria-expanded.
+        const navToggle = document.querySelector('.nav-toggle');
+        const navLinks = document.getElementById('nav-links');
+        function setMenu(open) {
+            navLinks.classList.toggle('open', open);
+            navToggle.setAttribute('aria-expanded', String(open));
+            navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        }
+        navToggle.addEventListener('click', function () {
+            setMenu(!navLinks.classList.contains('open'));
+        });
+        navLinks.addEventListener('click', function (e) {
+            if (e.target.closest('a')) {
+                setMenu(false);
+            }
+        });
+
+        // Escape closes whichever is open: the dialog first, otherwise the menu.
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !closeQRModal()) {
+                setMenu(false);
             }
         });
     </script>
