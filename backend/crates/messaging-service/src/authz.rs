@@ -9,7 +9,7 @@
 
 use crate::db::DatabaseClient;
 use crate::proto::common::{error_response::ErrorCode, ErrorResponse};
-use tracing::error;
+use tracing::{error, warn};
 
 /// The two lookups an authorization decision needs.
 ///
@@ -45,9 +45,8 @@ pub trait ConversationAccess {
 
 /// Why an authorization check refused a read.
 //
-// `NotAMember` and `WrongConversation` are unconstructed until the checks below stop
-// discarding their lookups. The allow comes off in the same commit that constructs them,
-// and its presence here marks the #172 defect rather than papering over it.
+// `WrongConversation` stays unconstructed while `authorize_message_read` trusts
+// membership alone. The allow comes off in the commit that adds the placement check.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Denial {
@@ -92,16 +91,23 @@ pub async fn authorize_conversation_read<A: ConversationAccess>(
     user_id: &str,
     is_group: bool,
 ) -> Result<(), Denial> {
-    // #172, stated in code: the lookup runs and its answer is discarded, which is exactly
-    // what the three getters did by never reading `_claims`. The next commit stops
-    // discarding it.
-    access
+    let is_member = access
         .conversation_has_member(conversation_id, user_id, is_group)
         .await
         .map_err(|e| {
             error!("Failed to verify conversation membership: {}", e);
             Denial::LookupFailed
         })?;
+
+    if !is_member {
+        warn!(
+            user_id = %user_id,
+            conversation_id = %conversation_id,
+            "Denied a conversation read to a non-member"
+        );
+        return Err(Denial::NotAMember);
+    }
+
     Ok(())
 }
 
@@ -116,16 +122,11 @@ pub async fn authorize_message_read<A: ConversationAccess>(
     user_id: &str,
     is_group: bool,
 ) -> Result<(), Denial> {
-    // #172, stated in code. See `authorize_conversation_read`.
+    // The naive fix, and not yet sufficient: `db.get_reactions` ignores the
+    // `conversation_id` it is handed, so membership alone still lets a member of one
+    // conversation name it while reading a message from another.
     let _ = message_id;
-    access
-        .conversation_has_member(conversation_id, user_id, is_group)
-        .await
-        .map_err(|e| {
-            error!("Failed to verify conversation membership: {}", e);
-            Denial::LookupFailed
-        })?;
-    Ok(())
+    authorize_conversation_read(access, conversation_id, user_id, is_group).await
 }
 
 impl ConversationAccess for DatabaseClient {
