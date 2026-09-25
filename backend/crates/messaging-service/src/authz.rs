@@ -31,10 +31,6 @@ pub trait ConversationAccess {
     /// A message that does not exist and a message belonging to some other conversation
     /// both answer `false`. Collapsing the two is deliberate: telling them apart would
     /// hand the caller an existence oracle over messages it may not read.
-    //
-    // Unused until `authorize_message_read` stops trusting membership alone. The allow
-    // comes off in the commit that calls it.
-    #[allow(dead_code)]
     async fn message_is_in_conversation(
         &self,
         message_id: &str,
@@ -44,10 +40,6 @@ pub trait ConversationAccess {
 }
 
 /// Why an authorization check refused a read.
-//
-// `WrongConversation` stays unconstructed while `authorize_message_read` trusts
-// membership alone. The allow comes off in the commit that adds the placement check.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Denial {
     /// The caller does not participate in the conversation.
@@ -122,11 +114,33 @@ pub async fn authorize_message_read<A: ConversationAccess>(
     user_id: &str,
     is_group: bool,
 ) -> Result<(), Denial> {
-    // The naive fix, and not yet sufficient: `db.get_reactions` ignores the
-    // `conversation_id` it is handed, so membership alone still lets a member of one
-    // conversation name it while reading a message from another.
-    let _ = message_id;
-    authorize_conversation_read(access, conversation_id, user_id, is_group).await
+    // Membership first, and it short-circuits on `?`: a caller outside the conversation
+    // must not reach the message lookup, or the lookup becomes an existence oracle.
+    authorize_conversation_read(access, conversation_id, user_id, is_group).await?;
+
+    // Membership alone is not enough here. `db.get_reactions` ignores the
+    // `conversation_id` it is handed and queries `WHERE message_id = ?`, so without this
+    // second check a member of one conversation could name it while reading a message
+    // that lives in another.
+    let in_conversation = access
+        .message_is_in_conversation(message_id, conversation_id, is_group)
+        .await
+        .map_err(|e| {
+            error!("Failed to verify message placement: {}", e);
+            Denial::LookupFailed
+        })?;
+
+    if !in_conversation {
+        warn!(
+            user_id = %user_id,
+            conversation_id = %conversation_id,
+            message_id = %message_id,
+            "Denied a message read: the message is not in the named conversation"
+        );
+        return Err(Denial::WrongConversation);
+    }
+
+    Ok(())
 }
 
 impl ConversationAccess for DatabaseClient {
