@@ -7,6 +7,7 @@
 #![allow(clippy::result_large_err)]
 
 mod auth_client;
+mod authz;
 mod config;
 mod db;
 mod event_consumer;
