@@ -3,6 +3,7 @@
 /// Manages auto-delete configuration for conversations.
 /// Messages will be automatically deleted after the configured TTL expires.
 /// RT-003: Broadcasts config changes and schedules cleanup jobs.
+use crate::authz;
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
 use crate::nats::NatsClient;
@@ -238,11 +239,7 @@ pub async fn get_disappearing_config(
 ) -> Result<Response<GetDisappearingConfigResponse>, Status> {
     let req = request.into_inner();
 
-    // Authenticated but NOT authorized: `_claims` is never read, so nothing
-    // checks that the caller belongs to the conversation this returns data for.
-    // Tracked as #172 - renamed rather than fixed here, because the fix is a
-    // behaviour change needing its own tests.
-    let _claims = match validate_access_token(&req.access_token) {
+    let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
         Err(e) => {
             warn!("Invalid access token: {}", e);
@@ -269,6 +266,22 @@ pub async fn get_disappearing_config(
                     message: "conversation_id is required".to_string(),
                     details: Default::default(),
                 },
+            )),
+        }));
+    }
+
+    let user_id = claims.sub.clone();
+    if let Err(denial) = authz::authorize_conversation_read(
+        db.as_ref(),
+        &req.conversation_id,
+        &user_id,
+        req.is_group,
+    )
+    .await
+    {
+        return Ok(Response::new(GetDisappearingConfigResponse {
+            result: Some(get_disappearing_config_response::Result::Error(
+                denial.to_error_response(),
             )),
         }));
     }

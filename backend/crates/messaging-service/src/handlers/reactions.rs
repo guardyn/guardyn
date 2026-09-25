@@ -2,6 +2,7 @@
 ///
 /// Handles adding, removing, and retrieving reactions on messages.
 /// Reactions are stored in ScyllaDB for efficient retrieval.
+use crate::authz;
 use crate::db::DatabaseClient;
 use crate::jwt::validate_access_token;
 use crate::proto::common::{error_response::ErrorCode, ErrorResponse, Timestamp};
@@ -189,11 +190,7 @@ pub async fn get_reactions(
 ) -> Result<Response<GetReactionsResponse>, Status> {
     let req = request.into_inner();
 
-    // Authenticated but NOT authorized: `_claims` is never read, so nothing
-    // checks that the caller belongs to the conversation this returns data for.
-    // Tracked as #172 - renamed rather than fixed here, because the fix is a
-    // behaviour change needing its own tests.
-    let _claims = match validate_access_token(&req.access_token) {
+    let claims = match validate_access_token(&req.access_token) {
         Ok(c) => c,
         Err(e) => {
             warn!("Invalid access token: {}", e);
@@ -208,6 +205,23 @@ pub async fn get_reactions(
     };
 
     tracing::Span::current().record("message_id", &req.message_id);
+
+    let user_id = claims.sub.clone();
+    if let Err(denial) = authz::authorize_message_read(
+        db.as_ref(),
+        &req.message_id,
+        &req.conversation_id,
+        &user_id,
+        req.is_group,
+    )
+    .await
+    {
+        return Ok(Response::new(GetReactionsResponse {
+            result: Some(get_reactions_response::Result::Error(
+                denial.to_error_response(),
+            )),
+        }));
+    }
 
     // Get reactions from database
     match db
