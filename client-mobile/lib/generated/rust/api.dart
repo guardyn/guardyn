@@ -15,7 +15,7 @@ import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'api.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `fixed_key`, `to_pqxdh`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `from`, `from`, `from`, `from`
 
 /// Initialize the cryptographic library
 ///
@@ -411,24 +411,77 @@ sealed class CryptoStatus with _$CryptoStatus {
 }
 
 /// Encrypted data container
-@freezed
-sealed class EncryptedData with _$EncryptedData {
-  const factory EncryptedData({
-    required Uint8List ciphertext,
-    required Uint8List nonce,
-    required Uint8List tag,
-  }) = _EncryptedData;
+///
+/// Deliberately **not** `freezed`, and deliberately without `Debug`, so that `ciphertext`
+/// cannot reach a log through a `toString()` or a `{:?}`. The nonce and tag are public
+/// AEAD parameters; the ciphertext is not. Mirrors `FfiEncryptedData`, which hand-writes a
+/// redacted `Debug` one crate over in `guardyn-crypto`. See #348.
+class EncryptedData {
+  final Uint8List ciphertext;
+  final Uint8List nonce;
+  final Uint8List tag;
+
+  const EncryptedData({
+    required this.ciphertext,
+    required this.nonce,
+    required this.tag,
+  });
+
+  @override
+  int get hashCode => ciphertext.hashCode ^ nonce.hashCode ^ tag.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EncryptedData &&
+          runtimeType == other.runtimeType &&
+          ciphertext == other.ciphertext &&
+          nonce == other.nonce &&
+          tag == other.tag;
 }
 
 /// Hybrid key bundle for PQXDH (Post-Quantum Extended Diffie-Hellman)
-@freezed
-sealed class HybridKeyBundle with _$HybridKeyBundle {
-  const factory HybridKeyBundle({
-    required Uint8List x25519Public,
-    required Uint8List x25519Private,
-    required Uint8List mlKemPublic,
-    required Uint8List mlKemPrivate,
-  }) = _HybridKeyBundle;
+///
+/// Deliberately **not** `freezed`, and deliberately without `Debug`. Two of the four
+/// fields are private key material, and both a freezed `toString()` and a derived `Debug`
+/// would interpolate them verbatim. Mirrors `FfiHybridKeyBundle`, which hand-writes a
+/// `Debug` redacting exactly those two halves one crate over in `guardyn-crypto`. See #348.
+class HybridKeyBundle {
+  /// X25519 public key (32 bytes)
+  final Uint8List x25519Public;
+
+  /// X25519 private key (32 bytes)
+  final Uint8List x25519Private;
+
+  /// ML-KEM-768 encapsulation key (1184 bytes)
+  final Uint8List mlKemPublic;
+
+  /// ML-KEM-768 decapsulation key (2400 bytes)
+  final Uint8List mlKemPrivate;
+
+  const HybridKeyBundle({
+    required this.x25519Public,
+    required this.x25519Private,
+    required this.mlKemPublic,
+    required this.mlKemPrivate,
+  });
+
+  @override
+  int get hashCode =>
+      x25519Public.hashCode ^
+      x25519Private.hashCode ^
+      mlKemPublic.hashCode ^
+      mlKemPrivate.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HybridKeyBundle &&
+          runtimeType == other.runtimeType &&
+          x25519Public == other.x25519Public &&
+          x25519Private == other.x25519Private &&
+          mlKemPublic == other.mlKemPublic &&
+          mlKemPrivate == other.mlKemPrivate;
 }
 
 /// A peer's published key bundle, as fetched from `auth-service`.
@@ -489,11 +542,34 @@ class HybridSenderAgreement {
 }
 
 /// Key pair with public and private components
-@freezed
-sealed class KeyPair with _$KeyPair {
-  const factory KeyPair({
-    required Uint8List publicKey,
-    required Uint8List privateKey,
-    required String keyType,
-  }) = _KeyPair;
+///
+/// Deliberately **not** `freezed`, and deliberately without `Debug`. Freezed generates a
+/// `toString()` that interpolates every field and `derive(Debug)` does the same in Rust;
+/// `.claude/rules/30-zk-logging.md` forbids the private half reaching a log, a span, a
+/// metric label or stdout, and both of those reach all four. Plain flutter_rust_bridge
+/// renders `Instance of 'KeyPair'` instead. Mirrors `FfiKeyPair`, which hand-writes a
+/// redacted `Debug` one crate over in `guardyn-crypto`. See #348.
+class KeyPair {
+  final Uint8List publicKey;
+  final Uint8List privateKey;
+  final String keyType;
+
+  const KeyPair({
+    required this.publicKey,
+    required this.privateKey,
+    required this.keyType,
+  });
+
+  @override
+  int get hashCode =>
+      publicKey.hashCode ^ privateKey.hashCode ^ keyType.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is KeyPair &&
+          runtimeType == other.runtimeType &&
+          publicKey == other.publicKey &&
+          privateKey == other.privateKey &&
+          keyType == other.keyType;
 }
