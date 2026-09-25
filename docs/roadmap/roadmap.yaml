@@ -587,3 +587,20 @@ steps:
   # page makes no request off-origin at all - which is also what lets PR-142 drop `https:`
   # from img-src.
   - {id: PR-144, issue: 397, phase: 4, type: security, status: done, title: "Generate the crypto QR codes locally instead of via api.qrserver.com"}
+
+  # Found while mapping what follows the landing series, and owned by nothing until now.
+  # Three messaging getters validate the access token, bind the result to `_claims` and never
+  # read it, so any authenticated account could read another conversation's read receipts,
+  # reactions and disappearing-message config. The handlers carried a comment admitting it and
+  # deferring the fix because it "needs its own tests".
+  #
+  # Writing those tests was the harder half. messaging-service is binary-only with no
+  # dev-dependencies, and DatabaseClient has private fields behind a constructor that dials
+  # TiKV and ScyllaDB, so no handler in the crate was testable at all. The step adds the seam
+  # (src/authz.rs, a two-method trait) as well as the check - which is why it is larger than a
+  # membership call would suggest.
+  #
+  # get_reactions needed a second check the other two did not: db.get_reactions ignores the
+  # conversation_id it is handed and queries WHERE message_id = ?, so membership alone still
+  # let a member of one conversation name it while reading a message from another.
+  - {id: PR-145, issue: 172, phase: 4, type: security, status: done, title: "Authorize the three messaging getters that only authenticate"}
