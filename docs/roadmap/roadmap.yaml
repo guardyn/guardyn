@@ -604,3 +604,16 @@ steps:
   # conversation_id it is handed and queries WHERE message_id = ?, so membership alone still
   # let a member of one conversation name it while reading a message from another.
   - {id: PR-145, issue: 172, phase: 4, type: security, status: done, title: "Authorize the three messaging getters that only authenticate"}
+
+  # Found while mapping what follows the landing series. The Rust side of the FFI redacts
+  # private key material in Debug - crypto/src/ffi.rs hand-writes three impls routing the
+  # private halves through Redacted - but crypto-ffi re-declares near-identical mirror structs
+  # that derive Debug and carry #[frb(dart_metadata = ("freezed"))]. Freezed generates a
+  # toString() interpolating every field, so six generated Dart sites printed private keys and
+  # ciphertext verbatim. I-1 forbids exactly that, in a log, a span, a metric label or on
+  # stdout, and a Dart toString() reaches all four.
+  #
+  # rules-verify cannot see any of it: every ZK predicate is scoped to backend/crates/*/src, so
+  # the whole Flutter client sits outside zero-knowledge enforcement. Extending the predicates
+  # to Dart is real follow-up work and is not this step.
+  - {id: PR-146, issue: 348, phase: 4, type: security, status: done, title: "Stop the generated Dart toString() printing private keys and ciphertext"}
