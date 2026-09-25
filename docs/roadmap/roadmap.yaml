@@ -573,7 +573,22 @@ steps:
   - {id: PR-139, issue: 386, phase: 4, type: refactor, status: done, title: "Retire or retheme coming-soon.html"}
   - {id: PR-140, issue: 387, phase: 4, type: refactor, status: done, title: "Migrate crypto.html to the light theme"}
   - {id: PR-141, issue: 388, phase: 4, type: refactor, status: done, title: "Migrate .well-known/pgp.html to the light theme"}
-  - {id: PR-142, issue: 389, phase: 4, type: security, status: todo, title: "Drop Tailwind and Google Fonts from the landing CSP once no page loads them"}
+  # The CSP kept five origins no page had loaded for months - Tailwind Play, both Google Fonts
+  # hosts, s.ytimg.com and youtube-nocookie - plus `https:` in img-src, which PR-144 made
+  # unnecessary by committing the QR codes locally. All dropped, along with 'unsafe-inline' in
+  # style-src: the site has zero <style> blocks and zero style= attributes, and the
+  # .style.<prop> writes in index.html and crypto.html are CSSOM assignments the directive does
+  # not govern. base-uri, object-src and frame-ancestors were simply missing and are added.
+  #
+  # static.cloudflareinsights.com STAYS, by explicit user decision on 2026-09-25: Web Analytics
+  # is on for the Pages project, so the edge injects the beacon into every response and dropping
+  # the origin would have killed analytics as a console-only violation nobody would see.
+  # connect-src gains cloudflareinsights.com so the beacon can actually report.
+  #
+  # form-action is the risk running the other way. The directive was absent, and it does not
+  # fall back to default-src - which is the only reason the Formspree beta signup ever worked.
+  # Adding `form-action 'self'` without listing formspree.io would have broken the form silently.
+  - {id: PR-142, issue: 389, phase: 4, type: security, status: done, title: "Drop Tailwind and Google Fonts from the landing CSP once no page loads them"}
   # Found while rebuilding sponsor.html: every target="_blank" on index.html was bare. Current
   # browsers imply noopener there, so the tabnabbing half is already closed for most visitors;
   # noreferrer is the half that matters for this product, since without it the page URL goes to
