@@ -206,6 +206,23 @@ pub async fn get_reactions(
 
     tracing::Span::current().record("message_id", &req.message_id);
 
+    // Validate required fields
+    //
+    // `conversation_id` was an ignored argument here until the authorization check below
+    // started reading it. Without this guard an empty value reaches `Uuid::parse_str`
+    // inside the membership lookup, turning a request that used to return 200 into a 500
+    // plus an `error!` line - which lets any caller manufacture the alarm that is
+    // supposed to mean ScyllaDB is down.
+    if req.message_id.is_empty() || req.conversation_id.is_empty() {
+        return Ok(Response::new(GetReactionsResponse {
+            result: Some(get_reactions_response::Result::Error(ErrorResponse {
+                code: ErrorCode::InvalidRequest as i32,
+                message: "message_id and conversation_id are required".to_string(),
+                details: Default::default(),
+            })),
+        }));
+    }
+
     let user_id = claims.sub.clone();
     if let Err(denial) = authz::authorize_message_read(
         db.as_ref(),
