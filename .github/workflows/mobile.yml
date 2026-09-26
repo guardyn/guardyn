@@ -40,6 +40,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Flutter 3.47.3 hard-fails the Android build below JDK 17. No workflow in this repository
+      # set up Java before now, because none of them ran a Gradle task.
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -61,3 +69,18 @@ jobs:
       - name: Test
         working-directory: client-mobile
         run: flutter test
+
+      # The gate #367 asked for. Until this step existed, no job in the repository ran a single
+      # Gradle task, so the Android toolchain pins were checked by nothing: the wrapper sat below
+      # Flutter's minimum for months and the only symptom was that `flutter run` refused to launch.
+      #
+      # `flutter build apk` is the right command rather than `flutter test integration_test/`
+      # because Flutter's DependencyVersionChecker runs when the Gradle plugin is applied, at
+      # configuration time, and the only way past it is `--android-skip-build-dependency-validation`
+      # - which this step deliberately does not pass. No device or emulator is needed.
+      #
+      # jniLibs/ is gitignored, so this APK carries no native crypto library. That is fine: the
+      # step gates the Android *build*, not the runtime. Device coverage is `just ffi-test-mobile`.
+      - name: Build Android APK
+        working-directory: client-mobile
+        run: flutter build apk --debug

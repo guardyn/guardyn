@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -21,10 +23,6 @@ android {
         options.compilerArgs.addAll(listOf("-Xlint:-options"))
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "co.guardyn.guardyn_client"
@@ -42,6 +40,15 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+}
+
+// Must match `compileOptions` above. This was `android { kotlinOptions { ... } }`, the AGP shim
+// that Kotlin 2.2 deprecates and AGP 9 removes; `kotlin { compilerOptions { ... } }` is the
+// supported form and is where the next toolchain bump expects to find it.
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 
