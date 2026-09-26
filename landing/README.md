@@ -103,26 +103,36 @@ Update links in `index.html`:
 
 ### Add Cloudflare Web Analytics
 
-1. Enable in Cloudflare dashboard: **Analytics** → **Web Analytics**
-2. Copy tracking code
-3. Add to `<head>` section:
+Enable it in the Cloudflare dashboard: **Analytics** → **Web Analytics**. That is the whole
+procedure — Cloudflare Pages injects the beacon into every response itself.
 
-```html
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "YOUR_TOKEN"}'></script>
-```
+**Do not paste the snippet into `<head>` by hand.** That used to be step 3 here, and it now
+only produces a second copy of a script the edge already injects. `_headers` allows
+`https://static.cloudflareinsights.com` in `script-src` and `https://cloudflareinsights.com`
+in `connect-src` so the injected beacon can load and report; nothing else off-origin is
+permitted, so any other analytics snippet will be blocked rather than silently tracked.
 
 ## 📁 Structure
 
 ```
 landing/
-├── index.html          # Main landing page
-├── css/theme.css       # Design tokens: colours, radii, shadows, font stack, mesh background
-├── css/layout.css      # Component layer: nav, cards, buttons, footer, grid, skip link, breakpoint
-├── _headers           # Security headers (Cloudflare)
-├── _redirects         # URL redirects (www → non-www)
-├── robots.txt         # SEO crawling instructions
-├── sitemap.xml        # SEO sitemap
-└── README.md          # This file
+├── index.html             # Main landing page
+├── crypto.html            # Donation addresses and QR codes
+├── privacy.html           # Privacy policy
+├── terms.html             # Terms of service
+├── sponsor.html           # Sponsorship tiers
+├── .well-known/pgp.html   # PGP key directory
+├── css/theme.css          # Design tokens: colours, radii, shadows, font stack, mesh background
+├── css/layout.css         # Component layer: nav, cards, buttons, footer, grid, skip link
+├── css/legal.css          # privacy.html and terms.html
+├── css/sponsor.css        # sponsor.html
+├── css/crypto.css         # crypto.html
+├── css/pgp.css            # .well-known/pgp.html
+├── _headers               # Security headers, including the Content-Security-Policy
+├── _redirects             # URL redirects (www → non-www)
+├── robots.txt             # SEO crawling instructions
+├── sitemap.xml            # SEO sitemap
+└── README.md              # This file
 ```
 
 ## 🎨 Assets
@@ -156,7 +166,9 @@ python3 -c "import segno; segno.make('<address>', error='m', micro=False).save('
 - Frame-Options: DENY
 - Referrer-Policy: strict-origin
 - HTTPS enforced
-- No external dependencies (except Tailwind CDN)
+- No external dependencies: every stylesheet, script, font and image is same-origin. The
+  only off-origin requests a visitor makes are the YouTube embed on `index.html` and the
+  Cloudflare Web Analytics beacon the edge injects — and `_headers` allows exactly those two
 
 ## 🌐 DNS Configuration
 

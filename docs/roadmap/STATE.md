@@ -4,7 +4,7 @@ type: roadmap
 status: accepted
 owns: [docs/roadmap/roadmap.yaml]
 read_when: [asking where the work is, reporting at a gate]
-tokens: 1268
+tokens: 1231
 supersedes: []
 ---
 
@@ -20,14 +20,14 @@ supersedes: []
 | 1 | 19 | 19 | `██████████` |
 | 2 | 7 | 7 | `██████████` |
 | 3 | 63 | 69 | `█████████░` |
-| 4 | 49 | 71 | `███████░░░` |
-| **all** | **138** | **166** | |
+| 4 | 50 | 71 | `███████░░░` |
+| **all** | **139** | **166** | |
 
 ## Position
 
 - **Current phase:** 3
 - **Next gate:** G4
-- **Open steps:** 28 of 166
+- **Open steps:** 27 of 166
 
 ## Gates
 
@@ -81,4 +81,3 @@ supersedes: []
 | PR-127 | 4 | [#337](https://github.com/guardyn/guardyn/issues/337) | Retire the legacy guardyn.io security contact |
 | PR-128 | 4 | [#338](https://github.com/guardyn/guardyn/issues/338) | Rename the guardyn.io label keys at the next cluster rebuild |
 | PR-129 | 4 | [#339](https://github.com/guardyn/guardyn/issues/339) | The prod overlay does not render: base/monitoring has no kustomization.yaml |
-| PR-142 | 4 | [#389](https://github.com/guardyn/guardyn/issues/389) | Drop Tailwind and Google Fonts from the landing CSP once no page loads them |

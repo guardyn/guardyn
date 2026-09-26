@@ -5,7 +5,7 @@
 ### Main Files
 
 1. **`index.html`** (main landing page)
-   - Responsive design with Tailwind CSS
+   - Responsive design in hand-written CSS under `css/`
    - Hero section with logo and gradient text
    - 6 feature cards
    - Technology stack showcase
@@ -112,7 +112,7 @@ Defined once as CSS custom properties in `css/theme.css` (see `CUSTOMIZATION.md`
 - **HTML5**: Semantic markup
 - **CSS3**: Modern features (backdrop-filter, gradients)
 - **JavaScript**: Vanilla JS (no frameworks)
-- **Tailwind CSS**: Utility-first styling (via CDN)
+- **Own stylesheets**: six files under `css/`, no framework and no CDN
 
 ### Hosting
 - **Cloudflare Pages**: Free unlimited hosting
@@ -206,7 +206,7 @@ Defined once as CSS custom properties in `css/theme.css` (see `CUSTOMIZATION.md`
 - ✅ ARIA labels for accessibility
 
 ### Performance
-- ✅ Minified CSS (Tailwind)
+- ✅ No framework CSS to fetch: six same-origin stylesheets, no CDN round-trip
 - ✅ Lazy loading images
 - ✅ Preload critical resources
 - ✅ Mobile-first responsive
@@ -248,7 +248,6 @@ Defined once as CSS custom properties in `css/theme.css` (see `CUSTOMIZATION.md`
 ### External Links
 - Cloudflare Pages: [pages.cloudflare.com](https://pages.cloudflare.com)
 - Formspree: [formspree.io](https://formspree.io)
-- Tailwind CSS: [tailwindcss.com](https://tailwindcss.com)
 
 ### Testing Tools
 - Lighthouse: Chrome DevTools

@@ -165,17 +165,19 @@ Customize card hover behavior:
 
 ## 📱 Mobile Responsiveness
 
-All breakpoints use Tailwind CSS:
-- `sm:` - 640px+
-- `md:` - 768px+
-- `lg:` - 1024px+
-- `xl:` - 1280px+
+The stylesheets are desktop-first and collapse at two plain media queries. There is no
+utility-class framework, so there are no `sm:` / `md:` / `lg:` prefixes to use:
 
-Example mobile-first design:
-```html
-<h1 class="text-4xl md:text-6xl lg:text-8xl">
-    <!-- 4xl on mobile, 6xl on tablet, 8xl on desktop -->
-</h1>
+- `max-width: 1024px` — `css/crypto.css` only
+- `max-width: 768px` — every stylesheet; the single phone breakpoint
+
+Example, from `css/layout.css`:
+```css
+@media (max-width: 768px) {
+    .hero-logo {
+        font-size: 3rem;
+    }
+}
 ```
 
 ## 🔧 Advanced Customizations
@@ -199,9 +201,11 @@ Example mobile-first design:
 
 ### Add Analytics
 
-**Google Analytics:**
+**Google Analytics** — blocked as written. `_headers` permits no off-origin `script-src`
+beyond the Cloudflare beacon, so `googletagmanager.com` will be refused by the browser and
+the only sign will be a console error. Adding it means widening the CSP deliberately:
 ```html
-<!-- Add before </head> -->
+<!-- Add before </head>; also add googletagmanager.com to script-src in _headers -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -211,11 +215,9 @@ Example mobile-first design:
 </script>
 ```
 
-**Cloudflare Web Analytics:**
-```html
-<script defer src='https://static.cloudflareinsights.com/beacon.min.js' 
-        data-cf-beacon='{"token": "YOUR_TOKEN"}'></script>
-```
+**Cloudflare Web Analytics** — nothing to add. Cloudflare Pages injects the beacon itself
+once **Analytics** → **Web Analytics** is enabled in the dashboard, and `_headers` already
+allows it. Pasting the snippet by hand just duplicates the injected script.
 
 ### Add Cookie Consent
 
@@ -280,7 +282,6 @@ Before deploying customizations:
 
 ## 📚 Resources
 
-- **Tailwind CSS Docs**: [tailwindcss.com/docs](https://tailwindcss.com/docs)
 - **Color Palette Generator**: [coolors.co](https://coolors.co)
 - **Free Images**: [unsplash.com](https://unsplash.com)
 - **Icon Library**: [heroicons.com](https://heroicons.com)
@@ -299,7 +300,7 @@ Before deploying customizations:
 - Verify CORS settings
 
 **Styles not applying:**
-- Tailwind CDN loaded? (Check line ~36)
+- Is the right stylesheet linked for this page? Each page loads `css/theme.css` plus its own
 - Clear browser cache
 - Check for CSS syntax errors
 
