@@ -33,8 +33,14 @@ static INITIALIZED: AtomicBool = AtomicBool::new(false);
 // ============================================================================
 
 /// Key pair with public and private components
-#[frb(dart_metadata = ("freezed"))]
-#[derive(Debug, Clone)]
+///
+/// Deliberately **not** `freezed`, and deliberately without `Debug`. Freezed generates a
+/// `toString()` that interpolates every field and `derive(Debug)` does the same in Rust;
+/// `.claude/rules/30-zk-logging.md` forbids the private half reaching a log, a span, a
+/// metric label or stdout, and both of those reach all four. Plain flutter_rust_bridge
+/// renders `Instance of 'KeyPair'` instead. Mirrors `FfiKeyPair`, which hand-writes a
+/// redacted `Debug` one crate over in `guardyn-crypto`. See #348.
+#[derive(Clone)]
 pub struct KeyPair {
     pub public_key: Vec<u8>,
     pub private_key: Vec<u8>,
@@ -52,8 +58,12 @@ impl From<FfiKeyPair> for KeyPair {
 }
 
 /// Encrypted data container
-#[frb(dart_metadata = ("freezed"))]
-#[derive(Debug, Clone)]
+///
+/// Deliberately **not** `freezed`, and deliberately without `Debug`, so that `ciphertext`
+/// cannot reach a log through a `toString()` or a `{:?}`. The nonce and tag are public
+/// AEAD parameters; the ciphertext is not. Mirrors `FfiEncryptedData`, which hand-writes a
+/// redacted `Debug` one crate over in `guardyn-crypto`. See #348.
+#[derive(Clone)]
 pub struct EncryptedData {
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>,
@@ -81,8 +91,12 @@ impl From<EncryptedData> for FfiEncryptedData {
 }
 
 /// Hybrid key bundle for PQXDH (Post-Quantum Extended Diffie-Hellman)
-#[frb(dart_metadata = ("freezed"))]
-#[derive(Debug, Clone)]
+///
+/// Deliberately **not** `freezed`, and deliberately without `Debug`. Two of the four
+/// fields are private key material, and both a freezed `toString()` and a derived `Debug`
+/// would interpolate them verbatim. Mirrors `FfiHybridKeyBundle`, which hand-writes a
+/// `Debug` redacting exactly those two halves one crate over in `guardyn-crypto`. See #348.
+#[derive(Clone)]
 pub struct HybridKeyBundle {
     /// X25519 public key (32 bytes)
     pub x25519_public: Vec<u8>,
