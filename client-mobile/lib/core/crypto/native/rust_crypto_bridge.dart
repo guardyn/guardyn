@@ -33,9 +33,6 @@ class NativeRustCryptoBridge implements CryptoBridge {
   bool _nativeAvailable = false;
   bool _pqAvailable = false;
 
-  /// Track if we've already checked native availability
-  static bool? _nativeLibraryAvailable;
-
   /// Whether `GuardynCrypto.init()` has run in this process.
   ///
   /// flutter_rust_bridge permits exactly one initialisation and throws
@@ -52,34 +49,20 @@ class NativeRustCryptoBridge implements CryptoBridge {
   /// correctly instead of mislabelling a working library as missing.
   static bool _frbInitialized = false;
 
-  /// Check if native library is available for current platform
-  ///
-  /// This performs a one-time check by attempting to call the Rust FFI.
-  /// Returns false if the native library is not loaded.
-  static bool checkNativeAvailable() {
-    // Return cached result if already checked
-    if (_nativeLibraryAvailable != null) {
-      return _nativeLibraryAvailable!;
-    }
-
-    try {
-      final libName = _getLibraryName();
-      if (libName == null) {
-        _nativeLibraryAvailable = false;
-        return false;
-      }
-
-      // Actually try to call a function to verify library is loaded
-      // If the stub is used, this will throw UnsupportedError
-      rust_api.cryptoStatus();
-      _nativeLibraryAvailable = true;
-      return true;
-    } catch (e) {
-      debugPrint('🔐 Native crypto library not available: $e');
-      _nativeLibraryAvailable = false;
-      return false;
-    }
-  }
+  // `checkNativeAvailable()` was here, and it was the whole of #366.
+  //
+  // It answered "is the native library present?" by *calling into it* - `rust_api.cryptoStatus()`
+  // - which cannot succeed until flutter_rust_bridge is up, and the only thing that starts
+  // flutter_rust_bridge is [initialize], which you reached through the factory that ran this
+  // probe first. The first call in a process therefore could not succeed, and the answer was
+  // cached, so one premature call pinned "unavailable" for the life of the process.
+  //
+  // Its `catch` could not tell `StateError('flutter_rust_bridge has not been initialized')`
+  // apart from a genuinely missing `.so`, so both became a cached `false`. Nothing reset it:
+  // `CryptoBridgeFactory.reset()` cleared the singleton but never this field.
+  //
+  // There is no probe now. [initialize] establishes availability by doing the thing, and
+  // nothing negative is cached anywhere - see `CryptoBridgeFactory.ensureInstance`.
 
   static String? _getLibraryName() {
     if (Platform.isAndroid) {
@@ -125,9 +108,22 @@ class NativeRustCryptoBridge implements CryptoBridge {
         'native=$_nativeAvailable, pq=$_pqAvailable, '
         'version=${status.version}',
       );
-    } catch (e) {
-      debugPrint('🔐 Failed to initialize native crypto: $e');
-      _nativeAvailable = false;
+    } on Object catch (e, stackTrace) {
+      // Deliberately rethrown, not recorded. Setting `_nativeAvailable = false` here was the
+      // same defect as the probe one layer down: it turned "the native library failed to start"
+      // into "the native library is absent", which is a silent downgrade of exactly the kind
+      // #230 closed off - and it left the bridge `_initialized` and in use.
+      //
+      // Refusing loudly is the contract. The message keeps the sentence #230's regression test
+      // asserts on, and `Error.throwWithStackTrace` preserves the original failure underneath.
+      Error.throwWithStackTrace(
+        UnsupportedError(
+          'Native Rust crypto is required but could not be initialised: $e. '
+          'Ensure ${_getLibraryName() ?? 'the native crypto library'} is built and bundled '
+          'with the app. Refusing to fall back to the development-only Dart implementation.',
+        ),
+        stackTrace,
+      );
     }
 
     _initialized = true;

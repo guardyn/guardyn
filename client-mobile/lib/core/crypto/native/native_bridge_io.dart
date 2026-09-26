@@ -12,37 +12,27 @@ import 'rust_crypto_bridge.dart';
 
 /// Create the crypto bridge for IO platforms.
 ///
-/// Returns the native Rust implementation, or throws [UnsupportedError].
+/// Construction is pure: it chooses an implementation and returns it, and cannot fail. Whether
+/// the native library actually works is established by `CryptoBridge.initialize`, which is the
+/// only code that can answer the question - see `CryptoBridgeFactory.ensureInstance`.
 ///
-/// This used to fall back to [DartCryptoBridge] whenever the FFI failed to load, announcing it
-/// with a `debugPrint` - which is compiled out of release builds. So any failure to load the
-/// library, from a missing `.so` to an ABI mismatch, silently demoted the entire application to
-/// an implementation that describes itself as *"for development purposes only"*, with nothing
-/// in a release build to say so. There is no `kReleaseMode` check anywhere in the app to catch
-/// it either.
+/// This used to decide by *probing* the FFI here, before anything had initialised
+/// flutter_rust_bridge, and to cache the answer. That could not succeed on the first call in a
+/// process and poisoned every later one (#366).
 ///
-/// A downgrade the user cannot observe is worse than a crash: a crash is reported, a quiet
-/// downgrade ships. So the fallback now requires
-/// [CryptoBridgeFactory.allowInsecureDartFallback] to be set explicitly, which only the test
-/// suite does.
+/// The refusal it used to make has not gone away, it has moved to where it can be evaluated.
+/// Falling back to [DartCryptoBridge] whenever the FFI failed to load announced itself with a
+/// `debugPrint`, which is compiled out of release builds - so any failure, from a missing `.so`
+/// to an ABI mismatch, silently demoted the whole application to an implementation that
+/// describes itself as *"for development purposes only"*, with nothing in a release build to say
+/// so. A downgrade the user cannot observe is worse than a crash: a crash is reported, a quiet
+/// downgrade ships. So the fallback requires [CryptoBridgeFactory.allowInsecureDartFallback] to
+/// be set explicitly, which only the test suite does, and `initialize` throws otherwise (#230).
 CryptoBridge createNativeCryptoBridge() {
-  if (NativeRustCryptoBridge.checkNativeAvailable()) {
-    return NativeRustCryptoBridge();
-  }
-
   if (CryptoBridgeFactory.insecureDartFallbackAllowed) {
-    debugPrint('🔐 Native crypto unavailable; using DartCryptoBridge by explicit opt-in.');
+    debugPrint('🔐 Using DartCryptoBridge by explicit opt-in. Development only.');
     return DartCryptoBridge();
   }
 
-  throw UnsupportedError(
-    'Native Rust crypto is required but not available. Ensure libguardyn_crypto_ffi is built '
-    'and bundled with the app. Refusing to fall back to the development-only Dart '
-    'implementation.',
-  );
-}
-
-/// Check if native crypto is available
-bool isNativeCryptoAvailable() {
-  return NativeRustCryptoBridge.checkNativeAvailable();
+  return NativeRustCryptoBridge();
 }

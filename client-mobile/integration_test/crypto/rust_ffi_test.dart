@@ -59,18 +59,17 @@ void main() {
       enablePadme: true,
     );
 
-    // The bridge is constructed directly and initialised first, because
-    // `CryptoBridgeFactory` probes for the library by *calling* it
-    // (`NativeRustCryptoBridge.checkNativeAvailable` -> `cryptoStatus()`), which cannot
-    // succeed until flutter_rust_bridge is up. The probe also caches its answer, so a
-    // premature call would pin "unavailable" for the rest of the process.
-    bridge = NativeRustCryptoBridge();
-    await bridge.initialize(config);
-
-    // Then the facade, so CryptoService works and the publishing path can be exercised as the
-    // application runs it. This is only safe because `initialize` now treats the
-    // flutter_rust_bridge init as a one-shot rather than discovering it by exception.
+    // One bridge, established once, through the path the application itself takes.
+    //
+    // This used to construct the bridge directly and initialise it *before* going near the
+    // factory, because the factory probed for the library by calling it and cached the
+    // failure (#366). That workaround is gone with the probe: `ensureInstance` constructs and
+    // initialises as a single step, so the facade and the bridge under test are one object.
+    //
+    // It is also the device assertion for #366. If the defect were still present this line
+    // would throw during setUpAll on a device where the library works perfectly.
     await CryptoPrimitives.initialize(config);
+    bridge = CryptoBridgeFactory.instance as NativeRustCryptoBridge;
   });
 
   group('NativeRustCryptoBridge Integration Tests', () {
@@ -329,12 +328,15 @@ void main() {
       // initialized once per process. Just verify the existing bridge.
       final factoryBridge = CryptoBridgeFactory.instance;
 
-      // Factory should have returned our native bridge (since tests run
-      // after setUpAll already initialized it)
       expect(
         factoryBridge,
         isA<NativeRustCryptoBridge>(),
         reason: 'Factory should return native bridge on this platform',
+      );
+      expect(
+        identical(factoryBridge, bridge),
+        isTrue,
+        reason: 'the facade and the factory must share one established bridge, not two',
       );
     });
 

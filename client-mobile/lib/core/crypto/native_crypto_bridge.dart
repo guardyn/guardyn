@@ -285,32 +285,56 @@ class CryptoBridgeFactory {
   static set allowInsecureDartFallback(bool value) =>
       _allowInsecureDartFallback = value;
 
-  /// Get the singleton crypto bridge instance
-  static CryptoBridge get instance {
-    _instance ??= _createBridge();
-    return _instance!;
+  /// In-flight initialisation, so concurrent callers share one attempt.
+  ///
+  /// `GuardynCrypto.init()` throws on a second call, so two bridges initialising at once is a
+  /// real hazard rather than a theoretical one. Sharing the future makes it unrepresentable.
+  static Future<CryptoBridge>? _pending;
+
+  /// Builds the bridge and initialises it as one step, then caches it.
+  ///
+  /// This is the fix for #366. The factory used to hand out a bridge that had been *probed* but
+  /// not initialised, and the probe could not succeed before initialisation had happened - a
+  /// cycle, whose `false` was then cached for the life of the process. Now there is no probe:
+  /// initialising the bridge is what establishes whether the native library works, because it
+  /// is the only thing that can.
+  ///
+  /// [_instance] is assigned only after [CryptoBridge.initialize] returns, so a failed attempt
+  /// caches nothing and the next call retries cleanly. **Nothing negative is cached at any
+  /// layer** - that is the property the old code lacked, and the reason a transient ordering
+  /// problem became a permanent one.
+  static Future<CryptoBridge> ensureInstance([NativeCryptoConfig? config]) {
+    final existing = _instance;
+    if (existing != null) return Future.value(existing);
+
+    return _pending ??= () async {
+      try {
+        final bridge = native_bridge.createNativeCryptoBridge();
+        await bridge.initialize(config ?? NativeCryptoConfig.defaultConfig);
+        _instance = bridge;
+        return bridge;
+      } finally {
+        _pending = null;
+      }
+    }();
   }
 
-  static CryptoBridge _createBridge() {
-    // Throws rather than downgrading when the native library is missing.
-    return native_bridge.createNativeCryptoBridge();
-  }
-
-  /// Force native implementation (for testing)
-  @visibleForTesting
-  static void useNative() {
-    if (!native_bridge.isNativeCryptoAvailable()) {
-      throw UnsupportedError(
-        'Native Rust crypto is not available on this platform. '
-        'Build native libraries first.',
-      );
-    }
-    _instance = native_bridge.createNativeCryptoBridge();
-  }
+  /// The bridge established by [ensureInstance].
+  ///
+  /// Synchronous, because almost every caller wants the already-initialised bridge. It throws
+  /// rather than building one on demand: construction now needs an `await`, and an uninitialised
+  /// bridge is not a usable bridge, so handing one out is the invalid state this removes.
+  static CryptoBridge get instance =>
+      _instance ??
+      (throw StateError(
+        'CryptoBridgeFactory.ensureInstance() has not completed. Crypto must be initialised '
+        'before use - CryptoPrimitives.initialize() does this at startup.',
+      ));
 
   /// Reset instance (for testing)
   @visibleForTesting
   static void reset() {
     _instance = null;
+    _pending = null;
   }
 }

@@ -22,15 +22,20 @@ void main() {
       CryptoBridgeFactory.allowInsecureDartFallback = false;
     });
 
-    test('refuses to build a bridge when the native library is missing', () {
+    test('refuses to establish a bridge when the native library is missing', () async {
       // The #230 regression test, and the reason the three tests that used to live here were
       // rewritten: they asserted `expect(bridge, isNotNull)` under the title "factory returns
       // native bridge on supported platforms". That passed on DartCryptoBridge just as happily
       // as on the real one, so it certified precisely the downgrade it was named after.
       //
       // There is no FFI in a headless test VM, so this exercises the missing-library path.
-      expect(
-        () => CryptoBridgeFactory.instance,
+      //
+      // The refusal is asserted on `ensureInstance` rather than on `instance` because #366
+      // moved it there. Construction no longer probes the library - it cannot, nothing has
+      // started flutter_rust_bridge yet - so initialisation is where the answer is found and
+      // where the refusal now belongs. The guarantee is unchanged: no silent downgrade, ever.
+      await expectLater(
+        CryptoBridgeFactory.ensureInstance(),
         throwsA(
           isA<UnsupportedError>().having(
             (e) => e.message,
@@ -42,31 +47,83 @@ void main() {
       );
     });
 
-    test('uses the Dart bridge only when the fallback is granted explicitly', () {
-      CryptoBridgeFactory.allowInsecureDartFallback = true;
+    test('a failed attempt caches nothing, so the next one fails the same way', () async {
+      // This is #366 itself, and the assertion the old code made impossible to write.
+      //
+      // Availability used to be decided by a probe whose answer was cached in a private static
+      // with no seam and no invalidation - not even `reset()` cleared it. One premature call
+      // pinned "unavailable" for the life of the process, which is how a transient ordering
+      // problem became a permanent one and took application startup down with it.
+      //
+      // `ensureInstance` assigns `_instance` only after `initialize` returns, so there is
+      // nowhere for a negative to be recorded. A second attempt must reach the library again
+      // and fail on its own merits rather than be answered from a poisoned cache.
+      Future<void> attempt() => CryptoBridgeFactory.ensureInstance();
 
-      expect(CryptoBridgeFactory.instance, isA<DartCryptoBridge>());
+      await expectLater(attempt(), throwsA(isA<UnsupportedError>()));
+      await expectLater(
+        attempt(),
+        throwsA(isA<UnsupportedError>()),
+        reason: 'a failure must not be remembered; the retry must be a real attempt',
+      );
+
+      // And with the grant in place the very next call succeeds - which it could not do if the
+      // two failures above had left anything behind.
+      CryptoBridgeFactory.allowInsecureDartFallback = true;
+      expect(await CryptoBridgeFactory.ensureInstance(), isA<DartCryptoBridge>());
     });
 
-    test('instance returns singleton', () {
+    test('an unestablished bridge is never handed out', () {
+      // `instance` throws rather than building one on demand. An uninitialised bridge cannot
+      // report whether the native library works, so returning one would put the caller back in
+      // exactly the state #366 describes: holding a bridge whose capabilities are a guess.
+      expect(() => CryptoBridgeFactory.instance, throwsStateError);
+    });
+
+    test('uses the Dart bridge only when the fallback is granted explicitly', () async {
       CryptoBridgeFactory.allowInsecureDartFallback = true;
 
-      final bridge1 = CryptoBridgeFactory.instance;
-      final bridge2 = CryptoBridgeFactory.instance;
+      expect(await CryptoBridgeFactory.ensureInstance(), isA<DartCryptoBridge>());
+    });
+
+    test('instance returns singleton', () async {
+      CryptoBridgeFactory.allowInsecureDartFallback = true;
+
+      final bridge1 = await CryptoBridgeFactory.ensureInstance();
+      final bridge2 = await CryptoBridgeFactory.ensureInstance();
 
       expect(
         identical(bridge1, bridge2),
         isTrue,
         reason: 'Factory should return same instance',
       );
+      expect(identical(CryptoBridgeFactory.instance, bridge1), isTrue);
     });
 
-    test('reset clears singleton', () {
+    test('concurrent callers share a single initialisation', () async {
+      // flutter_rust_bridge permits exactly one `init()` per process and throws on the second,
+      // so two bridges initialising at once is a real hazard rather than a theoretical one.
       CryptoBridgeFactory.allowInsecureDartFallback = true;
 
-      final bridge1 = CryptoBridgeFactory.instance;
+      final bridges = await Future.wait([
+        CryptoBridgeFactory.ensureInstance(),
+        CryptoBridgeFactory.ensureInstance(),
+        CryptoBridgeFactory.ensureInstance(),
+      ]);
+
+      expect(
+        bridges.every((b) => identical(b, bridges.first)),
+        isTrue,
+        reason: 'a concurrent race must not produce a second bridge',
+      );
+    });
+
+    test('reset clears singleton', () async {
+      CryptoBridgeFactory.allowInsecureDartFallback = true;
+
+      final bridge1 = await CryptoBridgeFactory.ensureInstance();
       CryptoBridgeFactory.reset();
-      final bridge2 = CryptoBridgeFactory.instance;
+      final bridge2 = await CryptoBridgeFactory.ensureInstance();
 
       expect(
         identical(bridge1, bridge2),
@@ -75,16 +132,19 @@ void main() {
       );
     });
 
-    test('revoking the grant makes the next build refuse again', () {
+    test('revoking the grant makes the next build refuse again', () async {
       // The permission is not sticky: it gates each construction, so a test that granted it
       // cannot leave the application permanently downgraded.
       CryptoBridgeFactory.allowInsecureDartFallback = true;
-      expect(CryptoBridgeFactory.instance, isA<DartCryptoBridge>());
+      expect(await CryptoBridgeFactory.ensureInstance(), isA<DartCryptoBridge>());
 
       CryptoBridgeFactory.reset();
       CryptoBridgeFactory.allowInsecureDartFallback = false;
 
-      expect(() => CryptoBridgeFactory.instance, throwsUnsupportedError);
+      await expectLater(
+        CryptoBridgeFactory.ensureInstance(),
+        throwsA(isA<UnsupportedError>()),
+      );
     });
   });
 

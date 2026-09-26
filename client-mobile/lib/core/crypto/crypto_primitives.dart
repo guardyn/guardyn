@@ -34,8 +34,12 @@ class CryptoPrimitives {
   static Future<void> initialize([NativeCryptoConfig? config]) async {
     if (_initialized) return;
 
-    _bridge = CryptoBridgeFactory.instance;
-    await _bridge!.initialize(config ?? NativeCryptoConfig.defaultConfig);
+    // One call, not two. Asking the factory for a bridge and then initialising it was the
+    // ordering that made #366 possible: the factory probed the native library one statement
+    // before the initialisation that would have made the probe answerable.
+    _bridge = await CryptoBridgeFactory.ensureInstance(
+      config ?? NativeCryptoConfig.defaultConfig,
+    );
     _initialized = true;
 
     debugPrint(
