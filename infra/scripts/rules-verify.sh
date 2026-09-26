@@ -20,7 +20,7 @@
 # and `cargo clippy -- -D warnings`, and since PR-17 both actually fail the build. Repeating
 # them here would mean a Rust toolchain in a job that otherwise needs none.
 #
-# Ratchets, not warnings. RS-UNWRAP and NAME-SH fail today - 52 sites and 5 files - and
+# Ratchets, not warnings. RS-UNWRAP and NAME-SH fail today - 28 sites and 4 files - and
 # fixing them is owned work, not this step's. A warning everyone learns to scroll past is
 # how `continue-on-error` made CI decorative before PR-17. So each carries a budget equal to
 # its measured count: the build fails the moment the number GROWS. Existing debt is frozen,
@@ -50,7 +50,7 @@ BASE="${RULES_VERIFY_BASE:-origin/main}"
 
 # Frozen debt. These may only ever be lowered. Lower them in the same PR that removes a site.
 RS_UNWRAP_BUDGET=28
-NAME_SH_BUDGET=5
+NAME_SH_BUDGET=4
 
 failures=0
 

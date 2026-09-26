@@ -632,3 +632,30 @@ steps:
   # the whole Flutter client sits outside zero-knowledge enforcement. Extending the predicates
   # to Dart is real follow-up work and is not this step.
   - {id: PR-146, issue: 348, phase: 4, type: security, status: done, title: "Stop the generated Dart toString() printing private keys and ciphertext"}
+  # Found while planning PR-98b, which had to establish which flutter_rust_bridge config is
+  # authoritative before touching the generated bindings. Two configs named different crates and
+  # wrote to the SAME dart_output: the live one at backend/crates/crypto-ffi (rust_input
+  # crate::api) and a stale one at client-mobile (rust_input crate::ffi, rust_root
+  # ../backend/crates/crypto). The stale one was reachable - setup_rust_bridge.sh cd'd into
+  # client-mobile and ran the generator, which resolves its config from the working directory, so
+  # that path regenerated the bindings from the wrong crate over the correct ones. The script also
+  # wrote a THIRD, different config in a heredoc when none existed, so it could not reach a working
+  # state either way.
+  #
+  # Deleted outright rather than reduced to a wrapper: `git grep setup_rust_bridge` matched
+  # nothing - no workflow, no Justfile recipe, no document. `just ffi-generate` already cd's to
+  # backend/crates/crypto-ffi and so resolves the live config. Removing the script also clears one
+  # NAME-SH site, so NAME_SH_BUDGET drops 5 -> 4 in the same PR, per the rule that a ratchet is
+  # lowered by whoever removes the site.
+  #
+  # #349 was filed before any fix and is adopted here with its number recorded - roadmap-sync does
+  # not reconcile titles, so #349 is retitled to `PR-147 · <title>`, the one hand-edit the
+  # issue-sync skill sanctions. Same shape as #318/PR-116.
+  #
+  # The id is PR-147, not the PR-131 this step carried when it was opened on 2026-09-22.
+  # PR-131 was free then and was taken while this PR sat unmerged: the landing series recorded
+  # PR-131 to PR-135 retroactively, for work on #373 to #381 that had already merged. Two steps
+  # cannot share an id - roadmap-sync keys on it - so the later claim renumbers. That is also
+  # why this id sits out of order against its neighbours: an id is an allocation number, not a
+  # position in a sequence, exactly as PR-45 and PR-56 already demonstrate elsewhere in this file.
+  - {id: PR-147, issue: 349, phase: 4, type: chore, status: done, title: "Delete the stale flutter_rust_bridge config and its unreachable setup script"}
