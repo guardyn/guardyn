@@ -32,7 +32,7 @@
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@solidjs/testing-library": "^0.8.10",
-    "@tauri-apps/cli": "^2.2.0",
+    "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
