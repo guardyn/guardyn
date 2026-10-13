@@ -237,10 +237,10 @@ packages:
     dependency: transitive
     description:
       name: code_assets
-      sha256: bf394f466ba9205f1812a0433b392d6af280f155f56651eda7c18cc32ed493b8
+      sha256: cfd4f5f575a49c5f10ca856e9846073f1e6c3ee94912377eea5f6cefc5272941
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.1"
+    version: "2.0.0"
   code_builder:
     dependency: transitive
     description:
@@ -381,10 +381,10 @@ packages:
     dependency: "direct dev"
     description:
       name: ffigen
-      sha256: "56fc0be88937409839a59c133dfdee4165e80da324c9e39f59013060249ffb44"
+      sha256: "31b2ca630cede89babbbf31688d20b735967c51bf60572b06ec16718e5a7f1ec"
       url: "https://pub.dev"
     source: hosted
-    version: "21.0.0"
+    version: "22.0.0"
   file:
     dependency: transitive
     description:
@@ -952,10 +952,10 @@ packages:
     dependency: transitive
     description:
       name: native_toolchain_c
-      sha256: a1c26117c48cebe5677b0cf0e33a980a79a7c5577effc86f52e5a0d309cdcb60
+      sha256: "9d233b6f2d9c52e1a2b5fbe70451d2c10ac674d3bb419d0ec8de14989d437c26"
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.3"
+    version: "0.19.4"
   nested:
     dependency: transitive
     description:

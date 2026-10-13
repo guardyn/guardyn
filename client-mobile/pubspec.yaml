@@ -111,7 +111,7 @@ dev_dependencies:
   injectable_generator: ^2.10.0
 
   # Rust FFI Code Generation
-  ffigen: ^21.0.0
+  ffigen: ^22.0.0
   freezed: ^3.2.5
 
   # Testing
